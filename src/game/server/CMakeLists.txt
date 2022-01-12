@@ -93,6 +93,8 @@ target_sources(hl PRIVATE
 	entities/subs.cpp
 	entities/trains.h
 	entities/triggers.cpp
+	entities/UtilServerCommand.cpp
+	entities/UtilServerCommand.h
 	entities/world.cpp
 	entities/world.h
 	entities/xen.cpp
