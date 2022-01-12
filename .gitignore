@@ -1,2 +1,6 @@
 # Allow Half-Life-specific files that would otherwise be ignored
 !utils/procinfo/lib/win32_vc6/procinfo.lib
+
+# Ignore any CMake-generated stuff, build is typically the most popular directory for this
+build/*
+
