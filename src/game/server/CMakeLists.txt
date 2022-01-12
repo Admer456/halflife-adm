@@ -70,6 +70,8 @@ target_sources(hl PRIVATE
 	entities/effects.h
 	entities/explode.cpp
 	entities/explode.h
+	entities/FilterDifficulty.cpp
+	entities/FilterDifficulty.h
 	entities/func_break.cpp
 	entities/func_break.h
 	entities/func_tank.cpp
