@@ -1,9 +1,11 @@
+
 #include "extdll.h"
 #include "util.h"
 #include "cbase.h"
+
 #include "UtilServerCommand.h"
 
-LINK_ENTITY_TO_CLASS( util_servercommand, UtilServerCommand );
+LINK_ENTITY_TO_CLASS(util_servercommand, UtilServerCommand);
 
 TYPEDESCRIPTION UtilServerCommand::m_SaveData[] =
 {
@@ -42,7 +44,7 @@ void UtilServerCommand::Spawn()
 // ================================
 bool UtilServerCommand::KeyValue(KeyValueData* pkvd)
 {
-	if ( FStrEq(pkvd->szKeyName, "command") )
+	if (FStrEq(pkvd->szKeyName, "command"))
 	{
 		m_Command = ALLOC_STRING(pkvd->szValue);
 		return true;
