@@ -95,6 +95,8 @@ target_sources(hl PRIVATE
 	entities/subs.cpp
 	entities/trains.h
 	entities/triggers.cpp
+	entities/TriggerTimer.cpp
+	entities/TriggerTimer.h
 	entities/UtilServerCommand.cpp
 	entities/UtilServerCommand.h
 	entities/world.cpp
