@@ -4,9 +4,9 @@ if (MSVC)
 	set(CMAKE_SYSTEM_VERSION 10.0)
 endif()
 
-project(HalfLifeMod
+project(HalfLifeADM
 	VERSION 1.0
-	DESCRIPTION "Half-Life CMake Mod Template"
+	DESCRIPTION "Half-Life ADM Mod Template"
 	LANGUAGES CXX)
 
 # Disable the use of absolute paths in library paths even in development builds.
