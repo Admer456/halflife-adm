@@ -394,7 +394,7 @@ void CFuncRotating::Spawn()
 		pev->movedir = Vector(0, 0, 1);
 	else if (FBitSet(pev->spawnflags, SF_BRUSH_ROTATE_X_AXIS))
 		pev->movedir = Vector(1, 0, 0);
-	else
+	else if (!pev->movedir.Length()) // Admer: support custom rotation axes
 		pev->movedir = Vector(0, 1, 0); // y-axis
 
 	// check for reverse rotation
