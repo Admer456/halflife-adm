@@ -97,6 +97,8 @@ target_sources(hl PRIVATE
 	entities/triggers.cpp
 	entities/TriggerTimer.cpp
 	entities/TriggerTimer.h
+    entities/UtilMoveWith.cpp
+    entities/UtilMoveWith.h
 	entities/UtilPrint.cpp
 	entities/UtilPrint.h
 	entities/UtilServerCommand.cpp
