@@ -79,6 +79,8 @@ function(add_game_shared_sources target)
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/utils/command_utils.h
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/utils/CStringPool.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/utils/CStringPool.h
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/utils/CTimeUtils.cpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/utils/CTimeUtils.h
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/utils/filesystem_utils.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/utils/filesystem_utils.h
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/utils/heterogeneous_lookup.h
