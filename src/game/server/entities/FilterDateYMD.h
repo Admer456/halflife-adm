@@ -20,7 +20,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 private:
-	int m_Year;
-	int m_Month;
-	int m_Day;
+	int m_Year{-1};
+	int m_Month{-1};
+	int m_Day{-1};
 };
