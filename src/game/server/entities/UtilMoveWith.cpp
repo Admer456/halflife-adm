@@ -23,6 +23,8 @@ IMPLEMENT_SAVERESTORE(UtilMoveWith, CPointEntity);
 // ================================
 void UtilMoveWith::Spawn()
 {
+	CPointEntity::Spawn();
+
 	if (pev->spawnflags & SF_StartOn)
 	{
 		m_Enabled = true;
