@@ -12,19 +12,12 @@
 *   use or distribution of this code by or to any unlicensed person is illegal.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "weapons.h"
-#include "player.h"
-#include "skill.h"
 #include "customentity.h"
 #include "UserMessages.h"
-#include "game.h"
 
 #ifndef CLIENT_DLL
 #include "weapons/CGrappleTip.h"
-#include "gamerules.h"
 #else
 #include "cl_dll.h"
 #endif
@@ -87,7 +80,7 @@ bool CGrapple::AddToPlayer(CBasePlayer* pPlayer)
 {
 	if (BaseClass::AddToPlayer(pPlayer))
 	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, NULL, pPlayer->edict());
+		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->edict());
 		WRITE_BYTE(m_iId);
 		MESSAGE_END();
 

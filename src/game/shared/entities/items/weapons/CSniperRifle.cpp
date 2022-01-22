@@ -12,12 +12,7 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "player.h"
-#include "weapons.h"
-#include "gamerules.h"
 #include "UserMessages.h"
 
 #include "CSniperRifle.h"
@@ -72,7 +67,7 @@ bool CSniperRifle::AddToPlayer(CBasePlayer* pPlayer)
 {
 	if (BaseClass::AddToPlayer(pPlayer))
 	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, NULL, pPlayer->edict());
+		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->edict());
 		WRITE_BYTE(m_iId);
 		MESSAGE_END();
 		return true;
@@ -159,7 +154,7 @@ void CSniperRifle::PrimaryAttack()
 
 	PLAYBACK_EVENT_FULL(FEV_NOTHOST,
 		m_pPlayer->edict(), m_usSniper, 0,
-		(float*)&g_vecZero, (float*)&g_vecZero,
+		g_vecZero, g_vecZero,
 		vecShot.x, vecShot.y,
 		m_iClip, m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()],
 		0, 0);
@@ -221,7 +216,7 @@ bool CSniperRifle::GetItemInfo(ItemInfo* p)
 	p->pszAmmo1 = "762";
 	p->iMaxAmmo1 = SNIPERRIFLE_MAX_CARRY;
 	p->pszName = STRING(pev->classname);
-	p->pszAmmo2 = 0;
+	p->pszAmmo2 = nullptr;
 	p->iMaxAmmo2 = WEAPON_NOCLIP;
 	p->iMaxClip = SNIPERRIFLE_MAX_CLIP;
 	p->iSlot = 5;

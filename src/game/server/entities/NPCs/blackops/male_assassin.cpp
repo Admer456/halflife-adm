@@ -27,16 +27,9 @@
 
 */
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "schedule.h"
-#include "animation.h"
 #include "squadmonster.h"
-#include "weapons.h"
 #include "talkmonster.h"
-#include "soundent.h"
 #include "military/hgrunt.h"
 
 constexpr int MASSN_SNIPER_CLIP_SIZE = 1;
@@ -237,7 +230,7 @@ void CMOFAssassin::CheckAmmo()
 //=========================================================
 void CMOFAssassin::Shoot(bool firstShotInBurst)
 {
-	if (m_hEnemy == NULL)
+	if (m_hEnemy == nullptr)
 	{
 		return;
 	}

@@ -13,13 +13,8 @@
 *
 ****/
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
 #include "talkmonster.h"
-#include "weapons.h"
-#include "soundent.h"
 #include "blackmesa/barney.h"
 
 /**
@@ -74,7 +69,7 @@ void CDrillSergeant::Spawn()
 
 void CDrillSergeant::AlertSound()
 {
-	if (m_hEnemy != NULL)
+	if (m_hEnemy != nullptr)
 	{
 		if (FOkToSpeak())
 		{
@@ -94,7 +89,7 @@ bool CDrillSergeant::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker,
 	{
 		// This is a heurstic to determine if the player intended to harm me
 		// If I have an enemy, we can't establish intent (may just be crossfire)
-		if (m_hEnemy == NULL)
+		if (m_hEnemy == nullptr)
 		{
 			// If the player was facing directly at me, or I'm already suspicious, get mad
 			if ((m_afMemory & bits_MEMORY_SUSPICIOUS) != 0 || IsFacing(pevAttacker, pev->origin))
@@ -147,8 +142,8 @@ void CDrillSergeant::TalkInit()
 	m_szGrp[TLK_PLHURT2] = "!DR_CUREB";
 	m_szGrp[TLK_PLHURT3] = "!DR_CUREC";
 
-	m_szGrp[TLK_PHELLO] = NULL;			  //"BA_PHELLO";		// UNDONE
-	m_szGrp[TLK_PIDLE] = NULL;			  //"BA_PIDLE";			// UNDONE
+	m_szGrp[TLK_PHELLO] = nullptr;			  //"BA_PHELLO";		// UNDONE
+	m_szGrp[TLK_PIDLE] = nullptr;			  //"BA_PIDLE";			// UNDONE
 	m_szGrp[TLK_PQUESTION] = "DR_PQUEST"; // UNDONE
 
 	m_szGrp[TLK_SMELL] = "DR_SMELL";

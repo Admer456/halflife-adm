@@ -20,16 +20,8 @@
 
 */
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "saverestore.h"
-#include <time.h>
 #include "shake.h"
-#include "decals.h"
-#include "player.h"
-#include "weapons.h"
-#include "gamerules.h"
 #include "UserMessages.h"
 
 float UTIL_WeaponTimeBase()
@@ -52,7 +44,7 @@ CBaseEntity* UTIL_FindEntityForward(CBaseEntity* pMe)
 		CBaseEntity* pHit = CBaseEntity::Instance(tr.pHit);
 		return pHit;
 	}
-	return NULL;
+	return nullptr;
 }
 
 static unsigned int glSeed = 0;
@@ -325,11 +317,11 @@ TYPEDESCRIPTION gEntvarsDescription[] =
 #ifdef DEBUG
 edict_t* DBG_EntOfVars(const entvars_t* pev)
 {
-	if (pev->pContainingEntity != NULL)
+	if (pev->pContainingEntity != nullptr)
 		return pev->pContainingEntity;
-	ALERT(at_console, "entvars_t pContainingEntity is NULL, calling into engine");
+	ALERT(at_console, "entvars_t pContainingEntity is nullptr, calling into engine");
 	edict_t* pent = (*g_engfuncs.pfnFindEntityByVars)((entvars_t*)pev);
-	if (pent == NULL)
+	if (pent == nullptr)
 		ALERT(at_console, "DAMN!  Even the engine couldn't FindEntityByVars!");
 	((entvars_t*)pev)->pContainingEntity = pent;
 	return pent;
@@ -348,18 +340,13 @@ void DBG_AssertFunction(
 	if (fExpr)
 		return;
 	char szOut[512];
-	if (szMessage != NULL)
+	if (szMessage != nullptr)
 		sprintf(szOut, "ASSERT FAILED:\n %s \n(%s@%d)\n%s", szExpr, szFile, szLine, szMessage);
 	else
 		sprintf(szOut, "ASSERT FAILED:\n %s \n(%s@%d)", szExpr, szFile, szLine);
 	ALERT(at_console, szOut);
 }
 #endif // DEBUG
-
-bool UTIL_GetNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pCurrentWeapon)
-{
-	return g_pGameRules->GetNextBestWeapon(pPlayer, pCurrentWeapon);
-}
 
 // ripped this out of the engine
 float UTIL_AngleMod(float a)
@@ -522,13 +509,13 @@ CBaseEntity* UTIL_FindEntityInSphere(CBaseEntity* pStartEntity, const Vector& ve
 	if (pStartEntity)
 		pentEntity = pStartEntity->edict();
 	else
-		pentEntity = NULL;
+		pentEntity = nullptr;
 
 	pentEntity = FIND_ENTITY_IN_SPHERE(pentEntity, vecCenter, flRadius);
 
 	if (!FNullEnt(pentEntity))
 		return CBaseEntity::Instance(pentEntity);
-	return NULL;
+	return nullptr;
 }
 
 
@@ -539,13 +526,13 @@ CBaseEntity* UTIL_FindEntityByString(CBaseEntity* pStartEntity, const char* szKe
 	if (pStartEntity)
 		pentEntity = pStartEntity->edict();
 	else
-		pentEntity = NULL;
+		pentEntity = nullptr;
 
 	pentEntity = FIND_ENTITY_BY_STRING(pentEntity, szKeyword, szValue);
 
 	if (!FNullEnt(pentEntity))
 		return CBaseEntity::Instance(pentEntity);
-	return NULL;
+	return nullptr;
 }
 
 CBaseEntity* UTIL_FindEntityByClassname(CBaseEntity* pStartEntity, const char* szName)
@@ -561,15 +548,15 @@ CBaseEntity* UTIL_FindEntityByTargetname(CBaseEntity* pStartEntity, const char* 
 
 CBaseEntity* UTIL_FindEntityGeneric(const char* szWhatever, Vector& vecSrc, float flRadius)
 {
-	CBaseEntity* pEntity = NULL;
+	CBaseEntity* pEntity = nullptr;
 
-	pEntity = UTIL_FindEntityByTargetname(NULL, szWhatever);
+	pEntity = UTIL_FindEntityByTargetname(nullptr, szWhatever);
 	if (pEntity)
 		return pEntity;
 
-	CBaseEntity* pSearch = NULL;
+	CBaseEntity* pSearch = nullptr;
 	float flMaxDist2 = flRadius * flRadius;
-	while ((pSearch = UTIL_FindEntityByClassname(pSearch, szWhatever)) != NULL)
+	while ((pSearch = UTIL_FindEntityByClassname(pSearch, szWhatever)) != nullptr)
 	{
 		float flDist2 = (pSearch->pev->origin - vecSrc).Length();
 		flDist2 = flDist2 * flDist2;
@@ -584,11 +571,11 @@ CBaseEntity* UTIL_FindEntityGeneric(const char* szWhatever, Vector& vecSrc, floa
 
 
 // returns a CBaseEntity pointer to a player by index.  Only returns if the player is spawned and connected
-// otherwise returns NULL
+// otherwise returns nullptr
 // Index is 1 based
 CBaseEntity* UTIL_PlayerByIndex(int playerIndex)
 {
-	CBaseEntity* pPlayer = NULL;
+	CBaseEntity* pPlayer = nullptr;
 
 	if (playerIndex > 0 && playerIndex <= gpGlobals->maxClients)
 	{
@@ -714,7 +701,7 @@ void UTIL_ScreenShake(const Vector& center, float amplitude, float frequency, fl
 		{
 			shake.amplitude = FixedUnsigned16(localAmplitude, 1 << 12); // 4.12 fixed
 
-			MESSAGE_BEGIN(MSG_ONE, gmsgShake, NULL, pPlayer->edict()); // use the magic #1 for "one client"
+			MESSAGE_BEGIN(MSG_ONE, gmsgShake, nullptr, pPlayer->edict()); // use the magic #1 for "one client"
 
 			WRITE_SHORT(shake.amplitude); // shake amount
 			WRITE_SHORT(shake.duration);  // shake lasts this long
@@ -750,7 +737,7 @@ void UTIL_ScreenFadeWrite(const ScreenFade& fade, CBaseEntity* pEntity)
 	if (!pEntity || !pEntity->IsNetClient())
 		return;
 
-	MESSAGE_BEGIN(MSG_ONE, gmsgFade, NULL, pEntity->edict()); // use the magic #1 for "one client"
+	MESSAGE_BEGIN(MSG_ONE, gmsgFade, nullptr, pEntity->edict()); // use the magic #1 for "one client"
 
 	WRITE_SHORT(fade.duration);	 // fade lasts this long
 	WRITE_SHORT(fade.holdTime);	 // fade lasts this long
@@ -795,7 +782,7 @@ void UTIL_HudMessage(CBaseEntity* pEntity, const hudtextparms_t& textparms, cons
 	if (!pEntity || !pEntity->IsNetClient())
 		return;
 
-	MESSAGE_BEGIN(MSG_ONE, SVC_TEMPENTITY, NULL, pEntity->edict());
+	MESSAGE_BEGIN(MSG_ONE, SVC_TEMPENTITY, nullptr, pEntity->edict());
 	WRITE_BYTE(TE_TEXTMESSAGE);
 	WRITE_BYTE(textparms.channel & 0xFF);
 
@@ -866,7 +853,7 @@ void UTIL_ClientPrintAll(int msg_dest, const char* msg_name, const char* param1,
 
 void ClientPrint(entvars_t* client, int msg_dest, const char* msg_name, const char* param1, const char* param2, const char* param3, const char* param4)
 {
-	MESSAGE_BEGIN(MSG_ONE, gmsgTextMsg, NULL, client);
+	MESSAGE_BEGIN(MSG_ONE, gmsgTextMsg, nullptr, client);
 	WRITE_BYTE(msg_dest);
 	WRITE_STRING(msg_name);
 
@@ -887,7 +874,7 @@ void UTIL_SayText(const char* pText, CBaseEntity* pEntity)
 	if (!pEntity->IsNetClient())
 		return;
 
-	MESSAGE_BEGIN(MSG_ONE, gmsgSayText, NULL, pEntity->edict());
+	MESSAGE_BEGIN(MSG_ONE, gmsgSayText, nullptr, pEntity->edict());
 	WRITE_BYTE(pEntity->entindex());
 	WRITE_STRING(pText);
 	MESSAGE_END();
@@ -895,7 +882,7 @@ void UTIL_SayText(const char* pText, CBaseEntity* pEntity)
 
 void UTIL_SayTextAll(const char* pText, CBaseEntity* pEntity)
 {
-	MESSAGE_BEGIN(MSG_ALL, gmsgSayText, NULL);
+	MESSAGE_BEGIN(MSG_ALL, gmsgSayText, nullptr);
 	WRITE_BYTE(pEntity->entindex());
 	WRITE_STRING(pText);
 	MESSAGE_END();
@@ -935,7 +922,7 @@ void UTIL_ShowMessage(const char* pString, CBaseEntity* pEntity)
 	if (!pEntity || !pEntity->IsNetClient())
 		return;
 
-	MESSAGE_BEGIN(MSG_ONE, gmsgHudText, NULL, pEntity->edict());
+	MESSAGE_BEGIN(MSG_ONE, gmsgHudText, nullptr, pEntity->edict());
 	WRITE_STRING(pString);
 	MESSAGE_END();
 }
@@ -1111,7 +1098,7 @@ bool UTIL_IsMasterTriggered(string_t sMaster, CBaseEntity* pActivator)
 {
 	if (!FStringNull(sMaster))
 	{
-		edict_t* pentTarget = FIND_ENTITY_BY_TARGETNAME(NULL, STRING(sMaster));
+		edict_t* pentTarget = FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(sMaster));
 
 		if (!FNullEnt(pentTarget))
 		{
@@ -1587,7 +1574,7 @@ void UTIL_PrecacheOther(const char* szClassname)
 	pent = CREATE_NAMED_ENTITY(MAKE_STRING(szClassname));
 	if (FNullEnt(pent))
 	{
-		ALERT(at_console, "NULL Ent in UTIL_PrecacheOther\n");
+		ALERT(at_console, "nullptr Ent in UTIL_PrecacheOther\n");
 		return;
 	}
 
@@ -1688,7 +1675,7 @@ CSaveRestoreBuffer::~CSaveRestoreBuffer() = default;
 
 int CSaveRestoreBuffer::EntityIndex(CBaseEntity* pEntity)
 {
-	if (pEntity == NULL)
+	if (pEntity == nullptr)
 		return -1;
 	return EntityIndex(pEntity->pev);
 }
@@ -1696,7 +1683,7 @@ int CSaveRestoreBuffer::EntityIndex(CBaseEntity* pEntity)
 
 int CSaveRestoreBuffer::EntityIndex(entvars_t* pevLookup)
 {
-	if (pevLookup == NULL)
+	if (pevLookup == nullptr)
 		return -1;
 	return EntityIndex(ENT(pevLookup));
 }
@@ -1709,7 +1696,7 @@ int CSaveRestoreBuffer::EntityIndex(EOFFSET eoLookup)
 
 int CSaveRestoreBuffer::EntityIndex(edict_t* pentLookup)
 {
-	if (pentLookup == NULL)
+	if (pentLookup == nullptr)
 		return -1;
 
 	int i;
@@ -1728,7 +1715,7 @@ int CSaveRestoreBuffer::EntityIndex(edict_t* pentLookup)
 edict_t* CSaveRestoreBuffer::EntityFromIndex(int entityIndex)
 {
 	if (entityIndex < 0)
-		return NULL;
+		return nullptr;
 
 	int i;
 	ENTITYTABLE* pTable;
@@ -1739,7 +1726,7 @@ edict_t* CSaveRestoreBuffer::EntityFromIndex(int entityIndex)
 		if (pTable->id == entityIndex)
 			return pTable->pent;
 	}
-	return NULL;
+	return nullptr;
 }
 
 
@@ -1907,7 +1894,7 @@ void CSave::WriteString(const char* pname, const int* stringId, int count)
 #if 0
 	if (count != 1)
 		ALERT(at_error, "No string arrays!\n");
-	WriteString(pname, (char*)STRING(*stringId));
+	WriteString(pname, STRING(*stringId));
 #endif
 
 	size = 0;
@@ -2287,9 +2274,9 @@ int CRestore::ReadField(void* pBaseData, TYPEDESCRIPTION* pFields, int fieldCoun
 							if (!FStringNull(string) && m_precache)
 							{
 								if (pTest->fieldType == FIELD_MODELNAME)
-									PRECACHE_MODEL((char*)STRING(string));
+									PRECACHE_MODEL(STRING(string));
 								else if (pTest->fieldType == FIELD_SOUNDNAME)
-									PRECACHE_SOUND((char*)STRING(string));
+									PRECACHE_SOUND(STRING(string));
 							}
 						}
 						break;
@@ -2299,7 +2286,7 @@ int CRestore::ReadField(void* pBaseData, TYPEDESCRIPTION* pFields, int fieldCoun
 						if (pent)
 							*((entvars_t**)pOutputData) = VARS(pent);
 						else
-							*((entvars_t**)pOutputData) = NULL;
+							*((entvars_t**)pOutputData) = nullptr;
 						break;
 					case FIELD_CLASSPTR:
 						entityIndex = *(int*)pInputData;
@@ -2307,7 +2294,7 @@ int CRestore::ReadField(void* pBaseData, TYPEDESCRIPTION* pFields, int fieldCoun
 						if (pent)
 							*((CBaseEntity**)pOutputData) = CBaseEntity::Instance(pent);
 						else
-							*((CBaseEntity**)pOutputData) = NULL;
+							*((CBaseEntity**)pOutputData) = nullptr;
 						break;
 					case FIELD_EDICT:
 						entityIndex = *(int*)pInputData;
@@ -2322,7 +2309,7 @@ int CRestore::ReadField(void* pBaseData, TYPEDESCRIPTION* pFields, int fieldCoun
 						if (pent)
 							*((EHANDLE*)pOutputData) = CBaseEntity::Instance(pent);
 						else
-							*((EHANDLE*)pOutputData) = NULL;
+							*((EHANDLE*)pOutputData) = nullptr;
 						break;
 					case FIELD_ENTITY:
 						entityIndex = *(int*)pInputData;
@@ -2449,7 +2436,7 @@ bool CRestore::ReadFields(const char* pname, void* pBaseData, TYPEDESCRIPTION* p
 
 void CRestore::BufferReadHeader(HEADER* pheader)
 {
-	ASSERT(pheader != NULL);
+	ASSERT(pheader != nullptr);
 	pheader->size = ReadShort();	  // Read field size
 	pheader->token = ReadShort();	  // Read field name token
 	pheader->pData = BufferPointer(); // Field Data is next
@@ -2522,7 +2509,7 @@ void CRestore::BufferReadBytes(char* pOutput, int size)
 
 void CRestore::BufferSkipBytes(int bytes)
 {
-	BufferReadBytes(NULL, bytes);
+	BufferReadBytes(nullptr, bytes);
 }
 
 int CRestore::BufferSkipZString()

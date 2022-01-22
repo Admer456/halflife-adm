@@ -6,7 +6,6 @@
 //=============================================================================
 
 #include "hud.h"
-#include "cl_util.h"
 #include "cl_entity.h"
 #include "triangleapi.h"
 #include "vgui_TeamFortressViewport.h"
@@ -16,7 +15,6 @@
 #include "pm_shared.h"
 #include "pm_defs.h"
 #include "pmtrace.h"
-#include "parsemsg.h"
 #include "entity_types.h"
 
 // these are included for the math functions
@@ -26,8 +24,6 @@
 #include "studio_util.h"
 #include "screenfade.h"
 
-
-#pragma warning(disable : 4244)
 
 extern bool iJumpSpectator;
 extern float vJumpOrigin[3];
@@ -107,7 +103,7 @@ void SpectatorSpray()
 	if (0 == gEngfuncs.IsSpectateOnly())
 		return;
 
-	AngleVectors(v_angles, forward, NULL, NULL);
+	AngleVectors(v_angles, &forward, nullptr, nullptr);
 	VectorScale(forward, 128, forward);
 	VectorAdd(forward, v_origin, forward);
 	pmtrace_t* trace = gEngfuncs.PM_TraceLine(v_origin, forward, PM_TRACELINE_PHYSENTSONLY, 2, -1);
@@ -446,15 +442,15 @@ void CHudSpectator::SetWayInterpolation(cameraWayPoint_t* prev, cameraWayPoint_t
 	}
 	else if (prev)
 	{
-		m_WayInterpolation.SetWaypoints(&prev->position, start->position, end->position, NULL);
+		m_WayInterpolation.SetWaypoints(&prev->position, start->position, end->position, nullptr);
 	}
 	else if (next)
 	{
-		m_WayInterpolation.SetWaypoints(NULL, start->position, end->position, &next->position);
+		m_WayInterpolation.SetWaypoints(nullptr, start->position, end->position, &next->position);
 	}
 	else
 	{
-		m_WayInterpolation.SetWaypoints(NULL, start->position, end->position, NULL);
+		m_WayInterpolation.SetWaypoints(nullptr, start->position, end->position, nullptr);
 	}
 }
 
@@ -535,18 +531,18 @@ bool CHudSpectator::GetDirectorCamera(Vector& position, Vector& angle)
 			}
 			else
 			{
-				SetWayInterpolation(&m_CamPath[m_WayPoint - 1], wp1, wp2, NULL);
+				SetWayInterpolation(&m_CamPath[m_WayPoint - 1], wp1, wp2, nullptr);
 			}
 		}
 		else if (m_WayPoint < (m_NumWayPoints - 1))
 		{
 			// we only have a successor
-			SetWayInterpolation(NULL, wp1, wp2, &m_CamPath[m_WayPoint + 2]);
+			SetWayInterpolation(nullptr, wp1, wp2, &m_CamPath[m_WayPoint + 2]);
 		}
 		else
 		{
 			// we have only two waypoints
-			SetWayInterpolation(NULL, wp1, wp2, NULL);
+			SetWayInterpolation(nullptr, wp1, wp2, nullptr);
 		}
 	}
 
@@ -630,7 +626,7 @@ bool CHudSpectator::Draw(float flTime)
 	if ((m_moveDelta != 0.0f) && (g_iUser1 != OBS_ROAMING))
 	{
 		Vector right;
-		AngleVectors(v_angles, NULL, right, NULL);
+		AngleVectors(v_angles, nullptr, &right, nullptr);
 		VectorNormalize(right);
 		VectorScale(right, m_moveDelta, right);
 
@@ -699,8 +695,8 @@ void CHudSpectator::DirectorMessage(int iSize, void* pbuf)
 		g_iTeamNumber = 0;
 
 		// fake a InitHUD & ResetHUD message
-		gHUD.MsgFunc_InitHUD(NULL, 0, NULL);
-		gHUD.MsgFunc_ResetHUD(NULL, 0, NULL);
+		gHUD.MsgFunc_InitHUD(nullptr, 0, nullptr);
+		gHUD.MsgFunc_ResetHUD(nullptr, 0, nullptr);
 
 		break;
 
@@ -869,11 +865,11 @@ void CHudSpectator::DirectorMessage(int iSize, void* pbuf)
 
 		if (m_NumWayPoints > 2)
 		{
-			SetWayInterpolation(NULL, &m_CamPath[0], &m_CamPath[1], &m_CamPath[2]);
+			SetWayInterpolation(nullptr, &m_CamPath[0], &m_CamPath[1], &m_CamPath[2]);
 		}
 		else
 		{
-			SetWayInterpolation(NULL, &m_CamPath[0], &m_CamPath[1], NULL);
+			SetWayInterpolation(nullptr, &m_CamPath[0], &m_CamPath[1], nullptr);
 		}
 		break;
 
@@ -888,7 +884,7 @@ void CHudSpectator::FindNextPlayer(bool bReverse)
 	//				only a subset of the players. e.g. Make it check the target's team.
 
 	int iStart;
-	cl_entity_t* pEnt = NULL;
+	cl_entity_t* pEnt = nullptr;
 
 	// if we are NOT in HLTV mode, spectator targets are set on server
 	if (0 == gEngfuncs.IsSpectateOnly())
@@ -953,7 +949,7 @@ void CHudSpectator::FindNextPlayer(bool bReverse)
 	}
 
 	iJumpSpectator = true;
-	gViewPort->MsgFunc_ResetFade(NULL, 0, NULL);
+	gViewPort->MsgFunc_ResetFade(nullptr, 0, nullptr);
 }
 
 
@@ -977,7 +973,7 @@ void CHudSpectator::FindPlayer(const char* name)
 	// make sure we have player info
 	gViewPort->GetAllPlayersInfo();
 
-	cl_entity_t* pEnt = NULL;
+	cl_entity_t* pEnt = nullptr;
 
 	for (int i = 1; i < MAX_PLAYERS_HUD; i++)
 	{
@@ -1010,7 +1006,7 @@ void CHudSpectator::FindPlayer(const char* name)
 	}
 
 	iJumpSpectator = true;
-	gViewPort->MsgFunc_ResetFade(NULL, 0, NULL);
+	gViewPort->MsgFunc_ResetFade(nullptr, 0, nullptr);
 }
 
 void CHudSpectator::HandleButtonsDown(int ButtonPressed)
@@ -1228,12 +1224,12 @@ void CHudSpectator::SetModes(int iNewMainMode, int iNewInsetMode)
 			gHUD.m_Ammo.SetCrosshair(0, m_crosshairRect);
 		}
 
-		gViewPort->MsgFunc_ResetFade(NULL, 0, NULL);
+		gViewPort->MsgFunc_ResetFade(nullptr, 0, nullptr);
 
 		char string[128];
 		sprintf(string, "#Spec_Mode%d", g_iUser1);
 		sprintf(string, "%c%s", HUD_PRINTCENTER, CHudTextMessage::BufferedLocaliseTextString(string));
-		gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, strlen(string) + 1, string);
+		gHUD.m_TextMessage.MsgFunc_TextMsg(nullptr, strlen(string) + 1, string);
 	}
 
 	gViewPort->UpdateSpectatorPanel();
@@ -1241,11 +1237,11 @@ void CHudSpectator::SetModes(int iNewMainMode, int iNewInsetMode)
 
 bool CHudSpectator::IsActivePlayer(cl_entity_t* ent)
 {
-	return (0 != ent &&
+	return (nullptr != ent &&
 			0 != ent->player &&
 			ent->curstate.solid != SOLID_NOT &&
 			ent != gEngfuncs.GetLocalPlayer() &&
-			g_PlayerInfoList[ent->index].name != NULL);
+			g_PlayerInfoList[ent->index].name != nullptr);
 }
 
 
@@ -1256,7 +1252,7 @@ bool CHudSpectator::ParseOverviewFile()
 	char token[1024];
 	float height;
 
-	char* pfile = NULL;
+	char* pfile = nullptr;
 
 	memset(&m_OverviewData, 0, sizeof(m_OverviewData));
 
@@ -1281,7 +1277,7 @@ bool CHudSpectator::ParseOverviewFile()
 
 	sprintf(filename, "overviews/%s.txt", levelname);
 
-	pfile = (char*)gEngfuncs.COM_LoadFile(filename, 5, NULL);
+	pfile = (char*)gEngfuncs.COM_LoadFile(filename, 5, nullptr);
 
 	if (!pfile)
 	{
@@ -1413,7 +1409,7 @@ void CHudSpectator::LoadMapSprites()
 		m_MapSprite = gEngfuncs.LoadMapSprite(m_OverviewData.layersImages[0]);
 	}
 	else
-		m_MapSprite = NULL; // the standard "unkown map" sprite will be used instead
+		m_MapSprite = nullptr; // the standard "unkown map" sprite will be used instead
 }
 
 void CHudSpectator::DrawOverviewLayer()
@@ -1580,7 +1576,7 @@ void CHudSpectator::DrawOverviewEntities()
 		// see R_DrawSpriteModel
 		// draws players sprite
 
-		AngleVectors(ent->angles, right, up, NULL);
+		AngleVectors(ent->angles, &right, &up, nullptr);
 
 		VectorCopy(ent->origin, origin);
 
@@ -1696,7 +1692,7 @@ void CHudSpectator::DrawOverviewEntities()
 		VectorCopy(v_cl_angles, angles);
 	}
 	else
-		V_GetChasePos(g_iUser2, NULL, origin, angles);
+		V_GetChasePos(g_iUser2, nullptr, origin, angles);
 
 
 	// draw camera sprite
@@ -1714,7 +1710,7 @@ void CHudSpectator::DrawOverviewEntities()
 
 	gEngfuncs.pTriAPI->Color4f(r, g, b, 1.0);
 
-	AngleVectors(angles, forward, NULL, NULL);
+	AngleVectors(angles, &forward, nullptr, nullptr);
 	VectorScale(forward, 512.0f, forward);
 
 	offset[0] = 0.0f;
@@ -1827,7 +1823,7 @@ bool CHudSpectator::AddOverviewEntityToList(HSPRITE sprite, cl_entity_t* ent, do
 	for (int i = 0; i < MAX_OVERVIEW_ENTITIES; i++)
 	{
 		// find empty entity slot
-		if (m_OverviewEntities[i].entity == NULL)
+		if (m_OverviewEntities[i].entity == nullptr)
 		{
 			m_OverviewEntities[i].entity = ent;
 			m_OverviewEntities[i].hSprite = sprite;

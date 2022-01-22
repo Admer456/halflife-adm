@@ -18,13 +18,7 @@
 
 */
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "weapons.h"
-#include "soundent.h"
-#include "decals.h"
 
 
 //===================grenade
@@ -87,9 +81,9 @@ void CGrenade::Explode(TraceResult* pTrace, int bitsDamageType)
 	if (pev->owner)
 		pevOwner = VARS(pev->owner);
 	else
-		pevOwner = NULL;
+		pevOwner = nullptr;
 
-	pev->owner = NULL; // can't traceline attack owner if this is set
+	pev->owner = nullptr; // can't traceline attack owner if this is set
 
 	RadiusDamage(pev, pevOwner, pev->dmg, CLASS_NONE, bitsDamageType);
 
@@ -126,7 +120,7 @@ void CGrenade::Explode(TraceResult* pTrace, int bitsDamageType)
 	{
 		int sparkCount = RANDOM_LONG(0, 3);
 		for (int i = 0; i < sparkCount; i++)
-			Create("spark_shower", pev->origin, pTrace->vecPlaneNormal, NULL);
+			Create("spark_shower", pev->origin, pTrace->vecPlaneNormal, nullptr);
 	}
 }
 
@@ -368,7 +362,7 @@ void CGrenade::Spawn()
 
 CGrenade* CGrenade::ShootContact(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity)
 {
-	CGrenade* pGrenade = GetClassPtr((CGrenade*)NULL);
+	CGrenade* pGrenade = GetClassPtr((CGrenade*)nullptr);
 	pGrenade->Spawn();
 	// contact grenades arc lower
 	pGrenade->pev->gravity = 0.5; // lower gravity since grenade is aerodynamic and engine doesn't know it.
@@ -395,7 +389,7 @@ CGrenade* CGrenade::ShootContact(entvars_t* pevOwner, Vector vecStart, Vector ve
 
 CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity, float time)
 {
-	CGrenade* pGrenade = GetClassPtr((CGrenade*)NULL);
+	CGrenade* pGrenade = GetClassPtr((CGrenade*)nullptr);
 	pGrenade->Spawn();
 	UTIL_SetOrigin(pGrenade->pev, vecStart);
 	pGrenade->pev->velocity = vecVelocity;
@@ -435,7 +429,7 @@ CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecV
 
 CGrenade* CGrenade::ShootSatchelCharge(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity)
 {
-	CGrenade* pGrenade = GetClassPtr((CGrenade*)NULL);
+	CGrenade* pGrenade = GetClassPtr((CGrenade*)nullptr);
 	pGrenade->pev->movetype = MOVETYPE_BOUNCE;
 	pGrenade->pev->classname = MAKE_STRING("grenade");
 
@@ -476,7 +470,7 @@ void CGrenade::UseSatchelCharges(entvars_t* pevOwner, SATCHELCODE code)
 
 	pentOwner = pOwner->edict();
 
-	pentFind = FIND_ENTITY_BY_CLASSNAME(NULL, "grenade");
+	pentFind = FIND_ENTITY_BY_CLASSNAME(nullptr, "grenade");
 	while (!FNullEnt(pentFind))
 	{
 		CBaseEntity* pEnt = Instance(pentFind);
@@ -487,7 +481,7 @@ void CGrenade::UseSatchelCharges(entvars_t* pevOwner, SATCHELCODE code)
 				if (code == SATCHEL_DETONATE)
 					pEnt->Use(pOwner, pOwner, USE_ON, 0);
 				else // SATCHEL_RELEASE
-					pEnt->pev->owner = NULL;
+					pEnt->pev->owner = nullptr;
 			}
 		}
 		pentFind = FIND_ENTITY_BY_CLASSNAME(pentFind, "grenade");

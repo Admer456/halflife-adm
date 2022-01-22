@@ -12,12 +12,8 @@
 *   use or distribution of this code by or to any unlicensed person is illegal.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
 #include "basemonster.h"
-#include "schedule.h"
-#include "soundent.h"
 
 /**
 *	@brief Opposing Force loader

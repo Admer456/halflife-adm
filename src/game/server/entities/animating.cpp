@@ -20,11 +20,8 @@
 
 */
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
 #include "animation.h"
-#include "saverestore.h"
 #include "studio.h"
 
 TYPEDESCRIPTION	CBaseAnimating::m_SaveData[] =
@@ -217,7 +214,7 @@ int CBaseAnimating::FindTransition(int iEndingSequence, int iGoalSequence, int* 
 {
 	void* pmodel = GET_MODEL_PTR(ENT(pev));
 
-	if (piDir == NULL)
+	if (piDir == nullptr)
 	{
 		int iDir;
 		int sequence = ::FindTransition(pmodel, iEndingSequence, iGoalSequence, &iDir);

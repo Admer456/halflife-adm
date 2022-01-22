@@ -19,10 +19,6 @@
 //
 
 #include "hud.h"
-#include "cl_util.h"
-#include <string.h>
-#include <stdio.h>
-#include "parsemsg.h"
 #include "vgui_int.h"
 #include "vgui_TeamFortressViewport.h"
 
@@ -81,7 +77,7 @@ static CHLVoiceStatusHelper g_VoiceStatusHelper;
 extern client_sprite_t* GetSpriteList(client_sprite_t* pList, const char* psz, int iRes, int iCount);
 
 extern cvar_t* sensitivity;
-cvar_t* cl_lw = NULL;
+cvar_t* cl_lw = nullptr;
 cvar_t* cl_rollangle = nullptr;
 cvar_t* cl_rollspeed = nullptr;
 cvar_t* cl_bobtilt = nullptr;
@@ -379,7 +375,7 @@ void CHud::Init()
 	cl_rollspeed = CVAR_CREATE("cl_rollspeed", "200", FCVAR_ARCHIVE);
 	cl_bobtilt = CVAR_CREATE("cl_bobtilt", "0", FCVAR_ARCHIVE);
 
-	m_pSpriteList = NULL;
+	m_pSpriteList = nullptr;
 
 	// Clear any old HUD list
 	if (m_pHudList)
@@ -391,7 +387,7 @@ void CHud::Init()
 			m_pHudList = m_pHudList->pNext;
 			free(pList);
 		}
-		m_pHudList = NULL;
+		m_pHudList = nullptr;
 	}
 
 	// In case we get messages before the first update -- time will be valid
@@ -409,7 +405,6 @@ void CHud::Init()
 	m_Scoreboard.Init();
 	m_StatusBar.Init();
 	m_DeathNotice.Init();
-	m_AmmoSecondary.Init();
 	m_TextMessage.Init();
 	m_StatusIcons.Init();
 	m_FlagIcons.Init();
@@ -418,7 +413,7 @@ void CHud::Init()
 
 	m_Menu.Init();
 
-	MsgFunc_ResetHUD(0, 0, NULL);
+	MsgFunc_ResetHUD(nullptr, 0, nullptr);
 }
 
 // CHud destructor
@@ -438,7 +433,7 @@ CHud ::~CHud()
 			m_pHudList = m_pHudList->pNext;
 			free(pList);
 		}
-		m_pHudList = NULL;
+		m_pHudList = nullptr;
 	}
 }
 
@@ -561,7 +556,6 @@ void CHud::VidInit()
 	m_DeathNotice.VidInit();
 	m_SayText.VidInit();
 	m_Menu.VidInit();
-	m_AmmoSecondary.VidInit();
 	m_TextMessage.VidInit();
 	m_StatusIcons.VidInit();
 	m_FlagIcons.VidInit();

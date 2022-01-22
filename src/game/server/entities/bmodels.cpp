@@ -20,8 +20,6 @@
 
 */
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
 #include "doors.h"
 
@@ -329,7 +327,7 @@ bool CFuncRotating::KeyValue(KeyValueData* pkvd)
 	else if (FStrEq(pkvd->szKeyName, "spawnorigin"))
 	{
 		Vector tmp;
-		UTIL_StringToVector((float*)tmp, pkvd->szValue);
+		UTIL_StringToVector(tmp, pkvd->szValue);
 		if (tmp != g_vecZero)
 			pev->origin = tmp;
 		return true;
@@ -444,7 +442,7 @@ void CFuncRotating::Spawn()
 
 void CFuncRotating::Precache()
 {
-	char* szSoundFile = (char*)STRING(pev->message);
+	const char* szSoundFile = STRING(pev->message);
 
 	// set up fan sounds
 
@@ -574,7 +572,7 @@ void CFuncRotating::RampPitchVol(bool fUp)
 
 	// change the fan's vol and pitch
 
-	EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, (char*)STRING(pev->noiseRunning),
+	EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(pev->noiseRunning),
 		fvol, m_flAttenuation, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
 }
 
@@ -596,7 +594,7 @@ void CFuncRotating::SpinUp()
 		fabs(vecAVel.z) >= fabs(pev->movedir.z * pev->speed))
 	{
 		pev->avelocity = pev->movedir * pev->speed; // set speed in case we overshot
-		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, (char*)STRING(pev->noiseRunning),
+		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(pev->noiseRunning),
 			m_flVolume, m_flAttenuation, SND_CHANGE_PITCH | SND_CHANGE_VOL, FANPITCHMAX);
 
 		SetThink(&CFuncRotating::Rotate);
@@ -637,7 +635,7 @@ void CFuncRotating::SpinDown()
 		pev->avelocity = g_vecZero; // set speed in case we overshot
 
 		// stop sound, we're done
-		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, (char*)STRING(pev->noiseRunning /* Stop */),
+		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(pev->noiseRunning /* Stop */),
 			0, 0, SND_STOP, m_pitch);
 
 		SetThink(&CFuncRotating::Rotate);
@@ -674,7 +672,7 @@ void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 		else // fan is not moving, so start it
 		{
 			SetThink(&CFuncRotating::SpinUp);
-			EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, (char*)STRING(pev->noiseRunning),
+			EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(pev->noiseRunning),
 				0.01, m_flAttenuation, 0, FANPITCHMIN);
 
 			pev->nextthink = pev->ltime + 0.1;
@@ -695,7 +693,7 @@ void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 		}
 		else
 		{
-			EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, (char*)STRING(pev->noiseRunning),
+			EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(pev->noiseRunning),
 				m_flVolume, m_flAttenuation, 0, FANPITCHMAX);
 			pev->avelocity = pev->movedir * pev->speed;
 
@@ -841,7 +839,7 @@ void CPendulum::PendulumUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_T
 		else
 		{
 			pev->speed = 0; // Dead stop
-			SetThink(NULL);
+			SetThink(nullptr);
 			pev->avelocity = g_vecZero;
 		}
 	}
@@ -859,7 +857,7 @@ void CPendulum::Stop()
 {
 	pev->angles = m_start;
 	pev->speed = 0;
-	SetThink(NULL);
+	SetThink(nullptr);
 	pev->avelocity = g_vecZero;
 }
 
@@ -900,7 +898,7 @@ void CPendulum::Swing()
 		{
 			pev->angles = m_center;
 			pev->speed = 0;
-			SetThink(NULL);
+			SetThink(nullptr);
 			pev->avelocity = g_vecZero;
 		}
 		else if (pev->speed > m_dampSpeed)

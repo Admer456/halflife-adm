@@ -20,18 +20,9 @@
 
 */
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
 #include "nodes.h"
-#include "soundent.h"
 #include "client.h"
-#include "decals.h"
-#include "skill.h"
-#include "effects.h"
-#include "player.h"
-#include "weapons.h"
-#include "gamerules.h"
 #include "teamplay_gamerules.h"
 #include "ctfplay_gamerules.h"
 #include "world.h"
@@ -277,14 +268,14 @@ CGlobalState::CGlobalState()
 
 void CGlobalState::Reset()
 {
-	m_pList = NULL;
+	m_pList = nullptr;
 	m_listCount = 0;
 }
 
 globalentity_t* CGlobalState::Find(string_t globalname)
 {
 	if (FStringNull(globalname))
-		return NULL;
+		return nullptr;
 
 	globalentity_t* pTest;
 	const char* pEntityName = STRING(globalname);
@@ -326,7 +317,7 @@ void CGlobalState::EntityAdd(string_t globalname, string_t mapName, GLOBALESTATE
 	ASSERT(!Find(globalname));
 
 	globalentity_t* pNewEntity = (globalentity_t*)calloc(sizeof(globalentity_t), 1);
-	ASSERT(pNewEntity != NULL);
+	ASSERT(pNewEntity != nullptr);
 	pNewEntity->pNext = m_pList;
 	m_pList = pNewEntity;
 	strcpy(pNewEntity->name, STRING(globalname));
@@ -500,7 +491,7 @@ void CWorld::Spawn()
 
 void CWorld::Precache()
 {
-	g_pLastSpawn = NULL;
+	g_pLastSpawn = nullptr;
 
 #if 1
 	CVAR_SET_STRING("sv_gravity", "800"); // 67ft/sec
@@ -521,7 +512,7 @@ void CWorld::Precache()
 
 	///!!!LATER - do we want a sound ent in deathmatch? (sjb)
 	//pSoundEnt = CBaseEntity::Create( "soundent", g_vecZero, g_vecZero, edict() );
-	pSoundEnt = GetClassPtr((CSoundEnt*)NULL);
+	pSoundEnt = GetClassPtr((CSoundEnt*)nullptr);
 	pSoundEnt->Spawn();
 
 	if (!pSoundEnt)
@@ -630,13 +621,13 @@ void CWorld::Precache()
 	WorldGraph.InitGraph();
 
 	// make sure the .NOD file is newer than the .BSP file.
-	if (!WorldGraph.CheckNODFile((char*)STRING(gpGlobals->mapname)))
+	if (!WorldGraph.CheckNODFile(STRING(gpGlobals->mapname)))
 	{ // NOD file is not present, or is older than the BSP file.
 		WorldGraph.AllocNodes();
 	}
 	else
 	{ // Load the node graph for this level
-		if (!WorldGraph.FLoadGraph((char*)STRING(gpGlobals->mapname)))
+		if (!WorldGraph.FLoadGraph(STRING(gpGlobals->mapname)))
 		{ // couldn't load, so alloc and prepare to build a graph.
 			ALERT(at_console, "*Error opening .NOD file\n");
 			WorldGraph.AllocNodes();
@@ -655,7 +646,7 @@ void CWorld::Precache()
 	if (!FStringNull(pev->netname))
 	{
 		ALERT(at_aiconsole, "Chapter title: %s\n", STRING(pev->netname));
-		CBaseEntity* pEntity = CBaseEntity::Create("env_message", g_vecZero, g_vecZero, NULL);
+		CBaseEntity* pEntity = CBaseEntity::Create("env_message", g_vecZero, g_vecZero, nullptr);
 		if (pEntity)
 		{
 			pEntity->SetThink(&CBaseEntity::SUB_CallUseToggle);

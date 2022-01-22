@@ -13,13 +13,11 @@
 *
 ****/
 
-#include <cassert>
 #include <limits>
 
 #include "Platform.h"
 
-#include "extdll.h"
-#include "util.h"
+#include "cbase.h"
 
 #include "interface.h"
 

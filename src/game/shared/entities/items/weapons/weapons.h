@@ -276,7 +276,7 @@ public:
 
 	virtual bool UpdateClientData(CBasePlayer* pPlayer) { return false; }
 
-	virtual CBasePlayerItem* GetWeaponPtr() { return NULL; }
+	virtual CBasePlayerItem* GetWeaponPtr() { return nullptr; }
 
 	virtual void GetWeaponData(weapon_data_t& data) {}
 
@@ -329,8 +329,8 @@ public:
 	} // Return true if you want to add yourself to the player
 
 	// generic "shared" ammo handlers
-	bool AddPrimaryAmmo(int iCount, char* szName, int iMaxClip, int iMaxCarry);
-	bool AddSecondaryAmmo(int iCount, char* szName, int iMaxCarry);
+	bool AddPrimaryAmmo(int iCount, const char* szName, int iMaxClip, int iMaxCarry);
+	bool AddSecondaryAmmo(int iCount, const char* szName, int iMaxCarry);
 
 	void UpdateItemInfo() override {} // updates HUD state
 
@@ -468,7 +468,7 @@ class CWeaponBox : public CBaseEntity
 	void Touch(CBaseEntity* pOther) override;
 	bool KeyValue(KeyValueData* pkvd) override;
 	bool IsEmpty();
-	int GiveAmmo(int iCount, const char* szName, int iMax, int* pIndex = NULL);
+	int GiveAmmo(int iCount, const char* szName, int iMax, int* pIndex = nullptr);
 	void SetObjectCollisionBox() override;
 
 public:

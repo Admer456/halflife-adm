@@ -12,14 +12,7 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "weapons.h"
-#include "player.h"
-#include "effects.h"
-#include "gamerules.h"
 
 #define TRIPMINE_PRIMARY_VOLUME 450
 
@@ -112,7 +105,7 @@ void CTripmineGrenade::Spawn()
 	pev->dmg = gSkillData.plrDmgTripmine;
 	pev->health = 1; // don't let die normally
 
-	if (pev->owner != NULL)
+	if (pev->owner != nullptr)
 	{
 		// play deploy sound
 		EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/mine_deploy.wav", 1.0, ATTN_NORM);
@@ -152,11 +145,11 @@ void CTripmineGrenade::PowerupThink()
 {
 	TraceResult tr;
 
-	if (m_hOwner == NULL)
+	if (m_hOwner == nullptr)
 	{
 		// find an owner
 		edict_t* oldowner = pev->owner;
-		pev->owner = NULL;
+		pev->owner = nullptr;
 		UTIL_TraceLine(pev->origin + m_vecDir * 8, pev->origin - m_vecDir * 32, dont_ignore_monsters, ENT(pev), &tr);
 		if (0 != tr.fStartSolid || (oldowner && tr.pHit == oldowner))
 		{
@@ -218,7 +211,7 @@ void CTripmineGrenade::KillBeam()
 	if (m_pBeam)
 	{
 		UTIL_Remove(m_pBeam);
-		m_pBeam = NULL;
+		m_pBeam = nullptr;
 	}
 }
 
@@ -273,7 +266,7 @@ void CTripmineGrenade::BeamBreakThink()
 	}
 	else
 	{
-		if (m_hOwner == NULL)
+		if (m_hOwner == nullptr)
 			bBlowup = true;
 		else if (m_posOwner != m_hOwner->pev->origin)
 			bBlowup = true;
@@ -354,6 +347,11 @@ void CTripmine::Spawn()
 
 	m_iDefaultAmmo = TRIPMINE_DEFAULT_GIVE;
 
+	//HACK: force the body to the first person view by default so it doesn't show up as a huge tripmine for a second.
+#ifdef CLIENT_DLL
+	pev->body = 0;
+#endif
+
 	if (!UTIL_IsMultiplayer())
 	{
 		UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 28));
@@ -374,7 +372,7 @@ bool CTripmine::GetItemInfo(ItemInfo* p)
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "Trip Mine";
 	p->iMaxAmmo1 = TRIPMINE_MAX_CARRY;
-	p->pszAmmo2 = NULL;
+	p->pszAmmo2 = nullptr;
 	p->iMaxAmmo2 = -1;
 	p->iMaxClip = WEAPON_NOCLIP;
 	p->iSlot = 4;

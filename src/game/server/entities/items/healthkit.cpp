@@ -12,14 +12,8 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "weapons.h"
-#include "player.h"
 #include "items.h"
-#include "gamerules.h"
 #include "UserMessages.h"
 
 class CHealthKit : public CItem
@@ -72,7 +66,7 @@ bool CHealthKit::MyTouch(CBasePlayer* pPlayer)
 
 	if (pPlayer->TakeHealth(gSkillData.healthkitCapacity, DMG_GENERIC))
 	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, NULL, pPlayer->pev);
+		MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, pPlayer->pev);
 		WRITE_STRING(STRING(pev->classname));
 		MESSAGE_END();
 

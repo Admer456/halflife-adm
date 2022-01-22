@@ -12,11 +12,7 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "weapons.h"
-#include "player.h"
 
 #include "CPenguin.h"
 

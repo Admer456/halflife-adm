@@ -12,14 +12,7 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "weapons.h"
-#include "player.h"
-#include "skill.h"
-
-#include "gamerules.h"
 
 #include "CKnife.h"
 
@@ -114,7 +107,7 @@ bool CKnife::Swing(const bool bFirst)
 	if (bFirst)
 	{
 		PLAYBACK_EVENT_FULL(FEV_NOTHOST, m_pPlayer->edict(), m_usKnife,
-			0.0, (float*)&g_vecZero, (float*)&g_vecZero, 0, 0, 0,
+			0.0, g_vecZero, g_vecZero, 0, 0, 0,
 			0.0, 0, 0.0);
 	}
 

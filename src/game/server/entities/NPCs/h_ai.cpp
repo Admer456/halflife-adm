@@ -19,11 +19,7 @@
 */
 
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "game.h"
 
 #define NUM_LATERAL_CHECKS 13	 // how many checks are made on each side of a monster looking for lateral cover
 #define NUM_LATERAL_LOS_CHECKS 6 // how many checks are made on each side of a monster looking for lateral cover

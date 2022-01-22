@@ -13,12 +13,8 @@
 *
 ****/
 #include "hud.h"
-#include "cl_util.h"
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "weapons.h"
 
 #include "CDisplacer.h"
 #include "CEagle.h"
@@ -45,8 +41,6 @@
 #include "event_api.h"
 #include "event_args.h"
 #include "in_defs.h"
-
-#include <string.h>
 
 #include "r_studioint.h"
 #include "com_model.h"
@@ -75,7 +69,7 @@ float EV_HLDM_PlayTextureSound(int idx, pmtrace_t* ptr, float* vecSrc, float* ve
 	int cnt;
 	float fattn = ATTN_NORM;
 	int entity;
-	char* pTextureName;
+	const char* pTextureName;
 	char texname[64];
 	char szbuffer[64];
 
@@ -95,7 +89,7 @@ float EV_HLDM_PlayTextureSound(int idx, pmtrace_t* ptr, float* vecSrc, float* ve
 	else if (entity == 0)
 	{
 		// get texture from entity or world (world is ent(0))
-		pTextureName = (char*)gEngfuncs.pEventAPI->EV_TraceTexture(ptr->ent, vecSrc, vecEnd);
+		pTextureName = gEngfuncs.pEventAPI->EV_TraceTexture(ptr->ent, vecSrc, vecEnd);
 
 		if (pTextureName)
 		{
@@ -270,7 +264,7 @@ void EV_HLDM_GunshotDecalTrace(pmtrace_t* pTrace, char* decalName)
 	// Only decal brush models such as the world etc.
 	if (decalName && '\0' != decalName[0] && pe && (pe->solid == SOLID_BSP || pe->movetype == MOVETYPE_PUSHSTEP))
 	{
-		if (CVAR_GET_FLOAT("r_decals"))
+		if (0 != CVAR_GET_FLOAT("r_decals"))
 		{
 			gEngfuncs.pEfxAPI->R_DecalShoot(
 				gEngfuncs.pEfxAPI->Draw_DecalIndex(gEngfuncs.pEfxAPI->Draw_DecalIndexFromName(decalName)),
@@ -965,14 +959,14 @@ void EV_FireGauss(event_args_t* args)
 		}
 
 		pEntity = gEngfuncs.pEventAPI->EV_GetPhysent(tr.ent);
-		if (pEntity == NULL)
+		if (pEntity == nullptr)
 			break;
 
 		if (pEntity->solid == SOLID_BSP)
 		{
 			float n;
 
-			pentIgnore = NULL;
+			pentIgnore = nullptr;
 
 			n = -DotProduct(tr.plane.normal, forward);
 
@@ -1237,7 +1231,7 @@ void EV_FireCrossbow2(event_args_t* args)
 			gEngfuncs.pEventAPI->EV_PlaySound(0, tr.endpos, CHAN_BODY, "weapons/xbow_hit1.wav", gEngfuncs.pfnRandomFloat(0.95, 1.0), ATTN_NORM, 0, PITCH_NORM);
 
 			//Not underwater, do some sparks...
-			if (gEngfuncs.PM_PointContents(tr.endpos, NULL) != CONTENTS_WATER)
+			if (gEngfuncs.PM_PointContents(tr.endpos, nullptr) != CONTENTS_WATER)
 				gEngfuncs.pEfxAPI->R_SparkShower(tr.endpos);
 
 			Vector vBoltAngles;
@@ -1451,14 +1445,14 @@ void EV_EgonStop(event_args_t* args)
 		if (pBeam)
 		{
 			pBeam->die = 0.0;
-			pBeam = NULL;
+			pBeam = nullptr;
 		}
 
 
 		if (pBeam2)
 		{
 			pBeam2->die = 0.0;
-			pBeam2 = NULL;
+			pBeam2 = nullptr;
 		}
 
 		if (pFlare) // Vit_amiN: egon beam flare
@@ -1478,7 +1472,7 @@ void EV_EgonStop(event_args_t* args)
 				}
 			}
 
-			pFlare = NULL;
+			pFlare = nullptr;
 		}
 	}
 }
@@ -1537,7 +1531,7 @@ void EV_TripmineFire(event_args_t* args)
 	VectorCopy(args->origin, vecSrc);
 	VectorCopy(args->angles, angles);
 
-	AngleVectors(angles, forward, NULL, NULL);
+	AngleVectors(angles, &forward, nullptr, nullptr);
 
 	if (!EV_IsLocal(idx))
 		return;
@@ -1578,7 +1572,7 @@ void EV_SnarkFire(event_args_t* args)
 	VectorCopy(args->origin, vecSrc);
 	VectorCopy(args->angles, angles);
 
-	AngleVectors(angles, forward, NULL, NULL);
+	AngleVectors(angles, &forward, nullptr, nullptr);
 
 	if (!EV_IsLocal(idx))
 		return;
@@ -1903,7 +1897,7 @@ void EV_FireSpore(event_args_t* args)
 
 			Vector forward;
 
-			AngleVectors(args->angles, forward, nullptr, nullptr);
+			AngleVectors(args->angles, &forward, nullptr, nullptr);
 
 			gEngfuncs.pEfxAPI->R_Sprite_Spray(
 				vecSrc, forward,
@@ -1952,7 +1946,7 @@ void EV_SniperRifle(event_args_t* args)
 		8192.0,
 		BULLET_PLAYER_762,
 		0,
-		0,
+		nullptr,
 		args->fparam1,
 		args->fparam2);
 }

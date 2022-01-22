@@ -13,11 +13,8 @@
 *
 ****/
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
 #include "basemonster.h"
-#include "player.h"
 #include "ctf/CTFGoal.h"
 #include "ctf/CTFGoalBase.h"
 
@@ -28,7 +25,7 @@ void CTFGoalBase::BaseThink()
 	Vector vecLightPos, vecLightAng;
 	GetAttachment(0, vecLightPos, vecLightAng);
 
-	g_engfuncs.pfnMessageBegin(MSG_BROADCAST, SVC_TEMPENTITY, 0, 0);
+	g_engfuncs.pfnMessageBegin(MSG_BROADCAST, SVC_TEMPENTITY, nullptr, nullptr);
 	g_engfuncs.pfnWriteByte(TE_ELIGHT);
 	g_engfuncs.pfnWriteShort(entindex() + 0x1000);
 	g_engfuncs.pfnWriteCoord(vecLightPos.x);
@@ -88,7 +85,7 @@ void CTFGoalBase::Spawn()
 	{
 		if (!FStringNull(pev->model))
 		{
-			g_engfuncs.pfnPrecacheModel((char*)STRING(pev->model));
+			g_engfuncs.pfnPrecacheModel(STRING(pev->model));
 			g_engfuncs.pfnSetModel(edict(), STRING(pev->model));
 
 			pev->sequence = LookupSequence("on_ground");
@@ -109,7 +106,7 @@ void CTFGoalBase::TurnOnLight(CBasePlayer* pPlayer)
 {
 	Vector vecLightPos, vecLightAng;
 	GetAttachment(0, vecLightPos, vecLightAng);
-	g_engfuncs.pfnMessageBegin(MSG_ONE, SVC_TEMPENTITY, 0, pPlayer->edict());
+	g_engfuncs.pfnMessageBegin(MSG_ONE, SVC_TEMPENTITY, nullptr, pPlayer->edict());
 	g_engfuncs.pfnWriteByte(TE_ELIGHT);
 
 	g_engfuncs.pfnWriteShort(entindex() + 0x1000);

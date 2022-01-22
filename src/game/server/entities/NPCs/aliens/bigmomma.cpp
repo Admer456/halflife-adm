@@ -16,14 +16,7 @@
 //=========================================================
 // monster template
 //=========================================================
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "schedule.h"
-#include "decals.h"
-#include "weapons.h"
-#include "game.h"
 
 #define SF_INFOBM_RUN 0x0001
 #define SF_INFOBM_WAIT 0x0002
@@ -442,7 +435,7 @@ void CBigMomma::HandleAnimEvent(MonsterEvent_t* pEvent)
 	{
 		Vector forward, right;
 
-		UTIL_MakeVectorsPrivate(pev->angles, forward, right, NULL);
+		UTIL_MakeVectorsPrivate(pev->angles, forward, right, nullptr);
 
 		Vector center = pev->origin + forward * 128;
 		Vector mins = center - Vector(64, 64, 0);
@@ -450,7 +443,7 @@ void CBigMomma::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 		CBaseEntity* pList[8];
 		int count = UTIL_EntitiesInBox(pList, 8, mins, maxs, FL_MONSTER | FL_CLIENT);
-		CBaseEntity* pHurt = NULL;
+		CBaseEntity* pHurt = nullptr;
 
 		for (int i = 0; i < count && !pHurt; i++)
 		{
@@ -703,7 +696,7 @@ void CBigMomma::Precache()
 
 void CBigMomma::Activate()
 {
-	if (m_hTargetEnt == NULL)
+	if (m_hTargetEnt == nullptr)
 		Remember(bits_MEMORY_ADVANCE_NODE); // Start 'er up
 }
 
@@ -712,11 +705,11 @@ void CBigMomma::NodeStart(int iszNextNode)
 {
 	pev->netname = iszNextNode;
 
-	CBaseEntity* pTarget = NULL;
+	CBaseEntity* pTarget = nullptr;
 
 	if (!FStringNull(pev->netname))
 	{
-		edict_t* pentTarget = FIND_ENTITY_BY_TARGETNAME(NULL, STRING(pev->netname));
+		edict_t* pentTarget = FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(pev->netname));
 
 		if (!FNullEnt(pentTarget))
 			pTarget = Instance(pentTarget);
@@ -1031,7 +1024,7 @@ void CBigMomma::RunTask(Task_t* pTask)
 	{
 		float distance;
 
-		if (m_hTargetEnt == NULL)
+		if (m_hTargetEnt == nullptr)
 			TaskFail();
 		else
 		{
@@ -1050,7 +1043,7 @@ void CBigMomma::RunTask(Task_t* pTask)
 	break;
 
 	case TASK_WAIT_NODE:
-		if (m_hTargetEnt != NULL && (m_hTargetEnt->pev->spawnflags & SF_INFOBM_WAIT) != 0)
+		if (m_hTargetEnt != nullptr && (m_hTargetEnt->pev->spawnflags & SF_INFOBM_WAIT) != 0)
 			return;
 
 		if (gpGlobals->time > m_flWaitFinished)
@@ -1184,7 +1177,7 @@ void CBMortar::Animate()
 
 CBMortar* CBMortar::Shoot(edict_t* pOwner, Vector vecStart, Vector vecVelocity)
 {
-	CBMortar* pSpit = GetClassPtr((CBMortar*)NULL);
+	CBMortar* pSpit = GetClassPtr((CBMortar*)nullptr);
 	pSpit->Spawn();
 
 	UTIL_SetOrigin(pSpit->pev, vecStart);
@@ -1233,7 +1226,7 @@ void CBMortar::Touch(CBaseEntity* pOther)
 	// make some flecks
 	MortarSpray(tr.vecEndPos, tr.vecPlaneNormal, gSpitSprite, 24);
 
-	entvars_t* pevOwner = NULL;
+	entvars_t* pevOwner = nullptr;
 	if (pev->owner)
 		pevOwner = VARS(pev->owner);
 

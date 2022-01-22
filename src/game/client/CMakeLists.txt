@@ -146,7 +146,6 @@ target_sources(client PRIVATE
 	ui/hud/ammo.h
 	ui/hud/ammohistory.cpp
 	ui/hud/ammohistory.h
-	ui/hud/ammo_secondary.cpp
 	ui/hud/battery.cpp
 	ui/hud/death.cpp
 	ui/hud/flashlight.cpp
@@ -267,6 +266,10 @@ target_sources(client PRIVATE
 )
 
 add_game_shared_sources(client)
+
+target_precompile_headers(client
+	PRIVATE
+		ui/hud/hud.h)
 
 # Create filters
 get_target_property(CLIENT_SOURCES client SOURCES)

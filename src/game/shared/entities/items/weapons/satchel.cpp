@@ -13,13 +13,7 @@
 *
 ****/
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "weapons.h"
-#include "player.h"
-#include "gamerules.h"
 
 class CSatchelCharge : public CGrenade
 {
@@ -224,7 +218,7 @@ bool CSatchel::GetItemInfo(ItemInfo* p)
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "Satchel Charge";
 	p->iMaxAmmo1 = SATCHEL_MAX_CARRY;
-	p->pszAmmo2 = NULL;
+	p->pszAmmo2 = nullptr;
 	p->iMaxAmmo2 = -1;
 	p->iMaxClip = WEAPON_NOCLIP;
 	p->iSlot = 4;
@@ -332,9 +326,9 @@ void CSatchel::PrimaryAttack()
 
 		edict_t* pPlayer = m_pPlayer->edict();
 
-		CBaseEntity* pSatchel = NULL;
+		CBaseEntity* pSatchel = nullptr;
 
-		while ((pSatchel = UTIL_FindEntityInSphere(pSatchel, m_pPlayer->pev->origin, 4096)) != NULL)
+		while ((pSatchel = UTIL_FindEntityInSphere(pSatchel, m_pPlayer->pev->origin, 4096)) != nullptr)
 		{
 			if (FClassnameIs(pSatchel->pev, "monster_satchel"))
 			{
@@ -460,7 +454,7 @@ void DeactivateSatchels(CBasePlayer* pOwner)
 {
 	edict_t* pFind;
 
-	pFind = FIND_ENTITY_BY_CLASSNAME(NULL, "monster_satchel");
+	pFind = FIND_ENTITY_BY_CLASSNAME(nullptr, "monster_satchel");
 
 	while (!FNullEnt(pFind))
 	{

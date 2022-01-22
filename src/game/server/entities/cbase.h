@@ -29,6 +29,22 @@ CBaseEntity
 				CBaseGroup
 */
 
+//Include common headers here.
+#include "Platform.h"
+
+#include "extdll.h"
+#include "util.h"
+
+#include "saverestore.h"
+#include "schedule.h"
+#include "monsterevent.h"
+#include "ehandle.h"
+#include "animation.h"
+#include "decals.h"
+#include "skill.h"
+#include "game.h"
+#include "gamerules.h"
+
 #define MAX_PATH_SIZE 10 // max number of nodes available for a path.
 
 // These are caps bits to indicate what an object's capabilities (currently used for save/restore and level transitions)
@@ -45,11 +61,6 @@ CBaseEntity
 // UNDONE: This will ignore transition volumes (trigger_transition), but not the PVS!!!
 #define FCAP_FORCE_TRANSITION 0x00000080 // ALWAYS goes across transitions
 
-#include "Platform.h"
-#include "saverestore.h"
-#include "schedule.h"
-#include "monsterevent.h"
-#include "ehandle.h"
 // C functions for external declarations that call the appropriate C++ methods
 
 #define EXPORT DLLEXPORT
@@ -167,8 +178,8 @@ public:
 	virtual int BloodColor() { return DONT_BLEED; }
 	virtual void TraceBleed(float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType);
 	virtual bool IsTriggered(CBaseEntity* pActivator) { return true; }
-	virtual CBaseMonster* MyMonsterPointer() { return NULL; }
-	virtual CSquadMonster* MySquadMonsterPointer() { return NULL; }
+	virtual CBaseMonster* MyMonsterPointer() { return nullptr; }
+	virtual CSquadMonster* MySquadMonsterPointer() { return nullptr; }
 	virtual COFSquadTalkMonster* MySquadTalkMonsterPointer() { return nullptr; }
 	virtual int GetToggleState() { return TS_AT_TOP; }
 	virtual void AddPoints(int score, bool bAllowNegativeScore) {}
@@ -249,10 +260,10 @@ public:
 	void EXPORT SUB_FadeOut();
 	void EXPORT SUB_CallUseToggle() { this->Use(this, this, USE_TOGGLE, 0); }
 	bool ShouldToggle(USE_TYPE useType, bool currentState);
-	void FireBullets(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, entvars_t* pevAttacker = NULL);
-	Vector FireBulletsPlayer(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, entvars_t* pevAttacker = NULL, int shared_rand = 0);
+	void FireBullets(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, entvars_t* pevAttacker = nullptr);
+	Vector FireBulletsPlayer(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, entvars_t* pevAttacker = nullptr, int shared_rand = 0);
 
-	virtual CBaseEntity* Respawn() { return NULL; }
+	virtual CBaseEntity* Respawn() { return nullptr; }
 
 	void SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float value);
 	// Do the bounding boxes of these two intersect?
@@ -296,14 +307,14 @@ public:
 		CBaseEntity* pEntity = Instance(pevMonster);
 		if (pEntity)
 			return pEntity->MyMonsterPointer();
-		return NULL;
+		return nullptr;
 	}
 	CBaseMonster* GetMonsterPointer(edict_t* pentMonster)
 	{
 		CBaseEntity* pEntity = Instance(pentMonster);
 		if (pEntity)
 			return pEntity->MyMonsterPointer();
-		return NULL;
+		return nullptr;
 	}
 
 
@@ -350,7 +361,7 @@ public:
 
 
 	//
-	static CBaseEntity* Create(const char* szName, const Vector& vecOrigin, const Vector& vecAngles, edict_t* pentOwner = NULL);
+	static CBaseEntity* Create(const char* szName, const Vector& vecOrigin, const Vector& vecAngles, edict_t* pentOwner = nullptr);
 
 	virtual bool FBecomeProne() { return false; }
 	edict_t* edict() { return ENT(pev); }
@@ -387,7 +398,7 @@ public:
 	int m_fireState;
 };
 
-inline bool FNullEnt(CBaseEntity* ent) { return (ent == NULL) || FNullEnt(ent->edict()); }
+inline bool FNullEnt(CBaseEntity* ent) { return (ent == nullptr) || FNullEnt(ent->edict()); }
 
 
 // Ugly technique to override base member functions
@@ -624,8 +635,12 @@ class CBaseMonster;
 class CCineMonster;
 class CSound;
 
+//TODO: refactor this header so there are only header includes, then these will be at the top with the others
+#include "soundent.h"
 #include "basemonster.h"
-
+#include "player.h"
+#include "weapons.h"
+#include "effects.h"
 
 const char* ButtonSound(int sound); // get string of button sound number
 
@@ -699,13 +714,13 @@ T* GetClassPtr(T* a)
 	entvars_t* pev = (entvars_t*)a;
 
 	// allocate entity if necessary
-	if (pev == NULL)
+	if (pev == nullptr)
 		pev = VARS(CREATE_ENTITY());
 
 	// get the private data
 	a = (T*)GET_PRIVATE(ENT(pev));
 
-	if (a == NULL)
+	if (a == nullptr)
 	{
 		// allocate private data
 		a = new T;

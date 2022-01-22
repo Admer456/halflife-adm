@@ -19,13 +19,8 @@
   spawn, think, and use functions for entities that use brush models
 
 */
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "saverestore.h"
 #include "func_break.h"
-#include "decals.h"
 #include "explode.h"
 
 // =================== FUNC_Breakable ==============================================
@@ -35,7 +30,7 @@
 // be spawned, and still remain fairly flexible
 const char* CBreakable::pSpawnObjects[] =
 	{
-		NULL,				  // 0
+		nullptr,				  // 0
 		"item_battery",		  // 1
 		"item_healthkit",	  // 2
 		"weapon_9mmhandgun",  // 3
@@ -175,7 +170,7 @@ void CBreakable::Spawn()
 
 	SetTouch(&CBreakable::BreakTouch);
 	if (FBitSet(pev->spawnflags, SF_BREAK_TRIGGER_ONLY)) // Only break on trigger
-		SetTouch(NULL);
+		SetTouch(nullptr);
 
 	// Flag unbreakable glass as "worldbrush" so it will block ALL tracelines
 	if (!IsBreakable() && pev->rendermode != kRenderNormal)
@@ -224,7 +219,7 @@ const char* CBreakable::pSoundsGlass[] =
 
 const char** CBreakable::MaterialSoundList(Materials precacheMaterial, int& soundCount)
 {
-	const char** pSoundList = NULL;
+	const char** pSoundList = nullptr;
 
 	switch (precacheMaterial)
 	{
@@ -274,7 +269,7 @@ void CBreakable::MaterialSoundPrecache(Materials precacheMaterial)
 
 	for (i = 0; i < soundCount; i++)
 	{
-		PRECACHE_SOUND((char*)pSoundList[i]);
+		PRECACHE_SOUND(pSoundList[i]);
 	}
 }
 
@@ -353,11 +348,11 @@ void CBreakable::Precache()
 	if (!FStringNull(m_iszGibModel))
 		pGibName = STRING(m_iszGibModel);
 
-	m_idShard = PRECACHE_MODEL((char*)pGibName);
+	m_idShard = PRECACHE_MODEL(pGibName);
 
 	// Precache the spawn item's data
 	if (!FStringNull(m_iszSpawnObject))
-		UTIL_PrecacheOther((char*)STRING(m_iszSpawnObject));
+		UTIL_PrecacheOther(STRING(m_iszSpawnObject));
 }
 
 // play shard sound when func_breakable takes damage.
@@ -456,7 +451,7 @@ void CBreakable::BreakTouch(CBaseEntity* pOther)
 
 		if (flDamage >= pev->health)
 		{
-			SetTouch(NULL);
+			SetTouch(nullptr);
 			TakeDamage(pevToucher, pevToucher, flDamage, DMG_CRUSH);
 
 			// do a little damage to player if we broke glass or computer
@@ -471,7 +466,7 @@ void CBreakable::BreakTouch(CBaseEntity* pOther)
 		DamageSound();
 
 		SetThink(&CBreakable::Die);
-		SetTouch(NULL);
+		SetTouch(nullptr);
 
 		if (m_flDelay == 0)
 		{ // !!!BUGBUG - why doesn't zero delay work?
@@ -596,7 +591,7 @@ void CBreakable::Die()
 {
 	Vector vecSpot;		// shard origin
 	Vector vecVelocity; // shard velocity
-	CBaseEntity* pEntity = NULL;
+	CBaseEntity* pEntity = nullptr;
 	char cFlag = 0;
 	int pitch;
 	float fvol;
@@ -755,7 +750,7 @@ void CBreakable::Die()
 		for (int i = 0; i < count; i++)
 		{
 			ClearBits(pList[i]->pev->flags, FL_ONGROUND);
-			pList[i]->pev->groundentity = NULL;
+			pList[i]->pev->groundentity = nullptr;
 		}
 	}
 
@@ -764,12 +759,12 @@ void CBreakable::Die()
 
 	pev->solid = SOLID_NOT;
 	// Fire targets on break
-	SUB_UseTargets(NULL, USE_TOGGLE, 0);
+	SUB_UseTargets(nullptr, USE_TOGGLE, 0);
 
 	SetThink(&CBreakable::SUB_Remove);
 	pev->nextthink = pev->ltime + 0.1;
 	if (!FStringNull(m_iszSpawnObject))
-		CBaseEntity::Create((char*)STRING(m_iszSpawnObject), VecBModelOrigin(pev), pev->angles, edict());
+		CBaseEntity::Create(STRING(m_iszSpawnObject), VecBModelOrigin(pev), pev->angles, edict());
 
 
 	if (Explodable())

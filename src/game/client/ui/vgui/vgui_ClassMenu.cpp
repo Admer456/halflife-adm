@@ -20,7 +20,6 @@
 #include <VGUI_TextImage.h>
 
 #include "hud.h"
-#include "cl_util.h"
 #include "camera.h"
 #include "kbutton.h"
 #include "cvardef.h"
@@ -28,7 +27,6 @@
 #include "const.h"
 #include "camera.h"
 #include "in_defs.h"
-#include "parsemsg.h"
 
 #include "vgui_int.h"
 #include "vgui_TeamFortressViewport.h"
@@ -174,7 +172,7 @@ CClassMenuPanel::CClassMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int w
 			// Open up the Class Briefing File
 			sprintf(sz, "classes/short_%s.txt", sCTFClassSelection[team][i]);
 			const char* cText = "Class Description not available.";
-			char* pfile = (char*)gEngfuncs.COM_LoadFile(sz, 5, NULL);
+			char* pfile = (char*)gEngfuncs.COM_LoadFile(sz, 5, nullptr);
 			if (pfile)
 			{
 				cText = pfile;
@@ -201,7 +199,7 @@ CClassMenuPanel::CClassMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int w
 
 			//check to see if the image goes lower than the text
 			//just use the red teams [0] images
-			if (m_pClassImages[0][i] != null)
+			if (m_pClassImages[0][i] != nullptr)
 			{
 				m_pClassImages[0][i]->getPos(xx, yy);
 				if ((yy + m_pClassImages[0][i]->getTall()) > maxY)

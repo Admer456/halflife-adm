@@ -14,11 +14,6 @@
 ****/
 
 #include "hud.h"
-#include "cl_util.h"
-
-#undef clamp
-
-#include <algorithm>
 
 #include "event_api.h"
 #include "triangleapi.h"

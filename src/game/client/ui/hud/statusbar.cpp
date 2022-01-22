@@ -20,11 +20,6 @@
 //
 
 #include "hud.h"
-#include "cl_util.h"
-#include "parsemsg.h"
-
-#include <string.h>
-#include <stdio.h>
 
 DECLARE_MESSAGE(m_StatusBar, StatusText);
 DECLARE_MESSAGE(m_StatusBar, StatusValue);
@@ -139,7 +134,7 @@ void CHudStatusBar::ParseStatusString(int line_num)
 						{
 						case 'p': // player name
 							gEngfuncs.pfnGetPlayerInfo(indexval, &g_PlayerInfoList[indexval]);
-							if (g_PlayerInfoList[indexval].name != NULL)
+							if (g_PlayerInfoList[indexval].name != nullptr)
 							{
 								strncpy(szRepString, g_PlayerInfoList[indexval].name, MAX_PLAYER_NAME_LENGTH);
 								m_pflNameColors[line_num] = GetClientColor(indexval);

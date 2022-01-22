@@ -17,13 +17,8 @@
 //=========================================================
 // UNDONE: Holster weapon?
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
 #include "talkmonster.h"
-#include "weapons.h"
-#include "soundent.h"
 #include "barney.h"
 
 //TODO: work out a way to abstract sentences out so we don't need to override here to change just those
@@ -54,7 +49,7 @@ LINK_ENTITY_TO_CLASS(monster_otis, COtis);
 //=========================================================
 void COtis::AlertSound()
 {
-	if (m_hEnemy != NULL)
+	if (m_hEnemy != nullptr)
 	{
 		if (FOkToSpeak())
 		{
@@ -135,8 +130,8 @@ void COtis::TalkInit()
 	m_szGrp[TLK_PLHURT2] = "!BA_CUREB";
 	m_szGrp[TLK_PLHURT3] = "!BA_CUREC";
 
-	m_szGrp[TLK_PHELLO] = NULL;			  //"OT_PHELLO";		// UNDONE
-	m_szGrp[TLK_PIDLE] = NULL;			  //"OT_PIDLE";			// UNDONE
+	m_szGrp[TLK_PHELLO] = nullptr;			  //"OT_PHELLO";		// UNDONE
+	m_szGrp[TLK_PIDLE] = nullptr;			  //"OT_PIDLE";			// UNDONE
 	m_szGrp[TLK_PQUESTION] = "OT_PQUEST"; // UNDONE
 
 	m_szGrp[TLK_SMELL] = "OT_SMELL";
@@ -159,7 +154,7 @@ bool COtis::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float fl
 	{
 		// This is a heurstic to determine if the player intended to harm me
 		// If I have an enemy, we can't establish intent (may just be crossfire)
-		if (m_hEnemy == NULL)
+		if (m_hEnemy == nullptr)
 		{
 			// If the player was facing directly at me, or I'm already suspicious, get mad
 			if ((m_afMemory & bits_MEMORY_SUSPICIOUS) != 0 || IsFacing(pevAttacker, pev->origin))

@@ -13,15 +13,8 @@
 *
 ****/
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "player.h"
-#include "monsters.h"
-#include "weapons.h"
-#include "effects.h"
 #include "customentity.h"
-#include "gamerules.h"
 #include "UserMessages.h"
 
 #define EGON_SWITCH_NARROW_TIME 0.75 // Time it takes to switch fire modes
@@ -75,7 +68,7 @@ bool CEgon::AddToPlayer(CBasePlayer* pPlayer)
 {
 	if (CBasePlayerWeapon::AddToPlayer(pPlayer))
 	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, NULL, pPlayer->pev);
+		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->pev);
 		WRITE_BYTE(m_iId);
 		MESSAGE_END();
 		return true;
@@ -98,7 +91,7 @@ bool CEgon::GetItemInfo(ItemInfo* p)
 	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "uranium";
 	p->iMaxAmmo1 = URANIUM_MAX_CARRY;
-	p->pszAmmo2 = NULL;
+	p->pszAmmo2 = nullptr;
 	p->iMaxAmmo2 = -1;
 	p->iMaxClip = WEAPON_NOCLIP;
 	p->iSlot = 3;
@@ -247,7 +240,7 @@ void CEgon::Fire(const Vector& vecOrigSrc, const Vector& vecDir)
 #ifndef CLIENT_DLL
 	CBaseEntity* pEntity = CBaseEntity::Instance(tr.pHit);
 
-	if (pEntity == NULL)
+	if (pEntity == nullptr)
 		return;
 
 	if (g_pGameRules->IsMultiplayer())
@@ -452,12 +445,12 @@ void CEgon::DestroyEffect()
 	if (m_pBeam)
 	{
 		UTIL_Remove(m_pBeam);
-		m_pBeam = NULL;
+		m_pBeam = nullptr;
 	}
 	if (m_pNoise)
 	{
 		UTIL_Remove(m_pNoise);
-		m_pNoise = NULL;
+		m_pNoise = nullptr;
 	}
 	if (m_pSprite)
 	{
@@ -465,7 +458,7 @@ void CEgon::DestroyEffect()
 			m_pSprite->Expand(10, 500);
 		else
 			UTIL_Remove(m_pSprite);
-		m_pSprite = NULL;
+		m_pSprite = nullptr;
 	}
 #endif
 }
@@ -515,7 +508,7 @@ void CEgon::EndAttack()
 	if (m_fireState != FIRE_OFF) //Checking the button just in case!.
 		bMakeNoise = true;
 
-	PLAYBACK_EVENT_FULL(FEV_GLOBAL | FEV_RELIABLE, m_pPlayer->edict(), m_usEgonStop, 0, (float*)&m_pPlayer->pev->origin, (float*)&m_pPlayer->pev->angles, 0.0, 0.0, static_cast<int>(bMakeNoise), 0, 0, 0);
+	PLAYBACK_EVENT_FULL(FEV_GLOBAL | FEV_RELIABLE, m_pPlayer->edict(), m_usEgonStop, 0, m_pPlayer->pev->origin, m_pPlayer->pev->angles, 0.0, 0.0, static_cast<int>(bMakeNoise), 0, 0, 0);
 
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 2.0;
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.5;

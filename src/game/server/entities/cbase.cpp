@@ -12,15 +12,8 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "saverestore.h"
 #include "client.h"
-#include "decals.h"
-#include "gamerules.h"
-#include "game.h"
 #include "CServerLibrary.h"
 
 void EntvarsKeyvalue(entvars_t* pev, KeyValueData* pkvd);
@@ -212,7 +205,7 @@ void DispatchKeyValue(edict_t* pentKeyvalue, KeyValueData* pkvd)
 
 	// If the key was an entity variable, or there's no class set yet, don't look for the object, it may
 	// not exist yet.
-	if (0 != pkvd->fHandled || pkvd->szClassName == NULL)
+	if (0 != pkvd->fHandled || pkvd->szClassName == nullptr)
 		return;
 
 	// Get the actualy entity object
@@ -318,14 +311,14 @@ void OnFreeEntPrivateData(edict_s* pEdict)
 // different classes with the same global name
 CBaseEntity* FindGlobalEntity(string_t classname, string_t globalname)
 {
-	edict_t* pent = FIND_ENTITY_BY_STRING(NULL, "globalname", STRING(globalname));
+	edict_t* pent = FIND_ENTITY_BY_STRING(nullptr, "globalname", STRING(globalname));
 	CBaseEntity* pReturn = CBaseEntity::Instance(pent);
 	if (pReturn)
 	{
 		if (!FClassnameIs(pReturn->pev, STRING(classname)))
 		{
 			ALERT(at_console, "Global entity found %s, wrong class %s\n", STRING(globalname), STRING(pReturn->pev->classname));
-			pReturn = NULL;
+			pReturn = nullptr;
 		}
 	}
 
@@ -586,10 +579,10 @@ void CBaseEntity::Killed(entvars_t* pevAttacker, int iGib)
 CBaseEntity* CBaseEntity::GetNextTarget()
 {
 	if (FStringNull(pev->target))
-		return NULL;
-	edict_t* pTarget = FIND_ENTITY_BY_TARGETNAME(NULL, STRING(pev->target));
+		return nullptr;
+	edict_t* pTarget = FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(pev->target));
 	if (FNullEnt(pTarget))
-		return NULL;
+		return nullptr;
 
 	return Instance(pTarget);
 }
@@ -629,7 +622,7 @@ bool CBaseEntity::Restore(CRestore& restore)
 		maxs = pev->maxs;
 
 
-		PRECACHE_MODEL((char*)STRING(pev->model));
+		PRECACHE_MODEL(STRING(pev->model));
 		SET_MODEL(ENT(pev), STRING(pev->model));
 		UTIL_SetSize(pev, mins, maxs); // Reset them
 	}
@@ -649,17 +642,17 @@ void SetObjectCollisionBox(entvars_t* pev)
 		max = 0;
 		for (i = 0; i < 3; i++)
 		{
-			v = fabs(((float*)pev->mins)[i]);
+			v = fabs(pev->mins[i]);
 			if (v > max)
 				max = v;
-			v = fabs(((float*)pev->maxs)[i]);
+			v = fabs(pev->maxs[i]);
 			if (v > max)
 				max = v;
 		}
 		for (i = 0; i < 3; i++)
 		{
-			((float*)pev->absmin)[i] = ((float*)pev->origin)[i] - max;
-			((float*)pev->absmax)[i] = ((float*)pev->origin)[i] + max;
+			pev->absmin[i] = pev->origin[i] - max;
+			pev->absmax[i] = pev->origin[i] + max;
 		}
 	}
 	else
@@ -782,8 +775,8 @@ CBaseEntity* CBaseEntity::Create(const char* szName, const Vector& vecOrigin, co
 	pent = CREATE_NAMED_ENTITY(MAKE_STRING(szName));
 	if (FNullEnt(pent))
 	{
-		ALERT(at_console, "NULL Ent in Create!\n");
-		return NULL;
+		ALERT(at_console, "nullptr Ent in Create!\n");
+		return nullptr;
 	}
 	pEntity = Instance(pent);
 	pEntity->pev->owner = pentOwner;

@@ -13,14 +13,12 @@
 *
 ****/
 
-#include <algorithm>
 #include <stdexcept>
 #include <string_view>
 
 #include <spdlog/fmt/fmt.h>
 
-#include "extdll.h"
-#include "util.h"
+#include "cbase.h"
 
 #include "GameConfigDefinition.h"
 #include "GameConfigSection.h"

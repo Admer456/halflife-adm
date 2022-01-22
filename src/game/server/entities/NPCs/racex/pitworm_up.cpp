@@ -13,15 +13,7 @@
 *
 ****/
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "effects.h"
-#include "soundent.h"
-#include "weapons.h"
-#include "decals.h"
-#include "animation.h"
 
 const auto PITWORM_UP_AE_HITGROUND = 1;
 const auto PITWORM_UP_AE_SHOOTBEAM = 2;
@@ -1613,9 +1605,9 @@ void COFPitWormGibShooter::Spawn()
 COFPitWormGib* COFPitWormGibShooter::CreateGib()
 {
 	if (CVAR_GET_FLOAT("violence_hgibs") == 0)
-		return NULL;
+		return nullptr;
 
-	COFPitWormGib* pGib = GetClassPtr((COFPitWormGib*)NULL);
+	COFPitWormGib* pGib = GetClassPtr((COFPitWormGib*)nullptr);
 	pGib->Spawn();
 
 	if (pev->body <= 1)
@@ -1697,7 +1689,7 @@ public:
 
 	void Activate() override
 	{
-		if (m_hTargetEnt == NULL)
+		if (m_hTargetEnt == nullptr)
 			Remember(bits_MEMORY_ADVANCE_NODE); // Start 'er up
 	}
 
@@ -1950,7 +1942,7 @@ void COFPitWorm::StartMonster()
 	if (!FStringNull(pev->target)) // this monster has a target
 	{
 		// Find the monster's initial target entity, stash it
-		m_pGoalEnt = CBaseEntity::Instance(FIND_ENTITY_BY_TARGETNAME(NULL, STRING(pev->target)));
+		m_pGoalEnt = CBaseEntity::Instance(FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(pev->target)));
 
 		if (!m_pGoalEnt)
 		{
@@ -2112,7 +2104,7 @@ void COFPitWorm::Move(float flInterval)
 
 	// if the monster is moving directly towards an entity (enemy for instance), we'll set this pointer
 	// to that entity for the CheckLocalMove and Triangulate functions.
-	pTargetEnt = NULL;
+	pTargetEnt = nullptr;
 
 	// local move to waypoint.
 	vecDir = (m_Route[m_iRouteIndex].vecLocation - pev->origin).Normalize();
@@ -2285,7 +2277,7 @@ void COFPitWorm::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 		Vector forward, right;
 
-		UTIL_MakeVectorsPrivate(pev->angles, forward, right, NULL);
+		UTIL_MakeVectorsPrivate(pev->angles, forward, right, nullptr);
 
 		Vector center = pev->origin + forward * 128;
 		Vector mins = center - Vector(96, 96, 0);
@@ -2293,7 +2285,7 @@ void COFPitWorm::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 		CBaseEntity* pList[8];
 		int count = UTIL_EntitiesInBox(pList, 8, mins, maxs, FL_MONSTER | FL_CLIENT);
-		CBaseEntity* pHurt = NULL;
+		CBaseEntity* pHurt = nullptr;
 
 		for (int i = 0; i < count && !pHurt; i++)
 		{

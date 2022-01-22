@@ -16,11 +16,6 @@
 // death notice
 //
 #include "hud.h"
-#include "cl_util.h"
-#include "parsemsg.h"
-
-#include <string.h>
-#include <stdio.h>
 
 #include "vgui_TeamFortressViewport.h"
 
@@ -71,7 +66,7 @@ float* GetClientColor(int clientIndex)
 		return g_ColorGrey;
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 bool CHudDeathNotice::Init()
@@ -207,7 +202,7 @@ bool CHudDeathNotice::MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbu
 	}
 
 	// Get the Victim's name
-	const char* victim_name = NULL;
+	const char* victim_name = nullptr;
 	// If victim is -1, the killer killed a specific, non-player object (like a sentrygun)
 	if (((char)victim) != -1)
 		victim_name = g_PlayerInfoList[victim].name;

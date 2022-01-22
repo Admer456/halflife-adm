@@ -13,14 +13,12 @@
 *
 ****/
 
-#include <cassert>
 #include <exception>
 #include <string>
 
 #include <spdlog/fmt/fmt.h>
 
-#include "extdll.h"
-#include "util.h"
+#include "cbase.h"
 
 #include "as_utils.h"
 #include "CASManager.h"

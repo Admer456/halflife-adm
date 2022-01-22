@@ -16,17 +16,11 @@
 // GameRules.cpp
 //=========================================================
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "player.h"
-#include "weapons.h"
 #include "gamerules.h"
 #include "teamplay_gamerules.h"
 #include "ctfplay_gamerules.h"
 #include "coopplay_gamerules.h"
-#include "skill.h"
-#include "game.h"
 #include "world.h"
 #include "UserMessages.h"
 

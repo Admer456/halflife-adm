@@ -176,7 +176,7 @@ public:
 	int m_iTrain;	// Train control position
 	bool m_fWeapon; // Set this to false to force a reset of the current weapon HUD info
 
-	EHANDLE m_pTank;		 // the tank which the player is currently controlling,  NULL if no tank
+	EHANDLE m_pTank;		 // the tank which the player is currently controlling,  nullptr if no tank
 	EHANDLE m_hViewEntity;	 // The view entity being used, or null if the player is using itself as the view entity
 	bool m_bResetViewEntity; //True if the player's view needs to be set back to the view entity
 	float m_fDeadTime;		 // the time at which the player died  (used in PlayerDeathThink())
@@ -195,7 +195,7 @@ public:
 
 	// Opposing Force specific
 
-	char* m_szTeamModel;
+	const char* m_szTeamModel;
 	CTFTeam m_iTeamNum;
 	CTFTeam m_iNewTeamNum;
 	CTFItem::CTFItem m_iItems;
@@ -332,7 +332,7 @@ public:
 	void AddPointsToTeam(int score, bool bAllowNegativeScore) override;
 	bool AddPlayerItem(CBasePlayerItem* pItem) override;
 	bool RemovePlayerItem(CBasePlayerItem* pItem) override;
-	void DropPlayerItem(char* pszItemName);
+	void DropPlayerItem(const char* pszItemName);
 	bool HasPlayerItem(CBasePlayerItem* pCheckItem);
 	bool HasNamedPlayerItem(const char* pszItemName);
 	bool HasWeapons(); // do I have ANY weapons?

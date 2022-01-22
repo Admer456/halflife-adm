@@ -12,13 +12,9 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "player.h"
 #include "CItemCTF.h"
 #include "CItemSpawnCTF.h"
-#include "gamerules.h"
 #include "ctfplay_gamerules.h"
 
 const auto SF_ITEMCTF_RANDOM_SPAWN = 1 << 2;

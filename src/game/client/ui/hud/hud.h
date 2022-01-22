@@ -26,6 +26,8 @@
 #include "cl_dll.h"
 #include "ammo.h"
 #include "palette.h"
+#include "cl_util.h"
+#include "parsemsg.h"
 
 #define DHN_DRAWZERO 1
 #define DHN_2DIGITS 2
@@ -156,32 +158,6 @@ private:
 	Crosshair m_AutoaimCrosshair;
 
 	cvar_t* m_pCvarCrosshairScale = nullptr;
-};
-
-//
-//-----------------------------------------------------
-//
-
-class CHudAmmoSecondary : public CHudBase
-{
-public:
-	bool Init() override;
-	bool VidInit() override;
-	void Reset() override;
-	bool Draw(float flTime) override;
-
-	bool MsgFunc_SecAmmoVal(const char* pszName, int iSize, void* pbuf);
-	bool MsgFunc_SecAmmoIcon(const char* pszName, int iSize, void* pbuf);
-
-private:
-	enum
-	{
-		MAX_SEC_AMMO_VALUES = 4
-	};
-
-	int m_HUD_ammoicon; // sprite indices
-	int m_iAmmoAmounts[MAX_SEC_AMMO_VALUES];
-	float m_fFade;
 };
 
 
@@ -448,7 +424,7 @@ public:
 	bool Init() override;
 	static char* LocaliseTextString(const char* msg, char* dst_buffer, int buffer_size);
 	static char* BufferedLocaliseTextString(const char* msg);
-	const char* LookupString(const char* msg_name, int* msg_dest = NULL);
+	const char* LookupString(const char* msg_name, int* msg_dest = nullptr);
 	bool MsgFunc_TextMsg(const char* pszName, int iSize, void* pbuf);
 };
 
@@ -627,7 +603,7 @@ public:
 	void InitHUDData();
 	bool VidInit();
 	bool Draw(float flTime);
-	int DrawPlayers(int xoffset, float listslot, int nameoffset = 0, const char* team = NULL); // returns the ypos where it finishes drawing
+	int DrawPlayers(int xoffset, float listslot, int nameoffset = 0, const char* team = nullptr); // returns the ypos where it finishes drawing
 	void UserCmd_ShowScores();
 	void UserCmd_HideScores();
 	bool MsgFunc_ScoreInfo(const char* pszName, int iSize, void* pbuf);
@@ -749,7 +725,6 @@ public:
 	CHudDeathNotice m_DeathNotice;
 	CHudSayText m_SayText;
 	CHudMenu m_Menu;
-	CHudAmmoSecondary m_AmmoSecondary;
 	CHudTextMessage m_TextMessage;
 	CHudStatusIcons m_StatusIcons;
 
@@ -762,7 +737,7 @@ public:
 	bool Redraw(float flTime, bool intermission);
 	bool UpdateClientData(client_data_t* cdata, float time);
 
-	CHud() : m_iSpriteCount(0), m_pHudList(NULL) {}
+	CHud() : m_iSpriteCount(0), m_pHudList(nullptr) {}
 	~CHud(); // destructor, frees allocated memory
 
 	// user messages

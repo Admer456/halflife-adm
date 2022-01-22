@@ -12,12 +12,7 @@
 *   use or distribution of this code by or to any unlicensed person is illegal.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "skill.h"
-#include "effects.h"
-#include "weapons.h"
 
 const int AE_GENEWORM_SPIT_START = 0;
 const int AE_GENEWORM_LAUNCH_SPAWN = 2;
@@ -1582,7 +1577,7 @@ bool COFGeneWorm::FVisible(const Vector& vecOrigin)
 
 void FireHurtTargets(const char* targetName, CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
-	edict_t* pentTarget = NULL;
+	edict_t* pentTarget = nullptr;
 	if (!targetName)
 		return;
 

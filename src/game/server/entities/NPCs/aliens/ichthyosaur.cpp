@@ -17,17 +17,9 @@
 // icthyosaur - evin, satan fish monster
 //=========================================================
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "schedule.h"
 #include "flyingmonster.h"
 #include "nodes.h"
-#include "soundent.h"
-#include "animation.h"
-#include "effects.h"
-#include "weapons.h"
 
 #define SEARCH_RETRY 16
 
@@ -409,7 +401,7 @@ void CIchthyosaur::HandleAnimEvent(MonsterEvent_t* pEvent)
 	case ICHTHYOSAUR_AE_SHAKE_RIGHT:
 	case ICHTHYOSAUR_AE_SHAKE_LEFT:
 	{
-		if (m_hEnemy != NULL && FVisible(m_hEnemy))
+		if (m_hEnemy != nullptr && FVisible(m_hEnemy))
 		{
 			CBaseEntity* pHurt = m_hEnemy;
 
@@ -486,7 +478,7 @@ void CIchthyosaur::Spawn()
 	m_flMaxDist = 384;
 
 	Vector Forward;
-	UTIL_MakeVectorsPrivate(pev->angles, Forward, 0, 0);
+	UTIL_MakeVectorsPrivate(pev->angles, Forward, nullptr, nullptr);
 	pev->velocity = m_flightSpeed * Forward.Normalize();
 	m_SaveVelocity = pev->velocity;
 }
@@ -616,7 +608,7 @@ void CIchthyosaur::RunTask(Task_t* pTask)
 	switch (pTask->iTask)
 	{
 	case TASK_ICHTHYOSAUR_CIRCLE_ENEMY:
-		if (m_hEnemy == NULL)
+		if (m_hEnemy == nullptr)
 		{
 			TaskComplete();
 		}
@@ -1105,7 +1097,7 @@ Vector CIchthyosaur::DoProbe(const Vector& Probe)
 		}
 	}
 
-	if (bBumpedSomething && (m_hEnemy == NULL || tr.pHit != m_hEnemy->edict()))
+	if (bBumpedSomething && (m_hEnemy == nullptr || tr.pHit != m_hEnemy->edict()))
 	{
 		Vector ProbeDir = Probe - pev->origin;
 

@@ -13,11 +13,8 @@
 *
 ****/
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
 #include "ctf/CTFDetect.h"
-#include "gamerules.h"
 #include "ctfplay_gamerules.h"
 
 LINK_ENTITY_TO_CLASS(info_ctfdetect, CTFDetect);

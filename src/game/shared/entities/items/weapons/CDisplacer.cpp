@@ -12,11 +12,7 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "weapons.h"
-#include "player.h"
 #include "UserMessages.h"
 
 #ifndef CLIENT_DLL
@@ -26,8 +22,6 @@
 
 #include "ctf/CTFGoal.h"
 #include "ctf/CTFGoalFlag.h"
-
-#include "gamerules.h"
 
 extern edict_t* EntSelectSpawnPoint(CBasePlayer* pPlayer);
 #endif
@@ -75,7 +69,7 @@ bool CDisplacer::AddToPlayer(CBasePlayer* pPlayer)
 {
 	if (CBasePlayerWeapon::AddToPlayer(pPlayer))
 	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, NULL, pPlayer->edict());
+		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->edict());
 		WRITE_BYTE(m_iId);
 		MESSAGE_END();
 		return true;
@@ -207,7 +201,7 @@ void CDisplacer::SpinupThink()
 		flags = 0;
 		//#endif
 
-		PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usFireDisplacer, 0, (float*)&g_vecZero, (float*)&g_vecZero,
+		PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usFireDisplacer, 0, g_vecZero, g_vecZero,
 			0, 0, static_cast<int>(m_Mode), 0, 0, 0);
 
 		m_flStartTime = gpGlobals->time;
@@ -252,7 +246,7 @@ void CDisplacer::AltSpinupThink()
 		flags = 0;
 		//#endif
 
-		PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usFireDisplacer, 0, (float*)&g_vecZero, (float*)&g_vecZero,
+		PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usFireDisplacer, 0, g_vecZero, g_vecZero,
 			0, 0, static_cast<int>(m_Mode), 0, 0, 0);
 
 		m_flStartTime = gpGlobals->time;
@@ -417,7 +411,7 @@ void CDisplacer::AltFireThink()
 		//Must always be handled on the server side in order to play the right sounds and effects. - Solokiller
 		int flags = 0;
 
-		PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usFireDisplacer, 0, (float*)&g_vecZero, (float*)&g_vecZero,
+		PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usFireDisplacer, 0, g_vecZero, g_vecZero,
 			0, 0, static_cast<int>(DisplacerMode::FIRED), 0, 1, 0);
 
 		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= 60;

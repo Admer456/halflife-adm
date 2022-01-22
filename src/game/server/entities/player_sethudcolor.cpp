@@ -13,11 +13,8 @@
 *
 ****/
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
 #include "basemonster.h"
-#include "player.h"
 
 class PlayerSetHudColor : public CPointEntity
 {

@@ -19,12 +19,6 @@
 //
 
 #include "hud.h"
-#include "cl_util.h"
-#include <string.h>
-#include <time.h>
-#include <stdio.h>
-
-#include "parsemsg.h"
 
 DECLARE_MESSAGE(m_Geiger, Geiger)
 
@@ -37,7 +31,7 @@ bool CHudGeiger::Init()
 
 	gHUD.AddHudElem(this);
 
-	srand((unsigned)time(NULL));
+	srand((unsigned)time(nullptr));
 
 	return true;
 };

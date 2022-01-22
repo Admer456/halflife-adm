@@ -19,12 +19,7 @@
 
 */
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "weapons.h"
-#include "soundent.h"
 
 
 #define ACT_T_IDLE 1010
@@ -487,7 +482,7 @@ void CTentacle::Cycle()
 	if (HasConditions(bits_COND_HEAR_SOUND))
 		pSound = PBestSound();
 	else
-		pSound = NULL;
+		pSound = nullptr;
 
 	if (pSound)
 	{
@@ -980,7 +975,7 @@ void CTentacle::HitTouch(CBaseEntity* pOther)
 		return;
 
 	// only look at the ones where the player hit me
-	if (tr.pHit == NULL || tr.pHit->v.modelindex != pev->modelindex)
+	if (tr.pHit == nullptr || tr.pHit->v.modelindex != pev->modelindex)
 		return;
 
 	if (tr.iHitgroup >= 3)

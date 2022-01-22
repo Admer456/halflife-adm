@@ -14,7 +14,6 @@
 #include <thread>
 
 #include "hud.h"
-#include "cl_util.h"
 #include "camera.h"
 #include "kbutton.h"
 #include "cvardef.h"
@@ -126,7 +125,7 @@ std::uint32_t joy_oldbuttonstate, joy_oldpovstate;
 int joy_id;
 std::uint32_t joy_numbuttons;
 
-SDL_GameController* s_pJoystick = NULL;
+SDL_GameController* s_pJoystick = nullptr;
 
 // none of these cvars are saved over a session
 // this means that advanced controller configuration needs to be executed
@@ -166,9 +165,9 @@ void Force_CenterView_f()
 
 	if (!iMouseInUse)
 	{
-		gEngfuncs.GetViewAngles((float*)viewangles);
+		gEngfuncs.GetViewAngles(viewangles);
 		viewangles[PITCH] = 0;
-		gEngfuncs.SetViewAngles((float*)viewangles);
+		gEngfuncs.SetViewAngles(viewangles);
 	}
 }
 
@@ -307,7 +306,7 @@ IN_StartupMouse
 */
 void IN_StartupMouse()
 {
-	if (0 != gEngfuncs.CheckParm("-nomouse", NULL))
+	if (0 != gEngfuncs.CheckParm("-nomouse", nullptr))
 		return;
 
 	mouseinitialized = true;
@@ -316,16 +315,16 @@ void IN_StartupMouse()
 
 	if (mouseparmsvalid)
 	{
-		if (0 != gEngfuncs.CheckParm("-noforcemspd", NULL))
+		if (0 != gEngfuncs.CheckParm("-noforcemspd", nullptr))
 			newmouseparms[2] = originalmouseparms[2];
 
-		if (0 != gEngfuncs.CheckParm("-noforcemaccel", NULL))
+		if (0 != gEngfuncs.CheckParm("-noforcemaccel", nullptr))
 		{
 			newmouseparms[0] = originalmouseparms[0];
 			newmouseparms[1] = originalmouseparms[1];
 		}
 
-		if (0 != gEngfuncs.CheckParm("-noforcemparms", NULL))
+		if (0 != gEngfuncs.CheckParm("-noforcemparms", nullptr))
 		{
 			newmouseparms[0] = originalmouseparms[0];
 			newmouseparms[1] = originalmouseparms[1];
@@ -496,7 +495,7 @@ void IN_MouseMove(float frametime, usercmd_t* cmd)
 	Point pos;
 	Vector viewangles;
 
-	gEngfuncs.GetViewAngles((float*)viewangles);
+	gEngfuncs.GetViewAngles(viewangles);
 
 	if ((in_mlook.state & 1) != 0)
 	{
@@ -601,7 +600,7 @@ void IN_MouseMove(float frametime, usercmd_t* cmd)
 		}
 	}
 
-	gEngfuncs.SetViewAngles((float*)viewangles);
+	gEngfuncs.SetViewAngles(viewangles);
 
 #ifdef WIN32
 	if (!m_bRawInput && SDL_FALSE != mouseRelative)
@@ -690,7 +689,7 @@ IN_StartupJoystick
 void IN_StartupJoystick()
 {
 	// abort startup if user requests no joystick
-	if (0 != gEngfuncs.CheckParm("-nojoy", NULL))
+	if (0 != gEngfuncs.CheckParm("-nojoy", nullptr))
 		return;
 
 	// assume no joystick
@@ -904,7 +903,7 @@ void IN_JoyMove(float frametime, usercmd_t* cmd)
 	int i;
 	Vector viewangles;
 
-	gEngfuncs.GetViewAngles((float*)viewangles);
+	gEngfuncs.GetViewAngles(viewangles);
 
 
 	// complete initialization if first time in
@@ -1075,7 +1074,7 @@ void IN_JoyMove(float frametime, usercmd_t* cmd)
 	if (viewangles[PITCH] < -cl_pitchup->value)
 		viewangles[PITCH] = -cl_pitchup->value;
 
-	gEngfuncs.SetViewAngles((float*)viewangles);
+	gEngfuncs.SetViewAngles(viewangles);
 }
 
 /*
@@ -1130,7 +1129,7 @@ void IN_Init()
 
 #ifdef WIN32
 	m_bRawInput = CVAR_GET_FLOAT("m_rawinput") > 0;
-	m_bMouseThread = gEngfuncs.CheckParm("-mousethread", NULL) != NULL;
+	m_bMouseThread = gEngfuncs.CheckParm("-mousethread", nullptr) != 0;
 	m_mousethread_sleep = gEngfuncs.pfnRegisterVariable("m_mousethread_sleep", "10", FCVAR_ARCHIVE);
 
 	if (!m_bRawInput && m_bMouseThread && m_mousethread_sleep)

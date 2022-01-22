@@ -19,8 +19,6 @@
 #include <VGUI_TextImage.h>
 
 #include "hud.h"
-#include "cl_util.h"
-#include "parsemsg.h"
 #include "vgui_StatsMenuPanel.h"
 
 struct team_stat_info_t
@@ -197,7 +195,7 @@ CStatsMenuPanel::CStatsMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int w
 		int maxY = yy + tall;
 
 		//check to see if the image goes lower than the text
-		if (m_pClassImages[i] != null)
+		if (m_pClassImages[i] != nullptr)
 		{
 			m_pClassImages[i]->getPos(xx, yy);
 			if ((yy + m_pClassImages[i]->getTall()) > maxY)
@@ -291,7 +289,7 @@ void CStatsMenuPanel::SetPlayerImage(const char* szImage)
 	}
 }
 
-int CStatsMenuPanel::MsgFunc_StatsInfo(const char* pszName, int iSize, void* pbuf)
+bool CStatsMenuPanel::MsgFunc_StatsInfo(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 	const int teamNum = READ_BYTE();
@@ -418,10 +416,10 @@ int CStatsMenuPanel::MsgFunc_StatsInfo(const char* pszName, int iSize, void* pbu
 		}
 	}
 
-	return 0;
+	return false;
 }
 
-int CStatsMenuPanel::MsgFunc_StatsPlayer(const char* pszName, int iSize, void* pbuf)
+bool CStatsMenuPanel::MsgFunc_StatsPlayer(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 	const int playerIndex = READ_BYTE();
@@ -487,5 +485,5 @@ int CStatsMenuPanel::MsgFunc_StatsPlayer(const char* pszName, int iSize, void* p
 		}
 	}
 
-	return 0;
+	return false;
 }

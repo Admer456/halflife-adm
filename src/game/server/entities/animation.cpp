@@ -13,16 +13,13 @@
 *
 ****/
 
-#include "extdll.h"
-#include "util.h"
+#include "cbase.h"
 
 #include "studio.h"
 #include "activity.h"
 #include "activitymap.h"
 #include "animation.h"
 #include "scriptevent.h"
-
-#pragma warning(disable : 4244)
 
 
 
@@ -184,7 +181,7 @@ void SequencePrecache(void* pmodel, const char* pSequenceName)
 					ALERT(at_error, "Bad sound event %d in sequence %s :: %s (sound is \"%s\")\n", pevent[i].event, pstudiohdr->name, pSequenceName, pevent[i].options);
 				}
 
-				PRECACHE_SOUND((char*)(gpGlobals->pStringBase + ALLOC_STRING(pevent[i].options)));
+				PRECACHE_SOUND(STRING(ALLOC_STRING(pevent[i].options)));
 			}
 		}
 	}

@@ -13,18 +13,15 @@
 *
 ****/
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
 #include "basemonster.h"
-#include "player.h"
 #include "ctf/CTFGoal.h"
 
 bool CTFGoal::KeyValue(KeyValueData* pkvd)
 {
 	if (FStrEq("goal_no", pkvd->szKeyName))
 	{
-		m_iGoalNum = strtol(pkvd->szValue, 0, 10);
+		m_iGoalNum = atoi(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq("goal_min", pkvd->szKeyName))
@@ -58,7 +55,7 @@ void CTFGoal::Spawn()
 		if (*modelName == '*')
 			pev->effects |= EF_NODRAW;
 
-		g_engfuncs.pfnPrecacheModel((char*)modelName);
+		g_engfuncs.pfnPrecacheModel(modelName);
 		g_engfuncs.pfnSetModel(edict(), STRING(pev->model));
 	}
 

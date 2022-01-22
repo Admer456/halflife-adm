@@ -21,11 +21,7 @@
 *	Internal header for particle manager
 */
 
-//TODO: remove this once the clamp macro has been removed
-#undef clamp
-
-#include <algorithm>
-#include <cstddef>
+#include "Platform.h"
 
 #include "CFrustum.h"
 

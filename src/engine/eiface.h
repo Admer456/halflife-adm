@@ -19,7 +19,6 @@
 
 #define INTERFACE_VERSION 140
 
-#include <stdio.h>
 #include "custom.h"
 #include "cvardef.h"
 #include "Sequence.h"
@@ -197,10 +196,10 @@ typedef struct enginefuncs_s
 	void (*pfnCvar_RegisterVariable)(cvar_t* variable);
 	void (*pfnFadeClientVolume)(const edict_t* pEdict, int fadePercent, int fadeOutSeconds, int holdTime, int fadeInSeconds);
 	void (*pfnSetClientMaxspeed)(const edict_t* pEdict, float fNewMaxspeed);
-	edict_t* (*pfnCreateFakeClient)(const char* netname); // returns NULL if fake client can't be created
+	edict_t* (*pfnCreateFakeClient)(const char* netname); // returns nullptr if fake client can't be created
 	void (*pfnRunPlayerMove)(edict_t* fakeclient, const float* viewangles, float forwardmove, float sidemove, float upmove, unsigned short buttons, byte impulse, byte msec);
 	int (*pfnNumberOfEntities)();
-	char* (*pfnGetInfoKeyBuffer)(edict_t* e); // passing in NULL gets the serverinfo
+	char* (*pfnGetInfoKeyBuffer)(edict_t* e); // passing in nullptr gets the serverinfo
 	char* (*pfnInfoKeyValue)(char* infobuffer, const char* key);
 	void (*pfnSetKeyValue)(char* infobuffer, const char* key, const char* value);
 	void (*pfnSetClientKeyValue)(int clientIndex, char* infobuffer, const char* key, const char* value);
@@ -221,8 +220,8 @@ typedef struct enginefuncs_s
 	unsigned short (*pfnPrecacheEvent)(int type, const char* psz);
 	void (*pfnPlaybackEvent)(int flags, const edict_t* pInvoker, unsigned short eventindex, float delay, const float* origin, const float* angles, float fparam1, float fparam2, int iparam1, int iparam2, int bparam1, int bparam2);
 
-	unsigned char* (*pfnSetFatPVS)(float* org);
-	unsigned char* (*pfnSetFatPAS)(float* org);
+	unsigned char* (*pfnSetFatPVS)(const float* org);
+	unsigned char* (*pfnSetFatPAS)(const float* org);
 
 	int (*pfnCheckVisibility)(const edict_t* entity, unsigned char* pset);
 

@@ -13,17 +13,10 @@
 *
 ****/
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "player.h"
-#include "weapons.h"
-#include "game.h"
 #include "CItemCTF.h"
 #include "CItemRegenerationCTF.h"
-#include "gamerules.h"
 #include "ctfplay_gamerules.h"
-#include "skill.h"
 #include "UserMessages.h"
 
 LINK_ENTITY_TO_CLASS(item_ctfregeneration, CItemRegenerationCTF);
@@ -56,7 +49,7 @@ bool CItemRegenerationCTF::MyTouch(CBasePlayer* pPlayer)
 				pPlayer->m_iItems = static_cast<CTFItem::CTFItem>(pPlayer->m_iItems | CTFItem::Regeneration);
 				pPlayer->m_fPlayingHChargeSound = false;
 
-				g_engfuncs.pfnMessageBegin(MSG_ONE, gmsgItemPickup, 0, pPlayer->edict());
+				g_engfuncs.pfnMessageBegin(MSG_ONE, gmsgItemPickup, nullptr, pPlayer->edict());
 				g_engfuncs.pfnWriteString(STRING(pev->classname));
 				g_engfuncs.pfnMessageEnd();
 
@@ -79,7 +72,7 @@ void CItemRegenerationCTF::Spawn()
 {
 	//TODO: precache calls should be in Precache
 	if (!FStringNull(pev->model))
-		g_engfuncs.pfnPrecacheModel((char*)STRING(pev->model));
+		g_engfuncs.pfnPrecacheModel(STRING(pev->model));
 
 	g_engfuncs.pfnPrecacheSound("ctf/itemthrow.wav");
 	g_engfuncs.pfnPrecacheSound("items/ammopickup1.wav");

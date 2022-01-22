@@ -25,17 +25,9 @@
 
 #include <optional>
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "saverestore.h"
-#include "player.h"
 #include "client.h"
-#include "soundent.h"
-#include "gamerules.h"
-#include "game.h"
 #include "customentity.h"
-#include "weapons.h"
 #include "weaponinfo.h"
 #include "usercmd.h"
 #include "netadr.h"
@@ -105,7 +97,7 @@ void ClientDisconnect(edict_t* pEntity)
 	if (!FStringNull(pEntity->v.netname))
 		snprintf(text, sizeof(text), "- %s has left the game\n", STRING(pEntity->v.netname));
 	text[sizeof(text) - 1] = 0;
-	MESSAGE_BEGIN(MSG_ALL, gmsgSayText, NULL);
+	MESSAGE_BEGIN(MSG_ALL, gmsgSayText, nullptr);
 	WRITE_BYTE(ENTINDEX(pEntity));
 	WRITE_STRING(text);
 	MESSAGE_END();
@@ -129,10 +121,10 @@ void ClientDisconnect(edict_t* pEntity)
 
 	if (pPlayer)
 	{
-		if (pPlayer->m_pTank != NULL)
+		if (pPlayer->m_pTank != nullptr)
 		{
 			pPlayer->m_pTank->Use(pPlayer, pPlayer, USE_OFF, 0);
-			pPlayer->m_pTank = NULL;
+			pPlayer->m_pTank = nullptr;
 		}
 	}
 
@@ -386,12 +378,12 @@ void Host_Say(edict_t* pEntity, bool teamonly)
 	{
 		if (CMD_ARGC() >= 2)
 		{
-			sprintf(szTemp, "%s %s", (char*)pcmd, (char*)CMD_ARGS());
+			sprintf(szTemp, "%s %s", pcmd, CMD_ARGS());
 		}
 		else
 		{
 			// Just a one word command, use the first word...sigh
-			sprintf(szTemp, "%s", (char*)pcmd);
+			sprintf(szTemp, "%s", pcmd);
 		}
 		p = szTemp;
 	}
@@ -433,8 +425,8 @@ void Host_Say(edict_t* pEntity, bool teamonly)
 	// This may return the world in single player if the client types something between levels or during spawn
 	// so check it, or it will infinite loop
 
-	client = NULL;
-	while (((client = (CBasePlayer*)UTIL_FindEntityByClassname(client, "player")) != NULL) && (!FNullEnt(client->edict())))
+	client = nullptr;
+	while (((client = (CBasePlayer*)UTIL_FindEntityByClassname(client, "player")) != nullptr) && (!FNullEnt(client->edict())))
 	{
 		if (!client->pev)
 			continue;
@@ -457,14 +449,14 @@ void Host_Say(edict_t* pEntity, bool teamonly)
 			if (!client->IsObserver())
 				continue;
 
-		MESSAGE_BEGIN(MSG_ONE, gmsgSayText, NULL, client->pev);
+		MESSAGE_BEGIN(MSG_ONE, gmsgSayText, nullptr, client->pev);
 		WRITE_BYTE(ENTINDEX(pEntity));
 		WRITE_STRING(text);
 		MESSAGE_END();
 	}
 
 	// print to the sending client
-	MESSAGE_BEGIN(MSG_ONE, gmsgSayText, NULL, &pEntity->v);
+	MESSAGE_BEGIN(MSG_ONE, gmsgSayText, nullptr, &pEntity->v);
 	WRITE_BYTE(ENTINDEX(pEntity));
 	WRITE_STRING(text);
 	MESSAGE_END();
@@ -556,7 +548,7 @@ void ClientCommand(edict_t* pEntity)
 	else if (FStrEq(pcmd, "drop"))
 	{
 		// player is dropping an item.
-		player->DropPlayerItem((char*)CMD_ARGV(1));
+		player->DropPlayerItem(CMD_ARGV(1));
 	}
 	else if (FStrEq(pcmd, "fov"))
 	{
@@ -616,9 +608,9 @@ void ClientCommand(edict_t* pEntity)
 	}
 	else if (FStrEq(pcmd, "use"))
 	{
-		player->SelectItem((char*)CMD_ARGV(1));
+		player->SelectItem(CMD_ARGV(1));
 	}
-	else if (((pstr = strstr(pcmd, "weapon_")) != NULL) && (pstr == pcmd))
+	else if (((pstr = strstr(pcmd, "weapon_")) != nullptr) && (pstr == pcmd))
 	{
 		player->SelectItem(pcmd);
 	}
@@ -755,7 +747,7 @@ void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer)
 		sName[sizeof(sName) - 1] = '\0';
 
 		// First parse the name and remove any %'s
-		for (char* pApersand = sName; pApersand != NULL && *pApersand != 0; pApersand++)
+		for (char* pApersand = sName; pApersand != nullptr && *pApersand != 0; pApersand++)
 		{
 			// Replace it with a space
 			if (*pApersand == '%')
@@ -769,7 +761,7 @@ void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer)
 		{
 			char text[256];
 			sprintf(text, "* %s changed name to %s\n", STRING(pEntity->v.netname), g_engfuncs.pfnInfoKeyValue(infobuffer, "name"));
-			MESSAGE_BEGIN(MSG_ALL, gmsgSayText, NULL);
+			MESSAGE_BEGIN(MSG_ALL, gmsgSayText, nullptr);
 			WRITE_BYTE(ENTINDEX(pEntity));
 			WRITE_STRING(text);
 			MESSAGE_END();
@@ -1100,7 +1092,7 @@ void PlayerCustomization(edict_t* pEntity, customization_t* pCust)
 
 	if (!pCust)
 	{
-		ALERT(at_console, "PlayerCustomization:  NULL customization!\n");
+		ALERT(at_console, "PlayerCustomization:  nullptr customization!\n");
 		return;
 	}
 
@@ -1129,7 +1121,7 @@ void PlayerCustomization(edict_t* pEntity, customization_t* pCust)
 SetupVisibility
 
 A client can have a separate "view entity" indicating that his/her view should depend on the origin of that
-view entity.  If that's the case, then pViewEntity will be non-NULL and will be used.  Otherwise, the current
+view entity.  If that's the case, then pViewEntity will be non-nullptr and will be used.  Otherwise, the current
 entity's origin is used.  Either is offset by the view_ofs to get the eye position.
 
 From the eye position, we set up the PAS and PVS to use for filtering network messages to the client.  At this point, we could
@@ -1151,8 +1143,8 @@ void SetupVisibility(edict_t* pViewEntity, edict_t* pClient, unsigned char** pvs
 
 	if ((pClient->v.flags & FL_PROXY) != 0)
 	{
-		*pvs = NULL; // the spectator proxy sees
-		*pas = NULL; // and hears everything
+		*pvs = nullptr; // the spectator proxy sees
+		*pas = nullptr; // and hears everything
 		return;
 	}
 
@@ -1162,8 +1154,8 @@ void SetupVisibility(edict_t* pViewEntity, edict_t* pClient, unsigned char** pvs
 		org = org + (VEC_HULL_MIN - VEC_DUCK_HULL_MIN);
 	}
 
-	*pvs = ENGINE_SET_PVS((float*)&org);
-	*pas = ENGINE_SET_PAS((float*)&org);
+	*pvs = ENGINE_SET_PVS(org);
+	*pas = ENGINE_SET_PAS(org);
 }
 
 #include "entity_state.h"
@@ -1201,7 +1193,7 @@ int AddToFullPack(struct entity_state_s* state, int e, edict_t* ent, edict_t* ho
 	}
 
 	// Ignore if not the host and not touching a PVS/PAS leaf
-	// If pSet is NULL, then the test will always succeed and the entity will be added to the update
+	// If pSet is nullptr, then the test will always succeed and the entity will be added to the update
 	if (ent != host)
 	{
 		if (!ENGINE_CHECK_VISIBILITY((const struct edict_s*)ent, pSet))
@@ -1286,6 +1278,7 @@ int AddToFullPack(struct entity_state_s* state, int e, edict_t* ent, edict_t* ho
 
 	// This non-player entity is being moved by the game .dll and not the physics simulation system
 	//  make sure that we interpolate it's position on the client if it moves
+	/*
 	if (0 == player &&
 		0 != ent->v.animtime &&
 		ent->v.velocity[0] == 0 &&
@@ -1293,6 +1286,16 @@ int AddToFullPack(struct entity_state_s* state, int e, edict_t* ent, edict_t* ho
 		ent->v.velocity[2] == 0)
 	{
 		state->eflags |= EFLAG_SLERP;
+	}
+	*/
+
+	if ((ent->v.flags & FL_FLY) != 0)
+	{
+		state->eflags |= EFLAG_SLERP;
+	}
+	else
+	{
+		state->eflags &= ~EFLAG_SLERP;
 	}
 
 	state->scale = ent->v.scale;
@@ -1750,7 +1753,7 @@ void UpdateClientData(const edict_t* ent, int sendweapons, struct clientdata_s* 
 		return;
 	entvars_t* pev = (entvars_t*)&ent->v;
 	CBasePlayer* pl = dynamic_cast<CBasePlayer*>(CBasePlayer::Instance(pev));
-	entvars_t* pevOrg = NULL;
+	entvars_t* pevOrg = nullptr;
 
 	// if user is spectating different player in First person, override some vars
 	if (pl && pl->pev->iuser1 == OBS_IN_EYE)
@@ -1793,7 +1796,7 @@ void UpdateClientData(const edict_t* ent, int sendweapons, struct clientdata_s* 
 	cd->pushmsec = pev->pushmsec;
 
 	//Spectator mode
-	if (pevOrg != NULL)
+	if (pevOrg != nullptr)
 	{
 		// don't use spec vars from chased player
 		cd->iuser1 = pevOrg->iuser1;
@@ -1930,28 +1933,7 @@ GetHullBounds
 */
 int GetHullBounds(int hullnumber, float* mins, float* maxs)
 {
-	int iret = 0;
-
-	switch (hullnumber)
-	{
-	case 0: // Normal player
-		memcpy(mins, &VEC_HULL_MIN, sizeof(VEC_HULL_MIN));
-		memcpy(maxs, &VEC_HULL_MAX, sizeof(VEC_HULL_MAX));
-		iret = 1;
-		break;
-	case 1: // Crouched player
-		memcpy(mins, &VEC_DUCK_HULL_MIN, sizeof(VEC_DUCK_HULL_MIN));
-		memcpy(maxs, &VEC_DUCK_HULL_MAX, sizeof(VEC_DUCK_HULL_MAX));
-		iret = 1;
-		break;
-	case 2: // Point based hull
-		memcpy(mins, &g_vecZero, sizeof(g_vecZero));
-		memcpy(maxs, &g_vecZero, sizeof(g_vecZero));
-		iret = 1;
-		break;
-	}
-
-	return iret;
+	return static_cast<int>(PM_GetHullBounds(hullnumber, mins, maxs));
 }
 
 /*

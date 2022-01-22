@@ -16,10 +16,7 @@
 // friendly hgrunt
 //=========================================================
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
 #include "squadmonster.h"
 #include "hgrunt.h"
 

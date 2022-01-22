@@ -12,11 +12,7 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "weapons.h"
-#include "player.h"
 #include "UserMessages.h"
 
 #ifndef CLIENT_DLL
@@ -237,7 +233,7 @@ void CEagle::PrimaryAttack()
 
 	PLAYBACK_EVENT_FULL(
 		flags, m_pPlayer->edict(), m_usFireEagle, 0,
-		(float*)&g_vecZero, (float*)&g_vecZero,
+		g_vecZero, g_vecZero,
 		vecSpread.x, vecSpread.y,
 		0, 0,
 		static_cast<int>(m_iClip == 0), 0);
@@ -338,7 +334,7 @@ bool CEagle::GetItemInfo(ItemInfo* p)
 	p->pszAmmo1 = "357";
 	p->iMaxAmmo1 = _357_MAX_CARRY;
 	p->pszName = STRING(pev->classname);
-	p->pszAmmo2 = 0;
+	p->pszAmmo2 = nullptr;
 	p->iMaxAmmo2 = WEAPON_NOCLIP;
 	p->iMaxClip = EAGLE_MAX_CLIP;
 	p->iSlot = 1;

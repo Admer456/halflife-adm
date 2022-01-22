@@ -4,8 +4,11 @@
 
 // Quake is a trademark of Id Software, Inc., (c) 1996 Id Software, Inc. All
 // rights reserved.
+
+#include <sstream>
+#include <string>
+
 #include "hud.h"
-#include "cl_util.h"
 #include "CClientLibrary.h"
 #include "camera.h"
 #include "kbutton.h"
@@ -15,8 +18,6 @@
 #include "camera.h"
 #include "in_defs.h"
 #include "view.h"
-#include <string.h>
-#include <ctype.h>
 #include "Exports.h"
 
 #include "vgui_TeamFortressViewport.h"
@@ -116,7 +117,7 @@ typedef struct kblist_s
 	char name[32];
 } kblist_t;
 
-kblist_t* g_kbkeys = NULL;
+kblist_t* g_kbkeys = nullptr;
 
 /*
 ============
@@ -127,21 +128,16 @@ Removes references to +use and replaces them with the keyname in the output stri
 NOTE:  Only works for text with +word in it.
 ============
 */
-bool KB_ConvertString(char* in, char** ppout)
+std::string KB_ConvertString(const char* in)
 {
-	char sz[4096];
 	char binding[64];
-	char* p;
-	char* pOut;
+	const char* p;
 	char* pEnd;
 	const char* pBinding;
 
-	if (!ppout)
-		return false;
+	std::ostringstream buffer;
 
-	*ppout = NULL;
 	p = in;
-	pOut = sz;
 	while ('\0' != *p)
 	{
 		if (*p == '+')
@@ -154,7 +150,7 @@ bool KB_ConvertString(char* in, char** ppout)
 
 			*pEnd = '\0';
 
-			pBinding = NULL;
+			pBinding = nullptr;
 			if (strlen(binding + 1) > 0)
 			{
 				// See if there is a binding for binding?
@@ -163,7 +159,7 @@ bool KB_ConvertString(char* in, char** ppout)
 
 			if (pBinding)
 			{
-				*pOut++ = '[';
+				buffer << '[';
 				pEnd = (char*)pBinding;
 			}
 			else
@@ -173,27 +169,21 @@ bool KB_ConvertString(char* in, char** ppout)
 
 			while ('\0' != *pEnd)
 			{
-				*pOut++ = *pEnd++;
+				buffer << *pEnd++;
 			}
 
 			if (pBinding)
 			{
-				*pOut++ = ']';
+				buffer << ']';
 			}
 		}
 		else
 		{
-			*pOut++ = *p++;
+			buffer << *p++;
 		}
 	}
 
-	*pOut = '\0';
-
-	pOut = (char*)malloc(strlen(sz) + 1);
-	strcpy(pOut, sz);
-	*ppout = pOut;
-
-	return true;
+	return buffer.str();
 }
 
 /*
@@ -216,7 +206,7 @@ struct kbutton_s DLLEXPORT* KB_Find(const char* name)
 
 		p = p->next;
 	}
-	return NULL;
+	return nullptr;
 }
 
 /*
@@ -255,7 +245,7 @@ Add kbutton_t definitions that the engine can query if needed
 */
 void KB_Init()
 {
-	g_kbkeys = NULL;
+	g_kbkeys = nullptr;
 
 	KB_Add("in_graph", &in_graph);
 	KB_Add("in_mlook", &in_mlook);
@@ -279,7 +269,7 @@ void KB_Shutdown()
 		free(p);
 		p = n;
 	}
-	g_kbkeys = NULL;
+	g_kbkeys = nullptr;
 }
 
 /*
@@ -666,13 +656,13 @@ void DLLEXPORT CL_CreateMove(float frametime, struct usercmd_s* cmd, int active)
 	{
 		//memset( viewangles, 0, sizeof( Vector ) );
 		//viewangles[ 0 ] = viewangles[ 1 ] = viewangles[ 2 ] = 0.0;
-		gEngfuncs.GetViewAngles((float*)viewangles);
+		gEngfuncs.GetViewAngles(viewangles);
 
 		CL_AdjustAngles(frametime, viewangles);
 
 		memset(cmd, 0, sizeof(*cmd));
 
-		gEngfuncs.SetViewAngles((float*)viewangles);
+		gEngfuncs.SetViewAngles(viewangles);
 
 		if ((in_strafe.state & 1) != 0)
 		{
@@ -747,7 +737,7 @@ void DLLEXPORT CL_CreateMove(float frametime, struct usercmd_s* cmd, int active)
 		}
 	}
 
-	gEngfuncs.GetViewAngles((float*)viewangles);
+	gEngfuncs.GetViewAngles(viewangles);
 	// Set current view angles.
 
 	if (g_iAlive)

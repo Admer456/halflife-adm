@@ -15,8 +15,7 @@
 
 #include <string>
 
-#include "extdll.h"
-#include "enginecallback.h"
+#include "cbase.h"
 #include "shared_utils.h"
 #include "CStringPool.h"
 
@@ -31,7 +30,7 @@ string_t ALLOC_ESCAPED_STRING(const char* str)
 {
 	if (!str)
 	{
-		ALERT(at_warning, "NULL string passed to ALLOC_ESCAPED_STRING\n");
+		ALERT(at_warning, "nullptr string passed to ALLOC_ESCAPED_STRING\n");
 		return MAKE_STRING("");
 	}
 
@@ -111,14 +110,14 @@ const char* COM_Parse(const char* data)
 	com_token[0] = 0;
 
 	if (!data)
-		return NULL;
+		return nullptr;
 
 	// skip whitespace
 skipwhite:
 	while ((c = *data) <= ' ')
 	{
 		if (c == 0)
-			return NULL; // end of file;
+			return nullptr; // end of file;
 		data++;
 	}
 

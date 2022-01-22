@@ -12,16 +12,7 @@
 *   without written permission from Valve LLC.
 *
 ****/
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "player.h"
-#include "weapons.h"
-#include "nodes.h"
-#include "soundent.h"
-#include "decals.h"
-#include "gamerules.h"
 
 #define PENGUIN_DETONATE_DELAY 15.0
 
@@ -105,7 +96,7 @@ void CPenguinGrenade::SuperBounceTouch(CBaseEntity* pOther)
 		return;
 
 	// at least until we've bounced once
-	pev->owner = NULL;
+	pev->owner = nullptr;
 
 	pev->angles.x = 0;
 	pev->angles.z = 0;
@@ -154,7 +145,7 @@ void CPenguinGrenade::SuperBounceTouch(CBaseEntity* pOther)
 				// ALERT( at_console, "hit enemy\n");
 				ClearMultiDamage();
 				pOther->TraceAttack(pev, gSkillData.snarkDmgBite, gpGlobals->v_forward, &tr, DMG_SLASH);
-				if (m_hOwner != NULL)
+				if (m_hOwner != nullptr)
 					ApplyMultiDamage(pev, m_hOwner->pev);
 				else
 					ApplyMultiDamage(pev, pev);
@@ -261,7 +252,7 @@ int CPenguinGrenade::Classify()
 	if (m_iMyClass != 0)
 		return m_iMyClass; // protect against recursion
 
-	if (m_hEnemy != NULL)
+	if (m_hEnemy != nullptr)
 	{
 		m_iMyClass = CLASS_INSECT; // no one cares about it
 		switch (m_hEnemy->Classify())
@@ -296,7 +287,7 @@ int CPenguinGrenade::IRelationship(CBaseEntity* pTarget)
 
 void CPenguinGrenade::Killed(entvars_t* pevAttacker, int iGib)
 {
-	if (m_hOwner != NULL)
+	if (m_hOwner != nullptr)
 		pev->owner = m_hOwner->edict();
 
 	Detonate();
@@ -304,7 +295,7 @@ void CPenguinGrenade::Killed(entvars_t* pevAttacker, int iGib)
 	UTIL_BloodDrips(pev->origin, g_vecZero, BloodColor(), 80);
 
 	// reset owner so death message happens
-	if (m_hOwner != NULL)
+	if (m_hOwner != nullptr)
 		pev->owner = m_hOwner->edict();
 }
 
@@ -314,7 +305,7 @@ void CPenguinGrenade::HuntThink()
 
 	if (!IsInWorld())
 	{
-		SetTouch(NULL);
+		SetTouch(nullptr);
 		UTIL_Remove(this);
 		return;
 	}
@@ -352,7 +343,7 @@ void CPenguinGrenade::HuntThink()
 
 	m_flNextHunt = gpGlobals->time + 2.0;
 
-	CBaseEntity* pOther = NULL;
+	CBaseEntity* pOther = nullptr;
 	Vector vecDir;
 	TraceResult tr;
 
@@ -362,7 +353,7 @@ void CPenguinGrenade::HuntThink()
 
 	UTIL_MakeVectors(pev->angles);
 
-	if (m_hEnemy == NULL || !m_hEnemy->IsAlive())
+	if (m_hEnemy == nullptr || !m_hEnemy->IsAlive())
 	{
 		// find target, bounce a bit towards it.
 		Look(512);
@@ -381,7 +372,7 @@ void CPenguinGrenade::HuntThink()
 	if (flpitch < 80)
 		flpitch = 80;
 
-	if (m_hEnemy != NULL)
+	if (m_hEnemy != nullptr)
 	{
 		if (FVisible(m_hEnemy))
 		{
@@ -436,7 +427,7 @@ void CPenguinGrenade::Smoke()
 	}
 	else
 	{
-		g_engfuncs.pfnMessageBegin(MSG_PVS, SVC_TEMPENTITY, pev->origin, 0);
+		g_engfuncs.pfnMessageBegin(MSG_PVS, SVC_TEMPENTITY, pev->origin, nullptr);
 		g_engfuncs.pfnWriteByte(TE_SMOKE);
 		g_engfuncs.pfnWriteCoord(pev->origin.x);
 		g_engfuncs.pfnWriteCoord(pev->origin.y);

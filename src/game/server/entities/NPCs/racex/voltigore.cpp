@@ -16,15 +16,8 @@
 // Voltigore - Tank like alien
 //=========================================================
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "schedule.h"
 #include "squadmonster.h"
-#include "weapons.h"
-#include "soundent.h"
-#include "decals.h"
 #include "voltigore.h"
 
 class COFChargedBolt : public CBaseEntity
@@ -580,22 +573,12 @@ void COFVoltigore::Spawn()
 
 void COFVoltigore::PrecacheCore(const char* model)
 {
-	int i;
-
 	PRECACHE_MODEL(model);
 
-	for (i = 0; i < ARRAYSIZE(pAttackHitSounds); i++)
-		PRECACHE_SOUND((char*)pAttackHitSounds[i]);
-
-	for (i = 0; i < ARRAYSIZE(pAttackMissSounds); i++)
-		PRECACHE_SOUND((char*)pAttackMissSounds[i]);
-
-	for (i = 0; i < ARRAYSIZE(pPainSounds); i++)
-		PRECACHE_SOUND((char*)pPainSounds[i]);
-
-	for (i = 0; i < ARRAYSIZE(pAlertSounds); i++)
-		PRECACHE_SOUND((char*)pAlertSounds[i]);
-
+	PRECACHE_SOUND_ARRAY(pAttackHitSounds);
+	PRECACHE_SOUND_ARRAY(pAttackMissSounds);
+	PRECACHE_SOUND_ARRAY(pPainSounds);
+	PRECACHE_SOUND_ARRAY(pAlertSounds);
 	PRECACHE_SOUND_ARRAY(pAttackSounds);
 
 	PRECACHE_SOUND("voltigore/voltigore_attack_shock.wav");
@@ -846,7 +829,7 @@ bool COFVoltigore::FCanCheckAttacks()
 //=========================================================
 bool COFVoltigore::CheckMeleeAttack1(float flDot, float flDist)
 {
-	if (HasConditions(bits_COND_SEE_ENEMY) && flDist <= VOLTIGORE_MELEE_DIST && flDot >= 0.6 && m_hEnemy != NULL)
+	if (HasConditions(bits_COND_SEE_ENEMY) && flDist <= VOLTIGORE_MELEE_DIST && flDot >= 0.6 && m_hEnemy != nullptr)
 	{
 		return true;
 	}
@@ -903,7 +886,7 @@ void COFVoltigore::StartTask(Task_t* pTask)
 		ClearBeams();
 
 		UTIL_MakeVectors(pev->angles);
-		if (BuildRoute(m_vecEnemyLKP - gpGlobals->v_forward * 50, bits_MF_TO_LOCATION, NULL))
+		if (BuildRoute(m_vecEnemyLKP - gpGlobals->v_forward * 50, bits_MF_TO_LOCATION, nullptr))
 		{
 			TaskComplete();
 		}
@@ -1028,7 +1011,7 @@ Schedule_t* COFVoltigore::GetSchedule()
 		CSound* pSound;
 		pSound = PBestSound();
 
-		ASSERT(pSound != NULL);
+		ASSERT(pSound != nullptr);
 		if (pSound && (pSound->m_iType & bits_SOUND_DANGER) != 0)
 		{
 			// dangerous sound nearby!
@@ -1123,7 +1106,7 @@ Schedule_t* COFVoltigore::GetScheduleOfType(int Type)
 	case SCHED_FAIL:
 		// no fail schedule specified, so pick a good generic one.
 		{
-			if (m_hEnemy != NULL)
+			if (m_hEnemy != nullptr)
 			{
 				// I have an enemy
 				// !!!LATER - what if this enemy is really far away and i'm chasing him?

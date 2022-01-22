@@ -16,10 +16,7 @@
 // Zombie Barney
 //=========================================================
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
 #include "zombie.h"
 
 class CZombieBarney : public CZombie

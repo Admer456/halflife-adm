@@ -18,13 +18,7 @@
 // implementation of CHudHealth class
 //
 
-#include "stdio.h"
-#include "stdlib.h"
-
 #include "hud.h"
-#include "cl_util.h"
-#include "parsemsg.h"
-#include <string.h>
 
 
 DECLARE_MESSAGE(m_Health, Health)
@@ -315,7 +309,7 @@ bool CHudHealth::DrawPain(float flTime)
 
 		x = ScreenWidth / 2 - SPR_Width(m_hSprite, 0) / 2;
 		y = ScreenHeight / 2 - SPR_Height(m_hSprite, 0) * 3;
-		SPR_DrawAdditive(0, x, y, NULL);
+		SPR_DrawAdditive(0, x, y, nullptr);
 		m_fAttackFront = V_max(0, m_fAttackFront - fFade);
 	}
 	else
@@ -329,7 +323,7 @@ bool CHudHealth::DrawPain(float flTime)
 
 		x = ScreenWidth / 2 + SPR_Width(m_hSprite, 1) * 2;
 		y = ScreenHeight / 2 - SPR_Height(m_hSprite, 1) / 2;
-		SPR_DrawAdditive(1, x, y, NULL);
+		SPR_DrawAdditive(1, x, y, nullptr);
 		m_fAttackRight = V_max(0, m_fAttackRight - fFade);
 	}
 	else
@@ -343,7 +337,7 @@ bool CHudHealth::DrawPain(float flTime)
 
 		x = ScreenWidth / 2 - SPR_Width(m_hSprite, 2) / 2;
 		y = ScreenHeight / 2 + SPR_Height(m_hSprite, 2) * 2;
-		SPR_DrawAdditive(2, x, y, NULL);
+		SPR_DrawAdditive(2, x, y, nullptr);
 		m_fAttackRear = V_max(0, m_fAttackRear - fFade);
 	}
 	else
@@ -357,7 +351,7 @@ bool CHudHealth::DrawPain(float flTime)
 
 		x = ScreenWidth / 2 - SPR_Width(m_hSprite, 3) * 3;
 		y = ScreenHeight / 2 - SPR_Height(m_hSprite, 3) / 2;
-		SPR_DrawAdditive(3, x, y, NULL);
+		SPR_DrawAdditive(3, x, y, nullptr);
 
 		m_fAttackLeft = V_max(0, m_fAttackLeft - fFade);
 	}

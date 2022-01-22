@@ -15,12 +15,7 @@
 //=========================================================
 // Generic Monster - purely for scripted sequence work.
 //=========================================================
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "schedule.h"
-#include "soundent.h"
 
 // For holograms, make them not solid so the player can walk through them
 #define SF_GENERICMONSTER_NOTSOLID 4
@@ -169,7 +164,7 @@ void CGenericMonster::Spawn()
 //=========================================================
 void CGenericMonster::Precache()
 {
-	PRECACHE_MODEL((char*)STRING(pev->model));
+	PRECACHE_MODEL(STRING(pev->model));
 }
 
 void CGenericMonster::PlayScriptedSentence(const char* pszSentence, float duration, float volume, float attenuation, bool bConcurrent, CBaseEntity* pListener)

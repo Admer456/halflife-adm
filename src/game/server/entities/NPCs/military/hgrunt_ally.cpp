@@ -16,17 +16,10 @@
 // hgrunt
 //=========================================================
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "animation.h"
 #include "squadmonster.h"
-#include "weapons.h"
 #include "talkmonster.h"
 #include "COFSquadTalkMonster.h"
-#include "soundent.h"
-#include "effects.h"
 #include "customentity.h"
 #include "hgrunt_ally_base.h"
 
@@ -188,7 +181,7 @@ void CHGruntAlly::DropWeapon(bool applyVelocity)
 //=========================================================
 void CHGruntAlly::Shoot(bool firstShotInBurst)
 {
-	if (m_hEnemy == NULL)
+	if (m_hEnemy == nullptr)
 	{
 		return;
 	}

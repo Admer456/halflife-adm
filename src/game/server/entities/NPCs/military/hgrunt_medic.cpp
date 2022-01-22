@@ -28,17 +28,10 @@
 */
 
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
-#include "animation.h"
 #include "squadmonster.h"
-#include "weapons.h"
 #include "talkmonster.h"
 #include "COFSquadTalkMonster.h"
-#include "soundent.h"
-#include "effects.h"
 #include "customentity.h"
 #include "hgrunt_ally_base.h"
 
@@ -218,7 +211,7 @@ void COFMedicAlly::DropWeapon(bool applyVelocity)
 void COFMedicAlly::Shoot()
 {
 	//Limit fire rate
-	if (m_hEnemy == NULL || gpGlobals->time - m_flLastShot <= 0.11)
+	if (m_hEnemy == nullptr || gpGlobals->time - m_flLastShot <= 0.11)
 	{
 		return;
 	}

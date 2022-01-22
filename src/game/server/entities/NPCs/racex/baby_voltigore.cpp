@@ -16,12 +16,8 @@
 // Voltigore - Tank like alien
 //=========================================================
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-#include "monsters.h"
 #include "squadmonster.h"
-#include "weapons.h"
 #include "voltigore.h"
 
 //=========================================================
@@ -242,5 +238,5 @@ CBaseEntity* COFBabyVoltigore::CheckTraceHullAttack(float flDist, int iDamage, i
 		return pEntity;
 	}
 
-	return NULL;
+	return nullptr;
 }

@@ -41,9 +41,7 @@
 		gHUD.y.UserCmd_##x(); \
 	}
 
-inline float CVAR_GET_FLOAT(const char* x) { return gEngfuncs.pfnGetCvarFloat((char*)x); }
-inline const char* CVAR_GET_STRING(const char* x) { return gEngfuncs.pfnGetCvarString((char*)x); }
-inline struct cvar_s* CVAR_CREATE(const char* cv, const char* val, const int flags) { return gEngfuncs.pfnRegisterVariable((char*)cv, (char*)val, flags); }
+inline struct cvar_s* CVAR_CREATE(const char* cv, const char* val, const int flags) { return gEngfuncs.pfnRegisterVariable(cv, val, flags); }
 
 #define SPR_Load (*gEngfuncs.pfnSPR_Load)
 
@@ -89,7 +87,6 @@ inline void FillRGBA(int x, int y, int width, int height, const RGB24& color, in
 #define GetScreenInfo (*gEngfuncs.pfnGetScreenInfo)
 #define ServerCmd (*gEngfuncs.pfnServerCmd)
 #define EngineClientCmd (*gEngfuncs.pfnClientCmd)
-#define AngleVectors (*gEngfuncs.pfnAngleVectors)
 
 
 // Gets the height & width of a sprite,  at the specified frame
@@ -104,7 +101,7 @@ inline int TextMessageDrawChar(int x, int y, int number, int r, int g, int b)
 
 inline int DrawConsoleString(int x, int y, const char* string)
 {
-	return gEngfuncs.pfnDrawConsoleString(x, y, (char*)string);
+	return gEngfuncs.pfnDrawConsoleString(x, y, string);
 }
 
 inline void GetConsoleStringSize(const char* string, int* width, int* height)
@@ -134,7 +131,7 @@ inline char* safe_strcpy(char* dst, const char* src, int len_dst)
 {
 	if (len_dst <= 0)
 	{
-		return NULL; // this is bad
+		return nullptr; // this is bad
 	}
 
 	strncpy(dst, src, len_dst);
@@ -172,10 +169,5 @@ void VectorMA(const float* veca, float scale, const float* vecb, float* vecc);
 void VectorScale(const float* in, float scale, float* out);
 float VectorNormalize(float* v);
 void VectorInverse(float* v);
-
-// disable 'possible loss of data converting float to int' warning message
-#pragma warning(disable : 4244)
-// disable 'truncation from 'const double' to 'float' warning message
-#pragma warning(disable : 4305)
 
 HSPRITE LoadSprite(const char* pszName);
