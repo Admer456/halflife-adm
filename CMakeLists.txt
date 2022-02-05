@@ -48,6 +48,7 @@ find_package(Threads REQUIRED)
 
 option(SPDLOG_BUILD_TESTS "" OFF)
 option(SPDLOG_BUILD_TESTS_HO "" OFF)
+option(SPDLOG_ENABLE_PCH "" ON)
 add_subdirectory(external/spdlog
 	spdlog-binary-dir
 	EXCLUDE_FROM_ALL)
@@ -66,6 +67,10 @@ add_subdirectory(external/json-schema-validator
 add_subdirectory(external/Angelscript/sdk/angelscript/projects/cmake
 	Angelscript-binary-dir
 	EXCLUDE_FROM_ALL)
+
+# Enable multithreaded building to speed up building these a bit.
+target_compile_options(nlohmann_json_schema_validator PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/MP>)
+target_compile_options(angelscript PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/MP>)
 
 set_target_properties(
 	spdlog
