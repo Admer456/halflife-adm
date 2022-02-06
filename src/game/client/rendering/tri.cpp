@@ -21,6 +21,14 @@
 #include "tri.h"
 extern IParticleMan* g_pParticleMan;
 
+// Since this is just an experiment, I'll do this in a super messy way
+// Basically here I'm declaring two lil functions so I can later call them here
+namespace Experiment
+{
+	void InitDiligentEngine();
+	void UpdateDiligentEngine(float frameTime);
+}
+
 /*
 =================
 HUD_DrawNormalTriangles
@@ -33,6 +41,21 @@ void DLLEXPORT HUD_DrawNormalTriangles()
 	//	RecClDrawNormalTriangles();
 
 	gHUD.m_Spectator.DrawOverview();
+
+	if (gHUD.m_flTime > 5.0f)
+	{
+		static bool DiligentInitialised = false;
+
+		if (DiligentInitialised)
+		{
+			Experiment::UpdateDiligentEngine(float(gHUD.m_flTimeDelta));
+		}
+		else 
+		{
+			DiligentInitialised = true;
+			Experiment::InitDiligentEngine();
+		}
+	}
 }
 
 
