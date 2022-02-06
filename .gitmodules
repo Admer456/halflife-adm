@@ -14,3 +14,7 @@
 	path = external/Angelscript
 	url = https://github.com/codecat/angelscript-mirror.git
 	shallow = 1
+[submodule "external/DiligentCore"]
+	path = external/DiligentCore
+	url = https://github.com/DiligentGraphics/DiligentCore.git
+    shallow = 1
