@@ -130,6 +130,7 @@ target_sources(client PRIVATE
 
 	rendering/GameStudioModelRenderer.cpp
 	rendering/GameStudioModelRenderer.h
+    rendering/RenderTest.cpp
 	rendering/StudioModelRenderer.cpp
 	rendering/StudioModelRenderer.h
 	rendering/studio_util.cpp
@@ -274,3 +275,8 @@ target_precompile_headers(client
 # Create filters
 get_target_property(CLIENT_SOURCES client SOURCES)
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}../../../.. FILES ${CLIENT_SOURCES})
+
+## For this experiment, we'll link against the Vulkan engine statically
+## In further iterations, we may have a modular renderer system
+target_link_libraries(client PRIVATE Diligent-GraphicsEngineVk-static)
+target_include_directories(client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../external/DiligentCore)
