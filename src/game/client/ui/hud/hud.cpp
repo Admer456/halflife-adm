@@ -310,6 +310,8 @@ int __MsgFunc_StatsPlayer(const char* pszName, int iSize, void* pbuf)
 	return 0;
 }
 
+extern void Cmd_SpawnSkulligon();
+
 // This is called every time the DLL is loaded
 void CHud::Init()
 {
@@ -360,7 +362,8 @@ void CHud::Init()
 	CVAR_CREATE("hud_classautokill", "1", FCVAR_ARCHIVE | FCVAR_USERINFO); // controls whether or not to suicide immediately on TF class switch
 	CVAR_CREATE("hud_takesshots", "0", FCVAR_ARCHIVE);					   // controls whether or not to automatically take screenshots at the end of a round
 
-
+	gEngfuncs.pfnAddCommand("create_moss", Cmd_SpawnSkulligon);
+	
 	m_iLogo = 0;
 	m_iFOV = 0;
 

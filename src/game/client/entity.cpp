@@ -288,11 +288,44 @@ void Beams()
 }
 #endif
 
+static std::vector<std::unique_ptr<cl_entity_t>> skulls{};
+
+// Referenced in hud.cpp
+void Cmd_SpawnSkulligon()
+{
+	static float lastTime = 0.0f;
+
+	// 0.05s delay between every spawn
+	if ((gHUD.m_flTime - lastTime) < 0.05f)
+	{
+		return;
+	}
+
+	Vector forward, right, up;
+	AngleVectors(gHUD.m_vecAngles, forward, right, up);
+
+	Vector start = gHUD.m_vecOrigin;
+	Vector end = start + forward * 512.0f;
+	
+	pmtrace_t* tr = gEngfuncs.PM_TraceLine(start, end, PM_TRACELINE_PHYSENTSONLY, 2, -1);
+	
+	if (tr->fraction == 1.0f)
+	{
+		return;
+	}
+
+	auto skull = std::make_unique<cl_entity_t>();
+	
+	skull->curstate.entityType = ENTITY_NORMAL;
+	skull->origin = tr->endpos - forward * 8.0f;
+
+	skulls.push_back(std::move(skull));
+
+	lastTime = gHUD.m_flTime;
+}
+
 static void HUD_UpdateSkulligon()
 {
-	static std::vector<cl_entity_t> skulls{};
-	static float timer = 0.0f;
-
 	model_t* model = gEngfuncs.CL_LoadModel("models/hgibs.mdl", nullptr);
 	const float& time = gHUD.m_flTime;
 
@@ -301,33 +334,17 @@ static void HUD_UpdateSkulligon()
 
 	for (size_t i = 0; i < skulls.size(); i++)
 	{
-		cl_entity_t& skull = skulls.at(i);
-		memset(&skull, 0, sizeof(skull));
+		auto& skull = skulls.at(i);
+		
+		skull->curstate.entityType = ENTITY_NORMAL;
+		skull->curstate.angles.x = (time*30.0f + i * 12.0f);
+		skull->curstate.angles.y = (time*12.0f + i * 16.0f);
+		skull->curstate.angles.z = (time*18.0f + i * 20.5f);
+		skull->angles = skull->curstate.angles;
+		skull->curstate.scale = 2.0f + std::sinf(time + i);
+		skull->model = model;
 
-		skull.curstate.entityType = ENTITY_NORMAL;
-		skull.origin.z = i * 12.0f;
-		skull.curstate.angles.x = (time*30.0f + i * 12.0f);
-		skull.curstate.angles.y = (time*12.0f + i * 16.0f);
-		skull.curstate.angles.z = (time*18.0f + i * 20.5f);
-		skull.angles = skull.curstate.angles;
-		skull.curstate.scale = 2.0f + std::sinf(time + i);
-		skull.model = model;
-
-		gEngfuncs.CL_CreateVisibleEntity(ET_NORMAL, &skull);
-	}
-
-	timer += gHUD.m_flTimeDelta;
-	if (timer > 1.0f)
-	{
-		// The engine will go nuts if std::vector decides to expand itself
-		// It expects the clentity to be on the same memory location basically
-		if (skulls.empty())
-		{
-			skulls.reserve(1024U);
-		}
-
-		timer = 0.0f;
-		skulls.push_back({});
+		gEngfuncs.CL_CreateVisibleEntity(ET_NORMAL, skull.get());
 	}
 }
 
