@@ -1,8 +1,10 @@
-# Half-Life Unified SDK
+# Half-Life: Advanced Development Mod
 
-[![CI/CD](https://github.com/SamVanheer/halflife-unified-sdk/actions/workflows/ci-cd.yml/badge.svg?branch=master)](https://github.com/SamVanheer/halflife-unified-sdk/actions/workflows/ci-cd.yml)
+[![CI/CD](https://github.com/Admer456/halflife-adm/actions/workflows/ci-cd.yml/badge.svg?branch=master)](https://github.com/Admer456/halflife-adm/actions/workflows/ci-cd.yml)
 
-[See the wiki for setup instructions](https://github.com/SamVanheer/halflife-unified-sdk/wiki/Setting-up-the-source-code)
+Half-Life mod base with (soon) cool features for modders. It's gonna be under construction for a while.
+
+Based on [Half-Life Unified SDK](https://github.com/SamVanheer/halflife-unified-sdk).
 
 Half Life 1 SDK LICENSE
 ======================
