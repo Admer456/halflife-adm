@@ -321,6 +321,8 @@ void Cmd_SpawnSkulligon()
 
 	skulls.push_back(std::move(skull));
 
+	gEngfuncs.Con_Printf("M.O.S.S.: %u instances\n", skulls.size());
+
 	lastTime = gHUD.m_flTime;
 }
 
@@ -344,6 +346,8 @@ static void HUD_UpdateSkulligon()
 		skull->curstate.scale = 2.0f + std::sinf(time + i);
 		skull->model = model;
 
+		// It seems that we can only render 512 of these :(
+		// Could hijack the Studio Model Renderer or write some OpenGL
 		gEngfuncs.CL_CreateVisibleEntity(ET_NORMAL, skull.get());
 	}
 }
