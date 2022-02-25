@@ -288,6 +288,49 @@ void Beams()
 }
 #endif
 
+static void HUD_UpdateSkulligon()
+{
+	static std::vector<cl_entity_t> skulls{};
+	static float timer = 0.0f;
+
+	model_t* model = gEngfuncs.CL_LoadModel("models/hgibs.mdl", nullptr);
+	const float& time = gHUD.m_flTime;
+
+	if (!model)
+		return;
+
+	for (size_t i = 0; i < skulls.size(); i++)
+	{
+		cl_entity_t& skull = skulls.at(i);
+		memset(&skull, 0, sizeof(skull));
+
+		skull.curstate.entityType = ENTITY_NORMAL;
+		skull.origin.z = i * 12.0f;
+		skull.curstate.angles.x = (time*30.0f + i * 12.0f);
+		skull.curstate.angles.y = (time*12.0f + i * 16.0f);
+		skull.curstate.angles.z = (time*18.0f + i * 20.5f);
+		skull.angles = skull.curstate.angles;
+		skull.curstate.scale = 2.0f + std::sinf(time + i);
+		skull.model = model;
+
+		gEngfuncs.CL_CreateVisibleEntity(ET_NORMAL, &skull);
+	}
+
+	timer += gHUD.m_flTimeDelta;
+	if (timer > 1.0f)
+	{
+		// The engine will go nuts if std::vector decides to expand itself
+		// It expects the clentity to be on the same memory location basically
+		if (skulls.empty())
+		{
+			skulls.reserve(1024U);
+		}
+
+		timer = 0.0f;
+		skulls.push_back({});
+	}
+}
+
 /*
 =========================
 HUD_CreateEntities
@@ -307,8 +350,9 @@ void DLLEXPORT HUD_CreateEntities()
 	Game_AddObjects();
 
 	GetClientVoiceMgr()->CreateEntities();
-}
 
+	HUD_UpdateSkulligon();
+}
 
 /*
 =========================

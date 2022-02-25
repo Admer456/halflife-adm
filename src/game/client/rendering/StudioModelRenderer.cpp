@@ -702,6 +702,23 @@ void CStudioModelRenderer::StudioFxTransform(cl_entity_t* ent, float transform[3
 	}
 	break;
 	}
+
+	if (ent->curstate.scale > 0.0f)
+	{
+		float& scale = ent->curstate.scale;
+		// Scale along X
+		transform[0][0] *= scale;
+		transform[0][1] *= scale;
+		transform[0][2] *= scale;
+		// Scale along Y
+		transform[1][0] *= scale;
+		transform[1][1] *= scale;
+		transform[1][2] *= scale;
+		// Scale along Z
+		transform[2][0] *= scale;
+		transform[2][1] *= scale;
+		transform[2][2] *= scale;
+	}
 }
 
 /*
