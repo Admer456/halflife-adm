@@ -1242,6 +1242,7 @@
   _minlight(integer) : "Minimum light level"
   spawnorigin(string) : "X Y Z - move here after lighting" : "0 0 0"
   dmg(integer) : "Damage inflicted when blocked" : 0
+  movedir(string) : "Custom rotation axis" : : "By default, the rotation axis is 0 1 0 if the axis flags are off; won't work if 'X axis' or 'Y axis' are on"
 ]
 
 // don't forget func_tankcontrols
@@ -3185,4 +3186,74 @@
         1: "On"
         2: "Toggle"
     ]
+]
+
+// ===============================================================================================
+// ===============================================================================================
+//
+// ADM entities
+//
+// ===============================================================================================
+// ===============================================================================================
+
+// ===============================================================================================
+// filter_ entities
+// ===============================================================================================
+
+@PointClass base(Targetname, Target) = filter_date_hms : "Relays the trigger according to system hour-minute-second"
+[
+    hour(integer) : "Hour (-1 = any)"
+    minute(integer) : "Minute (-1 = any)"
+    second(integer) : "Second (-1 = any)"
+]
+
+@PointClass base(Targetname, Target) = filter_date_ymd : "Relays the trigger according to system year-month-date"
+[
+    year(integer) : "Year (-1 = any)"
+    month(integer) : "Month (-1 = any)"
+    day(integer) : "Day (-1 = any)"
+]
+
+@PointClass base(Targetname, Target) = filter_difficulty : "Relays the trigger according to the difficulty"
+[
+    skill(choices) : 1 =
+    [
+        1: "Easy"
+        2: "Medium"
+        4: "Hard"
+        3: "Easy + medium"
+        7: "Easy + medium + hard"
+        5: "Easy + hard"
+        6: "Medium + hard"
+    ]
+]
+
+// ===============================================================================================
+// trigger_ entities
+// ===============================================================================================
+
+@PointClass base(Targetname, Target) = trigger_timer : "Triggers its target every X seconds"
+[
+    baseDelay(string) : "Delay" : : "Base delay between ticks"
+    randomDelay(string) : "Random delay" : : "Random delay that is added to the base delay (totalDelay = baseDelay + rand(-randomDelay,+randomDelay))" 
+]
+
+// ===============================================================================================
+// util_ entities
+// ===============================================================================================
+
+@PointClass base(Targetname) = util_movewith : "Every frame, moves an entity to another entity's origin"
+[
+    parent(target_destination) : "Parent entity"
+    child(target_destination) : "Child entity"
+]
+
+@PointClass base(Targetname) = util_print : "Prints a message into the console"
+[
+    netname(string) : "Message"
+]
+
+@PointClass base(Targetname) = util_servercommand : "Executes a server command when triggered"
+[
+    command(string) : "Command to execute"
 ]
