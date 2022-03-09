@@ -1,225 +1,9 @@
-//
-// Half-Life OPPOSING FORCE game definition file (.fgd)
-// Based on Half-Life .fgd version 1.7 with changes and additions for
-// Opposing Force addon pack
-//
-// For use with Worldcraft 3.3 and above, and Half-Life 1.1.0.0 and above
-//
-// last update: 06/08/2000
-//
 
 //
-// version 1.51
-// 0608 - added "angles" key to appropriate entities (most of em)
+// Half-Life ADM game definition file
+// Based on Half-Life Unified SDK's FGD, which is
+// based on Half-Life Opposing Force FGD 1.51 (06/08/2000)
 //
-// VERSION 1.5
-// external
-// Chris "autolycus" Bokitch changes
-//
-// 0116 - version 1.0c
-// 0116 - added the Global Name property to applicable func entities
-//
-// 0113 - version 1.0b --
-// 0113 - removed many defunct keys, big huge thanks to 
-//        Juddhunter!
-// 0112 - changed monster_satchelcharge to monster_satchel, 
-//        removed extra targetname (Ryan Desgroseilliers)
-// 0112 - added two new body types to monster_scientist (R.D.)
-// 1212 - added targetname to various monster entities
-//
-// 1201 - version 1.0a -- 
-// 1201 - changed item_generic default model to models/egg.mdl
-// 1201 - changed OpFor item baseclasses from TargetX to 
-//        Targetx
-// 1201 - removed Target and Targetname baseclasses from 
-//        OpFor items (as they were already present)
-// 1201 - thanks to Mr. White for pointing out the problem
-//
-// 1124 - changed engineer's default weapon to the pistol
-// 1121 - clarified "suspicious" property values
-
-
-// Patrick Deupree changes
-//
-//
-// 0525 Changed info_ctfdetect "score_icon_name" field to be 2 fields, 
-//      "score_icon_namebm" and "score_icon_nameof".
-// 0523 Changed "trigger_ctfscore" to "trigger_ctfgeneric" and added some extra fields
-//      to give it more flexibility
-// 0518 Added "score_icon_name" field to info_ctfdetect
-// 0518 Added "trigger_ctfscore" entity
-// 0518 Changed all "Soldier" fields to "Opposing Force"
-// 0518 Added "map_score_max" field to info_ctfdetect
-// 
-
-
-// David "Alpha_Male" Mertz changes
-// 
-// 0601  Applied Half-Life .fgd version 1.7 changes 
-//      (too numerous to completely list, summary below)
-//
-//      - made light, light_spot, and light_environment use the
-//        lightbulb icon
-//      - made env_glow, env_sprite, and cycler_sprite display
-//        their sprite in the 3D view.
-//      - changed appropriate keys to sprite, sound, or studio type
-//
-//       Misc Changes
-//
-//	  - Added activator field to spawn flags for env_fade
-//      - removed unnecessary size(-8 -8 -8, 8 8 8) declarations as
-//        that is the default size anyway.
-//      - Removed targetname(target_source) from speaker entity 
-//	    (corrected it properly with base(Targetname) addition
-//      - Added scale property to env_glow 
-//	  - Added "models/civ_stand.mdl" to model(string) for item_ctfbase
-//
-//	   Applied WC 3.3 .fgd enhancements to Op For Entities (listed below)
-//
-//      - gave infodecal the decal() helper
-//      - changed (string) to (sound) for:
-//          - BaseTankOF
-//      - changed (string) to (sprite) for:   
-//	      - model(string) for env_spritetrain 
-//      - changed (string) to (studio) for:   
-//		- endingmodel(string) for env_electrified_wire 
-//		- bodymodel(string)for env_electrified_wire 
-//	      - endingmodel(string) for env_rope 
-//		- bodymodel(string)for env_rope 
-//	      - model(string) for item_generic 
-//		- model(string) for item_ctfflag 
-//		- model(string) for item_ctfbase 
-//
-
-//
-// 0501 Added weapon_penguin :)
-//	  - corrected RenderFxChoices to RenderFields
-//      Modified some descriptions for CTF weapons/items
-//      General clean up
-//
-// 0402 Added new options to info_ctfdetect
-//
-// 0325 Added defaultctf(choices) to worldspawn (code change)
-// 0325 Added telesound(string) to trigger_teleport (new code was added)
-//
-// 0320 Merged Op For Ctf entities and custom .fgd provided by Patrick
-// 0320 Included changes made to Half Life .fgd which were:
-// 	  - added targetname to button_target 
-//
-// 0320 - Made ammo_spore handled by center
-// 0320 - Removed color from ammo_spore
-//
-// 1119 - removed info_pitworm (never fully implemented)
-// 1112 - added 'scale' back into env_spritetrain (unsupported)
-// 1112 - fixed some minor spelling mistakes
-// 1112 - removed 'gravity(string)' from env_shooter (never implemented)
-// 1112 - double checked and included halflife.fgd version 1.6 changes
-// 1112 - included halflife.fgd version 1.6 changes to Op For entities
-// 1112 - removed RenderFxChoices from ammo entities
-// 1112 - removed RenderFxChoices from weapon entities
-// 1112 - added RenderFields to ammo entities
-// 1112 - added RenderFields to weapon entities
-// 1111 - general clean up for public release
-// 1111 - replaced 'hgrunt' with 'grunt' for "mapteams(string)" in worldspawn
-// 1111 - removed trigger_displacersave (obsolete)
-// 1111 - removed trigger_kill_nogib (never implemented)
-// 1111 - added description comments for ammo_spore
-// 1111 - added description comments for displacer target entities
-// 1111 - reorganization and partial alphabetizing
-// 1111 - added separation headers for Op For classes (.fgd organization)
-
-// John's changes:
-// ---------------
-// 1025 - added render properties to weapons
-// 1024 - added trigger_xen_return
-// 1021 - removed default speed value from path_track and path_corner
-// 1020 - added dead vortigaunt
-// 1018 - added monster_op4loader
-// 1015 - added head controller support for monster_generic
-// 1011 - removed support for rotation from spritetrain, changed rope defaults
-// 1008 - added 'disable' to rope and wire
-// 1007 - added trigger_kill_nogib
-// 1007 - added zoffset to blowercannon
-// 0929 - updated male assassin
-// 0925 - added displacer targets
-// 0920 - fixed male assassin, added body to item_suit
-// 0917 - added dead human grunt ally (patrick)
-// 0917 - added monster_blkop_osprey, monster_blkop_apache
-// 0916 - updated monster_cycler, env_shooter
-// 0914 - added gonome
-// 0824 - added trigger_playerfreeze and gene worm
-// 0820 - added displacer targets
-// 0820 - added torch_ally
-// 0820 - cleanup for mapper delivery
-// 0813 - added mortar and controller
-// 0804 - fixed ammo_762
-// 0802 - added all the new OpFor ents
-
-// Rob's changes:
-// --------------
-// 0603 - added 'globalname' to func_plat
-// 0413 - rolled in changes from version 1.52
-// 0410 - added 'targetname' keyvalue to func_ladder so they can be killed
-// 0406 - changed description for 'listener' keyvalue in scripted_sentence
-// 0407 - added 'speed' to func_plat
-
-// External Changes:
-// -----------------
-// 1122 - added func_tankcontrols
-// 1128 - added RenderFields to monsters
-// 1129 - added _minlight to most func_s
-// 1207 - added cute little monster_babycrab entity
-// 1208 - added ammo_9mmbox, 200 9mm shells
-// 1208 - added monster_rat, has limited animations, no ai
-// 1208 - added monster_snark (thanks HB :)
-// 0201 - changed worldspawn variable types
-// 0218 - removed unneeded properties from trigger_monsterjump
-// 0218 - increased func_rot_button speed from 5 to 50
-// 0218 - increased momentary_rot_button speed from 5 to 50
-// 0218 - removed master from trigger_cdaudio
-// 0222 - added targetname to func_plat
-// 0222 - cleaned up func_platrot a bit
-// 0224 - removed info_player_start2
-// 0302 - changed cycler_weapon size info
-// 0302 - removed MoveTarget (target) from Monster definition
-// 0302 - redid cycler properties
-// 0302 - redid cycler_sprite properties and size
-// 0305 - removed obsolete flags from scripted_sequence (oops)
-// 0308 - removed obsolete flags from BaseTank entity baseclass
-//        affecting func_tank, -laser, -mortar, and -rockets.
-// 0312 - added speed to func_platrot
-// 0312 - added sequence to weapon_crossbow
-// 0312 - added rendering properties to button_target
-// 0315 - added first set of game_ ents: _counter, _counter_set, 
-//        _end, _player_hurt, _score, _team_master, _team_master_set,
-//        _text, and _zone_player (1.0.0.9 only)
-// 0319 - rearranged env_beam
-// 0319 - added Targetname reference to Weapon BaseClass
-// 0324 - added game_player_equip
-// 0401 - added game_player_team
-// 0401 - made changes to various game_ ents
-// 0410 - added master to BaseTank baseclass
-// 0411 - removed Appearflags from monsters (duh)
-// 0411 - typo fixed env_sound - "meejum"
-// 0411 - changed defauly env_sprite to sprites/glow01.spr
-//        (sprites/glow.spr was not valid)
-// 0411 - gave env_glow a default sprite of sprites/glow01.spr
-// 0412 - added speed to func_plat
-// 0412 - added mapteams and defaultteam to worldspawn
-// 0428 - removed master from trigger_relay 
-//      - set all choice default values to their first ordinal value
-// 0429 - changed instances of wait(string) to wait(integer) 
-// 0506 - added Target to light_spot 
-//      - changed light_spot _cone and _cone2 descriptions and defaults 
-//      - added a Multithreaded flag to the multi_manager 
-// 0510 - commented out master in game_zone_player 
-//      - commented out dmdelay in func_recharge and func_healthcharger
-// 0518 - added Weapon and Targetx bases to items
-// 0524 - added Targetname to func_illusionary 
-// 0910 - various minor fixes and improvements
-//      - changed entity coloring on some things
-//      - added rendering properties to various things
-
 
 //
 // worldspawn
@@ -227,39 +11,40 @@
 
 @SolidClass = worldspawn : "World entity"
 [
-  message(string) : "Map Description / Title"
-  skyname(string) : "environment map (cl_skyname)"
-  sounds(integer) : "CD track to play" : 1
-  light(integer) : "Default light level"
-  WaveHeight(string) : "Default Wave Height"
-  MaxRange(string) : "Max viewable distance" : "4096"
-  chaptertitle(string) : "Chapter Title Message"
-  startdark(choices) : "Level Fade In" : 0 =
-  [ 
-    0 : "No"
-    1 : "Yes"
-  ]
-  gametitle(choices) : "Display game title" : 0 = 
-  [ 
-    0 : "No"
-    1 : "Yes"
-  ]
-  newunit(choices) : "New Level Unit" : 0 = 
-  [
-    0 : "No, keep current"
-    1 : "Yes, clear previous levels"
-  ]
-  mapteams(string) : "Map Team List" : "grunt;scientist"
-  defaultteam(choices) : "Default Team" : 0 = 
-  [
-    0 : "Fewest Players"
-    1 : "First Team"
-  ]
-  defaultctf(choices) : "Default CTF" : 0 =
-  [
-    0 : "Not CTF map"
-    1 : "CTF map"
-  ]
+    message(string) : "Map description / title"
+    skyname(string) : "Skybox"
+    sounds(integer) : "CD track to play" : 1
+    light(integer) : "Default light level"
+    WaveHeight(string) : "Default wave height"
+    MaxRange(string) : "Max viewable distance" : "4096"
+    chaptertitle(string) : "Chapter title message"
+    startdark(choices) : "Level fade in" : 0 =
+    [ 
+        0: "No"
+        1: "Yes"
+    ]
+    gametitle(choices) : "Display game title" : 0 = 
+    [ 
+        0: "No"
+        1: "Yes"
+    ]
+    newunit(choices) : "New level unit" : 0 = 
+    [
+        0: "No, keep current"
+        1: "Yes, clear previous levels"
+    ]
+    // Admer: removed grunt;scientist here
+    mapteams(string) : "Map team list"
+    defaultteam(choices) : "Default team" : 0 = 
+    [
+        0: "Fewest players"
+        1: "First team"
+    ]
+    defaultctf(choices) : "Default CTF" : 0 =
+    [
+        0: "Not CTF map"
+        1: "CTF map"
+    ]
 ]
 
 //
@@ -268,44 +53,44 @@
 
 @BaseClass = Sequence
 [
-	sequence(integer) : "Animation Sequence (editor)" : : "Sequence to display in Jackhammer. This does not affect gameplay."
+    sequence(integer) : "Animation sequence (editor)" : : "Sequence to display in the editor. This does not affect gameplay."
 ]
 
 @BaseClass = ZHLT
 [
-	zhlt_lightflags(choices) : "ZHLT Lightflags" : 0 =
-	[
-		0 : "Default"
-		1 : "Embedded Fix"
-		2 : "Opaque (blocks light)"
-		3 : "Opaque + Embedded fix"
-		6 : "Opaque + Concave Fix"
-	]
-	light_origin(string) : "Light Origin Target"
+    zhlt_lightflags(choices) : "ZHLT lightflags" : 0 =
+    [
+        0 : "Default"
+        1 : "Embedded fix"
+        2 : "Opaque (blocks light)"
+        3 : "Opaque + embedded fix"
+        6 : "Opaque + concave fix"
+    ]
+    light_origin(string) : "Light origin target"
 ]
 
 @BaseClass = ZHLT_point
 [
-	_fade(string) : "ZHLT Fade" : "1.0"
-	_falloff(choices) : "ZHLT Falloff" : 0 =
-	[
-		0 : "Default"
-		1 : "Inverse Linear"
-		2 : "Inverse Square"
-	]
+    _fade(string) : "ZHLT fade" : "1.0"
+    _falloff(choices) : "ZHLT falloff" : 0 =
+    [
+        0 : "Default"
+        1 : "Inverse linear"
+        2 : "Inverse square"
+    ]
 ]
 
 @BaseClass = Appearflags
 [
-  spawnflags(Flags) =
-  [
-    2048 : "Not in Deathmatch" : 0
-  ]
+    spawnflags(flags) =
+    [
+        2048: "Not in deathmatch" : 0
+    ]
 ]
 
 @BaseClass = Angles
 [
-	angles(string) : "Pitch Yaw Roll (Y Z X)" : "0 0 0"
+    angles(string) : "Pitch yaw roll (Y Z X)" : "0 0 0"
 ]
 
 
@@ -313,459 +98,460 @@
 
 @BaseClass = Targetname 
 [ 
-  targetname(target_source) : "Name"
+    targetname(target_source) : "Name"
 ]
 @BaseClass = Target 
 [ 
-  target(target_destination) : "Target" 
+    target(target_destination) : "Target" 
 ]
 @BaseClass size(-16 -16 0, 16 16 32) color(0 0 200) base(Targetname, Appearflags, Angles) = Weapon []
 @BaseClass = Global 
 [ 
-  globalname(string) : "Global Entity Name" 
+    globalname(string) : "Global entity name" 
 ]
 
 @BaseClass base(Target) = Targetx 
 [
-  killtarget(target_destination) : "KillTarget"
-  delay(string) : "Delay before trigger" : "0"
+    killtarget(target_destination) : "Kill target"
+    delay(string) : "Delay before trigger" : "0"
 ]
 
 @BaseClass = RenderFxChoices
 [
-  renderfx(choices) :"Render FX" : 0 =
-  [
-    0: "Normal"
-    1: "Slow Pulse"
-    2: "Fast Pulse"
-    3: "Slow Wide Pulse"
-    4: "Fast Wide Pulse"
-    9: "Slow Strobe"
-    10: "Fast Strobe"
-    11: "Faster Strobe"
-    12: "Slow Flicker"
-    13: "Fast Flicker"
-    5: "Slow Fade Away"
-    6: "Fast Fade Away"
-    7: "Slow Become Solid"
-    8: "Fast Become Solid"
-    14: "Constant Glow"
-    15: "Distort"
-    16: "Hologram (Distort + fade)"
-  ]
+    renderfx(choices) :"Render FX" : 0 =
+    [
+        0: "Normal"
+        1: "Slow pulse"
+        2: "Fast pulse"
+        3: "Slow wide pulse"
+        4: "Fast wide pulse"
+        9: "Slow strobe"
+        10: "Fast strobe"
+        11: "Faster ptrobe"
+        12: "Slow flicker"
+        13: "Fast flicker"
+        5: "Slow fade away"
+        6: "Fast fade away"
+        7: "Slow become solid"
+        8: "Fast become solid"
+        14: "Constant glow"
+        15: "Distort"
+        16: "Hologram (distort + fade)"
+    ]
 ]
 
 @BaseClass base(RenderFxChoices) = RenderFields 
 [
-  rendermode(choices) : "Render Mode" : 0 =
-  [
-    0: "Normal"
-    1: "Color"
-    2: "Texture"
-    3: "Glow"
-    4: "Solid"
-    5: "Additive"
-  ]
-  renderamt(integer) : "FX Amount (1 - 255)"
-  rendercolor(color255) : "FX Color (R G B)" : "0 0 0"
+    rendermode(choices) : "Render mode" : 0 =
+    [
+        0: "Normal"
+        1: "Color"
+        2: "Texture"
+        3: "Glow"
+        4: "Solid"
+        5: "Additive"
+    ]
+    renderamt(integer) : "Render amount (1 - 255)"
+    rendercolor(color255) : "Render color (R G B)" : "0 0 0"
 ]
 
 @BaseClass base(Appearflags, Angles) flags(Angle) size(-16 -16 -36, 16 16 36) color(0 255 0) offset(0 0 36) = PlayerClass []
 
 @BaseClass base(Target, Targetname, RenderFields, Angles) flags(Angle) color(0 200 200) = Monster 
 [
-  TriggerTarget(String) : "TriggerTarget"
-  TriggerCondition(Choices) : "Trigger Condition" : 0 =
-  [
-    0 : "No Trigger"
-    1 : "See Player, Mad at Player"
-    2 : "Take Damage"
-    3 : "50% Health Remaining"
-    4 : "Death"
-    7 : "Hear World"
-    8 : "Hear Player"
-    9 : "Hear Combat"
-    10: "See Player Unconditional"
-    11: "See Player, Not In Combat"
-  ]
-  spawnflags(Flags) = 
-  [
-    1 : "WaitTillSeen"  : 0
-    2 : "Gag"   : 0
-    4 : "MonsterClip" : 0
-    16: "Prisoner"    : 0
-    128: "WaitForScript"  : 0
-    256: "Pre-Disaster"   : 0
-    512: "Fade Corpse"  : 0
-  ]
+    TriggerTarget(string) : "Trigger target"
+    TriggerCondition(choices) : "Trigger condition" : 0 =
+    [
+      0 : "No trigger"
+      1 : "See player, mad at player"
+      2 : "Take damage"
+      3 : "50% health remaining"
+      4 : "Death"
+      7 : "Hear world"
+      8 : "Hear player"
+      9 : "Hear combat"
+      10: "See player unconditional"
+      11: "See player, not in combat"
+    ]
+    
+    spawnflags(flags) = 
+    [
+      1 : "Wait until seen"  : 0
+      2 : "Gag"   : 0
+      4 : "Monster clip" : 0
+      16: "Prisoner"    : 0
+      128: "Wait for script"  : 0
+      256: "Pre-disaster"   : 0
+      512: "Fade corpse"  : 0
+    ]
 ]
 
 @BaseClass = TalkMonster
 [
-  UseSentence(String) : "Use Sentence"
-  UnUseSentence(String) : "Un-Use Sentence"
+    UseSentence(string) : "Use sentence"
+    UnUseSentence(string) : "Unuse sentence"
 ]
 
 @BaseClass base(Targetname, Angles) size(-16 -16 -16, 16 16 16) = gibshooterbase
 [
-  // how many pieces to create
-  m_iGibs(integer) : "Number of Gibs" : 3
+    // how many pieces to create
+    m_iGibs(integer) : "Number of gibs" : 3
   
-  // delay (in seconds) between shots. If 0, all gibs shoot at once.
-  delay(string) : "Delay between shots" : "0"
+    // delay (in seconds) between shots. If 0, all gibs shoot at once.
+    delay(string) : "Delay between shots" : "0"
 
-  // how fast the gibs are fired
-  m_flVelocity(integer) : "Gib Velocity" : 200
+    // how fast the gibs are fired
+    m_flVelocity(integer) : "Gib velocity" : 200
 
-  // Course variance
-  m_flVariance(string) : "Course Variance" : "0.15"
+    // Course variance
+    m_flVariance(string) : "Course variance" : "0.15"
 
-  // Time in seconds for gibs to live +/- 5%
-  m_flGibLife(string) : "Gib Life" : "4"
+    // Time in seconds for gibs to live +/- 5%
+    m_flGibLife(string) : "Gib life" : "4"
 
-  spawnflags(Flags) = 
-  [
-    1 : "Repeatable"  : 0
-  ]
+    spawnflags(flags) = 
+    [
+        1 : "Repeatable"  : 0
+    ]
 ]
 
 @BaseClass = Light 
 [
-  _light(color255) : "Brightness" : "255 255 128 200"
-      style(Choices) : "Appearance" : 0 =
-  [
-    0 : "Normal"
-    10: "Fluorescent flicker"
-    2 : "Slow, strong pulse"
-    11: "Slow pulse, noblack"
-    5 : "Gentle pulse"
-    1 : "Flicker A"
-    6 : "Flicker B"
-    3 : "Candle A"
-    7 : "Candle B"
-    8 : "Candle C"
-    4 : "Fast strobe"
-    9 : "Slow strobe"
-  ]
-  pattern(string) : "Custom Appearance"
+    _light(color255) : "Brightness" : "255 255 128 200"
+    style(choices) : "Appearance" : 0 =
+    [
+        0: "Normal"
+        10: "Fluorescent flicker"
+        2: "Slow, strong pulse"
+        11: "Slow pulse, no black"
+        5: "Gentle pulse"
+        1: "Flicker A"
+        6: "Flicker B"
+        3: "Candle A"
+        7: "Candle B"
+        8: "Candle C"
+        4: "Fast strobe"
+        9: "Slow strobe"
+    ]
+    pattern(string) : "Custom appearance"
 ]
 
 @BaseClass base(Targetname,Global) = Breakable
 [
-  target(target_destination) : "Target on break"
-  health(integer) : "Strength" : 1
-  material(choices) :"Material type" : 0 =
-  [
-    0: "Glass"
-    1: "Wood"
-    2: "Metal"
-    3: "Flesh"
-    4: "Cinder Block"  
-    5: "Ceiling Tile"
-    6: "Computer"
-    7: "Unbreakable Glass"
-    8: "Rocks"
-  ]
-  explosion(choices) : "Gibs Direction" : 0 =
-  [
-    0: "Random"
-    1: "Relative to Attack"
-  ]
-  delay(string) : "Delay before fire" : "0"
-  gibmodel(studio) : "Gib Model" : ""
-  spawnobject(choices) : "Spawn On Break" : 0 =
-  [
-    0: "Nothing"
-    1: "Battery"
-    2: "Healthkit"
-    3: "9mm Handgun"
-    4: "9mm Clip"
-    5: "Machine Gun"
-    6: "Machine Gun Clip"
-    7: "Machine Gun Grenades"
-    8: "Shotgun"
-    9: "Shotgun Shells"
-    10: "Crossbow"
-    11: "Crossbow Bolts"
-    12: "357"
-    13: "357 clip"
-    14: "RPG"
-    15: "RPG Clip"
-    16: "Gauss clip"
-    17: "Hand grenade"
-    18: "Tripmine"
-    19: "Satchel Charge"
-    20: "Snark"
-    21: "Hornet Gun"
-  ]
-  explodemagnitude(integer) : "Explode Magnitude (0=none)" : 0
+    target(target_destination) : "Target on break"
+    health(integer) : "Strength" : 1
+    material(choices) :"Material type" : 0 =
+    [
+        0: "Glass"
+        1: "Wood"
+        2: "Metal"
+        3: "Flesh"
+        4: "Cinder block"  
+        5: "Ceiling tile"
+        6: "Computer"
+        7: "Unbreakable glass"
+        8: "Rocks"
+    ]
+    explosion(choices) : "Gibs direction" : 0 =
+    [
+        0: "Random"
+        1: "Relative to attack"
+    ]
+    delay(string) : "Delay before fire" : "0"
+    gibmodel(studio) : "Gib model" : ""
+    spawnobject(choices) : "Spawn on break" : 0 =
+    [
+        0: "Nothing"
+        1: "Battery"
+        2: "Healthkit"
+        3: "9mm handgun"
+        4: "9mm clip"
+        5: "Machine gun"
+        6: "Machine gun clip"
+        7: "Machine gun grenades"
+        8: "Shotgun"
+        9: "Shotgun shells"
+        10: "Crossbow"
+        11: "Crossbow bolts"
+        12: "357"
+        13: "357 clip"
+        14: "RPG"
+        15: "RPG clip"
+        16: "Gauss clip"
+        17: "Hand grenade"
+        18: "Tripmine"
+        19: "Satchel charge"
+        20: "Snark"
+        21: "Hornet gun"
+    ]
+    explodemagnitude(integer) : "Explode magnitude (0=none)" : 0
 ]
 
 @BaseClass base(Appearflags, Targetname, RenderFields, Global, Angles) = Door
 [
-  killtarget(target_destination) : "KillTarget"
-  speed(integer) : "Speed" : 100
-  master(string) : "Master" 
-  movesnd(choices) : "Move Sound" : 0 = 
-  [
-    0: "No Sound"
-    1: "Servo (Sliding)"
-    2: "Pneumatic (Sliding)"
-    3: "Pneumatic (Rolling)"
-    4: "Vacuum"
-    5: "Power Hydraulic"
-    6: "Large Rollers"
-    7: "Track Door"
-    8: "Snappy Metal Door"
-    9: "Squeaky 1"
-    10: "Squeaky 2"
-  ]
-  stopsnd(choices) : "Stop Sound" : 0 = 
-  [
-    0: "No Sound"
-    1: "Clang with brake"
-    2: "Clang reverb"
-    3: "Ratchet Stop"
-    4: "Chunk"
-    5: "Light airbrake"
-    6: "Metal Slide Stop"
-    7: "Metal Lock Stop"
-    8: "Snappy Metal Stop"
-  ]
-  wait(choices) : "Delay before close" : 4 = 
-  [
-    -1 : "Stays open"
-  ]
-  lip(integer) : "Lip"
-  dmg(integer) : "Damage inflicted when blocked" : 0
-  message(string) : "Message if triggered"
-  target(target_destination) : "Target"
-  delay(integer) : "Delay before fire" 
-  netname(string) : "Fire on Close"
-  health(integer) : "Health (shoot open)" : 0
-  spawnflags(flags) =
-  [
-    1 : "Starts Open" : 0
-    4 : "Don't link" : 0
-    8: "Passable" : 0
+    killtarget(target_destination) : "Kill target"
+    speed(integer) : "Speed" : 100
+    master(string) : "Master" 
+    movesnd(choices) : "Move sound" : 0 = 
+    [
+        0: "No sound"
+        1: "Servo (sliding)"
+        2: "Pneumatic (sliding)"
+        3: "Pneumatic (rolling)"
+        4: "Vacuum"
+        5: "Power hydraulic"
+        6: "Large rollers"
+        7: "Track door"
+        8: "Snappy metal door"
+        9: "Squeaky 1"
+        10: "Squeaky 2"
+    ]
+    stopsnd(choices) : "Stop sound" : 0 = 
+    [
+        0: "No sound"
+        1: "Clang with brake"
+        2: "Clang reverb"
+        3: "Ratchet stop"
+        4: "Chunk"
+        5: "Light airbrake"
+        6: "Metal slidesStop"
+        7: "Metal lock stop"
+        8: "Snappy metal stop"
+    ]
+    wait(choices) : "Delay before close" : 4 = 
+    [
+        -1 : "Stays open"
+    ]
+    lip(integer) : "Lip"
+    dmg(integer) : "Damage inflicted when blocked" : 0
+    message(string) : "Message if triggered"
+    target(target_destination) : "Target"
+    delay(integer) : "Delay before fire" 
+    netname(string) : "Fire on close"
+    health(integer) : "Health (shoot open)" : 0
+    spawnflags(flags) =
+    [
+        1: "Starts open" : 0
+        4: "Don't link" : 0
+        8: "Passable" : 0
         32: "Toggle" : 0
-    256:"Use Only" : 0
-    512: "Monsters Can't" : 0
-  ]
-  // NOTE: must be duplicated in BUTTON
-  locked_sound(choices) : "Locked Sound" : 0 = 
-  [
-    0: "None"
-    2: "Access Denied"
-    8: "Small zap"
-    10: "Buzz"
-    11: "Buzz Off"
-    12: "Latch Locked"
-  ]
-  unlocked_sound(choices) : "Unlocked Sound" : 0 = 
-  [
-    0: "None"
-    1: "Big zap & Warmup"
-    3: "Access Granted"
-    4: "Quick Combolock"
-    5: "Power Deadbolt 1"
-    6: "Power Deadbolt 2"
-    7: "Plunger"
-    8: "Small zap"
-    9: "Keycard Sound"
-    10: "Buzz"
-    13: "Latch Unlocked"
-  ]
-  locked_sentence(choices) : "Locked Sentence" : 0 = 
-  [
-    0: "None"
-    1: "Gen. Access Denied"
-    2: "Security Lockout"
-    3: "Blast Door"
-    4: "Fire Door"
-    5: "Chemical Door"
-    6: "Radiation Door"
-    7: "Gen. Containment"
-    8: "Maintenance Door"
-    9: "Broken Shut Door"
-  ]
-  unlocked_sentence(choices) : "Unlocked Sentence" : 0 = 
-  [
-    0: "None"
-    1: "Gen. Access Granted"
-    2: "Security Disengaged"
-    3: "Blast Door"
-    4: "Fire Door"
-    5: "Chemical Door"
-    6: "Radiation Door"
-    7: "Gen. Containment"
-    8: "Maintenance area"
-  ] 
-  _minlight(string) : "Minimum light level"
+        256: "Use only" : 0
+        512: "Monsters can't" : 0
+    ]
+    // NOTE: must be duplicated in BUTTON
+    locked_sound(choices) : "Locked sound" : 0 = 
+    [
+        0: "None"
+        2: "Access denied"
+        8: "Small zap"
+        10: "Buzz"
+        11: "Buzz off"
+        12: "Latch locked"
+    ]
+    unlocked_sound(choices) : "Unlocked sound" : 0 = 
+    [
+        0: "None"
+        1: "Big zap & warmup"
+        3: "Access granted"
+        4: "Quick combolock"
+        5: "Power deadbolt 1"
+        6: "Power deadbolt 2"
+        7: "Plunger"
+        8: "Small zap"
+        9: "Keycard sound"
+        10: "Buzz"
+        13: "Latch unlocked"
+    ]
+    locked_sentence(choices) : "Locked sentence" : 0 = 
+    [
+        0: "None"
+        1: "Gen. access denied"
+        2: "Security lockout"
+        3: "Blast door"
+        4: "Fire door"
+        5: "Chemical door"
+        6: "Radiation door"
+        7: "Gen. containment"
+        8: "Maintenance door"
+        9: "Broken Shut door"
+    ]
+    unlocked_sentence(choices) : "Unlocked sentence" : 0 = 
+    [
+        0: "None"
+        1: "Gen. access granted"
+        2: "Security disengaged"
+        3: "Blast door"
+        4: "Fire door"
+        5: "Chemical door"
+        6: "Radiation door"
+        7: "Gen. containment"
+        8: "Maintenance area"
+    ] 
+    _minlight(string) : "Minimum light level"
 ]
 
 @BaseClass base(Targetname, Target, RenderFields, Global, Angles) = BaseTank
 [
-  spawnflags(flags) =
-  [
-    1 : "Active" : 0
-    16: "Only Direct" : 0
-    32: "Controllable" : 0
-  ]
+    spawnflags(flags) =
+    [
+        1: "Active" : 0
+        16: "Only direct" : 0
+        32: "Controllable" : 0
+    ]
 
-  // Mainly for use with 1009 team settings (game_team_master)
-  master(string) : "(Team) Master" 
+    // Mainly for use with 1009 team settings (game_team_master)
+    master(string) : "(Team) Master" 
 
-  yawrate(string) : "Yaw rate" : "30"
-  yawrange(string) : "Yaw range" : "180"
-  yawtolerance(string) : "Yaw tolerance" : "15"
-  pitchrate(string) : "Pitch rate" : "0"
-  pitchrange(string) : "Pitch range" : "0"
-  pitchtolerance(string) : "Pitch tolerance" : "5"
-  barrel(string) : "Barrel Length" : "0"
-  barrely(string) : "Barrel Horizontal" : "0"
-  barrelz(string) : "Barrel Vertical" : "0"
-  spritesmoke(string) : "Smoke Sprite" : ""
-  spriteflash(string) : "Flash Sprite" : ""
-  spritescale(string) : "Sprite scale" : "1"
-  rotatesound(sound) : "Rotate Sound" : ""
-  firerate(string) : "Rate of Fire" : "1"
-  bullet_damage(string) : "Damage Per Bullet" : "0"
-  persistence(string) : "Firing persistence" : "1"
-  firespread(choices) : "Bullet accuracy" : 0 =
-  [
-    0: "Perfect Shot"
-    1: "Small cone"
-    2: "Medium cone"
-    3: "Large cone"
-    4: "Extra-large cone"
-  ]
-  minRange(string) : "Minmum target range" : "0"
-  maxRange(string) : "Maximum target range" : "0"
-  _minlight(string) : "Minimum light level"
+    yawrate(string) : "Yaw rate" : "30"
+    yawrange(string) : "Yaw range" : "180"
+    yawtolerance(string) : "Yaw tolerance" : "15"
+    pitchrate(string) : "Pitch rate" : "0"
+    pitchrange(string) : "Pitch range" : "0"
+    pitchtolerance(string) : "Pitch tolerance" : "5"
+    barrel(string) : "Barrel length" : "0"
+    barrely(string) : "Barrel horizontal" : "0"
+    barrelz(string) : "Barrel vertical" : "0"
+    spritesmoke(string) : "Smoke sprite" : ""
+    spriteflash(string) : "Flash sprite" : ""
+    spritescale(string) : "Sprite scale" : "1"
+    rotatesound(sound) : "Rotate sound" : ""
+    firerate(string) : "Rate of fire" : "1"
+    bullet_damage(string) : "Damage per bullet" : "0"
+    persistence(string) : "Firing persistence" : "1"
+    firespread(choices) : "Bullet accuracy" : 0 =
+    [
+        0: "Perfect shot"
+        1: "Small cone"
+        2: "Medium cone"
+        3: "Large cone"
+        4: "Extra-large cone"
+    ]
+    minRange(string) : "Minmum target range" : "0"
+    maxRange(string) : "Maximum target range" : "0"
+    _minlight(string) : "Minimum light level"
 ]
 
 @BaseClass = PlatSounds 
 [
-  movesnd(choices) : "Move Sound" : 0 = 
-  [
-    0: "No Sound"
-    1: "big elev 1"
-    2: "big elev 2"
-    3: "tech elev 1"
-    4: "tech elev 2"
-    5: "tech elev 3"
-    6: "freight elev 1"
-    7: "freight elev 2"
-    8: "heavy elev"
-    9: "rack elev"
-    10: "rail elev"
-    11: "squeek elev"
-    12: "odd elev 1"
-    13: "odd elev 2"
-  ]
-  stopsnd(choices) : "Stop Sound" : 0 = 
-  [
-    0: "No Sound"
-    1: "big elev stop1"
-    2: "big elev stop2"
-    3: "freight elev stop"
-    4: "heavy elev stop"
-    5: "rack stop"
-    6: "rail stop"
-    7: "squeek stop"
-    8: "quick stop"
-  ]
-  volume(string) : "Sound Volume 0.0 - 1.0" : "0.85"
+    movesnd(choices) : "Move sound" : 0 = 
+    [
+        0: "No sound"
+        1: "Big elev 1"
+        2: "Big elev 2"
+        3: "Tech elev 1"
+        4: "Tech elev 2"
+        5: "Tech elev 3"
+        6: "Freight elev 1"
+        7: "Freight elev 2"
+        8: "Heavy elev"
+        9: "Rack elev"
+        10: "Rail elev"
+        11: "Squeek elev"
+        12: "Odd elev 1"
+        13: "Odd elev 2"
+    ]
+    stopsnd(choices) : "Stop sound" : 0 = 
+    [
+        0: "No sound"
+        1: "Big elev stop1"
+        2: "Big elev stop2"
+        3: "Freight elev stop"
+        4: "Heavy elev stop"
+        5: "Rack stop"
+        6: "Rail stop"
+        7: "Squeek stop"
+        8: "Quick stop"
+    ]
+    volume(string) : "Sound volume 0.0 - 1.0" : "0.85"
 ]
 
 @BaseClass base(Targetname, RenderFields, Global, PlatSounds) = Trackchange
 [
-  height(integer) : "Travel altitude" : 0
-  spawnflags(flags) =
-  [
-    1: "Auto Activate train" : 0
-    2: "Relink track" : 0
-    8: "Start at Bottom" : 0
-    16: "Rotate Only" : 0
-    64: "X Axis" : 0
-    128: "Y Axis" : 0
-  ]
-  rotation(integer) : "Spin amount" : 0
-  train(target_destination) : "Train to switch"
-  toptrack(target_destination) : "Top track"
-  bottomtrack(target_destination) : "Bottom track"
-  speed(integer) : "Move/Rotate speed" : 0
+    height(integer) : "Travel altitude" : 0
+    spawnflags(flags) =
+    [
+        1: "Auto activate train" : 0
+        2: "Relink track" : 0
+        8: "Start at Bottom" : 0
+        16: "Rotate only" : 0
+        64: "X axis" : 0
+        128: "Y axis" : 0
+    ]
+    rotation(integer) : "Spin amount" : 0
+    train(target_destination) : "Train to switch"
+    toptrack(target_destination) : "Top track"
+    bottomtrack(target_destination) : "Bottom track"
+    speed(integer) : "Move/rotate speed" : 0
 ]
 
 @BaseClass base(Target, Targetname) = Trigger
 [
-  killtarget(target_destination) : "Kill target"
-  netname(target_destination) : "Target Path"
-  master(string) : "Master" 
-  sounds(choices) : "Sound style" : 0 =
-  [
-    0 : "No Sound"
-  ]
-  delay(string) : "Delay before trigger" : "0"
-  message(string) : "Message (set sound too!)"
-  spawnflags(flags) = 
-  [
-    1: "Monsters" : 0
-    2: "No Clients" : 0
-    4: "Pushables": 0
-  ]
+    killtarget(target_destination) : "Kill target"
+    netname(target_destination) : "Target path"
+    master(string) : "Master" 
+    sounds(choices) : "Sound style" : 0 =
+    [
+        0 : "No Sound"
+    ]
+    delay(string) : "Delay before trigger" : "0"
+    message(string) : "Message (set sound too!)"
+    spawnflags(flags) = 
+    [
+        1: "Monsters" : 0
+        2: "No Clients" : 0
+        4: "Pushables": 0
+    ]
 ]
 
 //
 // Entities
 //
 
-@PointClass base(Targetname, Targetx, Angles) size(-16 -16 0, 16 16 72) flags(Angle) color(255 0 255) = aiscripted_sequence : "AI Scripted Sequence"
+@PointClass base(Targetname, Targetx, Angles) size(-16 -16 0, 16 16 72) flags(Angle) color(255 0 255) = aiscripted_sequence : "AI scripted sequence"
 [
-  m_iszEntity(string) : "Target Monster"
-  m_iszPlay(string) : "Action Animation" : ""
-  m_flRadius(integer) : "Search Radius" : 512
-  m_flRepeat(integer) : "Repeat Rate ms" : 0
-  m_fMoveTo(Choices) : "Move to Position" : 0 =
+  m_iszEntity(string) : "Target monster"
+  m_iszPlay(string) : "Action animation" : ""
+  m_flRadius(integer) : "Search radius" : 512
+  m_flRepeat(integer) : "Repeat rate ms" : 0
+  m_fMoveTo(choices) : "Move to position" : 0 =
   [
     0 : "No"
     1 : "Walk"
     2 : "Run"
     4 : "Instantaneous"
-    5 : "No - Turn to Face"
+    5 : "No - turn to face"
   ]
-  m_iFinishSchedule(Choices) : "AI Schedule when done" : 0 =
+  m_iFinishSchedule(choices) : "AI schedule when done" : 0 =
   [
     0 : "Default AI"
     1 : "Ambush"
   ]
-  spawnflags(Flags) = 
+  spawnflags(flags) = 
   [
     4 : "Repeatable"    : 0
-    8 : "Leave Corpse"  : 0
+    8 : "Leave corpse"  : 0
   ]
 ]
 
-@PointClass iconsprite("sprites/speaker.spr") base(Targetname) = ambient_generic : "Universal Ambient"
+@PointClass iconsprite("sprites/speaker.spr") base(Targetname) = ambient_generic : "Generic sound emitter"
 [
   message(sound) : "Path/filename.wav of WAV"
   health(integer) : "Volume (10 = loudest)" : 10
-  preset(choices) :"Dynamic Presets" : 0 =
+  preset(choices) :"Dynamic presets" : 0 =
   [
     0: "None"
-    1: "Huge Machine"
-    2: "Big Machine"
+    1: "Huge machine"
+    2: "Big machine"
     3: "Machine"
-    4: "Slow Fade in"  
+    4: "Slow fade in"  
     5: "Fade in"
-    6: "Quick Fade in"
-    7: "Slow Pulse"
+    6: "Quick fade in"
+    7: "Slow pulse"
     8: "Pulse"
     9: "Quick pulse"
-    10: "Slow Oscillator"
+    10: "Slow oscillator"
     11: "Oscillator"
-    12: "Quick Oscillator"
+    12: "Quick oscillator"
     13: "Grunge pitch"
     14: "Very low pitch"
     15: "Low pitch"
@@ -782,11 +568,11 @@
     26: "Planet X"
     27: "Haunted"
   ]
-  volstart(integer) : "Start Volume" : 0
+  volstart(integer) : "Start volume" : 0
   fadein(integer) : "Fade in time (0-100)" : 0
   fadeout(integer) : "Fade out time (0-100)" : 0
   pitch(integer) : "Pitch (> 100 = higher)" : 100
-  pitchstart(integer) : "Start Pitch" : 100
+  pitchstart(integer) : "Start pitch" : 100
   spinup(integer) : "Spin up time (0-100)" : 0
   spindown(integer) : "Spin down time (0-100)" : 0
   lfotype(integer) : "LFO type 0)off 1)sqr 2)tri 3)rnd" : 0
@@ -800,8 +586,8 @@
     2: "Small Radius" : 0
     4: "Medium Radius" : 1
     8: "Large Radius" : 0
-    16:"Start Silent":0
-    32:"Is NOT Looped":0
+    16: "Start Silent" : 0
+    32: "Is NOT Looped" : 0
   ]
 ]
 
@@ -810,136 +596,44 @@
 //
 
 
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_9mmclip.mdl") = ammo_9mmclip : "9mm Pistol Ammo" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_9mmarclip.mdl") = ammo_9mmAR : "9mm Assault Rifle Ammo" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_chainammo.mdl") = ammo_9mmbox : "box of 200 9mm shells" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_argrenade.mdl") = ammo_ARgrenades : "Assault Grenades" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_shotbox.mdl") = ammo_buckshot : "Shotgun Ammo" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_357ammobox.mdl") = ammo_357 : "357 Ammo" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_rpgammo.mdl") = ammo_rpgclip : "RPG Ammo" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_gaussammo.mdl") = ammo_gaussclip : "Gauss Gun Ammo" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_crossbow_clip.mdl") = ammo_crossbow : "Crossbow Ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_9mmclip.mdl") = ammo_9mmclip : "9mm pistol ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_9mmarclip.mdl") = ammo_9mmAR : "9mm assault rifle ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_chainammo.mdl") = ammo_9mmbox : "Box of 200 9mm shells" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_argrenade.mdl") = ammo_ARgrenades : "Assault grenades" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_shotbox.mdl") = ammo_buckshot : "Shotgun ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_357ammobox.mdl") = ammo_357 : "357 ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_rpgammo.mdl") = ammo_rpgclip : "RPG ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_gaussammo.mdl") = ammo_gaussclip : "Gauss gun ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_crossbow_clip.mdl") = ammo_crossbow : "Crossbow ammo" []
 
-@SolidClass base(Target, Targetname, Angles, ZHLT) = button_target : "Target Button"
+@SolidClass base(Target, Targetname, Angles, ZHLT, RenderFields) = button_target : "Shootable button"
 [
   spawnflags(flags) =
   [
-    1: "Use Activates" : 1
-    2: "Start On" : 0
+    1: "Use activates" : 1
+    2: "Start on" : 0
   ]
   master(string) : "Master" 
-  renderfx(choices) :"Render FX" : 0 =
-  [
-    0: "Normal"
-    1: "Slow Pulse"
-    2: "Fast Pulse"
-    3: "Slow Wide Pulse"
-    4: "Fast Wide Pulse"
-    9: "Slow Strobe"
-    10: "Fast Strobe"
-    11: "Faster Strobe"
-    12: "Slow Flicker"
-    13: "Fast Flicker"
-    5: "Slow Fade Away"
-    6: "Fast Fade Away"
-    7: "Slow Become Solid"
-    8: "Fast Become Solid"
-    14: "Constant Glow"
-    15: "Distort"
-    16: "Hologram (Distort + fade)"
-  ]
-  rendermode(choices) : "Render Mode" : 0 =
-  [
-    0: "Normal"
-    1: "Color"
-    2: "Texture"
-    3: "Glow"
-    4: "Solid"
-    5: "Additive"
-  ]
-  renderamt(integer) : "FX Amount (1 - 255)"
-  rendercolor(color255) : "FX Color (R G B)" : "0 0 0"
 ]
 
 //
 // cyclers
 //
 
-@PointClass base(Targetname, Angles) size(-16 -16 0, 16 16 72) flags(Angle) = cycler : "Monster Cycler" 
+@PointClass base(Targetname, Angles, RenderFields) size(-16 -16 0, 16 16 72) flags(Angle) = cycler : "Model display entity - cycles animations when shot" 
 [
   model(studio) : "Model"
-  renderfx(choices) :"Render FX" : 0 =
-  [
-    0: "Normal"
-    1: "Slow Pulse"
-    2: "Fast Pulse"
-    3: "Slow Wide Pulse"
-    4: "Fast Wide Pulse"
-    9: "Slow Strobe"
-    10: "Fast Strobe"
-    11: "Faster Strobe"
-    12: "Slow Flicker"
-    13: "Fast Flicker"
-    5: "Slow Fade Away"
-    6: "Fast Fade Away"
-    7: "Slow Become Solid"
-    8: "Fast Become Solid"
-    14: "Constant Glow"
-    15: "Distort"
-    16: "Hologram (Distort + fade)"
-  ]
-  rendermode(choices) : "Render Mode" : 0 =
-  [
-    0: "Normal"
-    1: "Color"
-    2: "Texture"
-    3: "Glow"
-    4: "Solid"
-    5: "Additive"
-  ]
-  renderamt(integer) : "FX Amount (1 - 255)"
-  rendercolor(color255) : "FX Color (R G B)" : "0 0 0"
-  bodygroup(integer) : "Body Group" : 0
+  bodygroup(integer) : "Body group" : 0
 ]
 
-@PointClass base(Targetname, Angles) sprite() = cycler_sprite : "Sprite Cycler" 
+@PointClass base(Targetname, Angles, RenderFields) sprite() = cycler_sprite : "Sprite that can be used to display models" 
 [
-	model(sprite) : "Sprite"
-	framerate(integer) : "Frames per second" : 10
-	renderfx(choices) :"Render FX" : 0 =
-	[
-		0: "Normal"
-		1: "Slow Pulse"
-		2: "Fast Pulse"
-		3: "Slow Wide Pulse"
-		4: "Fast Wide Pulse"
-		9: "Slow Strobe"
-		10: "Fast Strobe"
-		11: "Faster Strobe"
-		12: "Slow Flicker"
-		13: "Fast Flicker"
-		5: "Slow Fade Away"
-		6: "Fast Fade Away"
-		7: "Slow Become Solid"
-		8: "Fast Become Solid"
-		14: "Constant Glow"
-		15: "Distort"
-		16: "Hologram (Distort + fade)"
-	]
-	rendermode(choices) : "Render Mode" : 0 =
-	[
-		0: "Normal"
-		1: "Color"
-		2: "Texture"
-		3: "Glow"
-		4: "Solid"
-		5: "Additive"
-	]
-	renderamt(integer) : "FX Amount (1 - 255)"
-	rendercolor(color255) : "FX Color (R G B)" : "0 0 0"
+    model(sprite) : "Sprite"
+    framerate(string) : "Frames per second" : "10"
 ]
 
-@PointClass base(Monster) size(-16 -16 -16, 16 16 16) flags(Angle) = cycler_weapon : "Weapon Cycler" 
+// TODO: write a diddly darn description for this thing
+@PointClass base(Monster) size(-16 -16 -16, 16 16 16) flags(Angle) = cycler_weapon : "Weapon cycler" 
 [
   model(studio) : "model"
 ]
@@ -950,42 +644,42 @@
 
 @BaseClass = BeamStartEnd 
 [
-  LightningStart(target_destination) : "Start Entity" 
-  LightningEnd(target_destination) : "Ending Entity" 
+  LightningStart(target_destination) : "Start entity" 
+  LightningEnd(target_destination) : "Ending entity" 
 ]
 
-@PointClass base(Targetname, BeamStartEnd, RenderFxChoices) size(-16 -16 -16, 16 16 16) = env_beam : "Energy Beam Effect"
+@PointClass base(Targetname, BeamStartEnd, RenderFxChoices) size(-16 -16 -16, 16 16 16) = env_beam : "Energy beam effect"
 [
   renderamt(integer) : "Brightness (1 - 255)" : 100
-  rendercolor(color255) : "Beam Color (R G B)" : "0 0 0"
+  rendercolor(color255) : "Beam color (R G B)" : "0 0 0"
   Radius(integer) : "Radius" : 256
   life(string) : "Life (seconds 0 = infinite)" : "1"
   BoltWidth(integer) : "Width of beam (pixels*0.1 0-255)" : 20
   NoiseAmplitude(integer) : "Amount of noise (0-255)" : 0
-  texture(sprite) : "Sprite Name" : "sprites/laserbeam.spr"
-  TextureScroll(integer) : "Texture Scroll Rate (0-100)" : 35
+  texture(sprite) : "Sprite name" : "sprites/laserbeam.spr"
+  TextureScroll(integer) : "Texture scroll rate (0-100)" : 35
   framerate(integer) : "Frames per 10 seconds" : 0
-  framestart(integer) : "Starting Frame" : 0
+  framestart(integer) : "Starting frame" : 0
   StrikeTime(string) : "Strike again time (secs)" : "1"
-  damage(string) : "Damage / second" : "0"
+  damage(string) : "Damage per second" : "0"
   spawnflags(flags) = 
   [
-    1 : "Start On" : 0
+    1 : "Start on" : 0
     2 : "Toggle" : 0
-    4 : "Random Strike" : 0
+    4 : "Random strike" : 0
     8 : "Ring" : 0
-    16: "StartSparks" : 0
-    32: "EndSparks" : 0
-    64: "Decal End" : 0
-    128: "Shade Start" : 0
-    256: "Shade End" : 0
+    16: "Start sparks" : 0
+    32: "End sparks" : 0
+    64: "Decal end" : 0
+    128: "Shade start" : 0
+    256: "Shade end" : 0
   ]
 ]
 
-@PointClass base(Targetname, Angles) size(-4 -4 -4, 4 4 4) = env_beverage : "Beverage Dispenser"
+@PointClass base(Targetname, Angles) size(-4 -4 -4, 4 4 4) = env_beverage : "Beverage spawner"
 [
   health(integer) : "Capacity" : 10
-  skin(choices) : "Beverage Type" : 0 = 
+  skin(choices) : "Beverage type" : 0 = 
   [
     0 : "Coca-Cola"
     1 : "Sprite"
@@ -997,91 +691,91 @@
   ]
 ]
 
-@PointClass base(Targetname, Angles) size(-16 -16 -16, 16 16 16) color(255 0 0) = env_blood : "Blood Effects" 
+@PointClass base(Targetname, Angles) size(-16 -16 -16, 16 16 16) color(255 0 0) = env_blood : "Blood effects" 
 [
-  color(choices) : "Blood Color" : 0=
+  color(choices) : "Blood color" : 0=
   [
-    0 : "Red (Human)"
-    1 : "Yellow (Alien)"
+    0 : "Red (human)"
+    1 : "Yellow (alien)"
   ]
   amount(string) : "Amount of blood (damage to simulate)" : "100"
   spawnflags(flags) =
   [
-    1: "Random Direction" : 0
-    2: "Blood Stream" : 0
-    4: "On Player" : 0
+    1: "Random direction" : 0
+    2: "Blood stream" : 0
+    4: "On player" : 0
     8: "Spray decals" : 0
   ]
 ]
 
-@SolidClass base(Targetname) = env_bubbles : "Bubble Volume" 
+@SolidClass base(Targetname) = env_bubbles : "Bubble volume" 
 [
   density(integer) : "Bubble density" : 2
   frequency(integer) : "Bubble frequency" : 2
-  current(integer) : "Speed of Current" : 0
-  spawnflags(Flags) = 
+  current(integer) : "Speed of current" : 0
+  spawnflags(flags) = 
   [
-    1 : "Start Off"   : 0
+    1: "Start off"   : 0
   ]
 ]
 
-@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_explosion : "Explosion" 
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_explosion : "Explosion effect - can deal damage" 
 [
-  iMagnitude(Integer) : "Magnitude" : 100
+  iMagnitude(integer) : "Magnitude" : 100
   spawnflags(flags) =
   [
-    1: "No Damage" : 0
+    1: "No damage" : 0
     2: "Repeatable" : 0
-    4: "No Fireball" : 0
-    8: "No Smoke" : 0
-    16: "No Decal" : 0
-    32: "No Sparks" : 0
+    4: "No fireball" : 0
+    8: "No smoke" : 0
+    16: "No decal" : 0
+    32: "No sparks" : 0
   ]
 ]
 
-@PointClass base(Targetname) color(255 255 128) = env_global : "Global State"
+@PointClass base(Targetname) color(255 255 128) = env_global : "Global state"
 [
-	globalstate(string) : "Global State to Set"
-	triggermode(choices) : "Trigger Mode" : 0 =
-	[
-		0 : "Off"
-		1 : "On"
-		2 : "Dead"
-		3 : "Toggle"
-	]
-	initialstate(choices) : "Initial State" : 0 =
-	[
-		0 : "Off"
-		1 : "On"
-		2 : "Dead"
-	]
-	spawnflags(flags) =
-	[
-		1 : "Set Initial State" : 0
-	]
+    globalstate(string) : "Global state to set"
+    triggermode(choices) : "Trigger mode" : 0 =
+    [
+        0 : "Off"
+        1 : "On"
+        2 : "Dead"
+        3 : "Toggle"
+    ]
+    initialstate(choices) : "Initial state" : 0 =
+    [
+        0 : "Off"
+        1 : "On"
+        2 : "Dead"
+    ]
+    spawnflags(flags) =
+    [
+        1 : "Set initial state" : 0
+    ]
 ]
 
-@PointClass sprite() base(Targetname, RenderFields) size(-4 -4 -4, 4 4 4) color(30 100 0) = env_glow : "Light Glow/Haze" 
+@PointClass sprite() base(Targetname, RenderFields) size(-4 -4 -4, 4 4 4) color(30 100 0) = env_glow : "Light glow/haze" 
 [
-	model(sprite) : "Sprite Name" : "sprites/glow01.spr"
-	scale(integer) : "Scale" : 1
+    model(sprite) : "Sprite name" : "sprites/glow01.spr"
+    scale(integer) : "Scale" : 1
 ]
 
-@PointClass base(Targetname) = env_fade : "Screen Fade" 
+@PointClass base(Targetname) = env_fade : "Screen fade" 
 [
-	spawnflags(flags) =
-	[
-		1: "Fade From" : 0
-		2: "Modulate" : 0
-		4: "Activator Only" : 0
-	]
-	duration(string) : "Duration (seconds)" : "2"
-	holdtime(string) : "Hold Fade (seconds)" : "0"
-	renderamt(integer) : "Fade Alpha" : 255
-	rendercolor(color255) : "Fade Color (R G B)" : "0 0 0"
+    spawnflags(flags) =
+    [
+        1: "Fade from" : 0
+        2: "Modulate" : 0
+        4: "Activator Only" : 0
+    ]
+    duration(string) : "Duration (seconds)" : "2"
+    holdtime(string) : "Hold fade (seconds)" : "0"
+    renderamt(integer) : "Fade alpha" : 255
+    rendercolor(color255) : "Fade color (R G B)" : "0 0 0"
 ]
 
-@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_funnel : "Large Portal Funnel" 
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_funnel : "Large portal funnel" 
 [
   spawnflags(flags) =
   [
@@ -1089,63 +783,63 @@
   ]
 ]
 
-@PointClass base(Targetname, RenderFxChoices, Angles) size(-16 -16 -16, 16 16 16) = env_laser : "Laser Beam Effect"
+@PointClass base(Targetname, RenderFxChoices, Angles) size(-16 -16 -16, 16 16 16) = env_laser : "Laser beam effect"
 [
-  LaserTarget(target_destination) : "Target of Laser" 
+  LaserTarget(target_destination) : "Target of laser" 
   renderamt(integer) : "Brightness (1 - 255)" : 100
-  rendercolor(color255) : "Beam Color (R G B)" : "0 0 0"
+  rendercolor(color255) : "Beam color (R G B)" : "0 0 0"
   width(integer) : "Width of beam (pixels*0.1 0-255)" : 20
   NoiseAmplitude(integer) : "Amount of noise (0-255)" : 0
-  texture(sprite) : "Sprite Name" : "sprites/laserbeam.spr"
-  EndSprite(sprite) : "End Sprite" : ""
-  TextureScroll(integer) : "Texture Scroll Rate (0-100)" : 35
-  framestart(integer) : "Starting Frame" : 0
-  damage(string) : "Damage / second" : "100"
+  texture(sprite) : "Sprite name" : "sprites/laserbeam.spr"
+  EndSprite(sprite) : "End sprite" : ""
+  TextureScroll(integer) : "Texture scroll rate (0-100)" : 35
+  framestart(integer) : "Starting frame" : 0
+  damage(string) : "Damage per second" : "100"
   spawnflags(flags) = 
   [
-    1 : "Start On" : 0
-    16: "StartSparks" : 0
-    32: "EndSparks" : 0
-    64: "Decal End" : 0
+    1 : "Start on" : 0
+    16: "Start sparks" : 0
+    32: "End sparks" : 0
+    64: "Decal end" : 0
   ]
 ]
 
 // use game_text instead
-@PointClass base(Targetname, Target) = env_message : "HUD Text Message" 
+@PointClass base(Targetname, Target) = env_message : "HUD text message" 
 [
-  message(string) : "Message Name"
+  message(string) : "Message name"
   spawnflags(flags) =
   [
-    1: "Play Once" : 0
-    2: "All Clients" : 0
+    1: "Play once" : 0
+    2: "All clients" : 0
   ]
   messagesound(sound) : "path/filename.wav of WAV"
   messagevolume(string) : "Volume 0-10" : "10"
-  messageattenuation(Choices) : "Sound Radius" : 0 =
+  messageattenuation(choices) : "Sound radius" : 0 =
   [
-    0 : "Small Radius"
-    1 : "Medium Radius"
-    2 : "Large  Radius"
-    3 : "Play Everywhere"
+    0 : "Small radius"
+    1 : "Medium radius"
+    2 : "Large radius"
+    3 : "Play everywhere"
   ]
 ]
 
-@PointClass base(Targetname, Target, RenderFields) size(-16 -16 -16, 16 16 16) color(100 100 0) = env_render : "Render Controls"
+@PointClass base(Targetname, Target, RenderFields) size(-16 -16 -16, 16 16 16) color(100 100 0) = env_render : "Render controls"
 [
   spawnflags(flags) =
   [
-    1: "No Renderfx" : 0
-    2: "No Renderamt" : 0
-    4: "No Rendermode" : 0
-    8: "No Rendercolor" : 0
+    1: "No render FX" : 0
+    2: "No render amount" : 0
+    4: "No render mode" : 0
+    8: "No render color" : 0
   ]
 ]
 
-@PointClass base(Targetname) = env_shake : "Screen Shake" 
+@PointClass base(Targetname) = env_shake : "Screen shake" 
 [
   spawnflags(flags) =
   [
-    1: "GlobalShake" : 0
+    1: "Global shake" : 0
   ]
   amplitude(string) : "Amplitude 0-16" : "4"
   radius(string) : "Effect radius" : "500"
@@ -1153,10 +847,10 @@
   frequency(string) : "0.1 = jerk, 255.0 = rumble" : "2.5"
 ]
 
-@PointClass base(gibshooterbase, RenderFields) size(-16 -16 -16, 16 16 16) = env_shooter : "Model Shooter"
+@PointClass base(gibshooterbase, RenderFields) size(-16 -16 -16, 16 16 16) = env_shooter : "Model shooter"
 [
-  shootmodel(studio) : "Model or Sprite name" : ""
-  shootsounds(choices) :"Material Sound" : -1 =
+  shootmodel(studio) : "Model or sprite name" : ""
+  shootsounds(choices) :"Material sound" : -1 =
   [
     -1: "None"
     0: "Glass"
@@ -1165,49 +859,49 @@
     3: "Flesh"
     4: "Concrete"  
   ]
-  scale(string) : "Gib Sprite Scale" : ""
-  skin(integer) : "Gib Skin" : 0
+  scale(string) : "Gib sprite scale" : ""
+  skin(integer) : "Gib skin" : 0
 ]
 
-@PointClass iconsprite("sprites/speaker.spr") = env_sound : "DSP Sound" 
+@PointClass iconsprite("sprites/speaker.spr") = env_sound : "DSP sound effect" 
 [
   radius(integer) : "Radius" : 128
-  roomtype(Choices) : "Room Type" : 0 =
+  roomtype(choices) : "Room type" : 0 =
   [
     0 : "Normal (off)"
     1 : "Generic"
     
-    2 : "Metal Small"
-    3 : "Metal Medium"
-    4 : "Metal Large"
+    2 : "Metal small"
+    3 : "Metal medium"
+    4 : "Metal large"
   
-    5 : "Tunnel Small"
-    6 : "Tunnel Medium"
-    7 : "Tunnel Large"
+    5 : "Tunnel small"
+    6 : "Tunnel medium"
+    7 : "Tunnel large"
   
-    8 : "Chamber Small"
-    9 : "Chamber Medium"
-    10: "Chamber Large"
+    8 : "Chamber small"
+    9 : "Chamber medium"
+    10: "Chamber large"
 
-    11: "Bright Small"
-    12: "Bright Medium"
-    13: "Bright Large"
+    11: "Bright small"
+    12: "Bright medium"
+    13: "Bright large"
 
     14: "Water 1"
     15: "Water 2"
     16: "Water 3"
 
-    17: "Concrete Small"
-    18: "Concrete Medium"
-    19: "Concrete Large"
+    17: "Concrete small"
+    18: "Concrete medium"
+    19: "Concrete large"
 
     20: "Big 1"
     21: "Big 2"
     22: "Big 3"
 
-    23: "Cavern Small"
-    24: "Cavern Medium"
-    25: "Cavern Large"
+    23: "Cavern small"
+    24: "Cavern medium"
+    25: "Cavern large"
 
     26: "Weirdo 1"
     27: "Weirdo 2"
@@ -1215,36 +909,36 @@
   ]
 ]
 
-@PointClass base(Targetname, Angles) size(-16 -16 -16, 16 16 16) = env_spark : "Spark" 
+@PointClass base(Targetname, Angles) size(-16 -16 -16, 16 16 16) = env_spark : "Spark effect" 
 [
-  MaxDelay(string) : "Max Delay" : "0"
+  MaxDelay(string) : "Max delay" : "0"
   spawnflags(flags) =
   [
     32: "Toggle" : 0
-    64: "Start ON" : 0
+    64: "Start on" : 0
   ]
 ]
 
-@PointClass sprite() base(Targetname, RenderFields, Angles) size(-4 -4 -4, 4 4 4) = env_sprite : "Sprite Effect" 
+@PointClass sprite() base(Targetname, RenderFields, Angles) size(-4 -4 -4, 4 4 4) = env_sprite : "Sprite - a floating, textured square" 
 [
-	framerate(string) : "Framerate" : "10.0"
-	model(sprite) : "Sprite Name" : "sprites/glow01.spr"
-	scale(string) : "Scale" : ""
-	spawnflags(flags) =
-	[
-		1: "Start on" : 0
-		2: "Play Once" : 0
-	]
+    framerate(string) : "Framerate" : "10.0"
+    model(sprite) : "Sprite name" : "sprites/glow01.spr"
+    scale(string) : "Scale" : ""
+    spawnflags(flags) =
+    [
+        1: "Start on" : 0
+        2: "Play once" : 0
+    ]
 ]
 
-@SolidClass base(Breakable, RenderFields, Angles, ZHLT) = func_breakable : "Breakable Object" 
+@SolidClass base(Breakable, RenderFields, Angles, ZHLT) = func_breakable : "Breakable object" 
 [
   spawnflags(flags) =
   [
-    1 : "Only Trigger" : 0
-    2 : "Touch"    : 0
-    4 : "Pressure"     : 0
-    256: "Instant Crowbar" : 1
+    1: "Only trigger" : 0
+    2: "Touch" : 0
+    4: "Pressure" : 0
+    256: "Instant crowbar" : 1
   ]
   _minlight(string) : "Minimum light level"
 ]
@@ -1259,17 +953,17 @@
   sounds(choices) : "Sounds" : 0 = 
   [
     0: "None"
-    1: "Big zap & Warmup"
-    2: "Access Denied"
-    3: "Access Granted"
-    4: "Quick Combolock"
-    5: "Power Deadbolt 1"
-    6: "Power Deadbolt 2"
+    1: "Big zap & warmup"
+    2: "Access denied"
+    3: "Access granted"
+    4: "Quick combolock"
+    5: "Power deadbolt 1"
+    6: "Power deadbolt 2"
     7: "Plunger"
     8: "Small zap"
-    9: "Keycard Sound"
+    9: "Keycard sound"
     10: "Buzz"
-    11: "Buzz Off"
+    11: "Buzz off"
     14: "Lightswitch"
   ]
   wait(choices) : "Delay before reset" : 3 =
@@ -1282,68 +976,68 @@
     1: "Don't move" : 0
     32: "Toggle" : 0
     64: "Sparks" : 0
-    256:"Touch Activates": 0
+    256:"Touch activates": 0
   ]
-  locked_sound(choices) : "Locked Sound" : 0 = 
+  locked_sound(choices) : "Locked sound" : 0 = 
   [
     0: "None"
-    2: "Access Denied"
+    2: "Access denied"
     8: "Small zap"
     10: "Buzz"
-    11: "Buzz Off"
-    12: "Latch Locked"
+    11: "Buzz off"
+    12: "Latch locked"
   ]
-  unlocked_sound(choices) : "Unlocked Sound" : 0 = 
+  unlocked_sound(choices) : "Unlocked sound" : 0 = 
   [
     0: "None"
-    1: "Big zap & Warmup"
-    3: "Access Granted"
-    4: "Quick Combolock"
-    5: "Power Deadbolt 1"
-    6: "Power Deadbolt 2"
+    1: "Big zap & warmup"
+    3: "Access granted"
+    4: "Quick combolock"
+    5: "Power deadbolt 1"
+    6: "Power deadbolt 2"
     7: "Plunger"
     8: "Small zap"
-    9: "Keycard Sound"
+    9: "Keycard sound"
     10: "Buzz"
-    13: "Latch Unlocked"
+    13: "Latch unlocked"
     14: "Lightswitch"
   ]
-  locked_sentence(choices) : "Locked Sentence" : 0 = 
+  locked_sentence(choices) : "Locked sentence" : 0 = 
   [
     0: "None"
-    1: "Gen. Access Denied"
-    2: "Security Lockout"
-    3: "Blast Door"
-    4: "Fire Door"
-    5: "Chemical Door"
-    6: "Radiation Door"
-    7: "Gen. Containment"
-    8: "Maintenance Door"
-    9: "Broken Shut Door"
+    1: "Gen. access denied"
+    2: "Security lockout"
+    3: "Blast door"
+    4: "Fire door"
+    5: "Chemical door"
+    6: "Radiation door"
+    7: "Gen. containment"
+    8: "Maintenance door"
+    9: "Broken shut door"
   ]
-  unlocked_sentence(choices) : "Unlocked Sentence" : 0 = 
+  unlocked_sentence(choices) : "Unlocked sentence" : 0 = 
   [
     0: "None"
-    1: "Gen. Access Granted"
-    2: "Security Disengaged"
-    3: "Blast Door"
-    4: "Fire Door"
-    5: "Chemical Door"
-    6: "Radiation Door"
-    7: "Gen. Containment"
+    1: "Gen. access granted"
+    2: "Security disengaged"
+    3: "Blast door"
+    4: "Fire door"
+    5: "Chemical door"
+    6: "Radiation door"
+    7: "Gen. containment"
     8: "Maintenance area"
   ]
   _minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_conveyor : "Conveyor Belt" 
+@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_conveyor : "Conveyor belt" 
 [
   spawnflags(flags) =
   [
-    1 : "No Push" : 0
-    2 : "Not Solid" : 0
+    1 : "No push" : 0
+    2 : "Not solid" : 0
   ]
-  speed(string) : "Conveyor Speed" : "100"
+  speed(string) : "Conveyor speed" : "100"
   _minlight(string) : "Minimum light level"
 ]
 
@@ -1353,18 +1047,18 @@
 [
   spawnflags(flags) =
   [
-    2 : "Reverse Dir" : 0
+    2 : "Reverse dir" : 0
     16: "One-way" : 0
-    64: "X Axis" : 0
-    128: "Y Axis" : 0
+    64: "X axis" : 0
+    128: "Y axis" : 0
   ]
   distance(integer) : "Distance (deg)" : 90
-  angles(string) : "Pitch Yaw Roll (Y Z X)" : "0 0 0"
+  angles(string) : "Pitch yaw roll (Y Z X)" : "0 0 0"
 ]
 
 @SolidClass base(Appearflags, RenderFields, ZHLT) = func_friction : "Surface with a change in friction" 
 [
-  modifier(integer) : "Percentage of standard (0 - 100)" : 15
+  modifier(integer) : "Friction (0 - 100)" : 15
 ]
 
 @SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_guntarget : "Moving platform" 
@@ -1372,25 +1066,25 @@
   speed(integer) : "Speed (units per second)" : 100
   target(target_source) : "First stop target"
   message(target_source) : "Fire on damage"
-  health(integer) : "Damage to Take" : 0
+  health(integer) : "Damage to take" : 0
   _minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Global, RenderFields, ZHLT) = func_healthcharger: "Wall health recharger" 
+@SolidClass base(Global, RenderFields, ZHLT) = func_healthcharger : "Wall health recharger" 
 [
-	// dmdelay(integer) : "Deathmatch recharge delay" : 0
-	_minlight(string) : "Minimum light level"
+    // dmdelay(integer) : "Deathmatch recharge delay" : 0
+    _minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, RenderFields, ZHLT) = func_illusionary : "Fake Wall/Light" 
+@SolidClass base(Targetname, RenderFields, ZHLT) = func_illusionary : "Fake wall/light" 
 [
 
-	skin(choices) : "Contents" : -1 =
-	[
-		-1: "Empty"
-		-7: "Volumetric Light"
-	]
-	_minlight(string) : "Minimum light level"
+    skin(choices) : "Contents" : -1 =
+    [
+        -1: "Empty"
+        -7: "Volumetric light"
+    ]
+    _minlight(string) : "Minimum light level"
 ]
 
 // THIS CREATES AN INVISIBLE CLIMBABLE FIELD
@@ -1400,18 +1094,18 @@
 // blocks monster path ai
 @SolidClass base(Targetname) = func_monsterclip : "Monster clip brush" []
 
-@SolidClass base(Targetname) = func_mortar_field : "Mortar Field" 
+@SolidClass base(Targetname) = func_mortar_field : "Mortar field" 
 [
-  m_flSpread(integer) : "Spread Radius" : 64
-  m_iCount(integer) : "Repeat Count" : 1
-  m_fControl(Choices) : "Targeting" : 0 =
+  m_flSpread(integer) : "Spread radius" : 64
+  m_iCount(integer) : "Repeat count" : 1
+  m_fControl(choices) : "Targeting" : 0 =
   [
     0 : "Random"
     1 : "Activator"
     2 : "Table"
   ]
-  m_iszXController(target_destination) : "X Controller"
-  m_iszYController(target_destination) : "Y Controller"
+  m_iszXController(target_destination) : "X controller"
+  m_iszYController(target_destination) : "Y controller"
 ]
 
 // not fully implemented
@@ -1423,11 +1117,11 @@
   dmg(integer) : "Damage inflicted when blocked" : 0
   spawnflags(flags) =
   [
-    1: "Start ON" : 0
+    1: "Start on" : 0
     8: "Passable" : 0
     16: "Auto-return" : 0
-    64: "X Axis" : 0
-    128: "Y Axis" : 0
+    64: "X axis" : 0
+    128: "Y axis" : 0
   ]
 
   _minlight(integer) : "_minlight"
@@ -1435,7 +1129,7 @@
 
 @SolidClass base(Targetname, Global, RenderFields, PlatSounds, ZHLT) = func_plat : "Elevator" 
 [
-  spawnflags(Flags) =
+  spawnflags(flags) =
   [
     1: "Toggle" : 0
   ]
@@ -1445,13 +1139,13 @@
   _minlight(string) : "Minimum light level"
 ] 
 
-@SolidClass base(Targetname, Global, RenderFields, PlatSounds, Angles, ZHLT) = func_platrot : "Moving Rotating platform" 
+@SolidClass base(Targetname, Global, RenderFields, PlatSounds, Angles, ZHLT) = func_platrot : "Moving rotating platform" 
 [
-  spawnflags(Flags) =
+  spawnflags(flags) =
   [
     1: "Toggle" : 1
-    64: "X Axis" : 0
-    128: "Y Axis" : 0
+    64: "X axis" : 0
+    128: "Y axis" : 0
   ]
   speed(integer) : "Speed of rotation" : 50
   height(integer) : "Travel altitude (can be negative)" : 0
@@ -1461,11 +1155,11 @@
 
 @SolidClass base(Breakable, RenderFields, ZHLT) = func_pushable : "Pushable object"
 [
-  size(choices) : "Hull Size" : 0 =
+  size(choices) : "Hull size" : 0 =
   [
     0: "Point size"
     1: "Player size"
-    2: "Big Size"
+    2: "Big size"
     3: "Player duck"
   ]
   spawnflags(flags) =
@@ -1477,27 +1171,27 @@
   _minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Global, RenderFields, ZHLT) = func_recharge: "Battery recharger" 
+@SolidClass base(Global, RenderFields, ZHLT) = func_recharge : "Battery recharger" 
 [
-	// dmdelay(integer) : "Deathmatch recharge delay" : 0
-	_minlight(string) : "Minimum light level"
+    // dmdelay(integer) : "Deathmatch recharge delay" : 0
+    _minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_rot_button : "RotatingButton" 
+@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_rot_button : "Rotating button" 
 [
   target(target_destination) : "Targetted object"
   // changetarget will change the button's target's TARGET field to the button's changetarget.
-  changetarget(target_destination) : "ChangeTarget Name"
+  changetarget(target_destination) : "ChangeTarget name"
   master(string) : "Master" 
   speed(integer) : "Speed" : 50
   health(integer) : "Health (shootable if > 0)"
   sounds(choices) : "Sounds" : 21 = 
   [
     21: "Squeaky"
-    22: "Squeaky Pneumatic"
-    23: "Ratchet Groan"
-    24: "Clean Ratchet"
-    25: "Gas Clunk"
+    22: "Squeaky pneumatic"
+    23: "Ratchet groan"
+    24: "Clean ratchet"
+    25: "Gas clunk"
   ]
   wait(choices) : "Delay before reset" : 3 =
   [
@@ -1508,50 +1202,50 @@
   spawnflags(flags) =
   [
     1 : "Not solid" : 0
-    2 : "Reverse Dir" : 0
+    2 : "Reverse dir" : 0
     32: "Toggle" : 0
-    64: "X Axis" : 0
-    128: "Y Axis" : 0
-    256:"Touch Activates": 0
+    64: "X axis" : 0
+    128: "Y axis" : 0
+    256:"Touch activates": 0
   ]
-  _minlight(integer) : "_minlight"
+  _minlight(integer) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_rotating : "Rotating Object"
+@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_rotating : "Rotating object"
 [
-  speed(integer)  : "Rotation Speed" : 0
+  speed(integer)  : "Rotation speed" : 0
   volume(integer) : "Volume (10 = loudest)" : 10
   fanfriction(integer) : "Friction (0 - 100%)" : 20
-  sounds(choices) : "Fan Sounds" : 0 =
+  sounds(choices) : "Fan sounds" : 0 =
   [
-    0 : "No Sound" 
-    1 : "Fast Whine"
-    2 : "Slow Rush"
-    3 : "Medium Rickety"
-    4 : "Fast Beating"
-    5 : "Slow Smooth"
+    0 : "No sound" 
+    1 : "Fast whine"
+    2 : "Slow rush"
+    3 : "Medium rickety"
+    4 : "Fast beating"
+    5 : "Slow smooth"
   ]
   message(sound) : "Path/filename.wav of WAV"
   spawnflags(flags) =
   [
-    1 : "Start ON"    : 0
-    2 : "Reverse Direction" : 0
-    4 : "X Axis"    : 0
-    8 : "Y Axis"    : 0
-    16: "Acc/Dcc"   : 0
-    32: "Fan Pain"    : 0
-    64: "Not Solid"   : 0
-    128: "Small Radius" : 0
-    256: "Medium Radius" : 0
-    512: "Large Radius" : 1 
+    1 : "Start on" : 0
+    2 : "Reverse direction" : 0
+    4 : "X axis" : 0
+    8 : "Y axis" : 0
+    16: "Acc/dcc" : 0
+    32: "Fan pain" : 0
+    64: "Not solid" : 0
+    128: "Small radius" : 0
+    256: "Medium radius" : 0
+    512: "Large radius" : 1 
   ]
-  _minlight(integer) : "_minlight"
-  spawnorigin(string) : "X Y Z - Move here after lighting" : "0 0 0"
+  _minlight(integer) : "Minimum light level"
+  spawnorigin(string) : "X Y Z - move here after lighting" : "0 0 0"
   dmg(integer) : "Damage inflicted when blocked" : 0
 ]
 
 // don't forget func_tankcontrols
-@SolidClass base(BaseTank, ZHLT) = func_tank : "Brush Gun Turret" 
+@SolidClass base(BaseTank, ZHLT) = func_tank : "Brush gun turret" 
 [
   bullet(choices) : "Bullets" : 0 = 
   [
@@ -1568,19 +1262,19 @@
 ]
 
 // don't forget func_tankcontrols
-@SolidClass base(BaseTank, ZHLT) = func_tanklaser : "Brush Laser Turret" 
+@SolidClass base(BaseTank, ZHLT) = func_tanklaser : "Brush laser turret" 
 [
-  laserentity(target_source) : "env_laser Entity"
+  laserentity(target_source) : "env_laser entity"
 ]
 
 // don't forget func_tankcontrols
-@SolidClass base(BaseTank, ZHLT) = func_tankrocket : "Brush Rocket Turret" []
+@SolidClass base(BaseTank, ZHLT) = func_tankrocket : "Brush rocket turret" []
 
 
 // don't forget func_tankcontrols
-@SolidClass base(BaseTank, ZHLT) = func_tankmortar : "Brush Mortar Turret" 
+@SolidClass base(BaseTank, ZHLT) = func_tankmortar : "Brush mortar turret" 
 [
-  iMagnitude(Integer) : "Explosion Magnitude" : 100
+  iMagnitude(integer) : "Explosion magnitude" : 100
 ]
 
 @SolidClass base(Trackchange, ZHLT) = func_trackautochange : "Automatic track changing platform"
@@ -1593,12 +1287,12 @@
   _minlight(string) : "Minimum light level"
 ]
 
-@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_tracktrain : "Track Train" 
+@SolidClass base(Targetname, Global, RenderFields, Angles, ZHLT) = func_tracktrain : "Train that follows path_tracks" 
 [
   spawnflags(flags) =
   [
-    1 : "No Pitch (X-rot)" : 0
-    2 : "No User Control" : 0
+    1 : "No pitch (X-rot)" : 0
+    2 : "No user Control" : 0
     8 : "Passable" : 0
   ]
   target(target_destination) : "First stop target"
@@ -1622,47 +1316,47 @@
   _minlight(string) : "Minimum light level"
 ]
 
-@SolidClass = func_traincontrols : "Train Controls"
+@SolidClass = func_traincontrols : "Train controls"
 [
-  target(target_destination) : "Train Name"
+  target(target_destination) : "Train name"
 ]
 
 @SolidClass base(Targetname, Global, RenderFields, ZHLT) = func_train : "Moving platform" 
 [
   target(target_source) : "First stop target"
-  movesnd(choices) : "Move Sound" : 0 = 
+  movesnd(choices) : "Move sound" : 0 = 
   [
-    0: "No Sound"
-    1: "big elev 1"
-    2: "big elev 2"
-    3: "tech elev 1"
-    4: "tech elev 2"
-    5: "tech elev 3"
-    6: "freight elev 1"
-    7: "freight elev 2"
-    8: "heavy elev"
-    9: "rack elev"
-    10: "rail elev"
-    11: "squeek elev"
-    12: "odd elev 1"
-    13: "odd elev 2"
+    0: "No sound"
+    1: "Big elev 1"
+    2: "Big elev 2"
+    3: "Tech elev 1"
+    4: "Tech elev 2"
+    5: "Tech elev 3"
+    6: "Freight elev 1"
+    7: "Freight elev 2"
+    8: "Heavy elev"
+    9: "Rack elev"
+    10: "Rail elev"
+    11: "Squeek elev"
+    12: "Odd elev 1"
+    13: "Odd elev 2"
   ]
-  stopsnd(choices) : "Stop Sound" : 0 = 
+  stopsnd(choices) : "Stop sound" : 0 = 
   [
     0: "No Sound"
-    1: "big elev stop1"
-    2: "big elev stop2"
-    3: "freight elev stop"
-    4: "heavy elev stop"
-    5: "rack stop"
-    6: "rail stop"
-    7: "squeek stop"
-    8: "quick stop"
+    1: "Big elev stop 1"
+    2: "Big elev stop 2"
+    3: "Freight elev stop"
+    4: "Heavy elev stop"
+    5: "Rack stop"
+    6: "Rail stop"
+    7: "Squeek stop"
+    8: "Quick stop"
   ]
   speed(integer) : "Speed (units per second)" : 64
   dmg(integer) : "Damage on crush" : 0
   skin(integer) : "Contents" : 0
-  volume(string) : "Sound Volume 0.0 - 1.0" : "0.85"
+  volume(string) : "Sound volume 0.0 - 1.0" : "0.85"
   spawnflags(flags) =
   [
     8 : "Not solid" : 0
@@ -1679,7 +1373,7 @@
 [
   spawnflags(flags) =
   [
-    1 : "Starts Invisible" : 0
+    1 : "Starts invisible" : 0
   ]
 ]
 
@@ -1687,8 +1381,8 @@
 [
   spawnflags(flags) =
   [
-    1 : "Starts Open" : 0
-    256:"Use Only" : 0
+    1: "Starts open" : 0
+    256: "Use only" : 0
   ]
   skin(choices) : "Contents" : -3 =
   [
@@ -1696,33 +1390,33 @@
     -4: "Slime"
     -5: "Lava"
   ]
-  WaveHeight(string) : "Wave Height" : "3.2"
+  WaveHeight(string) : "Wave height" : "3.2"
 ]
 
 //
-// game entities (requires Half-Life 1.0.0.9)
+// Game entities 
 //
 
 @PointClass base(Targetname, Targetx) = game_counter : "Fires when it hits limit"
 [
   spawnflags(flags) =
   [
-    1: "Remove On fire" : 0
-    2: "Reset On fire" : 1
+    1: "Remove on fire" : 0
+    2: "Reset on fire" : 1
   ]
   master(string) : "Master"
-  frags(integer) : "Initial Value" : 0
-  health(integer) : "Limit Value" : 10
+  frags(integer) : "Initial value" : 0
+  health(integer) : "Limit value" : 10
 ]
 
 @PointClass base(Targetname, Target) = game_counter_set : "Sets a game_counter"
 [
   spawnflags(flags) =
   [
-    1: "Remove On fire" : 0
+    1: "Remove on fire" : 0
   ]
   master(string) : "Master"
-  frags(integer) : "New Value" : 10
+  frags(integer) : "New value" : 10
 ]
 
 @PointClass base(Targetname) = game_end : "End this multiplayer game" 
@@ -1734,17 +1428,17 @@
 [
   spawnflags(flags) =
   [
-    1: "Use Only" : 0
+    1: "Use only" : 0
   ]
-  master(string) : "Team Master"
+  master(string) : "Team master"
 ]
 
 @PointClass base(Targetname) = game_player_hurt : "Hurts player who fires"
 [
-  dmg(string) : "Damage To Apply" : "999"
+  dmg(string) : "Damage to apply" : "999"
   spawnflags(flags) =
   [
-    1: "Remove On fire" : 0
+    1: "Remove on fire" : 0
   ]
   master(string) : "Master" 
 ]
@@ -1753,20 +1447,20 @@
 [
   spawnflags(flags) =
   [
-    1 : "Remove On fire" : 0
-    2 : "Kill Player" : 0
-    4 : "Gib Player" : 0
+    1 : "Remove on fire" : 0
+    2 : "Kill player" : 0
+    4 : "Gib player" : 0
   ]
   target(string) : "game_team_master to use" 
   master(string) : "Master"
 ]
 
-@PointClass base(Targetname) = game_score : "Award/Deduct Points" 
+@PointClass base(Targetname) = game_score : "Award/deduct points" 
 [
   spawnflags(flags) =
   [
-    1: "Allow Negative" : 0
-    2: "Team Points" : 0
+    1: "Allow negative" : 0
+    2: "Team points" : 0
   ]
 
   points(integer) : "Points to add (+/-)" : 1
@@ -1777,9 +1471,9 @@
 [
   spawnflags(flags) =
   [
-    1: "Remove On fire" : 0
+    1: "Remove on fire" : 0
   ]
-  triggerstate(choices) : "Trigger State" : 0 = 
+  triggerstate(choices) : "Trigger state" : 0 = 
   [
     0: "Off"
     1: "On"
@@ -1793,34 +1487,34 @@
 [
   spawnflags(flags) =
   [
-    1: "Remove On fire" : 0
+    1: "Remove on fire" : 0
   ]
   master(string) : "Master" 
 ]
 
-@PointClass base(Targetname, Target) = game_text : "HUD Text Message" 
+@PointClass base(Targetname, Target) = game_text : "HUD text message" 
 [
   spawnflags(flags) =
   [
-    1: "All Players" : 0
+    1: "All players" : 0
   ]
 
-  message(string) : "Message Text"
+  message(string) : "Message text"
   x(string) : "X (0 - 1.0 = left to right) (-1 centers)" : "-1"
   y(string) : "Y (0 - 1.0 = top to bottom) (-1 centers)" : "-1"
-  effect(Choices) : "Text Effect" : 0 =
+  effect(choices) : "Text effect" : 0 =
   [
-    0 : "Fade In/Out"
+    0 : "Fade in/out"
     1 : "Credits"
-    2 : "Scan Out"
+    2 : "Scan out"
   ]
-  color(color255) : "Color1" : "100 100 100"
-  color2(color255) : "Color2" : "240 110 0"
-  fadein(string) : "Fade in Time (or character scan time)" : "1.5"
-  fadeout(string) : "Fade Out Time" : "0.5"
-  holdtime(string) : "Hold Time" : "1.2"
+  color(color255) : "Color 1" : "100 100 100"
+  color2(color255) : "Color 2" : "240 110 0"
+  fadein(string) : "Fade in time (or character scan time)" : "1.5"
+  fadeout(string) : "Fade out time" : "0.5"
+  holdtime(string) : "Hold time" : "1.2"
   fxtime(string) : "Scan time (scan effect only)" : "0.25"
-  channel(choices) : "Text Channel" : 1 =
+  channel(choices) : "Text channel" : 1 =
   [
     1 : "Channel 1"
     2 : "Channel 2"
@@ -1830,16 +1524,16 @@
   master(string) : "Master" 
 ]
 
-@SolidClass base(Targetname) = game_zone_player : "Player Zone brush"
+@SolidClass base(Targetname) = game_zone_player : "Player zone brush"
 [
-	intarget(target_destination) : "Target for IN players"
-	outtarget(target_destination) : "Target for OUT players"
-	incount(target_destination) : "Counter for IN players"
-	outcount(target_destination) : "Counter for OUT players"
-	// master(string) : "Master" 
+    intarget(target_destination) : "Target for IN players"
+    outtarget(target_destination) : "Target for OUT players"
+    incount(target_destination) : "Counter for IN players"
+    outcount(target_destination) : "Counter for OUT players"
+    // master(string) : "Master" 
 ]
 
-@PointClass base(gibshooterbase) = gibshooter : "Gib Shooter" []
+@PointClass base(gibshooterbase) = gibshooter : "Gib shooter" []
 
 //
 // info entities
@@ -1847,33 +1541,33 @@
 
 @PointClass decal() base(Targetname, Appearflags) = infodecal : "Decal"
 [
-	texture(decal)
+    texture(decal)
 ]
 
-@PointClass base(Targetname) size(-24 -24 0, 24 24 16) color(20 190 60) = info_bigmomma : "Big Mamma Node" 
+@PointClass base(Targetname) size(-24 -24 0, 24 24 16) color(20 190 60) = info_bigmomma : "Big Momma node" 
 [
-  spawnflags(Flags) =
+  spawnflags(flags) =
   [
-    1 : "Run To Node" : 0
-    2 : "Wait Indefinitely" : 0
+    1 : "Run to node" : 0
+    2 : "Wait indefinitely" : 0
   ]
   target(target_destination) : "Next node"
   radius(string) : "Radius" : "0"
   reachdelay(string) : "Wait after approach" : "0"
-  killtarget(target_destination) : "KillTarget"
+  killtarget(target_destination) : "Kill target"
   reachtarget(target_destination) : "Fire on approach"
   reachsequence(string) : "Sequence on approach" : ""
   health(string) : "Health on approach" : ""
   presequence(string) : "Sequence before approach" : ""
 ]
 
-@PointClass base(Target, Angles) size(-4 -4 -4, 4 4 4) color(0 255 0) = info_intermission : "Intermission Spot" []
+@PointClass base(Target, Angles) size(-4 -4 -4, 4 4 4) color(0 255 0) = info_intermission : "Intermission spot" []
 
-@PointClass base(Targetname) = info_landmark : "Transition Landmark" []
+@PointClass base(Targetname) = info_landmark : "Transition landmark" []
 
-@PointClass size(-24 -24 -4, 24 24 4) color(255 255 0) = info_node : "ai node" []
+@PointClass size(-24 -24 -4, 24 24 4) color(255 255 0) = info_node : "AI node" []
 
-@PointClass size(-32 -32 0, 32 32 64) color(255 255 0) = info_node_air : "ai air node" []
+@PointClass size(-32 -32 0, 32 32 64) color(255 255 0) = info_node_air : "AI air node" []
 
 @PointClass base(Targetname) = info_null : "info_null (spotlight target)" []
 
@@ -1883,9 +1577,9 @@
   target(target_destination) : "Target"
   master(string) : "Master"
 ]
-@PointClass base(PlayerClass) studio("models/player.mdl") = info_player_start : "Player 1 start" []
+@PointClass base(PlayerClass) studio("models/player.mdl") = info_player_start : "Singleplayer start" []
 
-@PointClass base(Targetname) size(-4 -4 -4, 4 4 4) color(200 100 50) = info_target : "Beam Target" []
+@PointClass base(Targetname) size(-4 -4 -4, 4 4 4) color(200 100 50) = info_target : "Beam target" []
 @PointClass size(-8 -8 0, 8 8 16) base(PlayerClass, Targetname) = info_teleport_destination : "Teleport destination" []
 
 //
@@ -1895,19 +1589,19 @@
 @PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_oxygen.mdl") = item_airtank : "Oxygen tank" []
 @PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_antidote.mdl") = item_antidote : "Poison antidote" []
 @PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_battery.mdl") = item_battery : "HEV battery" []
-@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_medkit.mdl") = item_healthkit : "Small Health Kit" []
-@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_longjump.mdl") = item_longjump : "Longjump Module" []
+@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_medkit.mdl") = item_healthkit : "Small health kit" []
+@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_longjump.mdl") = item_longjump : "Longjump module" []
 @PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_security.mdl") = item_security : "Security card" []
-@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_suit.mdl") = item_suit : "HEV Suit" 
+@PointClass size(-16 -16 0, 16 16 36) base(Weapon, Targetx) studio("models/w_suit.mdl") = item_suit : "HEV suit" 
 [
-  body(Choices) : "Body" : 0 =
+  body(choices) : "Body" : 0 =
   [
       0 : "Standing"
-      1 : "Laying Flat"
+      1 : "Laying flat"
   ]
-  spawnflags(Flags) =
+  spawnflags(flags) =
   [
-    1 : "Short Logon" : 0
+    1 : "Short logon" : 0
   ]
 ]
 
@@ -1917,50 +1611,53 @@
 
 @PointClass iconsprite("sprites/lightbulb.spr") base(Target, Targetname, Light, ZHLT_point) flags(Light) = light : "Invisible lightsource"
 [
-	spawnflags(Flags) = [ 1 : "Initially dark" : 0 ]
+    spawnflags(flags) = 
+    [ 
+        1: "Initially dark" : 0 
+    ]
 ]
 
 @PointClass iconsprite("sprites/lightbulb.spr") base(Targetname, Target, Angles, ZHLT_point) flags(Light) = light_spot : "Spotlight" 
 [
-	_cone(integer) : "Inner (bright) angle" : 30
-	_cone2(integer) : "Outer (fading) angle" : 45
-	pitch(integer) : "Pitch" : -90
-	_light(color255) : "Brightness" : "255 255 128 200"
-	_sky(Choices) : "Is Sky" : 0 = 
-	[ 
-		0 : "No"
-		1 : "Yes"
-	]
-	spawnflags(Flags) = [ 1 : "Initially dark" : 0 ]
-      style(Choices) : "Appearance" : 0 =
-	[
-		0 : "Normal"
-		10: "Fluorescent flicker"
-		2 : "Slow, strong pulse"
-		11: "Slow pulse, noblack"
-		5 : "Gentle pulse"
-		1 : "Flicker A"
-		6 : "Flicker B"
-		3 : "Candle A"
-		7 : "Candle B"
-		8 : "Candle C"
-		4 : "Fast strobe"
-		9 : "Slow strobe"
-	]
-	pattern(string) : "Custom Appearance"
+    _cone(integer) : "Inner (bright) angle" : 30
+    _cone2(integer) : "Outer (fading) angle" : 45
+    pitch(integer) : "Pitch" : -90
+    _light(color255) : "Brightness" : "255 255 128 200"
+    _sky(choices) : "Is sky" : 0 = 
+    [ 
+        0 : "No"
+        1 : "Yes"
+    ]
+    spawnflags(flags) = [ 1 : "Initially dark" : 0 ]
+      style(choices) : "Appearance" : 0 =
+    [
+        0 : "Normal"
+        10: "Fluorescent flicker"
+        2 : "Slow, strong pulse"
+        11: "Slow pulse, no black"
+        5 : "Gentle pulse"
+        1 : "Flicker A"
+        6 : "Flicker B"
+        3 : "Candle A"
+        7 : "Candle B"
+        8 : "Candle C"
+        4 : "Fast strobe"
+        9 : "Slow strobe"
+    ]
+    pattern(string) : "Custom appearance"
 ]
 
 @PointClass base(Targetname, Angles, ZHLT_point) iconsprite("sprites/lightbulb.spr") flags(Light) = light_environment : "Environment" 
 [
-	pitch(integer) : "Pitch" : 0
-	_light(color255) : "Brightness" : "255 255 128 200"
+    pitch(integer) : "Pitch" : 0
+    _light(color255) : "Brightness" : "255 255 128 200"
 ]
 
-@SolidClass base(Door, ZHLT) = momentary_door : "Momentary/Continuous door" 
+@SolidClass base(Door, ZHLT) = momentary_door : "Momentary/continuous door" 
 [
   spawnflags(flags) =
   [
-    1 : "Starts Open" : 0
+    1 : "Starts open" : 0
   ]
 ]
 
@@ -1972,32 +1669,32 @@
   sounds(choices) : "Sounds" : 0 = 
   [
     0: "None"
-    1: "Big zap & Warmup"
-    2: "Access Denied"
-    3: "Access Granted"
-    4: "Quick Combolock"
-    5: "Power Deadbolt 1"
-    6: "Power Deadbolt 2"
+    1: "Big zap & warmup"
+    2: "Access denied"
+    3: "Access granted"
+    4: "Quick combolock"
+    5: "Power deadbolt 1"
+    6: "Power deadbolt 2"
     7: "Plunger"
     8: "Small zap"
-    9: "Keycard Sound"
+    9: "Keycard sound"
     21: "Squeaky"
-    22: "Squeaky Pneumatic"
-    23: "Ratchet Groan"
-    24: "Clean Ratchet"
-    25: "Gas Clunk"
+    22: "Squeaky pneumatic"
+    23: "Ratchet groan"
+    24: "Clean ratchet"
+    25: "Gas clunk"
   ]
   distance(integer) : "Distance (deg)" : 90
   returnspeed(integer) : "Auto-return speed" : 0
   spawnflags(flags) =
   [
-    1: "Door Hack" : 0
+    1: "Door hack" : 0
     2: "Not useable" : 0
-    16: "Auto Return" : 0
-    64: "X Axis" : 0
-    128: "Y Axis" : 0
+    16: "Auto return" : 0
+    64: "X axis" : 0
+    128: "Y axis" : 0
   ]
-  _minlight(integer) : "_minlight"
+  _minlight(integer) : "Minimum light level"
 ]
 
 //
@@ -2005,824 +1702,814 @@
 //
 
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/controller.mdl") = monster_alien_controller : "Controller"  []
-@PointClass base(Monster, Sequence) size(-32 -32 0, 32 32 64) studio("models/agrunt.mdl") = monster_alien_grunt : "Alien Grunt" 
+@PointClass base(Monster, Sequence) size(-32 -32 0, 32 32 64) studio("models/agrunt.mdl") = monster_alien_grunt : "Alien grunt" 
 [
-  netname(string) : "Squad Name"
-  spawnflags(Flags) =
+  netname(string) : "Squad name"
+  spawnflags(flags) =
   [
-    32 : "SquadLeader" : 0
+    32 : "Squad leader" : 0
   ]
 ]
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/islave.mdl") = monster_alien_slave : "Vortigaunt" 
 [
-  netname(string) : "Squad Name"
-  spawnflags(Flags) =
+  netname(string) : "Squad name"
+  spawnflags(flags) =
   [
-    32 : "SquadLeader" : 0
-    64 : "IgnorePlayer" : 0
+    32 : "Squad leader" : 0
+    64 : "Ignore player" : 0
   ]
 ]
 @PointClass base(Monster, Sequence) size(-360 -360 -172, 360 360 8) studio("models/apache.mdl") = monster_apache : "Apache" 
 [
-  spawnflags(Flags) = 
+  spawnflags(flags) = 
   [
-    8 : "NoWreckage"  : 0
-    64 : "Start Inactive" : 0
+    8 : "No wreckage"  : 0
+    64 : "Start inactive" : 0
   ]
 ]
-@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 36) studio("models/baby_headcrab.mdl") = monster_babycrab : "Baby Headcrab" []
-@PointClass base(RenderFields, Sequence) size(-16 -16 -36, 16 16 0) studio("models/barnacle.mdl") = monster_barnacle : "Barnacle Monster" []
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 36) studio("models/baby_headcrab.mdl") = monster_babycrab : "Baby headcrab" []
+@PointClass base(RenderFields, Sequence) size(-16 -16 -36, 16 16 0) studio("models/barnacle.mdl") = monster_barnacle : "Barnacle" []
 @PointClass base(Monster,TalkMonster, Sequence) size(-16 -16 0, 16 16 72) studio("models/barney.mdl") = monster_barney : "Barney"
 [
-	suspicious(choices) : "Suspicious" : 0 =
-	[
-		0 : "No"
-		1 : "Yes"
-	]
+    suspicious(choices) : "Suspicious" : 0 =
+    [
+        0 : "No"
+        1 : "Yes"
+    ]
 ]
 @PointClass base(Targetname,RenderFields,Appearflags, Angles, Sequence) size(-16 -16 0, 16 16 72) studio("models/barney.mdl") = monster_barney_dead : "Dead Barney" 
 [
-      pose(Choices) : "Pose" : 0 =
-  [
-    0 : "On back"
-    1 : "On side"
-    2 : "On stomach"
-  ]
+    pose(choices) : "Pose" : 0 =
+    [
+        0: "On back"
+        1: "On side"
+        2: "On stomach"
+    ]
 ]
-@PointClass base(Monster, Sequence) size(-95 -95 0, 95 95 190) studio("models/big_mom.mdl") = monster_bigmomma : "Big Mamma" 
+@PointClass base(Monster, Sequence) size(-95 -95 0, 95 95 190) studio("models/big_mom.mdl") = monster_bigmomma : "Big Momma" 
 [
-  netname(string) : "First node" : ""
+    netname(string) : "First node" : ""
 ]
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/floater.mdl") = monster_bloater : "Bloater" []
-@PointClass base(Monster, Sequence) size(-32 -32 0, 32 32 64) studio("models/bullsquid.mdl") = monster_bullchicken : "BullChicken" []
+@PointClass base(Monster, Sequence) size(-32 -32 0, 32 32 64) studio("models/bullsquid.mdl") = monster_bullchicken : "Bullsquid" []
 @PointClass base(Monster, Sequence) size(-3 -3 0, 3 3 3) studio("models/roach.mdl") = monster_cockroach : "Cockroach" []
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 16) studio("models/aflock.mdl") = monster_flyer_flock : "Flock of Flyers" 
 [
-  iFlockSize(Integer) : "Flock Size" : 8
-  flFlockRadius(Integer) : "Flock Radius" : 128
+    iFlockSize(integer) : "Flock size" : 8
+    flFlockRadius(integer) : "Flock radius" : 128
 ]
-@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) = monster_furniture : "Monster Furniture" 
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) = monster_furniture : "Generic monster" 
 [
-  model(studio) : "model"
+    model(studio) : "model"
+]
 
-]
 @PointClass base(Monster, Sequence) size(-32 -32 0, 32 32 128) studio("models/garg.mdl") = monster_gargantua : "Gargantua" []
-@PointClass base(Monster, RenderFields, Sequence) size(-16 -16 -36, 16 16 36) = monster_generic : "Generic Script Monster" 
+@PointClass base(Monster, RenderFields, Sequence) size(-16 -16 -36, 16 16 36) = monster_generic : "Generic script monster" 
 [
-  spawnflags(Flags) = 
+  spawnflags(flags) = 
   [
     4 : "Not solid" : 0
     8 : "Head Controller" : 0
   ]
   model(studio) : "model"
-  body(Integer) : "Body" : 0
+  body(integer) : "Body" : 0
 ]
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/gman.mdl") = monster_gman : "G-Man" []
-@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/hgrunt.mdl") = monster_grunt_repel : "Human Grunt (Repel)" []
-@PointClass base(Weapon, Targetx, RenderFields, Sequence) studio("models/w_grenade.mdl") = monster_handgrenade : "Live Handgrenade" []
-@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 36) studio("models/headcrab.mdl") = monster_headcrab : "Head Crab" []
-@PointClass base(Targetname,Appearflags,RenderFields, Angles, Sequence) size(-16 -16 0, 16 16 72) = monster_hevsuit_dead : "Dead HEV Suit" 
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/hgrunt.mdl") = monster_grunt_repel : "Human grunt (repel)" []
+@PointClass base(Weapon, Targetx, RenderFields, Sequence) studio("models/w_grenade.mdl") = monster_handgrenade : "Live handgrenade" []
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 36) studio("models/headcrab.mdl") = monster_headcrab : "Head crab" []
+@PointClass base(Targetname,Appearflags,RenderFields, Angles, Sequence) size(-16 -16 0, 16 16 72) = monster_hevsuit_dead : "Dead HEV suit" 
 [
-      pose(Choices) : "Pose" : 0 =
-  [
-    0 : "On back"
-    1 : "Seated"
-    2 : "On stomach"
-    3 : "On Table"
-  ]
+    pose(choices) : "Pose" : 0 =
+    [
+        0 : "On back"
+        1 : "Seated"
+        2 : "On stomach"
+        3 : "On Table"
+    ]
 ]
-@PointClass base(Targetname,Appearflags,RenderFields, Angles, Sequence) size(-16 -16 0, 16 16 72) studio("models/hgrunt.mdl") = monster_hgrunt_dead : "Dead Human Grunt" 
+@PointClass base(Targetname,Appearflags,RenderFields, Angles, Sequence) size(-16 -16 0, 16 16 72) studio("models/hgrunt.mdl") = monster_hgrunt_dead : "Dead human grunt" 
 [
-      pose(Choices) : "Pose" : 0 =
-  [
-    0 : "On stomach"
-    1 : "On side"
-    2 : "Seated"
-  ]
-  body(Choices) : "Body" : 0 =
-  [
-    0 : "Grunt with Gun"
-    1 : "Commander with Gun"
-    2 : "Grunt no Gun"
-    3 : "Commander no Gun"
+    pose(choices) : "Pose" : 0 =
+    [
+        0: "On stomach"
+        1: "On side"
+        2: "Seated"
+    ]
+
+    body(choices) : "Body" : 0 =
+    [
+        0: "Grunt with gun"
+        1: "Commander with gun"
+        2: "Grunt no gun"
+        3: "Commander no gun"
   ]
 ]
 @PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 36) studio("models/houndeye.mdl") = monster_houndeye : "Houndeye" 
 [
-  netname(string) : "Squad Name"
-  spawnflags(Flags) =
-  [
-    32 : "SquadLeader" : 0
-  ]
+    netname(string) : "Squad Name"
+    spawnflags(flags) =
+    [
+        32: "SquadLeader" : 0
+    ]
 ]
-@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/hassassin.mdl") = monster_human_assassin : "Human Assassin" []
-@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/hgrunt.mdl") = monster_human_grunt : "Human Grunt (camo)" 
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/hassassin.mdl") = monster_human_assassin : "Human assassin" []
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/hgrunt.mdl") = monster_human_grunt : "Human grunt" 
 [
-  spawnflags(Flags) =
-  [
-    32 : "SquadLeader" : 0
-  ]
-  netname(string) : "Squad Name"
-  weapons(Choices) : "Weapons" : 3 =
-  [
-    1 : "9mmAR"
-    3 : "9mmAR + HG"
-    5 : "9mmAR + GL"
-    8 : "Shotgun"
-    10 : "Shotgun + HG"
-  ]
+    spawnflags(flags) =
+    [
+        32 : "Squad leader" : 0
+    ]
+    netname(string) : "Squad name"
+    weapons(choices) : "Weapons" : 3 =
+    [
+        1: "9mmAR"
+        3: "9mmAR + HG"
+        5: "9mmAR + GL"
+        8: "Shotgun"
+        10: "Shotgun + HG"
+    ]
 ]
 @PointClass base(Monster, Sequence) size(-32 -32 0, 32 32 64) studio("models/icky.mdl") = monster_ichthyosaur : "Ichthyosaur" []
 @PointClass base(Monster, Sequence) size(-6 -6 0, 6 6 6) studio("models/leech.mdl") = monster_leech : "Leech" []
-@PointClass base(Monster, Sequence) size(-16 -16 -32, 16 16 32) studio("models/miniturret.mdl") = monster_miniturret : "Mini Auto Turret"
+@PointClass base(Monster, Sequence) size(-16 -16 -32, 16 16 32) studio("models/miniturret.mdl") = monster_miniturret : "Mini auto turret"
 [
-  orientation(Choices) : "Orientation" : 0 =
-  [
-    0 : "Floor Mount"
-    1 : "Ceiling Mount"
-  ]
-  spawnflags(Flags) = 
-  [
-    32 : "Autostart" : 0
-    64 : "Start Inactive" : 0
-  ]
+    orientation(choices) : "Orientation" : 0 =
+    [
+        0: "Floor mount"
+        1: "Ceiling mount"
+    ]
+    spawnflags(flags) = 
+    [
+        32: "Autostart" : 0
+        64: "Start inactive" : 0
+    ]
 ]
 @PointClass base(Monster, Sequence) size(-192 -192 0, 192 192 384) studio("models/nihilanth.mdl") = monster_nihilanth : "Nihilanth"  []
 @PointClass base(Monster, Sequence) size(-480 -480 -112, 480 480 24) studio("models/osprey.mdl") = monster_osprey : "Osprey"
 [
-  spawnflags(Flags) = 
-  [
-    64 : "Start Inactive" : 0
-  ]
+    spawnflags(flags) = 
+    [
+        64: "Start inactive" : 0
+    ]
 ]
-@PointClass base(Monster, Sequence) size(-6 -6 0, 6 6 6) studio("models/bigrat.mdl") = monster_rat : "Rat (no ai?)" []
-@PointClass base(Weapon,Targetx,RenderFields, Sequence) studio("models/w_satchel.mdl") = monster_satchel : "Live Satchel Charge" []
-@PointClass base(Monster, TalkMonster, Sequence) size(-16 -16 0, 16 16 72) studio("models/scientist.mdl") = monster_scientist : "Scared Scientist" 
+@PointClass base(Monster, Sequence) size(-6 -6 0, 6 6 6) studio("models/bigrat.mdl") = monster_rat : "Rat (no AI)" []
+@PointClass base(Weapon,Targetx,RenderFields, Sequence) studio("models/w_satchel.mdl") = monster_satchel : "Live satchel charge" []
+@PointClass base(Monster, TalkMonster, Sequence) size(-16 -16 0, 16 16 72) studio("models/scientist.mdl") = monster_scientist : "Scared scientist" 
 [
-      body(Choices) : "Body" : -1 =
-	[
-		-1 : "Random"
-		0 : "Glasses"
-		1 : "Einstein"
-		2 : "Luther"
-		3 : "Slick"
-		4 : "Einstein w/ Clipboard"
-		5 : "Slick w/ Stick"
-	]
-	suspicious(choices) : "Suspicious" : 0 =
-	[
-		0 : "No"
-		1 : "Yes"
-	]
+    body(choices) : "Body" : -1 =
+    [
+        -1: "Random"
+        0: "Glasses"
+        1: "Einstein"
+        2: "Luther"
+        3: "Slick"
+        4: "Einstein w/ clipboard"
+        5: "Slick w/ stick"
+    ]
+    suspicious(choices) : "Suspicious" : 0 =
+    [
+        0: "No"
+        1: "Yes"
+    ]
 ]
-@PointClass base(Targetname,Appearflags,RenderFields, Angles, Sequence) size(-16 -16 0, 16 16 72) studio("models/scientist.mdl") = monster_scientist_dead : "Dead Scientist" 
+@PointClass base(Targetname,Appearflags,RenderFields, Angles, Sequence) size(-16 -16 0, 16 16 72) studio("models/scientist.mdl") = monster_scientist_dead : "Dead scientist" 
 [
-      body(Choices) : "Body" : -1 =
-  [
-    -1 : "Random"
-    0 : "Glasses"
-    1 : "Einstein"
-    2 : "Luther"
-    3 : "Slick"
-  ]
-      pose(Choices) : "Pose" : 0 =
-  [
-    0 : "On back"
-    1 : "On Stomach"
-    2 : "Sitting"
-    3 : "Hanging"
-    4 : "Table1"
-    5 : "Table2"
-    6 : "Table3"
-  ]
+    body(choices) : "Body" : -1 =
+    [
+        -1: "Random"
+        0: "Glasses"
+        1: "Einstein"
+        2: "Luther"
+        3: "Slick"
+    ]
+    
+    pose(choices) : "Pose" : 0 =
+    [
+        0: "On back"
+        1: "On Stomach"
+        2: "Sitting"
+        3: "Hanging"
+        4: "Table1"
+        5: "Table2"
+        6: "Table3"
+    ]
 ]
-@PointClass base(Monster, Sequence) size(-14 -14 22, 14 14 72) studio("models/scientist.mdl") = monster_sitting_scientist : "Sitting Scientist" 
+@PointClass base(Monster, Sequence) size(-14 -14 22, 14 14 72) studio("models/scientist.mdl") = monster_sitting_scientist : "Sitting scientist" 
 [
-      body(Choices) : "Body" : -1 =
-  [
-    -1 : "Random"
-    0 : "Glasses"
-    1 : "Einstein"
-    2 : "Luther"
-    3 : "Slick"
-  ]
-	suspicious(choices) : "Suspicious" : 0 =
-	[
-		0 : "No"
-		1 : "Yes"
-	]
-]
-@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/sentry.mdl") = monster_sentry : "Sentry Turret Gun"
-[
-  spawnflags(Flags) = 
-  [
-    32 : "Autostart" : 0
-    64 : "Start Inactive" : 0
-  ]
-]
-@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 36) studio("models/w_squeak.mdl") = monster_snark : "Armed Snark" []
-@PointClass base(Monster, Sequence) size(-32 -32 0, 32 32 64) studio("models/tentacle2.mdl") = monster_tentacle : "Tentacle Arm" 
-[
-  spawnflags(Flags) = 
-  [
-    64 : "Tentacle3" : 0
-  ]
-  sweeparc(integer) : "Sweep Arc" : 130
-  sound(Choices) : "Tap Sound" : -1 =
-  [
-    -1 : "None"
-    0 : "Silo"
-    1 : "Dirt"
-    2 : "Water"
-  ]
-]
-@PointClass base(Monster, Sequence) studio("models/p_tripmine.mdl") = monster_tripmine : "Active Tripmine" 
-[
-  spawnflags(Flags) =
-  [
-    1 : "Instant On" : 1
-  ]
-]
-@PointClass base(Monster, Sequence) size(-32 -32 -32, 32 32 32) studio("models/turret.mdl") = monster_turret : "Auto Turret"
-[
-  orientation(Choices) : "Orientation" : 0 =
-  [
-    0 : "Floor Mount"
-    1 : "Ceiling Mount"
-  ]
-  spawnflags(Flags) = 
-  [
-    32 : "Autostart" : 0
-    64 : "Start Inactive" : 0
-  ]
-]
-@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/zombie.mdl") = monster_zombie : "Scientist Zombie" []
-@PointClass base(Targetname, Angles) size(-16 -16 -16, 16 16 16) = monstermaker : "Monster Maker"
-[
-  target(string) : "Target On Release" 
-  monstertype(string) : "Monster Type"
-  netname(string) : "Childrens' Name"
-  spawnflags(Flags) = 
-  [
-    1 : "Start ON"  : 0
-    2 : "PVS On/Off" : 0
-    4 : "Cyclic" : 0
-    8 : "MonsterClip" : 0
-  ]
+    body(choices) : "Body" : -1 =
+    [
+        -1 : "Random"
+        0 : "Glasses"
+        1 : "Einstein"
+        2 : "Luther"
+        3 : "Slick"
+    ]
 
-  // how many monsters the monstermaker can create (-1 = unlimited)
-  monstercount(integer) : "Number of Monsters" : -1
-  
-  // if delay is -1, new monster will be made when last monster dies.
-  // else, delay is how often (seconds) a new monster will be dookied out.
-  delay(string) : "Frequency" : "5"
+    suspicious(choices) : "Suspicious" : 0 =
+    [
+        0 : "No"
+        1 : "Yes"
+    ]
+]
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/sentry.mdl") = monster_sentry : "Sentry turret gun"
+[
+    spawnflags(flags) = 
+    [
+        32: "Autostart" : 0
+        64: "Start inactive" : 0
+    ]
+]
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 36) studio("models/w_squeak.mdl") = monster_snark : "Armed snark" []
+@PointClass base(Monster, Sequence) size(-32 -32 0, 32 32 64) studio("models/tentacle2.mdl") = monster_tentacle : "Tentacle arm" 
+[
+    spawnflags(flags) = 
+    [
+        64: "Tentacle 3" : 0
+    ]
 
-  // maximum number of live children allowed at one time. (New ones will not be made until one dies)
-  // -1 no limit
-  m_imaxlivechildren(integer) : "Max live children" : 5
+    sweeparc(integer) : "Sweep arc" : 130
+    sound(choices) : "Tap sound" : -1 =
+    [
+        -1: "None"
+        0: "Silo"
+        1: "Dirt"
+        2: "Water"
+    ]
+]
+@PointClass base(Monster, Sequence) studio("models/p_tripmine.mdl") = monster_tripmine : "Active tripmine" 
+[
+    spawnflags(flags) =
+    [
+        1: "Instant on" : 1
+    ]
+]
+@PointClass base(Monster, Sequence) size(-32 -32 -32, 32 32 32) studio("models/turret.mdl") = monster_turret : "Auto turret"
+[
+    orientation(choices) : "Orientation" : 0 =
+    [
+        0: "Floor mount"
+        1: "Ceiling mount"
+    ]
+    spawnflags(flags) = 
+    [
+        32: "Autostart" : 0
+        64: "Start inactive" : 0
+    ]
+]
+@PointClass base(Monster, Sequence) size(-16 -16 0, 16 16 72) studio("models/zombie.mdl") = monster_zombie : "Scientist zombie" []
+@PointClass base(Targetname, Angles) size(-16 -16 -16, 16 16 16) = monstermaker : "Monster maker"
+[
+    target(string) : "Target on release" 
+    monstertype(string) : "Monster type"
+    netname(string) : "Childrens' name"
+    spawnflags(flags) = 
+    [
+        1: "Start on"  : 0
+        2: "PVS on/off" : 0
+        4: "Cyclic" : 0
+        8: "Monster clip" : 0
+    ]   
+    // how many monsters the monstermaker can create (-1 = unlimited)
+    monstercount(integer) : "Number of monsters" : -1
+    // if delay is -1, new monster will be made when last monster dies.
+    // else, delay is how often (seconds) a new monster will be dookied out.
+    delay(string) : "Frequency" : "5"   
+    // maximum number of live children allowed at one time. (New ones will not be made until one dies)
+    // -1 no limit
+    m_imaxlivechildren(integer) : "Max live children" : 5
 ]
 
-@PointClass base(Targetname) color(255 128 0) = multi_manager : "MultiTarget Manager" 
+@PointClass base(Targetname) color(255 128 0) = multi_manager : "Multi-target manager" 
 [
-	spawnflags(Flags) = 
-	[
-		1 : "multithreaded" : 0
-	]
+    spawnflags(flags) = 
+    [
+        1 : "Multi-threaded" : 0
+    ]
 ]
 
 @PointClass base(Targetname, Target) color(128 255 128) iconsprite("sprites/multisource.spr") = multisource : "Multisource"
 [
-	globalstate(string) : "Global State Master"
+    globalstate(string) : "Global state master"
 ]
 
 @PointClass base(Targetname, Angles) flags(Path) size(16 16 16) color(247 181 82) = path_corner : "Moving platform stop"
 [
-	spawnflags(Flags) =
-	[
-		1: "Wait for retrigger" : 0
-		2: "Teleport" : 0
-		4: "Fire once" : 0
-	]
-	target(target_destination) : "Next stop target"
-	message(target_destination) : "Fire On Pass"
-	wait(integer) : "Wait here (secs)" : 0
-	speed(integer) : "New Train Speed" : 0
-	yaw_speed(integer) : "New Train rot. Speed" : 0
+    spawnflags(flags) =
+    [
+        1: "Wait for retrigger" : 0
+        2: "Teleport" : 0
+        4: "Fire once" : 0
+    ]
+    target(target_destination) : "Next stop target"
+    message(target_destination) : "Fire on pass"
+    wait(integer) : "Wait here (secs)" : 0
+    speed(integer) : "New train speed" : 0
+    yaw_speed(integer) : "New train rot. speed" : 0
 ]
 
-@PointClass base(Targetname) flags(Path) size(16 16 16) = path_track : "Train Track Path"
+@PointClass base(Targetname) flags(Path) size(16 16 16) = path_track : "Train track path"
 [
-	spawnflags(Flags) =
-	[
-		1: "Disabled" : 0
-		2: "Fire once" : 0
-		4: "Branch Reverse" : 0
-		8: "Disable train" : 0
-	]
-	target(target_destination) : "Next stop target"
-	message(target_destination) : "Fire On Pass"
-	altpath(target_destination) : "Branch Path"
-	netname(target_destination) : "Fire on dead end"
-	speed(integer) : "New Train Speed" : 0
+    spawnflags(flags) =
+    [
+        1: "Disabled" : 0
+        2: "Fire once" : 0
+        4: "Branch reverse" : 0
+        8: "Disable train" : 0
+    ]
+    target(target_destination) : "Next stop target"
+    message(target_destination) : "Fire on Pass"
+    altpath(target_destination) : "Branch path"
+    netname(target_destination) : "Fire on dead end"
+    speed(integer) : "New train speed" : 0
 ]
 
 //
 // player effects
 //
 
-@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = player_loadsaved : "Load Auto-Saved game" 
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = player_loadsaved : "Load auto-saved game" 
 [
-  duration(string) : "Fade Duration (seconds)" : "2"
-  holdtime(string) : "Hold Fade (seconds)" : "0"
-  renderamt(integer) : "Fade Alpha" : 255
-  rendercolor(color255) : "Fade Color (R G B)" : "0 0 0"
-  messagetime(string) : "Show Message delay" : "0"
-  message(string) : "Message To Display" : ""
-  loadtime(string) : "Reload delay" : "0"
+    duration(string) : "Fade duration (seconds)" : "2"
+    holdtime(string) : "Hold fade (seconds)" : "0"
+    renderamt(integer) : "Fade alpha" : 255
+    rendercolor(color255) : "Fade color (R G B)" : "0 0 0"
+    messagetime(string) : "Show message delay" : "0"
+    message(string) : "Message to display" : ""
+    loadtime(string) : "Reload delay" : "0"
 ]
 
 @PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = player_sethudcolor : "Set or reset player hud color" 
 [
-  hud_color(color255) : "Hud Color (R G B)" : "0 0 0"
-  
-  action(Choices) : "Action To Take" : 0 =
-  [
-    0 : "Set color"
-    1 : "Reset color"
-  ]
+    hud_color(color255) : "HUD color (R G B)" : "0 0 0"
+
+    action(choices) : "Action to take" : 0 =
+    [
+        0: "Set color"
+        1: "Reset color"
+    ]
 ]
 
 @PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = player_weaponstrip : "Strips player's weapons" []
 
-@PointClass base(Targetname, Targetx) size(-16 -16 0, 16 16 72) color(255 0 255) = scripted_sentence : "Scripted Sentence"
+@PointClass base(Targetname, Targetx) size(-16 -16 0, 16 16 72) color(255 0 255) = scripted_sentence : "Scripted sentence"
 [
-  spawnflags(Flags) = 
-  [
-    1 : "Fire Once"   : 1
-    2 : "Followers Only"  : 0
-    4 : "Interrupt Speech"  : 1
-    8 : "Concurrent"  : 0
-  ]
-  sentence(string) : "Sentence Name" : ""
-  entity(string) : "Speaker Entity"
-  duration(string) : "Sentence Time" : "3"
-  radius(integer) : "Search Radius" : 512
-  refire(string) : "Delay Before Refire" : "3"
-  listener(string) : "Listener"
-  volume(string) : "Volume 0-10" : "10"
-  attenuation(Choices) : "Sound Radius" : 0 =
-  [
-    0 : "Small Radius"
-    1 : "Medium Radius"
-    2 : "Large  Radius"
-    3 : "Play Everywhere"
-  ]
+    spawnflags(flags) = 
+    [
+        1: "Fire Once"   : 1
+        2: "Followers only"  : 0
+        4: "Interrupt speech"  : 1
+        8: "Concurrent"  : 0
+    ]
+    sentence(string) : "Sentence name" : ""
+    entity(string) : "Speaker entity"
+    duration(string) : "Sentence time" : "3"
+    radius(integer) : "Search radius" : 512
+    refire(string) : "Delay before refire" : "3"
+    listener(string) : "Listener"
+    volume(string) : "Volume 0-10" : "10"
+    attenuation(choices) : "Sound radius" : 0 =
+    [
+        0: "Small radius"
+        1: "Medium radius"
+        2: "Large  radius"
+        3: "Play everywhere"
+    ]
 ]
 
-@PointClass base(Targetname, Targetx, Angles) flags(Angle) size(-16 -16 0, 16 16 72) color(255 0 255) = scripted_sequence : "Scripted Sequence"
+@PointClass base(Targetname, Targetx, Angles) flags(Angle) size(-16 -16 0, 16 16 72) color(255 0 255) = scripted_sequence : "Scripted sequence"
 [
-  m_iszEntity(string) : "Target Monster"
-  m_iszPlay(string) : "Action Animation" : ""
-  m_iszIdle(string) : "Idle Animation" : ""
-  m_flRadius(integer) : "Search Radius" : 512
-  m_flRepeat(integer) : "Repeat Rate ms" : 0
-  m_fMoveTo(choices) : "Move to Position" : 0 =
-  [
-    0 : "No"
-    1 : "Walk"
-    2 : "Run"
-    4 : "Instantaneous"
-    5 : "No - Turn to Face"
-  ]
-  spawnflags(Flags) = 
-  [
-    4 : "Repeatable"  : 0
-    8 : "Leave Corpse"  : 0
-    32: "No Interruptions"  : 0
-    64: "Override AI" : 0
-    128: "No Script Movement" : 0
-    256: "No Reset Entity" : 0
-  ]
+    m_iszEntity(string) : "Target monster"
+    m_iszPlay(string) : "Action animation" : ""
+    m_iszIdle(string) : "Idle animation" : ""
+    m_flRadius(integer) : "Search radius" : 512
+    m_flRepeat(integer) : "Repeat rate ms" : 0
+    m_fMoveTo(choices) : "Move to position" : 0 =
+    [
+        0 : "No"
+        1 : "Walk"
+        2 : "Run"
+        4 : "Instantaneous"
+        5 : "No - turn to face"
+    ]
+    spawnflags(flags) = 
+    [
+        4 : "Repeatable"  : 0
+        8 : "Leave corpse"  : 0
+        32: "No interruptions"  : 0
+        64: "Override AI" : 0
+        128: "No script movement" : 0
+        256: "No reset entity" : 0
+    ]
 ]
 
-@PointClass iconsprite("sprites/speaker.spr") base(Targetname) = speaker : "Announcement Speaker"
+@PointClass iconsprite("sprites/speaker.spr") base(Targetname) = speaker : "Announcement speaker"
 [
-  preset(choices) :"Announcement Presets" : 0 =
-  [
-    0: "None"
-    1: "C1A0 Announcer"
-    2: "C1A1 Announcer"
-    3: "C1A2 Announcer"
-    4: "C1A3 Announcer"
-    5: "C1A4 Announcer"  
-    6: "C2A1 Announcer"
-    7: "C2A2 Announcer"
-    // 8: "C2A3 Announcer"
-    9: "C2A4 Announcer"
-    // 10: "C2A5 Announcer"
-    11: "C3A1 Announcer"
-    12: "C3A2 Announcer"
-  ]
-  message(string) : "Sentence Group Name"
-  health(integer) : "Volume (10 = loudest)" : 5
-  spawnflags(flags) =
-  [
-    1: "Start Silent" : 0
-  ]
+    preset(choices) :"Announcement presets" : 0 =
+    [
+        0: "None"
+        1: "C1A0 announcer"
+        2: "C1A1 announcer"
+        3: "C1A2 announcer"
+        4: "C1A3 announcer"
+        5: "C1A4 announcer"  
+        6: "C2A1 announcer"
+        7: "C2A2 announcer"
+        // 8: "C2A3 announcer"
+        9: "C2A4 announcer"
+        // 10: "C2A5 announcer"
+        11: "C3A1 announcer"
+        12: "C3A2 announcer"
+    ]
+    message(string) : "Sentence group name"
+    health(integer) : "Volume (10 = loudest)" : 5
+    spawnflags(flags) =
+    [
+        1: "Start silent" : 0
+    ]
 ]
 
-@PointClass base(Targetname) = target_cdaudio : "CD Audio Target"
+@PointClass base(Targetname) = target_cdaudio : "CD audio target"
 [
-  health(choices) : "Track #" : -1 =
-  [
-    -1 : "Stop"
-    1 : "Track 1"
-    2 : "Track 2"
-    3 : "Track 3"
-    4 : "Track 4"
-    5 : "Track 5"
-    6 : "Track 6"
-    7 : "Track 7"
-    8 : "Track 8"
-    9 : "Track 9"
-    10 : "Track 10"
-    11 : "Track 11"
-    12 : "Track 12"
-    13 : "Track 13"
-    14 : "Track 14"
-    15 : "Track 15"
-    16 : "Track 16"
-    17 : "Track 17"
-    18 : "Track 18"
-    19 : "Track 19"
-    20 : "Track 20"
-    21 : "Track 21"
-    22 : "Track 22"
-    23 : "Track 23"
-    24 : "Track 24"
-    25 : "Track 25"
-    26 : "Track 26"
-    27 : "Track 27"
-    28 : "Track 28"
-    29 : "Track 29"
-    30 : "Track 30"
-  ]
-  radius(string) : "Player Radius"
+    health(choices) : "Track #" : -1 =
+    [
+        -1: "Stop"
+        1: "Track 1"
+        2: "Track 2"
+        3: "Track 3"
+        4: "Track 4"
+        5: "Track 5"
+        6: "Track 6"
+        7: "Track 7"
+        8: "Track 8"
+        9: "Track 9"
+        10: "Track 10"
+        11: "Track 11"
+        12: "Track 12"
+        13: "Track 13"
+        14: "Track 14"
+        15: "Track 15"
+        16: "Track 16"
+        17: "Track 17"
+        18: "Track 18"
+        19: "Track 19"
+        20: "Track 20"
+        21: "Track 21"
+        22: "Track 22"
+        23: "Track 23"
+        24: "Track 24"
+        25: "Track 25"
+        26: "Track 26"
+        27: "Track 27"
+        28: "Track 28"
+        29: "Track 29"
+        30: "Track 30"
+    ]
+    radius(string) : "Player radius"
 ]
 
 //
 // Triggers
 //
 
-@PointClass base(Targetx) iconsprite("sprites/trigger_auto.spr") = trigger_auto : "AutoTrigger"
+@PointClass base(Targetx) iconsprite("sprites/trigger_auto.spr") = trigger_auto : "Triggers when the map starts"
 [
-  spawnflags(Flags) =
-  [
-    1 : "Remove On fire" : 1
-  ]
-  globalstate(string) : "Global State to Read"
-  triggerstate(choices) : "Trigger State" : 0 = 
-  [
-    0 : "Off"
-    1 : "On"
-    2 : "Toggle"
-  ]
+    spawnflags(flags) =
+    [
+        1: "Remove on fire" : 1
+    ]
+    globalstate(string) : "Global state to read"
+    triggerstate(choices) : "Trigger state" : 0 = 
+    [
+        0: "Off"
+        1: "On"
+        2: "Toggle"
+    ]
 ]
 
-@SolidClass base(Targetname) = trigger_autosave : "AutoSave Trigger"
+@SolidClass base(Targetname) = trigger_autosave : "Triggers an autosave"
 [
-  master(string) : "Master" 
+    master(string) : "Master" 
 ]
 
-@PointClass base(Targetx, Targetname) iconsprite("sprites/trigger_camera.spr") = trigger_camera : "Trigger Camera" 
+@PointClass base(Targetx, Targetname) iconsprite("sprites/trigger_camera.spr") = trigger_camera : "Trigger camera" 
 [
-  wait(integer) : "Hold time" : 10
-  moveto(string) : "Path Corner"
-  spawnflags(flags) =
-  [
-    1: "Start At Player" : 1
-    2: "Follow Player" : 1
-    4: "Freeze Player" : 0
-  ]
-  speed(string) : "Initial Speed" : "0"
-  acceleration(string) : "Acceleration units/sec^2" : "500"
-  deceleration(string) : "Stop Deceleration units/sec^2" : "500"
+    wait(integer) : "Hold time" : 10
+    moveto(string) : "Path corner"
+    spawnflags(flags) =
+    [
+        1: "Start at player" : 1
+        2: "Follow player" : 1
+        4: "Freeze player" : 0
+    ]
+    speed(string) : "Initial speed" : "0"
+    acceleration(string) : "Acceleration units/sec^2" : "500"
+    deceleration(string) : "Stop Deceleration units/sec^2" : "500"
 ]
 
-@SolidClass base(Targetname) = trigger_cdaudio : "Trigger CD Audio"
+@SolidClass base(Targetname) = trigger_cdaudio : "Trigger CD audio"
 [
-  health(choices) : "Track #" : -1 =
-  [
-    -1 : "Stop"
-    1 : "Track 1"
-    2 : "Track 2"
-    3 : "Track 3"
-    4 : "Track 4"
-    5 : "Track 5"
-    6 : "Track 6"
-    7 : "Track 7"
-    8 : "Track 8"
-    9 : "Track 9"
-    10 : "Track 10"
-    11 : "Track 11"
-    12 : "Track 12"
-    13 : "Track 13"
-    14 : "Track 14"
-    15 : "Track 15"
-    16 : "Track 16"
-    17 : "Track 17"
-    18 : "Track 18"
-    19 : "Track 19"
-    20 : "Track 20"
-    21 : "Track 21"
-    22 : "Track 22"
-    23 : "Track 23"
-    24 : "Track 24"
-    25 : "Track 25"
-    26 : "Track 26"
-    27 : "Track 27"
-    28 : "Track 28"
-    29 : "Track 29"
-    30 : "Track 30"
-  ]
+    health(choices) : "Track #" : -1 =
+    [
+        -1 : "Stop"
+        1 : "Track 1"
+        2 : "Track 2"
+        3 : "Track 3"
+        4 : "Track 4"
+        5 : "Track 5"
+        6 : "Track 6"
+        7 : "Track 7"
+        8 : "Track 8"
+        9 : "Track 9"
+        10 : "Track 10"
+        11 : "Track 11"
+        12 : "Track 12"
+        13 : "Track 13"
+        14 : "Track 14"
+        15 : "Track 15"
+        16 : "Track 16"
+        17 : "Track 17"
+        18 : "Track 18"
+        19 : "Track 19"
+        20 : "Track 20"
+        21 : "Track 21"
+        22 : "Track 22"
+        23 : "Track 23"
+        24 : "Track 24"
+        25 : "Track 25"
+        26 : "Track 26"
+        27 : "Track 27"
+        28 : "Track 28"
+        29 : "Track 29"
+        30 : "Track 30"
+    ]
 ]
 
-@SolidClass = trigger_changelevel : "Trigger: Change level"
+@SolidClass = trigger_changelevel : "Trigger that changes the level"
 [
-  targetname(string) : "Name"
-  map(string) : "New map name"
-  landmark(string) : "Landmark name"
-  changetarget(target_destination) : "Change Target"
-  changedelay(string) : "Delay before change target" : "0"
-  spawnflags(flags) =
-  [
-    1: "No Intermission" : 0
-    2: "USE Only" : 0
-  ]
+    targetname(string) : "Name"
+    map(string) : "New map name"
+    landmark(string) : "Landmark name"
+    changetarget(target_destination) : "Change target"
+    changedelay(string) : "Delay before change target" : "0"
+    spawnflags(flags) =
+    [
+        1: "No intermission" : 0
+        2: "Use only" : 0
+    ]
 ]
 
-@PointClass base(Targetx, Targetname) iconsprite("sprites/trigger_changetarget.spr") = trigger_changetarget : "Trigger Change Target"
+@PointClass base(Targetx, Targetname) iconsprite("sprites/trigger_changetarget.spr") = trigger_changetarget : "Trigger change target"
 [
-  m_iszNewTarget(string) : "New Target"
+    m_iszNewTarget(string) : "New target"
 ]
 
 @SolidClass base(Trigger, Targetname) = trigger_counter : "Trigger counter" 
 [
-  spawnflags(flags) = 
-  [ 
-    1 : "No Message" : 0 
-  ]
-  master(string) : "Master" 
-  count(integer) : "Count before activation" : 2
+    spawnflags(flags) = 
+    [ 
+        1 : "No message" : 0 
+    ]
+    master(string) : "Master" 
+    count(integer) : "Count before activation" : 2
 ]
 
-@SolidClass base(Targetname) = trigger_endsection : "EndSection Trigger"
+@SolidClass base(Targetname) = trigger_endsection : "Endsection trigger"
 [
-  section(string) : "Section"
-  spawnflags(flags) =
-  [
-    1: "USE Only" : 0
-  ]
+    section(string) : "Section"
+    spawnflags(flags) =
+    [
+        1: "Use only" : 0
+    ]
 ]
 
-@SolidClass base(Trigger) = trigger_gravity : "Trigger Gravity"
+@SolidClass base(Trigger) = trigger_gravity : "Trigger gravity"
 [
-  gravity(integer) : "Gravity (0-1)" : 1
+    gravity(integer) : "Gravity (0-1)" : 1
 ]
 
 @SolidClass base(Targetname,Target) = trigger_hurt : "Trigger player hurt" 
 [
-  spawnflags(flags) = 
-  [ 
-    1: "Target Once" : 0 
-    2: "Start Off" : 0
-    8: "No clients" : 0
-    16:"FireClientOnly" : 0
-    32:"TouchClientOnly" : 0
-  ]
-  master(string) : "Master" 
-  dmg(integer) : "Damage" : 10
-  delay(string) : "Delay before trigger" : "0"
-  damagetype(choices) : "Damage Type" : 0 =
-  [
-    0 : "GENERIC"
-    1 : "CRUSH"
-    2 : "BULLET"
-    4 : "SLASH"
-    8 : "BURN"
-    16 : "FREEZE"
-    32 : "FALL"
-    64 : "BLAST"
-    128 : "CLUB"
-    256 : "SHOCK"
-    512 : "SONIC"
-    1024 : "ENERGYBEAM"
-    16384: "DROWN"
-    32768 : "PARALYSE"
-    65536 : "NERVEGAS"
-    131072 : "POISON"
-    262144 : "RADIATION"
-    524288 : "DROWNRECOVER"
-    1048576 : "CHEMICAL"
-    2097152 : "SLOWBURN"
-    4194304 : "SLOWFREEZE"
-  ]
+    spawnflags(flags) = 
+    [ 
+        1: "Target Once" : 0 
+        2: "Start Off" : 0
+        8: "No clients" : 0
+        16: "Trigger clients only" : 0
+        32: "Touch clients only" : 0
+    ]
+    master(string) : "Master" 
+    dmg(integer) : "Damage" : 10
+    delay(string) : "Delay before trigger" : "0"
+    damagetype(choices) : "Damage Type" : 0 =
+    [
+        0 : "GENERIC"
+        1 : "CRUSH"
+        2 : "BULLET"
+        4 : "SLASH"
+        8 : "BURN"
+        16 : "FREEZE"
+        32 : "FALL"
+        64 : "BLAST"
+        128 : "CLUB"
+        256 : "SHOCK"
+        512 : "SONIC"
+        1024 : "ENERGYBEAM"
+        16384: "DROWN"
+        32768 : "PARALYSE"
+        65536 : "NERVEGAS"
+        131072 : "POISON"
+        262144 : "RADIATION"
+        524288 : "DROWNRECOVER"
+        1048576 : "CHEMICAL"
+        2097152 : "SLOWBURN"
+        4194304 : "SLOWFREEZE"
+    ]
 ]
 
 @SolidClass base(Angles) = trigger_monsterjump : "Trigger monster jump" 
 [
-  master(string) : "Master" 
-  speed(integer) : "Jump Speed" : 40
-  height(integer) : "Jump Height" : 128
+    master(string) : "Master" 
+    speed(integer) : "Jump speed" : 40
+    height(integer) : "Jump height" : 128
 ]
 
-@SolidClass base(Trigger) = trigger_multiple : "Trigger: Activate multiple" 
+@SolidClass base(Trigger) = trigger_multiple : "Trigger that resets and can trigger again" 
 [
-  wait(integer): "Delay before reset" : 10
+    wait(integer): "Delay before reset" : 10
 ]
 
-@SolidClass base(Trigger) = trigger_once : "Trigger: Activate once" []
+@SolidClass base(Trigger) = trigger_once : "One-time trigger" []
 
 @SolidClass base(Trigger, Angles) = trigger_push : "Trigger player push"
 [
-  spawnflags(flags) = 
-  [ 
-    1: "Once Only" : 0 
-    2: "Start Off" : 0
-  ]
-  speed(integer) : "Speed of push" : 40
+    spawnflags(flags) = 
+    [ 
+        1: "Once only" : 0 
+        2: "Start Off" : 0
+    ]
+    speed(integer) : "Speed of push" : 40
 ]
 
-@PointClass base(Targetx, Targetname) iconsprite("sprites/trigger_relay.spr") = trigger_relay : "Trigger Relay"
+@PointClass base(Targetx, Targetname) iconsprite("sprites/trigger_relay.spr") = trigger_relay : "Trigger relay"
 [
-  spawnflags(flags) =
-  [
-    1: "Remove On fire" : 0
-  ]
-  triggerstate(choices) : "Trigger State" : 0 = 
-  [
-    0: "Off"
-    1: "On"
-    2: "Toggle"
-  ]
+    spawnflags(flags) =
+    [
+        1: "Remove On fire" : 0
+    ]
+    triggerstate(choices) : "Trigger State" : 0 = 
+    [
+        0: "Off"
+        1: "On"
+        2: "Toggle"
+    ]
 ]
 
 @SolidClass base(Trigger) = trigger_teleport : "Trigger teleport"
 [
-  telesound(string) : "Teleport Sound"
+  telesound(string) : "Teleport sound"
 ]
 
 
-@SolidClass base(Targetname) = trigger_transition : "Trigger: Select Transition Area" []
+@SolidClass base(Targetname) = trigger_transition : "Transition area volume" []
 
 //
 // weapons
 //
 
 @PointClass base(Weapon, Targetx, RenderFields) studio("models/w_crowbar.mdl") = weapon_crowbar : "Crowbar" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_9mmhandgun.mdl") = weapon_9mmhandgun : "9mm Handgun" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_357.mdl") = weapon_357 : "357 Handgun" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_9mmar.mdl") = weapon_9mmAR : "9mm Assault Rifle" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_9mmhandgun.mdl") = weapon_9mmhandgun : "9mm handgun" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_357.mdl") = weapon_357 : "357 handgun" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_9mmar.mdl") = weapon_9mmAR : "9mm assault rifle" []
 @PointClass base(Weapon, Targetx, RenderFields) studio("models/w_shotgun.mdl") = weapon_shotgun : "Shotgun" []
 @PointClass base(Weapon, Targetx, RenderFields) studio("models/w_rpg.mdl") = weapon_rpg : "RPG" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_gauss.mdl") = weapon_gauss : "Gauss Gun" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_gauss.mdl") = weapon_gauss : "Gauss gun" []
 @PointClass base(Weapon, Targetx, RenderFields) studio("models/w_crossbow.mdl") = weapon_crossbow : "Crossbow" 
 [
-  sequence(choices) : "Placement" : 0 =
-  [
-    0 : "Normal (flat)"
-    1 : "Realistic (tilted)"
-  ]
+    sequence(choices) : "Placement" : 0 =
+    [
+        0: "Normal (flat)"
+        1: "Realistic (tilted)"
+    ]
 ]
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_egon.mdl") = weapon_egon : "Egon Gun" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/p_tripmine.mdl") size(-16 -16 -5, 16 16 27) = weapon_tripmine : "Tripmine Ammo" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_satchel.mdl") = weapon_satchel : "Satchel Charge Ammo" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_grenade.mdl") = weapon_handgrenade : "Handgrenade Ammo" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_squeak.mdl") = weapon_snark : "Squeak Grenade" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_hgun.mdl") = weapon_hornetgun : "Hornet Gun" []
-@PointClass size(-16 -16 0, 16 16 64) color(0 128 0) studio("models/w_chainammo.mdl") =  weaponbox : "Weapon/Ammo Container" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_egon.mdl") = weapon_egon : "Egon gun" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/p_tripmine.mdl") size(-16 -16 -5, 16 16 27) = weapon_tripmine : "Tripmine ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_satchel.mdl") = weapon_satchel : "Satchel Charge ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_grenade.mdl") = weapon_handgrenade : "Handgrenade ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_squeak.mdl") = weapon_snark : "Squeak grenade" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_hgun.mdl") = weapon_hornetgun : "Hornet gun" []
+@PointClass size(-16 -16 0, 16 16 64) color(0 128 0) studio("models/w_chainammo.mdl") =  weaponbox : "Weapon/ammo container" []
 
-@PointClass base(Weapon, Targetx) = world_items : "World Items" 
+@PointClass base(Weapon, Targetx) = world_items : "World items" 
 [
-  type(choices) :"types" : 1 =
-  [
-    44: "Battery"
-    42: "Antidote"
-    43: "Security Card"
-    45: "Suit"
-  ]
+    type(choices) :"types" : 1 =
+    [
+        44: "Battery"
+        42: "Antidote"
+        43: "Security Card"
+        45: "Suit"
+    ]
 ]
 
 //
 // Xen
 //
 
-@PointClass base(Target, Targetname, RenderFields, Angles) flags(Angle) studio("models/light.mdl") = xen_plantlight : "Xen Plant Light" []
-@PointClass base(Targetname, RenderFields, Angles) flags(Angle) studio("models/hair.mdl") = xen_hair : "Xen Hair" 
+@PointClass base(Target, Targetname, RenderFields, Angles) flags(Angle) studio("models/light.mdl") = xen_plantlight : "Xen plant light" []
+@PointClass base(Targetname, RenderFields, Angles) flags(Angle) studio("models/hair.mdl") = xen_hair : "Xen hair" 
 [
-  spawnflags(Flags) = 
-  [
-    1 : "Sync Movement"   : 0
-  ]
+    spawnflags(flags) = 
+    [
+        1: "Sync movement" : 0
+    ]
 ]
 
-@PointClass base(Targetname, RenderFields, Angles) flags(Angle) studio("models/tree.mdl") = xen_tree : "Xen Tree" []
-@PointClass base(Targetname, RenderFields, Angles) flags(Angle) studio("models/fungus(small).mdl") = xen_spore_small : "Xen Spore (small)" []
-@PointClass base(Targetname, RenderFields, Angles) flags(Angle) studio("models/fungus.mdl") = xen_spore_medium : "Xen Spore (medium)" []
-@PointClass base(Targetname, RenderFields, Angles) flags(Angle) studio("models/fungus(large).mdl") = xen_spore_large : "Xen Spore (large)" []
-
-
-
-
-
+@PointClass base(Targetname, RenderFields, Angles) flags(Angle) studio("models/tree.mdl") = xen_tree : "Xen tree" []
+@PointClass base(Targetname, RenderFields, Angles) flags(Angle) studio("models/fungus(small).mdl") = xen_spore_small : "Xen spore (small)" []
+@PointClass base(Targetname, RenderFields, Angles) flags(Angle) studio("models/fungus.mdl") = xen_spore_medium : "Xen spore (medium)" []
+@PointClass base(Targetname, RenderFields, Angles) flags(Angle) studio("models/fungus(large).mdl") = xen_spore_large : "Xen spore (large)" []
 
 //////////////////////////////////////////////////////////////////////////////
-// Opposing Force Entities							          //
+// Opposing Force entities
 //////////////////////////////////////////////////////////////////////////////
 
-
 //
-//AMMO
+// Ammo
 //
 
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/W_saw_clip.mdl") = ammo_556 : "M249 Ammo" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_m40a1clip.mdl") = ammo_762 : "Sniper Ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/W_saw_clip.mdl") = ammo_556 : "M249 ammo" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_m40a1clip.mdl") = ammo_762 : "Sniper ammo" []
 
-//Spore ammo orientation refers to the direction that the base of the plant faces
+// Spore ammo orientation refers to the direction that the base of the plant faces
 @PointClass base(Weapon, Targetx, RenderFields) studio("models/spore_ammo.mdl") = ammo_spore : "Spore" []
-
-
 
 //
 // ENV ENTITIES
 //
-@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_blowercannon : "Blower Cannon"
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_blowercannon : "Blower cannon"
 [
-  delay(string) : "Delay" : "0"
-  zoffset(integer) : "Z Offset" : 0
-  target(string) : "Target" : ""
-  weaptype(choices) :"Weapon Type" : 1 =
-  [
-    1: "Spore (Rocket)"
-    2: "Spore (Grenade)"
-    3: "Shock Beam"
-    4: "Displacer Ball"
-  ]
-  firetype(choices) :"Fire Type" : 1 =
-  [
-    1: "Toggle On/Off"
-    2: "Fire When Triggered"
-  ]
+    delay(string) : "Delay" : "0"
+    zoffset(integer) : "Z offset" : 0
+    target(string) : "Target" : ""
+    weaptype(choices) : "Weapon type" : 1 =
+    [
+        1: "Spore (rocket)"
+        2: "Spore (grenade)"
+        3: "Shock beam"
+        4: "Displacer ball"
+    ]
+    firetype(choices) : "Fire type" : 1 =
+    [
+        1: "Toggle on/off"
+        2: "Fire when triggered"
+    ]
 ]
 
-@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_electrified_wire : "Electrified Wire"
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_electrified_wire : "Electrified wire"
 [
-  segments(integer) : "Segments" : 16
-  sparkfrequency(integer) : "Spark Frequency" : 3
-  bodysparkfrequency(integer) : "Body Spark Frequency" : 3
-  lightningfrequency(integer) : "Lightning Frequency" : 3
-  xforce(integer) : "X Force" : 80000
-  yforce(integer) : "Y Force" : 80000
-  zforce(integer) : "Z Force" : 80000
-  disable(choices) :"Disable Use" : 0 =
-  [
-    0: "Not Disabled"
-    1: "Disabled"
-  ]
-  endingmodel(studio) : "Ending Model" : "models/wire_copper16.mdl"
-  bodymodel(studio) : "Body Model" : "models/wire_black16.mdl"
+    segments(integer) : "Segments" : 16
+    sparkfrequency(integer) : "Spark frequency" : 3
+    bodysparkfrequency(integer) : "Body spark frequency" : 3
+    lightningfrequency(integer) : "Lightning frequency" : 3
+    xforce(integer) : "X force" : 80000
+    yforce(integer) : "Y force" : 80000
+    zforce(integer) : "Z force" : 80000
+    disable(choices) : "Disable use" : 0 =
+    [
+        0: "Not disabled"
+        1: "Disabled"
+    ]
+    endingmodel(studio) : "Ending model" : "models/wire_copper16.mdl"
+    bodymodel(studio) : "Body model" : "models/wire_black16.mdl"
 ]
 
 @PointClass base(Targetname) size(-16 -16 -16, 16 16 16) = env_rope : "Rope"
 [
-  segments(integer) : "Segments" : 16
-  disable(choices) :"Disable Use" : 0 =
-  [
-    0: "Not Disabled"
-    1: "Disabled"
-  ]
-  endingmodel(studio) : "Ending Model" : "models/rope16.mdl"
-  bodymodel(studio) : "Body Model" : "models/rope16.mdl"
+    segments(integer) : "Segments" : 16
+    disable(choices) :"Disable use" : 0 =
+    [
+        0: "Not disabled"
+        1: "Disabled"
+    ]
+    endingmodel(studio) : "Ending model" : "models/rope16.mdl"
+    bodymodel(studio) : "Body model" : "models/rope16.mdl"
 ]
 
-
-
-@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) color(0 128 255)= env_spritetrain : "Sprite Train"
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) color(0 128 255)= env_spritetrain : "Sprite train"
 [
-  target(target_source) : "First stop target"
-  model(sprite) : "Sprite Name" : "sprites/glow01.spr"
-  speed(integer) : "Speed (units per second)" : 64
-  scale(string) : "Sprite Scale"      
+    target(target_source) : "First stop target"
+    model(sprite) : "Sprite name" : "sprites/glow01.spr"
+    speed(integer) : "Speed (units per second)" : 64
+    scale(string) : "Sprite scale"      
 ]
-
 
 //
 // FUNC ENTITIES
 //
 
-@SolidClass base(Target) = func_op4mortarcontroller : "Op4 Mortar Controller" 
+@SolidClass base(Target) = func_op4mortarcontroller : "Opposing Force mortar controller" 
 [
-    mortar_axis(Choices) : "Axis" : 0 =
+    mortar_axis(choices) : "Axis" : 0 =
     [
         0 : "Vertical"
         1 : "Horizontal"
@@ -2831,82 +2518,81 @@
 
 @BaseClass base(Targetname, Target, RenderFields, Global) = BaseTankOF
 [
-  spawnflags(flags) =
-  [
-    1 : "Active" : 0
-    16: "Only Direct" : 0
-    32: "Controllable" : 0
-  ]
+    spawnflags(flags) =
+    [
+        1: "Active" : 0
+        16: "Only direct" : 0
+        32: "Controllable" : 0
+    ]
 
-  // Mainly for use with 1009 team settings (game_team_master)
-  master(string) : "(Team) Master" 
+    // Mainly for use with 1009 team settings (game_team_master)
+    master(string) : "(Team) Master" 
 
-  yawrate(string) : "Yaw rate" : "30"
-  yawrange(string) : "Yaw range" : "180"
-  yawtolerance(string) : "Yaw tolerance" : "15"
-  pitchrate(string) : "Pitch rate" : "0"
-  pitchrange(string) : "Pitch range" : "0"
-  pitchtolerance(string) : "Pitch tolerance" : "5"
-  barrel(string) : "Barrel Length" : "0"
-  barrely(string) : "Barrel Horizontal" : "0"
-  barrelz(string) : "Barrel Vertical" : "0"
-  spritesmoke(string) : "Smoke Sprite" : ""
-  spriteflash(string) : "Flash Sprite" : ""
-  spritescale(string) : "Sprite scale" : "1"
-  rotatesound(sound) : "Rotate Sound" : ""
-  firerate(string) : "Rate of Fire" : "1"
-  bullet_damage(string) : "Damage Per Bullet" : "0"
-  persistence(string) : "Firing persistence" : "1"
-  firespread(choices) : "Bullet accuracy" : 0 =
-  [
-    0: "Perfect Shot"
-    1: "Small cone"
-    2: "Medium cone"
-    3: "Large cone"
-    4: "Extra-large cone"
-  ]
-  minRange(string) : "Minmum target range" : "0"
-  maxRange(string) : "Maximum target range" : "0"
-  _minlight(string) : "Minimum light level"
-  enemytype(Choices) : "Enemy Type" : 1 =
-  [
-    0: "Player"
-    1: "Ally"
-    2: "Random"
-  ]
+    yawrate(string) : "Yaw rate" : "30"
+    yawrange(string) : "Yaw range" : "180"
+    yawtolerance(string) : "Yaw tolerance" : "15"
+    pitchrate(string) : "Pitch rate" : "0"
+    pitchrange(string) : "Pitch range" : "0"
+    pitchtolerance(string) : "Pitch tolerance" : "5"
+    barrel(string) : "Barrel length" : "0"
+    barrely(string) : "Barrel horizontal" : "0"
+    barrelz(string) : "Barrel vertical" : "0"
+    spritesmoke(string) : "Smoke sprite" : ""
+    spriteflash(string) : "Flash sprite" : ""
+    spritescale(string) : "Sprite scale" : "1"
+    rotatesound(sound) : "Rotate sound" : ""
+    firerate(string) : "Rate of fire" : "1"
+    bullet_damage(string) : "Damage per bullet" : "0"
+    persistence(string) : "Firing persistence" : "1"
+    firespread(choices) : "Bullet accuracy" : 0 =
+    [
+        0: "Perfect shot"
+        1: "Small cone"
+        2: "Medium cone"
+        3: "Large cone"
+        4: "Extra-large cone"
+    ]
+    minRange(string) : "Minmum target range" : "0"
+    maxRange(string) : "Maximum target range" : "0"
+    _minlight(string) : "Minimum light level"
+    enemytype(choices) : "Enemy type" : 1 =
+    [
+        0: "Player"
+        1: "Ally"
+        2: "Random"
+    ]
 ]
 
 // Don't forget func_tankcontrols_of
-@SolidClass base(BaseTankOF) = func_tank_of : "Brush Gun Turret" 
+@SolidClass base(BaseTankOF) = func_tank_of : "Opposing Force brush gun turret" 
 [
-  bullet(choices) : "Bullets" : 0 = 
-  [
-    0: "None"
-    1: "9mm"
-    2: "MP5"
-    3: "12mm"
-  ]
+    bullet(choices) : "Bullets" : 0 = 
+    [
+        0: "None"
+        1: "9mm"
+        2: "MP5"
+        3: "12mm"
+    ]
 ]
 
-@SolidClass = func_tankcontrols_of : "Tank controls"
+@SolidClass = func_tankcontrols_of : "Oppsing Force tank controls"
 [
-  target(target_destination) : "Tank entity name"
+    target(target_destination) : "Tank entity name"
 ]
 
 // Don't forget func_tankcontrols_of
-@SolidClass base(BaseTankOF) = func_tanklaser_of : "Brush Laser Turret" 
+@SolidClass base(BaseTankOF) = func_tanklaser_of : "Opposing Force brush laser turret" 
 [
-  laserentity(target_source) : "env_laser Entity"
+    laserentity(target_source) : "env_laser entity"
 ]
 
-// Don't forget func_tankcontrols
-@SolidClass base(BaseTankOF) = func_tankrocket_of : "Brush Rocket Turret" []
+// Don't forget func_tankcontrols_of
+@SolidClass base(BaseTankOF) = func_tankrocket_of : "Opposing Force brush rocket turret" []
 
-
-// Don't forget func_tankcontrols
-@SolidClass base(BaseTankOF) = func_tankmortar_of : "Brush Mortar Turret" 
+// Don't forget func_tankcontrols_of
+@SolidClass base(BaseTankOF) = func_tankmortar_of : "Oppsing Force brush mortar turret" 
 [
-  iMagnitude(Integer) : "Explosion Magnitude" : 100
+  iMagnitude(integer) : "Explosion magnitude" : 100
 ]
 
 //
@@ -2914,11 +2600,10 @@
 //
 
 // Displacer target placement represents the point where the player's feet shall be
-@PointClass base(Targetname) size(-4 -4 -4, 4 4 4) color(200 100 50) = info_displacer_xen_target : "Displacer XEN Target" []
-@PointClass base(Targetname) size(-4 -4 -4, 4 4 4) color(200 100 50) = info_displacer_earth_target : "Displacer EARTH Target" []
+@PointClass base(Targetname) size(-4 -4 -4, 4 4 4) color(200 100 50) = info_displacer_xen_target : "Displacer XEN target" []
+@PointClass base(Targetname) size(-4 -4 -4, 4 4 4) color(200 100 50) = info_displacer_earth_target : "Displacer EARTH target" []
 
-@PointClass base(Targetname, Target) = info_pitworm_steam_lock : "Pitworm Steam Lock" []
-
+@PointClass base(Targetname, Target) = info_pitworm_steam_lock : "Pitworm steam lock" []
 
 //
 // ITEM ENTITIES
@@ -2926,81 +2611,75 @@
 
 @PointClass base(Weapon, Targetx) = item_generic : "Generic scenery item"
 [
-	model(studio) : "Model" : "models/egg.mdl"
-	sequencename(string) : "Sequence Name" : "idle"
-	skin(integer) : "Skin" : 0
-	body(integer) : "Body" : 0
-	
-	spawnflags(Flags) =
-	[
-		1 : "Drop to floor" : 0
-	]
+    model(studio) : "Model" : "models/egg.mdl"
+    sequencename(string) : "Sequence name" : "idle"
+    skin(integer) : "Skin" : 0
+    body(integer) : "Body" : 0
+    
+    spawnflags(flags) =
+    [
+        1 : "Drop to floor" : 0
+    ]
 ]
 
-@PointClass base(Weapon, Targetx) size(-16 -16 0, 16 16 36) = item_nuclearbomb : "Nuclear Bomb"
+@PointClass base(Weapon, Targetx) size(-16 -16 0, 16 16 36) = item_nuclearbomb : "Nuclear bomb"
 [
-      initialstate(integer) : "Initial State" : 0
-	wait(integer) : "Wait" : 1
+    initialstate(integer) : "Initial state" : 0
+    wait(integer) : "Wait" : 1
 ]
-
-
 
 //
 // MONSTERS
 //
 
-@PointClass base(Monster, Sequence) studio("models/baby_voltigore.mdl") = monster_alien_babyvoltigore : "Baby Voltigore" 
+@PointClass base(Monster, Sequence) studio("models/baby_voltigore.mdl") = monster_alien_babyvoltigore : "Baby voltigore" 
 [
-  netname(string) : "Squad Name"
-  spawnflags(Flags) =
-  [
-    32 : "SquadLeader" : 0
-  ]
+    netname(string) : "Squad name"
+    spawnflags(flags) =
+    [
+        32: "Squad leader" : 0
+    ]
 ]
-
-
 
 @PointClass base(Monster, Sequence) studio("models/voltigore.mdl") = monster_alien_voltigore : "Voltigore" 
 [
-  netname(string) : "Squad Name"
-  spawnflags(Flags) =
-  [
-    32 : "SquadLeader" : 0
-  ]
+    netname(string) : "Squad Name"
+    spawnflags(flags) =
+    [
+        32: "Squad leader" : 0
+    ]
 ]
 
-@PointClass base(Monster, Sequence) studio("models/islave.mdl") = monster_alien_slave_dead : "Dead Vortigaunt" 
+@PointClass base(Monster, Sequence) studio("models/islave.mdl") = monster_alien_slave_dead : "Dead vortigaunt" 
 [
-      pose(Choices) : "Pose" : 0 =
-  [
-    0 : "On Stomach"
-  ]
+    pose(choices) : "Pose" : 0 =
+    [
+        0: "On stomach"
+    ]
 ]
 
+@PointClass base(Monster, Sequence) studio("models/massn.mdl") = monster_assassin_repel : "Male assassin (repel)" []
 
-@PointClass base(Monster, Sequence) studio("models/massn.mdl") = monster_assassin_repel : "Male Assassin (Repel)" []
-
-@PointClass base(Monster, Sequence) studio("models/blkop_apache.mdl") = monster_blkop_apache : "Black Ops Apache" 
+@PointClass base(Monster, Sequence) studio("models/blkop_apache.mdl") = monster_blkop_apache : "Black ops Apache" 
 [
-  spawnflags(Flags) = 
-  [
-    8 : "NoWreckage"  : 0
-    64 : "Start Inactive" : 0
-  ]
+    spawnflags(flags) = 
+    [
+        8: "No wreckage"  : 0
+        64: "Start inactive" : 0
+    ]
 ]
 
-@PointClass base(Monster, Sequence) studio("models/blkop_osprey.mdl") = monster_blkop_osprey : "Black Ops Osprey"
+@PointClass base(Monster, Sequence) studio("models/blkop_osprey.mdl") = monster_blkop_osprey : "Black ops Osprey"
 [
-  spawnflags(Flags) = 
-  [
-    64 : "Start Inactive" : 0
-  ]
+    spawnflags(flags) = 
+    [
+        64: "Start inactive" : 0
+    ]
 ]
 
-
-@PointClass base(Monster, TalkMonster, Sequence) studio("models/cleansuit_scientist.mdl") = monster_cleansuit_scientist : "Cleansuit Scientist" 
+@PointClass base(Monster, TalkMonster, Sequence) studio("models/cleansuit_scientist.mdl") = monster_cleansuit_scientist : "Cleansuit scientist" 
 [
-    body(Choices) : "Body" : -1 =
+    body(choices) : "Body" : -1 =
     [
         -1 : "Random"
         0 : "Glasses"
@@ -3010,505 +2689,500 @@
     ]
 ]
 
-@PointClass base(Targetname,Appearflags,RenderFields, Sequence) studio("models/cleansuit_scientist.mdl") = monster_cleansuit_scientist_dead : "Dead Cleansuit Scientist" 
+@PointClass base(Targetname,Appearflags,RenderFields, Sequence) studio("models/cleansuit_scientist.mdl") = monster_cleansuit_scientist_dead : "Dead cleansuit scientist" 
 [
-  body(Choices) : "Body" : -1 =
-  [
-    -1 : "Random"
-    0 : "Glasses"
-    1 : "Einstein"
-    2 : "Luther"
-    3 : "Slick"
-  ]
-      pose(Choices) : "Pose" : 0 =
-  [
-    0 : "On back"
-    1 : "On Stomach"
-    2 : "Sitting"
-    3 : "Hanging"
-    4 : "Table1"
-    5 : "Table2"
-    6 : "Table3"
-    7 : "Hi Mike!"
-    8 : "Dead Against Wall"
-  ]
+    body(choices) : "Body" : -1 =
+    [
+        -1: "Random"
+        0: "Glasses"
+        1: "Einstein"
+        2: "Luther"
+        3: "Slick"
+    ]
+
+    pose(choices) : "Pose" : 0 =
+    [
+        0: "On back"
+        1: "On stomach"
+        2: "Sitting"
+        3: "Hanging"
+        4: "Table 1"
+        5: "Table 2"
+        6: "Table 3"
+        7: "Hi Mike!"
+        8: "Dead against wall"
+    ]
 ]
 
-@PointClass base(Monster, Sequence) studio("models/cleansuit_scientist.mdl") = monster_sitting_cleansuit_scientist : "Sitting Cleansuit Scientist" 
+@PointClass base(Monster, Sequence) studio("models/cleansuit_scientist.mdl") = monster_sitting_cleansuit_scientist : "Sitting cleansuit scientist" 
 [
-      body(Choices) : "Body" : -1 =
-  [
-    -1 : "Random"
-    0 : "Glasses"
-    1 : "Einstein"
-    2 : "Luther"
-    3 : "Slick"
-  ]
+    body(choices) : "Body" : -1 =
+    [
+        -1: "Random"
+        0: "Glasses"
+        1: "Einstein"
+        2: "Luther"
+        3: "Slick"
+    ]
 ]
 
-@PointClass base(Monster,TalkMonster, Sequence) studio("models/drill.mdl") = monster_drillsergeant : "Drill Sergeant" []
+@PointClass base(Monster,TalkMonster, Sequence) studio("models/drill.mdl") = monster_drillsergeant : "Drill sergeant" []
 
 @PointClass base(Monster, Sequence) studio("models/geneworm.mdl") = monster_geneworm : "Gene Worm" []
 @PointClass base(Monster, Sequence) studio("models/gonome.mdl") = monster_gonome : "Gonome" []
 @PointClass base(Targetname,Appearflags,RenderFields, Sequence) studio("models/gonome.mdl") = monster_gonome_dead : "Dead Gonome" 
 [
-      pose(Choices) : "Pose" : 0 =
-  [
-    0 : "On Stomach"
-    1 : "On Back"
-    2 : "On Side"
-  ]
+    pose(choices) : "Pose" : 0 =
+    [
+        0: "On Stomach"
+        1: "On Back"
+        2: "On Side"
+    ]
 ]
 
-@PointClass base(Monster, Sequence) studio("models/houndeye_dead.mdl") = monster_houndeye_dead : "Dead Houndeye" 
+@PointClass base(Monster, Sequence) studio("models/houndeye_dead.mdl") = monster_houndeye_dead : "Dead houndeye" 
 [
-  pose(Choices) : "Pose" : 0 =
-  [
-    0 : "Just plain dead"
-  ]
+    pose(choices) : "Pose" : 0 =
+    [
+        0: "Just plain dead"
+    ]
 ]
 
-@PointClass base(Monster, Sequence, TalkMonster) studio("models/hgrunt_opfor.mdl") = monster_grunt_ally_repel : "Human Grunt Ally (Repel)"
+@PointClass base(Monster, Sequence, TalkMonster) studio("models/hgrunt_opfor.mdl") = monster_grunt_ally_repel : "Human grunt ally (repel)"
 [
-  spawnflags(Flags) =
-  [
-    32 : "SquadLeader" : 0
-  ]
-  netname(string) : "Squad Name"
-  weapons(Choices) : "Weapons" : 3 =
-  [
-    1 : "9mmAR"
-    3 : "9mmAR + HG"
-    5 : "9mmAR + GL"
-    8 : "Shotgun"
-    10 : "Shotgun + HG"
-    16 : "Saw"
-  ]
-  head(Choices) : "Heads" : -1 =
-  [
-    -1 : "Default"
-    0 : "Gas Mask"
-    1 : "Beret"
-    2 : "Ops Mask"
-    3 : "Bandana White"
-    4 : "Bandana Black"
-	5 : "MP"
-	6 : "Major"
-	7 : "Beret (Black)"
-  ]
+    spawnflags(flags) =
+    [
+        32: "Squad leader" : 0
+    ]
+    netname(string) : "Squad name"
+    weapons(choices) : "Weapons" : 3 =
+    [
+        1: "9mmAR"
+        3: "9mmAR + HG"
+        5: "9mmAR + GL"
+        8: "Shotgun"
+        10: "Shotgun + HG"
+        16: "Saw"
+    ]
+    head(choices) : "Heads" : -1 =
+    [
+        -1: "Default"
+        0: "Gas mask"
+        1: "Beret"
+        2: "Ops mask"
+        3: "Bandana white"
+        4: "Bandana black"
+        5: "MP"
+        6: "Major"
+        7: "Beret (black)"
+    ]
 ]
 
-@PointClass base(Monster, Sequence, TalkMonster) studio("models/hgrunt_opfor.mdl") = monster_human_grunt_ally : "Human Grunt Ally (camo)" 
+@PointClass base(Monster, Sequence, TalkMonster) studio("models/hgrunt_opfor.mdl") = monster_human_grunt_ally : "Human grunt ally (camo)" 
 [
-    netname(string) : "Squad Name"
+    netname(string) : "Squad name"
     
-    spawnflags(Flags) =
+    spawnflags(flags) =
     [
-        32 : "SquadLeader" : 0
+        32: "Squad leader" : 0
     ]
 
-    weapons(Choices) : "Weapons" : 3 =
+    weapons(choices) : "Weapons" : 3 =
     [
-        0 : "None"
-        1 : "9mmAR"
-        3 : "9mmAR + HG"
-        5 : "9mmAR + GL"
-        8 : "Shotgun"
-        10 : "Shotgun + HG"
-        16 : "Saw"
+        0: "None"
+        1: "9mmAR"
+        3: "9mmAR + HG"
+        5: "9mmAR + GL"
+        8: "Shotgun"
+        10: "Shotgun + HG"
+        16: "Saw"
     ]
 
-    head(Choices) : "Heads" : -1 =
+    head(choices) : "Heads" : -1 =
     [
-        -1 : "Default"
-         0 : "Gas Mask"
-         1 : "Beret"
-         2 : "Ops Mask"
-         3 : "Bandana White"
-         4 : "Bandana Black"
-         5 : "MP"
-         6 : "Major"
-         7 : "Beret (Black)"
+        -1: "Default"
+        0: "Gas mask"
+        1: "Beret"
+        2: "Ops mask"
+        3: "Bandana white"
+        4: "Bandana black"
+        5: "MP"
+        6: "Major"
+        7: "Beret (black)"
     ]
 ]
 
 
-@PointClass base(Targetname,Appearflags,RenderFields, Sequence) studio("models/hgrunt_opfor.mdl") = monster_human_grunt_ally_dead : "Dead Human Grunt Ally" 
+@PointClass base(Targetname,Appearflags,RenderFields, Sequence) studio("models/hgrunt_opfor.mdl") = monster_human_grunt_ally_dead : "Dead human grunt ally" 
 [
-      pose(Choices) : "Pose" : 0 =
-	[
-		0 : "On stomach"
-		1 : "On side"
-		2 : "Seated"
-		3 : "Dead On Back"
-		4 : "Dead On Stomach"
-		5 : "Head Crabbed"
-		6 : "Dead Canyon"
-	]
+    pose(choices) : "Pose" : 0 =
+    [
+        0: "On stomach"
+        1: "On side"
+        2: "Seated"
+        3: "Dead on back"
+        4: "Dead on stomach"
+        5: "Head crabbed"
+        6: "Dead canyon"
+    ]
 
-	weapons(Choices) : "Weapons" : 1 =
-	[
-		0 : "None"
-		1 : "9mmAR"
-		8 : "Shotgun"
-		16 : "Saw"
-	]
+    weapons(choices) : "Weapons" : 1 =
+    [
+        0: "None"
+        1: "9mmAR"
+        8: "Shotgun"
+        16: "Saw"
+    ]
 
-	head(Choices) : "Heads" : 0 =
-	[
-		0 : "Gas Mask"
-		1 : "Beret"
-		2 : "Ops Mask"
-		3 : "Bandana White"
-		4 : "Bandana Black"
-		5 : "MP"
-		6 : "Major"
-		7 : "Beret (Black)"
-	]
+    head(choices) : "Heads" : 0 =
+    [
+        0: "Gas mask"
+        1: "Beret"
+        2: "Ops mask"
+        3: "Bandana white"
+        4: "Bandana black"
+        5: "MP"
+        6: "Major"
+        7: "Beret (black)"
+    ]
 ]
 
 
 @PointClass base(Monster, Sequence) studio("models/hgrunt_medic.mdl") = monster_human_medic_ally : "Medic" 
 [
-    netname(string) : "Squad Name"
+    netname(string) : "Squad name"
     
-    spawnflags(Flags) =
+    spawnflags(flags) =
     [
-        32 : "SquadLeader" : 0
+        32: "Squad leader" : 0
     ]
 
-    head(Choices) : "Heads" : -1 =
+    head(choices) : "Heads" : -1 =
     [
-       -1 : "Random"
-        0 : "White"
-        1 : "Black"
+        -1: "Random"
+        0: "White"
+        1: "Black"
     ]
 
-    weapons(Choices) : "Weapons" : 2 =
-    [
-	  0 : "None"
-        1 : "Desert Eagle"
-        2 : "9mm Handgun"
-        4 : "Hypodermic Needle"
-    ]
-]
-
-
-@PointClass base(Monster, Sequence) studio("models/hgrunt_torch.mdl") = monster_human_torch_ally : "Torch" 
-[
-  netname(string) : "Squad Name"
-  spawnflags(Flags) =
-  [
-    32 : "SquadLeader" : 0
-  ]
-  weapons(Choices) : "Weapons" : 1 =
-  [
-    1 : "Desert Eagle"
-    2 : "Blow Torch"
-	5 : "Desert Eagle + HG"
-	6 : "Blow Torch + HG"
-  ]
-]
-
-
-@PointClass base(Monster, Sequence) studio("models/massn.mdl") = monster_male_assassin : "Male Assassin"
-[
-    netname(string) : "Squad Name"
-    
-    spawnflags(Flags) =
-    [
-        32 : "SquadLeader" : 0
-    ]
-
-    head(Choices) : "Heads" : 0 =
-    [
-       -1 : "Random"
-        0 : "Ski Mask White"
-        1 : "Ski Mask Black"
-        2 : "Night Goggles"
-    ]
-
-    weapons(Choices) : "Weapons" : 3 =
+    weapons(choices) : "Weapons" : 2 =
     [
         0 : "None"
-        1 : "9mmAR"
-        3 : "9mmAR + HG"
-        5 : "9mmAR + GL"
-        8 : "Sniper Rifle"
+        1 : "Desert Eagle"
+        2 : "9mm handgun"
+        4 : "Hypodermic needle"
     ]
-    standgroundrange(string) : "Stand Ground Range" : "0.0"
+]
+
+
+@PointClass base(Monster, Sequence) studio("models/hgrunt_torch.mdl") = monster_human_torch_ally : "Torch boi" 
+[
+    netname(string) : "Squad name"
+    spawnflags(flags) =
+    [
+        32: "Squad leader" : 0
+    ]
+    weapons(choices) : "Weapons" : 1 =
+    [
+        1: "Desert Eagle"
+        2: "Blow torch"
+        5: "Desert Eagle + HG"
+        6: "Blow torch + HG"
+    ]
+]
+
+
+@PointClass base(Monster, Sequence) studio("models/massn.mdl") = monster_male_assassin : "Male assassin"
+[
+    netname(string) : "Squad name"
+    
+    spawnflags(flags) =
+    [
+        32: "Squad leader" : 0
+    ]
+
+    head(choices) : "Heads" : 0 =
+    [
+        -1: "Random"
+        0: "Ski mask white"
+        1: "Ski mask nlack"
+        2: "Night goggles"
+    ]
+
+    weapons(choices) : "Weapons" : 3 =
+    [
+        0: "None"
+        1: "9mmAR"
+        3: "9mmAR + HG"
+        5: "9mmAR + GL"
+        8: "Sniper rifle"
+    ]
+    standgroundrange(string) : "Stand ground range" : "0.0"
 ]
 
 @PointClass base(Monster, RenderFields, Sequence) studio("models/loader.mdl") = monster_op4loader : "Loader machine" 
 [
-  spawnflags(Flags) = 
-  [
-    4 : "Not solid" : 0
-  ]
+    spawnflags(flags) = 
+    [
+        4: "Not solid" : 0
+    ]
 ]
 
 
 @PointClass base(Monster,TalkMonster, Sequence) studio("models/otis.mdl") = monster_otis : "Otis"
 [
-	bodystate(Choices) : "bodystate" : -1 =
-	[
-		-1 : "Random"
-		0 : "Gun Holstered"
-		1 : "Gun Drawn"
-		3 : "Donut"
-	]
-	head(Choices) : "head" : -1 =
-	[
-		-1 : "Random"
-		0 : "Bald Head"
-		1 : "Head with hair"
-	]
-	suspicious(choices) : "Suspicious" : 0 =
-	[
-		0 : "No"
-		1 : "Yes"
-	]
-]
-
-@PointClass base(Targetname,Appearflags, Sequence) studio("models/otis.mdl") = monster_otis_dead : "Dead Otis" 
-[
-    pose(Choices) : "Pose" : 0 =
+    bodystate(choices) : "bodystate" : -1 =
     [
-        0 : "On back"
-        1 : "On side"
-        2 : "On stomach"
-	  3 : "Stuffed in Vent"
-	  4 : "Dead Sitting"
+        -1: "Random"
+        0: "Gun holstered"
+        1: "Gun drawn"
+        3: "Donut"
+    ]
+    head(choices) : "head" : -1 =
+    [
+        -1: "Random"
+        0: "Bald head"
+        1: "Head with hair"
+    ]
+    suspicious(choices) : "Suspicious" : 0 =
+    [
+        0: "No"
+        1: "Yes"
     ]
 ]
 
-
-@PointClass base(Monster, Sequence) studio("models/pit_drone.mdl") = monster_pitdrone : "PitDrone"
+// Otis ate too many donuts
+@PointClass base(Targetname,Appearflags, Sequence) studio("models/otis.mdl") = monster_otis_dead : "Dead Otis" 
 [
-initammo(string) : "Initial Ammo" : "6"
+    pose(choices) : "Pose" : 0 =
+    [
+        0: "On back"
+        1: "On side"
+        2: "On stomach"
+        3: "Stuffed in Vent"
+        4: "Dead Sitting"
+    ]
 ]
 
-@PointClass base(Monster, Sequence) studio("models/pit_worm_up.mdl") = monster_pitworm : "Pit Worm" []
-@PointClass base(Monster, Sequence) studio("models/pit_worm_up.mdl") = monster_pitworm_up : "Pit Worm Upright" []
-
-@PointClass base(Monster, Sequence) studio("models/w_shock_rifle.mdl") = monster_shockroach : "Shock Roach" []
-
-
-@PointClass base(Monster, Sequence) studio("models/zombie_barney.mdl") = monster_zombie_barney : "Barney Zombie" []
-@PointClass base(Monster, Sequence) studio("models/zombie_soldier.mdl") = monster_zombie_soldier : "Soldier Zombie" []
-@PointClass base(Monster, Sequence) studio("models/zombie_soldier.mdl") = monster_zombie_soldier_dead : "Dead Soldier Zombie"
+@PointClass base(Monster, Sequence) studio("models/pit_drone.mdl") = monster_pitdrone : "Pit drone"
 [
-    pose(Choices) : "Pose" : 0 =
+    initammo(string) : "Initial ammo" : "6"
+]
+
+@PointClass base(Monster, Sequence) studio("models/pit_worm_up.mdl") = monster_pitworm : "Pit worm" []
+@PointClass base(Monster, Sequence) studio("models/pit_worm_up.mdl") = monster_pitworm_up : "Pit worm upright" []
+
+@PointClass base(Monster, Sequence) studio("models/w_shock_rifle.mdl") = monster_shockroach : "Shock roach" []
+
+
+@PointClass base(Monster, Sequence) studio("models/zombie_barney.mdl") = monster_zombie_barney : "Barney zombie" []
+@PointClass base(Monster, Sequence) studio("models/zombie_soldier.mdl") = monster_zombie_soldier : "Soldier zombie" []
+@PointClass base(Monster, Sequence) studio("models/zombie_soldier.mdl") = monster_zombie_soldier_dead : "Dead soldier zombie"
+[
+    pose(choices) : "Pose" : 0 =
     [
-        0 : "On back"
-        1 : "On stomach"
+        0: "On back"
+        1: "On stomach"
     ]
 ]
 
 @PointClass base(Monster,TalkMonster, Sequence) studio("models/recruit.mdl") = monster_recruit : "Recruit" []
 
-@PointClass base(Targetname,Appearflags,RenderFields, Sequence) size(-16 -16 0, 16 16 72) = monster_skeleton_dead : "Dead Skeleton" 
+@PointClass base(Targetname,Appearflags,RenderFields, Sequence) size(-16 -16 0, 16 16 72) = monster_skeleton_dead : "Dead skeleton" 
 [
-      pose(Choices) : "Pose" : 0 =
-	[
-		0 : "On back"
-		1 : "Seated"
-		2 : "Against Wall"
-		3 : "On Stomach"
-	]
-]
-
-@PointClass base(Monster, Sequence) studio("models/strooper.mdl") = monster_shocktrooper : "Shock Trooper" 
-[
-    netname(string) : "Squad Name"
-    spawnflags(Flags) =
+    pose(choices) : "Pose" : 0 =
     [
-        32 : "SquadLeader" : 0
-    ]
-    weapons(Choices) : "Weapons" : 3 =
-    [
-        1 : "9mmAR"
-        3 : "9mmAR + HG"
-        5 : "9mmAR + GL"
-        8 : "Shotgun"
-        10 : "Shotgun + HG"
+        0: "On back"
+        1: "Seated"
+        2: "Against wall"
+        3: "On stomach"
     ]
 ]
 
-@PointClass base(Targetname) = op4mortar : "Op4 Mortar" 
+@PointClass base(Monster, Sequence) studio("models/strooper.mdl") = monster_shocktrooper : "Shock trooper" 
 [
-    spawnflags(Flags) =
+    netname(string) : "Squad name"
+    spawnflags(flags) =
     [
-        1  : "Active" : 0
-        16 : "Line of Sight" : 1
-        32 : "Can Control" : 1
+        32: "Squad leader" : 0
+    ]
+    weapons(choices) : "Weapons" : 3 =
+    [
+        1: "9mmAR"
+        3: "9mmAR + HG"
+        5: "9mmAR + GL"
+        8: "Shotgun"
+        10: "Shotgun + HG"
+    ]
+]
+
+@PointClass base(Targetname) = op4mortar : "Opposing Force mortar" 
+[
+    spawnflags(flags) =
+    [
+        1: "Active" : 0
+        16: "Line of sight" : 1
+        32: "Can control" : 1
     ]
     mortar_velocity(integer) : "Velocity" : 800
-    h_min(integer) : "Horiz MIN" : -90
-    h_max(integer) : "Horiz MAX" : 90
-    mindist(integer) : "Min Target Dist" : 256
-    maxdist(integer) : "Max Target Dist" : 2048
-    enemytype(Choices) : "Enemy Type" : 0 =
+    h_min(integer) : "Horizontal min" : -90
+    h_max(integer) : "Horizontal max" : 90
+    mindist(integer) : "Min target dist" : 256
+    maxdist(integer) : "Max target dist" : 2048
+    enemytype(choices) : "Enemy type" : 0 =
     [
         0 : "Player"
         1 : "Ally"
         2 : "Random"
     ]
-    firedelay(integer) : "Fire Rate" : 5
+    firedelay(integer) : "Fire rate" : 5
 ]
 
-
-@PointClass base(gibshooterbase) = pitworm_gibshooter : "Pitworm Gib Shooter" []
-
+@PointClass base(gibshooterbase) = pitworm_gibshooter : "Pitworm gib shooter" []
 
 //
 // TRIGGERS
 //
 
-@SolidClass base(Targetname,Target) = trigger_geneworm_hit : "Trigger GeneWorm Hit" 
+@SolidClass base(Targetname,Target) = trigger_geneworm_hit : "Trigger GeneWorm hit" 
 [
-  spawnflags(flags) = 
-  [ 
-    1: "Target Once" : 0 
-    2: "Start Off" : 0
-    8: "No clients" : 0
-    16:"FireClientOnly" : 0
-    32:"TouchClientOnly" : 0
-  ]
-  master(string) : "Master" 
-  delay(string) : "Delay before trigger" : "0"
+    spawnflags(flags) = 
+    [ 
+        1: "Target once" : 0 
+        2: "Start off" : 0
+        8: "No clients" : 0
+        16: "FireClientOnly" : 0
+        32: "TouchClientOnly" : 0
+    ]
+    
+    master(string) : "Master" 
+    delay(string) : "Delay before trigger" : "0"
 ]
 
-@PointClass base(Targetx, Targetname) = trigger_playerfreeze : "Trigger Player Freeze" []
-@SolidClass base(Trigger) = trigger_xen_return : "Return To Earth (self-tele)" []
+@PointClass base(Targetx, Targetname) = trigger_playerfreeze : "Trigger player freeze" []
+@SolidClass base(Trigger) = trigger_xen_return : "Return to Earth (self-teleport)" []
 
 //
 //WEAPONS
 //
+
 @PointClass base(Weapon, Targetx, RenderFields) studio("models/w_displacer.mdl") = weapon_displacer : "Displacer" []
 @PointClass base(Weapon, Targetx, RenderFields) studio("models/w_desert_eagle.mdl") = weapon_eagle : "Desert Eagle" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_bgrap.mdl") = weapon_grapple : "Barnacle Grapple" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_bgrap.mdl") = weapon_grapple : "Barnacle grapple" []
 @PointClass base(Weapon, Targetx, RenderFields) studio("models/w_knife.mdl") = weapon_knife : "Knife" []
 @PointClass base(Weapon, Targetx, RenderFields) studio("models/w_saw.mdl") = weapon_m249 : "M249 SAW" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_penguinnest.mdl") = weapon_penguin : "Killer Penguin" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_pipe_wrench.mdl") = weapon_pipewrench : "Pipe Wrench" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_shock.mdl") = weapon_shockrifle : "Shock Roach" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_m40a1.mdl") = weapon_sniperrifle : "Sniper Rifle" []
-@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_spore_launcher.mdl") = weapon_sporelauncher : "Spore Launcher" []
-
-
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_penguinnest.mdl") = weapon_penguin : "Killer penguin" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_pipe_wrench.mdl") = weapon_pipewrench : "Pipe wrench" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_shock.mdl") = weapon_shockrifle : "Shock roach" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_m40a1.mdl") = weapon_sniperrifle : "Sniper rifle" []
+@PointClass base(Weapon, Targetx, RenderFields) studio("models/w_spore_launcher.mdl") = weapon_sporelauncher : "Spore launcher" []
 
 //////////////////////////////////////////////////////////////////////////////
 // Opposing Force CTF Entities				      //
 //////////////////////////////////////////////////////////////////////////////
 
-
 //
 // BaseClasses
 //
 
-
 @BaseClass = CTFAttributes
 [
-	goal_no(Choices) : "Team" : 1 =
-	[
-		1 : "Black Mesa"
-		2 : "Opposing Force"
-	]
-	goal_min(string) : "Min Bounds" : "-16 -16 0"
-	goal_max(string) : "Max Bounds" : "16 16 72"
+    goal_no(choices) : "Team" : 1 =
+    [
+        1 : "Black Mesa"
+        2 : "Opposing Force"
+    ]
+    goal_min(string) : "Min bounds" : "-16 -16 0"
+    goal_max(string) : "Max bounds" : "16 16 72"
 ]
 
 @BaseClass = CTFItem
 [
-	spawnflags(flags) = 
-	[ 
-		4: "Random Spawn" : 1 
-		8: "Ignore Spawn Team Setting" : 0
-	]
-	team_no(Choices) : "Team" : 0 =
-	[
-		0 : "Random"
-		1 : "Black Mesa"
-		2 : "Opposing Force"
-	]
+    spawnflags(flags) = 
+    [ 
+        4: "Random spawn" : 1 
+        8: "Ignore spawn team setting" : 0
+    ]
+    team_no(choices) : "Team" : 0 =
+    [
+        0 : "Random"
+        1 : "Black Mesa"
+        2 : "Opposing Force"
+    ]
 ]
-
 
 //
 // Items
 //
 
-
-@PointClass base(CTFAttributes) size(-16 -16 0, 16 16 72) = item_ctfflag : "CTF Flag"
+@PointClass base(CTFAttributes) size(-16 -16 0, 16 16 72) = item_ctfflag : "CTF flag"
 [
-	skin(choices) : "Skin" : 1 =
-	[
-		1 : "Black Mesa"
-		2 : "Opposing Force"
-	]
-	model(studio) : "Model" : "models/flag.mdl"
+    skin(choices) : "Skin" : 1 =
+    [
+        1 : "Black Mesa"
+        2 : "Opposing Force"
+    ]
+    model(studio) : "Model" : "models/flag.mdl"
 ]
-@PointClass base(CTFAttributes) size(-16 -16 0, 16 16 72) = item_ctfbase : "CTF Goal"
+@PointClass base(CTFAttributes) size(-16 -16 0, 16 16 72) = item_ctfbase : "CTF goal"
 [
-	skin(choices) : "Skin" : 0 =
-	[
-		0 : "Default"
-	]
-	model(studio) : "Model" : "models/civ_stand.mdl"
+    skin(choices) : "Skin" : 0 =
+    [
+        0 : "Default"
+    ]
+    model(studio) : "Model" : "models/civ_stand.mdl"
 ]
-@PointClass base(PlayerClass) = info_ctfspawn : "Player CTF Start" 
+@PointClass base(PlayerClass) = info_ctfspawn : "Player CTF start" 
 [
-	team_no(Choices) : "Team" : 0 =
-	[
-		0 : "Random"
-		1 : "Black Mesa"
-		2 : "Opposing Force"
-	]
-]
-
-@PointClass = info_ctfdetect : "CTF Detect"
-[
-	flagreturntime(string) : "Flag Return Time" : "30.0"
-	basedefenddist(string) : "Base Defend Distance" : "192.0"
-	defendcarriertime(string) : "Defend Carrier Time" : "10.0"
-	captureassisttime(string) : "Capture Assist Time" : "10.0"
-	poweruprespawntime(string) : "Powerup Respawn Time" : "30.0"
-	score_icon_namebm(string) : "Non-Flag Black Mesa icon" : "item_ctfscorebm"
-	score_icon_nameof(string) : "Non-Flag Opposing Force icon" : "item_ctfscoreof"
-	map_score_max(string) : "Maximum Map Team Score" : "0"
+    team_no(choices) : "Team" : 0 =
+    [
+        0 : "Random"
+        1 : "Black Mesa"
+        2 : "Opposing Force"
+    ]
 ]
 
-@PointClass base(CTFItem) studio("models/w_jumppack.mdl") = item_ctflongjump : "Longjump Module for CTF" []
+@PointClass = info_ctfdetect : "CTF detect"
+[
+    flagreturntime(string) : "Flag return time" : "30.0"
+    basedefenddist(string) : "Base defend distance" : "192.0"
+    defendcarriertime(string) : "Defend carrier time" : "10.0"
+    captureassisttime(string) : "Capture assist time" : "10.0"
+    poweruprespawntime(string) : "Powerup respawn time" : "30.0"
+    score_icon_namebm(string) : "Non-Flag Black Mesa icon" : "item_ctfscorebm"
+    score_icon_nameof(string) : "Non-Flag Opposing Force icon" : "item_ctfscoreof"
+    map_score_max(string) : "Maximum map team score" : "0"
+]
+
+@PointClass base(CTFItem) studio("models/w_jumppack.mdl") = item_ctflongjump : "Longjump module for CTF" []
 @PointClass base(CTFItem) studio("models/w_porthev.mdl") = item_ctfportablehev : "Portable HEV charger for CTF" []
 @PointClass base(CTFItem) studio("models/w_health.mdl") = item_ctfregeneration : "Health regeneration for CTF" []
-@PointClass base(CTFItem) studio("models/w_accelerator.mdl") = item_ctfaccelerator : "Double Weapon Damage for CTF" []
-@PointClass base(CTFItem) studio("models/w_backpack.mdl") = item_ctfbackpack : "Backpack Powerup for CTF" []
-@PointClass size(-16 -16 0, 16 16 36) = info_ctfspawn_powerup : "CTF Powerup Spawn Spot"
+@PointClass base(CTFItem) studio("models/w_accelerator.mdl") = item_ctfaccelerator : "Double weapon Damage for CTF" []
+@PointClass base(CTFItem) studio("models/w_backpack.mdl") = item_ctfbackpack : "Backpack powerup for CTF" []
+@PointClass size(-16 -16 0, 16 16 36) = info_ctfspawn_powerup : "CTF powerup spawn spot"
 [
-	team_no(Choices) : "Team" : 0 =
-	[
-		0 : "Random"
-		1 : "Black Mesa"
-		2 : "Opposing Force"
-	]
+    team_no(choices) : "Team" : 0 =
+    [
+        0 : "Random"
+        1 : "Black Mesa"
+        2 : "Opposing Force"
+    ]
 ]
 
-@SolidClass base(Target, Targetname) = trigger_ctfgeneric : "Trigger CTF Generic"
+@SolidClass base(Target, Targetname) = trigger_ctfgeneric : "Trigger CTF generic"
 [
-	team_no(Choices) : "Team" : 0 =
-	[
-		0 : "Both Teams"
-		1 : "Black Mesa Only"
-		2 : "Opposing Force Only"
-	]
-	trigger_delay(string) : "Re-activate delay" : "5"
-	score(string) : "Player Score" : "0"
-	team_score(string) : "Team Score" : "0"
-	triggerstate(choices) : "Trigger State" : 0 = 
-	[
-		0: "Off"
-		1: "On"
-		2: "Toggle"
-	]
+    team_no(choices) : "Team" : 0 =
+    [
+        0 : "Both teams"
+        1 : "Black Mesa only"
+        2 : "Opposing Force only"
+    ]
+    trigger_delay(string) : "Re-activate delay" : "5"
+    score(string) : "Player score" : "0"
+    team_score(string) : "Team score" : "0"
+    triggerstate(choices) : "Trigger state" : 0 = 
+    [
+        0: "Off"
+        1: "On"
+        2: "Toggle"
+    ]
 ]
