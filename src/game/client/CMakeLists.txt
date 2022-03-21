@@ -65,7 +65,8 @@ target_include_directories(client PRIVATE
 	../../engine
 	../../../utils/vgui/include
     ../../../external/glew/include
-    ../../../external/glm/glm)
+    ../../../external/glm/glm
+    ../../../external/stb_image)
 	
 target_compile_definitions(client PRIVATE
 	CLIENT_DLL
