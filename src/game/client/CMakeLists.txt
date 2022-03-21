@@ -35,7 +35,7 @@ target_include_directories(SDL2 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../../../e
 add_library(client SHARED)
 
 # Set up GLEW
-add_library(glew ../../../external/glew/src/glew.c)
+add_library(glew STATIC ../../../external/glew/src/glew.c)
 target_include_directories(glew PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../external/glew/include)
 target_compile_definitions(glew PRIVATE GLEW_STATIC)
 

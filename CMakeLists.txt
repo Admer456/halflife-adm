@@ -7,7 +7,7 @@ endif()
 project(HalfLifeADM
 	VERSION 1.0
 	DESCRIPTION "Half-Life ADM Mod Template"
-	LANGUAGES CXX)
+	LANGUAGES CXX C)
 
 if (UNIX)
 	# Mods are always 32 bit, so force this to use the i386 architecture
