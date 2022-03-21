@@ -34,6 +34,11 @@ target_include_directories(SDL2 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../../../e
 # Client library
 add_library(client SHARED)
 
+# Set up GLEW
+add_library(glew ../../../external/glew/src/glew.c)
+target_include_directories(glew PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../external/glew/include)
+target_compile_definitions(glew PRIVATE GLEW_STATIC)
+
 set_common_properties(client)
 add_json_dependencies(client)
 
@@ -58,17 +63,21 @@ target_include_directories(client PRIVATE
 	../shared/player_movement
 	../shared/utils
 	../../engine
-	../../../utils/vgui/include)
+	../../../utils/vgui/include
+    ../../../external/glew/include
+    ../../../external/glm/glm)
 	
 target_compile_definitions(client PRIVATE
 	CLIENT_DLL
-	HL_DLL)
+	HL_DLL
+    GLEW_STATIC)
 	
 target_link_libraries(client PRIVATE
 	vgui
 	$<$<PLATFORM_ID:Windows>:wsock32>
 	SDL2
-	OpenGL::GL)
+	OpenGL::GL
+    glew)
 	
 if (UNIX)
 	# Tell the linker to search for vgui.so and SDL2-2.0.so.0 in here
@@ -264,6 +273,10 @@ target_sources(client PRIVATE
 	../../public/cl_dll/IGameClientExports.h
 	../../public/steam/steamtypes.h
 )
+
+# Since we're compiling GLEW into ourself, add this compile definition
+# to avoid linkage differences
+target_compile_definitions(client PRIVATE GLEW_STATIC)
 
 add_game_shared_sources(client)
 
