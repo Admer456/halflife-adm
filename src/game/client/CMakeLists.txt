@@ -127,6 +127,13 @@ target_sources(client PRIVATE
 	input/in_camera.cpp
 	input/kbutton.h
 	
+    moss/MossBlob.cpp
+    moss/MossBlob.hpp
+    moss/MossRenderer.cpp
+    moss/MossRenderer.hpp
+    moss/MossWorld.cpp
+    moss/MossWorld.hpp
+
 	particleman/CBaseParticle.cpp
 	particleman/CBaseParticle.h
 	particleman/CFrustum.cpp
