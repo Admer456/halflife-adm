@@ -21,6 +21,7 @@
 #include "hud.h"
 
 #include "vgui_TeamFortressViewport.h"
+#include "vgui_ScorePanel.h"
 
 #include "ctf/CTFDefs.h"
 
@@ -245,7 +246,7 @@ bool CHudScoreboard::Draw(float fTime)
 		if (j > m_iNumTeams) // player is not in a team, skip to the next guy
 			continue;
 
-		if (!g_TeamInfo[j].scores_overriden)
+		if (gHUD.m_Teamplay != 2 && !g_TeamInfo[j].scores_overriden)
 		{
 			g_TeamInfo[j].frags += g_PlayerExtraInfo[i].frags;
 			g_TeamInfo[j].deaths += g_PlayerExtraInfo[i].deaths;
@@ -281,7 +282,7 @@ bool CHudScoreboard::Draw(float fTime)
 
 		for (int i = 1; i <= m_iNumTeams; i++)
 		{
-			if (g_TeamInfo[i].players < 0)
+			if (g_TeamInfo[i].players <= 0)
 				continue;
 
 			if (!g_TeamInfo[i].already_drawn && g_TeamInfo[i].frags >= highest_frags)
@@ -396,7 +397,7 @@ int CHudScoreboard::DrawPlayers(int xpos_rel, float list_slot, int nameoffset, c
 
 	if (gHUD.m_Teamplay == 2)
 	{
-		FAR_RIGHT = can_show_packetloss ? PL_CTF_RANGE_MIN : PL_CTF_RANGE_MAX;
+		FAR_RIGHT = can_show_packetloss ? PL_CTF_RANGE_MAX : PL_CTF_RANGE_MIN;
 	}
 	else
 	{
@@ -589,6 +590,17 @@ bool CHudScoreboard::MsgFunc_TeamInfo(const char* pszName, int iSize, void* pbuf
 	if (cl > 0 && cl <= MAX_PLAYERS_HUD)
 	{ // set the players team
 		strncpy(g_PlayerExtraInfo[cl].teamname, READ_STRING(), MAX_TEAM_NAME);
+
+		if (gHUD.m_Teamplay == 2)
+		{
+			g_PlayerExtraInfo[cl].teamid = READ_BYTE();
+		}
+	}
+
+	if (gViewPort && gViewPort->m_pScoreBoard)
+	{
+		m_iNumTeams = gViewPort->m_pScoreBoard->RebuildTeams();
+		return true;
 	}
 
 	// rebuild the list of teams

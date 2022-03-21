@@ -85,7 +85,7 @@ bool CMP5::GetItemInfo(ItemInfo* p)
 
 void CMP5::IncrementAmmo(CBasePlayer* pPlayer)
 {
-	if (0 != pPlayer->GiveAmmo(1, "9mm", _9MM_MAX_CARRY))
+	if (pPlayer->GiveAmmo(1, "9mm", _9MM_MAX_CARRY) >= 0)
 	{
 		EMIT_SOUND(pPlayer->edict(), CHAN_STATIC, "ctf/pow_backpack.wav", 0.5, ATTN_NORM);
 	}
@@ -95,18 +95,6 @@ void CMP5::IncrementAmmo(CBasePlayer* pPlayer)
 		pPlayer->GiveAmmo(1, "ARgrenades", M203_GRENADE_MAX_CARRY);
 		m_flNextGrenadeLoad = gpGlobals->time + 10;
 	}
-}
-
-bool CMP5::AddToPlayer(CBasePlayer* pPlayer)
-{
-	if (CBasePlayerWeapon::AddToPlayer(pPlayer))
-	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->pev);
-		WRITE_BYTE(m_iId);
-		MESSAGE_END();
-		return true;
-	}
-	return false;
 }
 
 bool CMP5::Deploy()

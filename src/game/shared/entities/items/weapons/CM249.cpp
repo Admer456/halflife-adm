@@ -352,10 +352,20 @@ bool CM249::GetItemInfo(ItemInfo* p)
 
 void CM249::IncrementAmmo(CBasePlayer* pPlayer)
 {
-	if (0 != pPlayer->GiveAmmo(1, "556", M249_MAX_CARRY))
+	if (pPlayer->GiveAmmo(1, "556", M249_MAX_CARRY) >= 0)
 	{
 		EMIT_SOUND(pPlayer->edict(), CHAN_STATIC, "ctf/pow_backpack.wav", 0.5, ATTN_NORM);
 	}
+}
+
+void CM249::GetWeaponData(weapon_data_t& data)
+{
+	data.iuser1 = pev->body;
+}
+
+void CM249::SetWeaponData(const weapon_data_t& data)
+{
+	pev->body = data.iuser1;
 }
 
 class CAmmo556 : public CBasePlayerAmmo

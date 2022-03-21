@@ -467,11 +467,12 @@ void CHalfLifeCTFplay::Think()
 			break;
 		case StatsPhase::OpenMenu:
 			MESSAGE_BEGIN(MSG_ALL, gmsgVGUIMenu);
-			g_engfuncs.pfnWriteByte(9);
+			g_engfuncs.pfnWriteByte(MENU_STATSMENU);
 			MESSAGE_END();
 			m_iStatsPhase = StatsPhase::Nothing;
 			break;
 		case StatsPhase::SendPlayers:
+			//Send up to 5 players worth of stats at a time until we've sent everything.
 			for (int iStat = 0; iStat <= 5 && m_iStatsPlayer <= gpGlobals->maxClients; ++m_iStatsPlayer)
 			{
 				auto pPlayer = UTIL_PlayerByIndex(m_iStatsPlayer);
@@ -636,16 +637,16 @@ void CHalfLifeCTFplay::InitHUD(CBasePlayer* pPlayer)
 
 	for (int iPlayer = 1; iPlayer <= gpGlobals->maxClients; ++iPlayer)
 	{
-		auto pPlayer = static_cast<CBasePlayer*>(UTIL_PlayerByIndex(iPlayer));
+		auto otherPlayer = static_cast<CBasePlayer*>(UTIL_PlayerByIndex(iPlayer));
 
-		if (pPlayer)
+		if (otherPlayer)
 		{
-			if (IsValidTeam(pPlayer->TeamID()))
+			if (IsValidTeam(otherPlayer->TeamID()))
 			{
 				MESSAGE_BEGIN(MSG_ONE, gmsgTeamInfo, nullptr, pPlayer->edict());
-				g_engfuncs.pfnWriteByte(pPlayer->entindex());
-				g_engfuncs.pfnWriteString(pPlayer->TeamID());
-				g_engfuncs.pfnWriteByte((int)pPlayer->m_iTeamNum);
+				g_engfuncs.pfnWriteByte(otherPlayer->entindex());
+				g_engfuncs.pfnWriteString(otherPlayer->TeamID());
+				g_engfuncs.pfnWriteByte((int)otherPlayer->m_iTeamNum);
 				g_engfuncs.pfnMessageEnd();
 			}
 		}
@@ -848,7 +849,8 @@ void CHalfLifeCTFplay::PlayerThink(CBasePlayer* pPlayer)
 			g_engfuncs.pfnWriteByte((int)v11);
 			g_engfuncs.pfnWriteString(STRING(pOtherPlayer->pev->netname));
 			g_engfuncs.pfnWriteByte((byte)pOtherPlayer->m_iItems);
-			g_engfuncs.pfnWriteByte((byte)pOtherPlayer->pev->health);
+			//Round health up to 0 to prevent wraparound
+			g_engfuncs.pfnWriteByte((byte)V_max(0, pOtherPlayer->pev->health));
 			g_engfuncs.pfnWriteByte((byte)pOtherPlayer->pev->armorvalue);
 			g_engfuncs.pfnMessageEnd();
 		}
@@ -1245,6 +1247,10 @@ void CHalfLifeCTFplay::ChangePlayerTeam(CBasePlayer* pPlayer, const char* pCharN
 		{
 			team = CTFTeam::OpposingForce;
 		}
+		else
+		{
+			return;
+		}
 
 		if (pPlayer->m_iTeamNum != team)
 		{
@@ -1294,6 +1300,14 @@ void CHalfLifeCTFplay::ChangePlayerTeam(CBasePlayer* pPlayer, const char* pCharN
 		g_engfuncs.pfnWriteByte((int)pPlayer->m_iTeamNum);
 		g_engfuncs.pfnMessageEnd();
 
+		//Reset FOV (could have been inherited from observer mode)
+		pPlayer->m_iClientFOV = 0;
+		pPlayer->m_iFOV = 0;
+
+		g_engfuncs.pfnMessageBegin(MSG_ONE, gmsgSetFOV, nullptr, pPlayer->edict());
+		g_engfuncs.pfnWriteByte(0);
+		g_engfuncs.pfnMessageEnd();
+
 		const auto pszTeamName = GetTeamName(pPlayer->edict());
 
 		UTIL_LogPrintf(
@@ -1337,7 +1351,7 @@ void CHalfLifeCTFplay::ChangePlayerTeam(CBasePlayer* pPlayer, const char* pCharN
 		pPlayer->m_iClientHealth = 100;
 
 		g_engfuncs.pfnMessageBegin(MSG_ONE, gmsgHealth, nullptr, pPlayer->edict());
-		g_engfuncs.pfnWriteByte(pPlayer->m_iClientHealth);
+		g_engfuncs.pfnWriteShort(pPlayer->m_iClientHealth);
 		g_engfuncs.pfnMessageEnd();
 
 		g_engfuncs.pfnMessageBegin(MSG_ONE, gmsgCurWeapon, nullptr, pPlayer->edict());

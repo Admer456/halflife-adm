@@ -60,19 +60,6 @@ void CShotgun::Precache()
 	m_usDoubleFire = PRECACHE_EVENT(1, "events/shotgun2.sc");
 }
 
-bool CShotgun::AddToPlayer(CBasePlayer* pPlayer)
-{
-	if (CBasePlayerWeapon::AddToPlayer(pPlayer))
-	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->pev);
-		WRITE_BYTE(m_iId);
-		MESSAGE_END();
-		return true;
-	}
-	return false;
-}
-
-
 bool CShotgun::GetItemInfo(ItemInfo* p)
 {
 	p->pszName = STRING(pev->classname);
@@ -92,7 +79,7 @@ bool CShotgun::GetItemInfo(ItemInfo* p)
 
 void CShotgun::IncrementAmmo(CBasePlayer* pPlayer)
 {
-	if (0 != pPlayer->GiveAmmo(1, "buckshot", BUCKSHOT_MAX_CARRY))
+	if (pPlayer->GiveAmmo(1, "buckshot", BUCKSHOT_MAX_CARRY) >= 0)
 	{
 		EMIT_SOUND(pPlayer->edict(), CHAN_STATIC, "ctf/pow_backpack.wav", 0.5, ATTN_NORM);
 	}

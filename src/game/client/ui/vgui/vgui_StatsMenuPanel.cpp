@@ -285,7 +285,7 @@ void CStatsMenuPanel::SetPlayerImage(const char* szImage)
 
 	if (image)
 	{
-		image->setImage(szImage);
+		image->LoadImage(szImage);
 	}
 }
 
@@ -301,7 +301,7 @@ bool CStatsMenuPanel::MsgFunc_StatsInfo(const char* pszName, int iSize, void* pb
 	{
 		if (m_pClassImages[0])
 		{
-			m_pClassImages[0]->setImage(sCTFStatsSelection[g_iWinningTeam]);
+			m_pClassImages[0]->LoadImage(sCTFStatsSelection[g_iWinningTeam]);
 		}
 	}
 
@@ -357,7 +357,7 @@ bool CStatsMenuPanel::MsgFunc_StatsInfo(const char* pszName, int iSize, void* pb
 		{
 			if (iNumPlayers <= 0)
 			{
-				strncpy(szStatsBuf[teamNum], "No players on this team\n", sizeof(szStatsBuf) - 1);
+				strncpy(szStatsBuf[teamNum], "No players on this team\n", sizeof(szStatsBuf[teamNum]) - 1);
 			}
 			else
 			{

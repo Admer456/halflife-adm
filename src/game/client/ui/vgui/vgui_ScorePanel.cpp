@@ -29,11 +29,28 @@
 #include "vgui_loadtga.h"
 #include "voice_status.h"
 #include "vgui_SpectatorPanel.h"
+#include "vgui_StatsMenuPanel.h"
 
 extern hud_player_info_t g_PlayerInfoList[MAX_PLAYERS_HUD + 1];	   // player info from the engine
 extern extra_player_info_t g_PlayerExtraInfo[MAX_PLAYERS_HUD + 1]; // additional player info sent directly to the client dll
 team_info_t g_TeamInfo[MAX_TEAMS + 1];
 int g_IsSpectator[MAX_PLAYERS_HUD + 1];
+
+constexpr int ScoreColorsFG[5][3] =
+	{
+		{255, 255, 255},
+		{246, 151, 0},
+		{0, 151, 0},
+		{227, 203, 46},
+		{143, 215, 142}};
+
+constexpr int ScoreColorsBG[5][3] =
+	{
+		{0, 0, 0},
+		{255, 160, 0},
+		{0, 160, 0},
+		{236, 212, 48},
+		{68, 199, 42}};
 
 bool HUD_IsGame(const char* game);
 bool EV_TFC_IsAllyTeam(int iTeam1, int iTeam2);
@@ -221,6 +238,7 @@ ScorePanel::ScorePanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tal
 	m_HitTestPanel.setBounds(0, 0, wide, tall);
 	m_HitTestPanel.addInputSignal(this);
 
+	/*
 	m_pCloseButton = new CommandButton("x", wide - XRES(12 + 4), YRES(2), XRES(12), YRES(12));
 	m_pCloseButton->setParent(this);
 	m_pCloseButton->addActionSignal(new CMenuHandler_StringCommandWatch("-showscores", true));
@@ -229,7 +247,11 @@ ScorePanel::ScorePanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tal
 	m_pCloseButton->setFont(tfont);
 	m_pCloseButton->setBoundKey((char)255);
 	m_pCloseButton->setContentAlignment(Label::a_center);
+	*/
 
+	m_pStatsButton = new CommandButton(CHudTextMessage::BufferedLocaliseTextString("#CTFMenu_Stats"), wide - XRES(124), YRES(0), XRES(124), YRES(24));
+	m_pStatsButton->setParent(this);
+	m_pStatsButton->addActionSignal(new CMenuHandler_ScoreStatWindow(MENU_STATSMENU));
 
 	Initialize();
 }
@@ -289,12 +311,12 @@ void ScorePanel::Update()
 	else
 		SortTeams();
 
-	/*
 	// set scrollbar range
 	m_PlayerList.SetScrollRange(m_iRows);
 
 	FillGrid();
 
+	/*
 	if (gViewPort->m_pSpectatorPanel->m_menuVisible)
 	{
 		m_pCloseButton->setVisible(true);
@@ -354,7 +376,7 @@ void ScorePanel::SortTeams()
 			g_TeamInfo[j].ownteam = false;
 
 		// Set the team's number (used for team colors)
-		g_TeamInfo[j].teamnumber = g_PlayerExtraInfo[i].teamnumber;
+		g_TeamInfo[j].teamnumber = g_PlayerExtraInfo[i].teamid;
 	}
 
 	// find team ping/packetloss averages
@@ -472,13 +494,25 @@ void ScorePanel::SortPlayers(int iTeam, char* team)
 //-----------------------------------------------------------------------------
 // Purpose: Recalculate the existing teams in the match
 //-----------------------------------------------------------------------------
-void ScorePanel::RebuildTeams()
+int ScorePanel::RebuildTeams()
 {
 	// clear out player counts from teams
 	int i;
-	for (i = 1; i <= m_iNumTeams; i++)
+
+	if (gHUD.m_Teamplay == 2)
 	{
-		g_TeamInfo[i].players = 0;
+		//Hardcoded to 2 because m_iNumTeams may not be the correct value at this time
+		for (i = 1; i <= 2; i++)
+		{
+			g_TeamInfo[i].players = 0;
+		}
+	}
+	else
+	{
+		for (i = 1; i <= m_iNumTeams; i++)
+		{
+			g_TeamInfo[i].players = 0;
+		}
 	}
 
 	// rebuild the team list
@@ -492,36 +526,57 @@ void ScorePanel::RebuildTeams()
 		if (g_PlayerExtraInfo[i].teamname[0] == 0)
 			continue; // skip over players who are not in a team
 
-		// is this player in an existing team?
 		int j;
-		for (j = 1; j <= m_iNumTeams; j++)
+
+		if (gHUD.m_Teamplay == 2)
 		{
+			//CTF uses predefined teams with fixed team ids
+			j = g_PlayerExtraInfo[i].teamid;
+
 			if (g_TeamInfo[j].name[0] == '\0')
-				break;
+			{
+				strncpy(g_TeamInfo[j].name, g_PlayerExtraInfo[i].teamname, MAX_TEAM_NAME);
+				g_TeamInfo[j].players = 0;
+			}
 
-			if (!stricmp(g_PlayerExtraInfo[i].teamname, g_TeamInfo[j].name))
-				break;
+			m_iNumTeams = V_max(j, m_iNumTeams);
 		}
-
-		if (j > m_iNumTeams)
-		{ // they aren't in a listed team, so make a new one
-			// search through for an empty team slot
+		else
+		{
+			// is this player in an existing team?
 			for (j = 1; j <= m_iNumTeams; j++)
 			{
 				if (g_TeamInfo[j].name[0] == '\0')
 					break;
-			}
-			m_iNumTeams = V_max(j, m_iNumTeams);
 
-			strncpy(g_TeamInfo[j].name, g_PlayerExtraInfo[i].teamname, MAX_TEAM_NAME);
-			g_TeamInfo[j].players = 0;
+				if (!stricmp(g_PlayerExtraInfo[i].teamname, g_TeamInfo[j].name))
+					break;
+			}
+
+			if (j > m_iNumTeams)
+			{
+				// they aren't in a listed team, so make a new one
+				// search through for an empty team slot
+				for (j = 1; j <= m_iNumTeams; j++)
+				{
+					if (g_TeamInfo[j].name[0] == '\0')
+						break;
+				}
+
+				m_iNumTeams = V_max(j, m_iNumTeams);
+
+				strncpy(g_TeamInfo[j].name, g_PlayerExtraInfo[i].teamname, MAX_TEAM_NAME);
+				g_TeamInfo[j].players = 0;
+			}
 		}
 
 		g_TeamInfo[j].players++;
 	}
 
+	const int teamsToCheck = gHUD.m_Teamplay == 2 ? 2 : m_iNumTeams;
+
 	// clear out any empty teams
-	for (i = 1; i <= m_iNumTeams; i++)
+	for (i = 1; i <= teamsToCheck; i++)
 	{
 		if (g_TeamInfo[i].players < 1)
 			memset(&g_TeamInfo[i], 0, sizeof(team_info_t));
@@ -529,9 +584,10 @@ void ScorePanel::RebuildTeams()
 
 	// Update the scoreboard
 	Update();
+
+	return m_iNumTeams;
 }
 
-#if 0
 void ScorePanel::FillGrid()
 {
 	CSchemeManager* pSchemes = gViewPort->GetSchemeManager();
@@ -614,9 +670,9 @@ void ScorePanel::FillGrid()
 				team_info = &g_TeamInfo[m_iSortedRows[row]];
 
 				// team color text for team names
-				pLabel->setFgColor(iTeamColors[team_info->teamnumber % iNumberOfTeamColors][0],
-					iTeamColors[team_info->teamnumber % iNumberOfTeamColors][1],
-					iTeamColors[team_info->teamnumber % iNumberOfTeamColors][2],
+				pLabel->setFgColor(ScoreColorsBG[team_info->teamnumber % iNumberOfTeamColors][0],
+					ScoreColorsBG[team_info->teamnumber % iNumberOfTeamColors][1],
+					ScoreColorsBG[team_info->teamnumber % iNumberOfTeamColors][2],
 					0);
 
 				// different height for team header rows
@@ -631,9 +687,9 @@ void ScorePanel::FillGrid()
 				pGridRow->SetRowUnderline(0,
 					true,
 					YRES(3),
-					iTeamColors[team_info->teamnumber % iNumberOfTeamColors][0],
-					iTeamColors[team_info->teamnumber % iNumberOfTeamColors][1],
-					iTeamColors[team_info->teamnumber % iNumberOfTeamColors][2],
+					ScoreColorsBG[team_info->teamnumber % iNumberOfTeamColors][0],
+					ScoreColorsBG[team_info->teamnumber % iNumberOfTeamColors][1],
+					ScoreColorsBG[team_info->teamnumber % iNumberOfTeamColors][2],
 					0);
 			}
 			else if (m_iIsATeam[row] == TEAM_SPECTATORS)
@@ -655,9 +711,9 @@ void ScorePanel::FillGrid()
 			else
 			{
 				// team color text for player names
-				pLabel->setFgColor(iTeamColors[g_PlayerExtraInfo[m_iSortedRows[row]].teamnumber % iNumberOfTeamColors][0],
-					iTeamColors[g_PlayerExtraInfo[m_iSortedRows[row]].teamnumber % iNumberOfTeamColors][1],
-					iTeamColors[g_PlayerExtraInfo[m_iSortedRows[row]].teamnumber % iNumberOfTeamColors][2],
+				pLabel->setFgColor(ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][0],
+					ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][1],
+					ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][2],
 					0);
 
 				// Get the player's data
@@ -668,9 +724,9 @@ void ScorePanel::FillGrid()
 				{
 					// Highlight this player
 					pLabel->setFgColor(Scheme::sc_white);
-					pLabel->setBgColor(iTeamColors[g_PlayerExtraInfo[m_iSortedRows[row]].teamnumber % iNumberOfTeamColors][0],
-						iTeamColors[g_PlayerExtraInfo[m_iSortedRows[row]].teamnumber % iNumberOfTeamColors][1],
-						iTeamColors[g_PlayerExtraInfo[m_iSortedRows[row]].teamnumber % iNumberOfTeamColors][2],
+					pLabel->setBgColor(ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][0],
+						ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][1],
+						ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][2],
 						196);
 				}
 				else if (m_iSortedRows[row] == m_iLastKilledBy && 0 != m_fLastKillTime && m_fLastKillTime > gHUD.m_flTime)
@@ -776,6 +832,7 @@ void ScorePanel::FillGrid()
 					sz[0] = 0;
 					GetClientVoiceMgr()->UpdateSpeakerImage(pLabel, m_iSortedRows[row]);
 					break;
+					/*
 				case COLUMN_CLASS:
 					// No class for other team's members (unless allied or spectator)
 					if (gViewPort && EV_TFC_IsAllyTeam(g_iTeamNumber, g_PlayerExtraInfo[m_iSortedRows[row]].teamnumber))
@@ -804,7 +861,7 @@ void ScorePanel::FillGrid()
 						strcpy(sz, "");
 					}
 					break;
-
+					*/
 				case COLUMN_TRACKER:
 					/*
 					if (g_pTrackerUser)
@@ -853,7 +910,6 @@ void ScorePanel::FillGrid()
 	m_PlayerList.getSize(x, y);
 	m_PlayerList.setSize(x, y);
 }
-#endif
 
 //-----------------------------------------------------------------------------
 // Purpose: Setup highlights for player names in scoreboard

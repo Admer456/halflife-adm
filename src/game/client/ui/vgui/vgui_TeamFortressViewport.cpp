@@ -595,7 +595,7 @@ TeamFortressViewport::TeamFortressViewport(int x, int y, int wide, int tall) : P
 	CreateClassMenu();
 	CreateSpectatorMenu();
 	CreateStatsMenu();
-	CreateScoreBoard();
+	//CreateScoreBoard();
 	// Init command menus
 	m_iNumMenus = 0;
 	m_iCurrentTeamNumber = m_iUser1 = m_iUser2 = m_iUser3 = 0;
@@ -789,8 +789,8 @@ int TeamFortressViewport::CreateCommandMenu(const char* menuFile, bool direction
 
 			// Get the button text
 			pfile = gEngfuncs.COM_ParseFile(pfile, token);
-			strncpy(cText, token, 32);
-			cText[31] = '\0';
+
+			CHudTextMessage::LocaliseTextString(token, cText, sizeof(cText));
 
 			// save off the last button text we've come across (for error reporting)
 			strcpy(szLastButtonText, cText);
@@ -1434,6 +1434,13 @@ void TeamFortressViewport::UpdateSpectatorPanel()
 void TeamFortressViewport::CreateScoreBoard()
 {
 	int xdent = SBOARD_INDENT_X, ydent = SBOARD_INDENT_Y;
+
+	if (gHUD.m_Teamplay == 2)
+	{
+		xdent = XRES(52);
+	}
+
+	/*
 	if (ScreenWidth == 512)
 	{
 		xdent = SBOARD_INDENT_X_512;
@@ -1444,6 +1451,7 @@ void TeamFortressViewport::CreateScoreBoard()
 		xdent = SBOARD_INDENT_X_400;
 		ydent = SBOARD_INDENT_Y_400;
 	}
+	*/
 
 	m_pScoreBoard = new ScorePanel(xdent, ydent, ScreenWidth - (xdent * 2), ScreenHeight - (ydent * 2));
 	m_pScoreBoard->setParent(this);
@@ -1566,10 +1574,11 @@ void TeamFortressViewport::ShowVGUIMenu(int iMenu)
 	if (0 != gEngfuncs.pDemoAPI->IsPlayingback())
 		return;
 
-	// Don't open any menus except the MOTD during intermission
+	// Don't open any menus except the MOTD or stats menu during intermission
 	// MOTD needs to be accepted because it's sent down to the client
 	// after map change, before intermission's turned off
-	if (gHUD.m_iIntermission && iMenu != MENU_INTRO)
+	// Stats menu is displayed during intermission.
+	if (gHUD.m_iIntermission && (iMenu != MENU_INTRO && iMenu != MENU_STATSMENU))
 		return;
 
 	// Don't create one if it's already in the list
@@ -1821,7 +1830,7 @@ void TeamFortressViewport::GetAllPlayersInfo()
 	{
 		gEngfuncs.pfnGetPlayerInfo(i, &g_PlayerInfoList[i]);
 
-		if (0 != g_PlayerInfoList[i].thisplayer)
+		if (m_pScoreBoard && 0 != g_PlayerInfoList[i].thisplayer)
 			m_pScoreBoard->m_iPlayerNum = i; // !!!HACK: this should be initialized elsewhere... maybe gotten from the engine
 	}
 }
@@ -1866,7 +1875,7 @@ void TeamFortressViewport::paintBackground()
 	}
 
 	// Update the Scoreboard, if it's visible
-	if (m_pScoreBoard->isVisible() && (m_flScoreBoardLastUpdated < gHUD.m_flTime))
+	if (m_pScoreBoard && m_pScoreBoard->isVisible() && (m_flScoreBoardLastUpdated < gHUD.m_flTime))
 	{
 		m_pScoreBoard->Update();
 		m_flScoreBoardLastUpdated = gHUD.m_flTime + 0.5;
@@ -2237,7 +2246,10 @@ bool TeamFortressViewport::MsgFunc_TeamInfo(const char* pszName, int iSize, void
 
 void TeamFortressViewport::DeathMsg(int killer, int victim)
 {
-	m_pScoreBoard->DeathMsg(killer, victim);
+	if (m_pScoreBoard)
+	{
+		m_pScoreBoard->DeathMsg(killer, victim);
+	}
 }
 
 bool TeamFortressViewport::MsgFunc_Spectator(const char* pszName, int iSize, void* pbuf)
