@@ -38,6 +38,7 @@ add_library(client SHARED)
 add_library(glew STATIC ../../../external/glew/src/glew.c)
 target_include_directories(glew PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../external/glew/include)
 target_compile_definitions(glew PRIVATE GLEW_STATIC)
+set_target_properties(glew PROPERTIES FOLDER "Dependencies")
 
 set_common_properties(client)
 add_json_dependencies(client)

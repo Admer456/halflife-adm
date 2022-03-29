@@ -4,9 +4,9 @@ if (MSVC)
 	set(CMAKE_SYSTEM_VERSION 10.0)
 endif()
 
-project(HalfLifeADM
+project(MossLife
 	VERSION 1.0
-	DESCRIPTION "Half-Life ADM Mod Template"
+	DESCRIPTION "Moss-Life mod code"
 	LANGUAGES CXX C)
 
 if (UNIX)

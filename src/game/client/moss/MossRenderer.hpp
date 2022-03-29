@@ -25,4 +25,6 @@ private:
 	GLuint mossTextureHandle{0};
 
 	GLuint gpuProgramHandle{0};
+
+	bool initialised{false};
 };

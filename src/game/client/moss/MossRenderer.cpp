@@ -64,6 +64,11 @@ static bool GLError(const char* why = nullptr)
 
 void MossRenderer::Init()
 {
+	if (initialised)
+	{
+		return;
+	}
+
 	PushAttributes();
 
 	if (glewInit() != GLEW_OK)
@@ -87,11 +92,20 @@ void MossRenderer::Init()
 	}
 
 	PopAttributes();
+
+	initialised = true;
 }
 
 void MossRenderer::Shutdown(const char* why)
 {
+	if (!initialised)
+	{
+		return;
+	}
+
 	Con_Printf("MossRenderer::Shutdown: %s\n", why);
+
+	initialised = false;
 }
 
 void MossRenderer::RenderFrame()
