@@ -8,6 +8,7 @@
 
 #include <fstream>
 
+#include "IMossRenderer.hpp"
 #include "MossRenderer.hpp"
 
 // Taken from FoxGLBox:

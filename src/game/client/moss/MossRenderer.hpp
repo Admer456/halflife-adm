@@ -1,13 +1,13 @@
 
 #pragma once
 
-class MossRenderer final
+class MossRenderer final : public IMossRenderer
 {
 public:
-	void Init();
-	void Shutdown(const char* why);
+	void Init() override;
+	void Shutdown(const char* why) override;
 
-	void RenderFrame();
+	void RenderFrame() override;
 
 private:
 	bool LoadShader();

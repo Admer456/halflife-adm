@@ -128,6 +128,7 @@ target_sources(client PRIVATE
 	input/in_camera.cpp
 	input/kbutton.h
 	
+    moss/IMossRenderer.hpp
     moss/MossBlob.cpp
     moss/MossBlob.hpp
     moss/MossRenderer.cpp
