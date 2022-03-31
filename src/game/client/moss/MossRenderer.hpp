@@ -1,15 +1,26 @@
 
 #pragma once
 
+#include <GL/glew.h>
+
 class MossRenderer final : public IMossRenderer
 {
 public:
+	static IMossRenderer* GetInstance();
+
 	void Init() override;
 	void Shutdown(const char* why) override;
+	bool Okay() const
+	{
+		return initialised;
+	}
 
-	void RenderFrame() override;
+	void RenderFrame(const MossBlobVector& renderData) override;
 
 private:
+	void RenderMossBlob(const MossBlob& blob);
+
+	
 	bool LoadShader();
 	const char* GetShaderError(GLuint vs, GLuint fs) const;
 	bool LoadTexture();

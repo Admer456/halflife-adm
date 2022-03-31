@@ -21,6 +21,8 @@
 #include "tri.h"
 extern IParticleMan* g_pParticleMan;
 
+#include "moss/MossWorld.hpp"
+
 /*
 =================
 HUD_DrawNormalTriangles
@@ -46,7 +48,7 @@ Render any triangles with transparent rendermode needs here
 void DLLEXPORT HUD_DrawTransparentTriangles()
 {
 	//	RecClDrawTransparentTriangles();
-
+	gMoss.Render();
 
 	if (g_pParticleMan)
 		g_pParticleMan->Update();

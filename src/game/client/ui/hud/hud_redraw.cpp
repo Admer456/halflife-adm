@@ -20,6 +20,8 @@
 #include "vgui_TeamFortressViewport.h"
 #include "vgui_StatsMenuPanel.h"
 
+#include "moss/MossWorld.hpp"
+
 #define MAX_LOGO_FRAMES 56
 
 int grgLogoFrame[MAX_LOGO_FRAMES] =
@@ -208,6 +210,8 @@ bool CHud::Redraw(float flTime, bool intermission)
 		SPR_DrawAdditive( 0, mx, my, nullptr );
 	}
 	*/
+
+	gMoss.Update();
 
 	return true;
 }

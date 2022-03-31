@@ -10,10 +10,18 @@ public:
 	void Init();
 	void Shutdown();
 
-	void AddBlob( const Vector& position, const Vector& normal, const float& angle );
+	void Render();
+	void Update();
+	void AddBlob(const Vector& position, const Vector& normal, const float& angle);
 
 private:
+	float updateTimer{0.0f};
+
 	// Future optimisation consideration: split blob clusters up across BSP leaves
-	MossBlobList blobList{};
-	IMossRenderer& renderer;
+	MossBlobVector blobList{};
+	MossBlobList watchList{};
+	IMossRenderer* renderer{nullptr};
 };
+
+// MossWorld.cpp
+extern MossWorld gMoss;

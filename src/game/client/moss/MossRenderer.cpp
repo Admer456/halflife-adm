@@ -1,14 +1,13 @@
 
 #include "hud.h"
 
-#include <GL/glew.h>
 #include <glm.hpp>
 #define STB_IMAGE_IMPLEMENTATION 1
 #include "stb_image.h"
 
 #include <fstream>
 
-#include "IMossRenderer.hpp"
+#include "MossWorld.hpp"
 #include "MossRenderer.hpp"
 
 // Taken from FoxGLBox:
@@ -63,6 +62,12 @@ static bool GLError(const char* why = nullptr)
 	return false;
 }
 
+IMossRenderer* MossRenderer::GetInstance()
+{
+	static MossRenderer instance;
+	return &instance;
+}
+
 void MossRenderer::Init()
 {
 	if (initialised)
@@ -70,12 +75,31 @@ void MossRenderer::Init()
 		return;
 	}
 
-	PushAttributes();
+	initialised = true;
+
+	Con_Printf("Initialising MossRenderer...\n");
+
+	// It seems Valve weren't the brightest OpenGL users, so I
+	// gotta catch errors coming from the engine's renderer
+	GLError("Init: catching the engine's OpenGL errors");
 
 	if (glewInit() != GLEW_OK)
 	{
 		return Shutdown("GLEW init failure");
 	}
+
+	if (!glCreateProgram)
+	{
+		return Shutdown("Your GPU does not suport OpenGL GLSL shaders");
+	}
+
+	if (!glBindVertexArray)
+	{
+		return Shutdown("Your GPU does not suport OpenGL vertex array objects");
+	}
+
+	PushAttributes();
+	GLError("Init: pushed GL attributes");
 
 	if (!LoadShader())
 	{
@@ -93,8 +117,7 @@ void MossRenderer::Init()
 	}
 
 	PopAttributes();
-
-	initialised = true;
+	GLError("Init: popped GL attributes");
 }
 
 void MossRenderer::Shutdown(const char* why)
@@ -109,13 +132,42 @@ void MossRenderer::Shutdown(const char* why)
 	initialised = false;
 }
 
-void MossRenderer::RenderFrame()
+void MossRenderer::RenderFrame(const MossBlobVector& renderData)
 {
 	PushAttributes();
 
+	glEnable(GL_ALPHA_TEST);
+	glAlphaFunc(GL_GREATER, 0.5f);
 
+	glDisable(GL_CULL_FACE);
+
+	glUseProgram(gpuProgramHandle);
+	glBindVertexArray(vertexArrayHandle);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, mossTextureHandle);
+
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+	
+	//for (const auto& blob : renderData)
+	//{
+	//	RenderMossBlob(blob);
+	//}
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glBindVertexArray(0);
+	glUseProgram(0);
+
+	glEnable(GL_CULL_FACE);
+	//glDisable(GL_ALPHA_TEST);
 
 	PopAttributes();
+}
+
+void MossRenderer::RenderMossBlob(const MossBlob& blob)
+{
+	glDrawElements(GL_TRIANGLES, 4, GL_UNSIGNED_INT, nullptr);
 }
 
 bool MossRenderer::LoadShader()
@@ -223,6 +275,11 @@ bool MossRenderer::LoadTexture()
 	}
 
 	glCreateTextures(GL_TEXTURE_2D, 1, &mossTextureHandle);
+	GLError("CreateTexture: created texture object");
+
+	glBindTexture(GL_TEXTURE_2D, mossTextureHandle);
+	GLError("CreateTexture: bound texture object");
+	
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, textureData);
 	if (GLError("CreateTexture: fed texture object"))
 	{

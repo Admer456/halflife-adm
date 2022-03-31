@@ -26,6 +26,8 @@
 #include "demo_api.h"
 #include "vgui_ScorePanel.h"
 
+#include "moss/MossWorld.hpp"
+
 hud_player_info_t g_PlayerInfoList[MAX_PLAYERS_HUD + 1];	// player info from the engine
 extra_player_info_t g_PlayerExtraInfo[MAX_PLAYERS_HUD + 1]; // additional player info sent directly to the client dll
 
@@ -435,6 +437,8 @@ CHud ::~CHud()
 		}
 		m_pHudList = nullptr;
 	}
+
+	gMoss.Shutdown();
 }
 
 // GetSpriteIndex()
@@ -561,6 +565,8 @@ void CHud::VidInit()
 	m_FlagIcons.VidInit();
 	m_PlayerBrowse.VidInit();
 	GetClientVoiceMgr()->VidInit();
+
+	gMoss.Init();
 }
 
 bool CHud::MsgFunc_HudColor(const char* pszName, int iSize, void* pbuf)
