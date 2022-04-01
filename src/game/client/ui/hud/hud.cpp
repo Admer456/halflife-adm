@@ -781,3 +781,17 @@ void CHud::SetNightVisionState(bool state)
 		m_HudItemColor = m_HudColor;
 	}
 }
+
+// view.cpp
+extern Vector v_origin;
+extern Vector v_angles;
+
+const Vector& CHud::GetViewOrigin() const
+{
+	return v_origin;
+}
+
+const Vector& CHud::GetViewAngles() const
+{
+	return v_angles;
+}

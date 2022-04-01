@@ -12,19 +12,22 @@ void MossWorld::Init()
 	renderer = MossRenderer::GetInstance();
 	renderer->Init();
 
-	gEngfuncs.pfnAddCommand("moss_spawn", []() 
-		{ 
-			const Vector trStart = gHUD.m_vecOrigin;
-			const Vector trEnd = trStart - Vector(0.0f, 0.0f, 100.0f);
+	gEngfuncs.pfnAddCommand("moss_spawn", []() { 
+		const Vector trStart = gHUD.m_vecOrigin;
+		const Vector trEnd = trStart - Vector(0.0f, 0.0f, 100.0f);
 
-			const pmtrace_s* trace = gEngfuncs.PM_TraceLine(trStart, trEnd, PM_TRACELINE_PHYSENTSONLY, 2, -1);
-			if (nullptr == trace)
-			{
-				return;
-			}
+		const pmtrace_s* trace = gEngfuncs.PM_TraceLine(trStart, trEnd, PM_TRACELINE_PHYSENTSONLY, 2, -1);
+		if (nullptr == trace)
+		{
+			return;
+		}
 
-			gMoss.AddBlob(trace->endpos, trace->plane.normal, RANDOM_FLOAT(0.0f, 360.0f));
-		});
+		gMoss.AddBlob(trace->endpos, trace->plane.normal, RANDOM_FLOAT(0.0f, 360.0f));
+	});
+
+	gEngfuncs.pfnAddCommand("moss_reloadShaders", []() { 
+		gMoss.GetRenderer()->ReloadShaders();
+	});
 }
 
 void MossWorld::Shutdown()

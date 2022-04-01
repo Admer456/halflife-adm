@@ -690,6 +690,9 @@ public:
 		return (m_iWeaponBits & ~static_cast<std::uint64_t>(WEAPON_SUIT)) != 0;
 	}
 
+	const Vector& GetViewOrigin() const;
+	const Vector& GetViewAngles() const;
+
 private:
 	// the memory for these arrays are allocated in the first call to CHud::VidInit(), when the hud.txt and associated sprites are loaded.
 	// freed in ~CHud()

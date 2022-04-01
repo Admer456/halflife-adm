@@ -14,6 +14,11 @@ public:
 	void Update();
 	void AddBlob(const Vector& position, const Vector& normal, const float& angle);
 
+	IMossRenderer* GetRenderer()
+	{
+		return renderer;
+	}
+
 private:
 	float updateTimer{0.0f};
 

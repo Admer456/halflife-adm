@@ -9,4 +9,5 @@ public:
 	virtual bool Okay() const = 0;
 
 	virtual void RenderFrame(const MossBlobVector& renderData) = 0;
+	virtual bool ReloadShaders() = 0;
 };

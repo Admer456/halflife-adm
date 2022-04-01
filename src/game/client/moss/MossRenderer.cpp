@@ -1,7 +1,6 @@
 
 #include "hud.h"
 
-#include <glm.hpp>
 #define STB_IMAGE_IMPLEMENTATION 1
 #include "stb_image.h"
 
@@ -9,6 +8,10 @@
 
 #include "MossWorld.hpp"
 #include "MossRenderer.hpp"
+
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 // Taken from FoxGLBox:
 // https://github.com/Admer456/FoxGLBox/blob/master/renderer/src/Backends/OpenGL45/Renderer.cpp#L25
@@ -62,10 +65,11 @@ static bool GLError(const char* why = nullptr)
 	return false;
 }
 
+static MossRenderer gMossRenderer;
+
 IMossRenderer* MossRenderer::GetInstance()
 {
-	static MossRenderer instance;
-	return &instance;
+	return &gMossRenderer;
 }
 
 void MossRenderer::Init()
@@ -139,35 +143,117 @@ void MossRenderer::RenderFrame(const MossBlobVector& renderData)
 	glEnable(GL_ALPHA_TEST);
 	glAlphaFunc(GL_GREATER, 0.5f);
 
-	glDisable(GL_CULL_FACE);
+	//glDepthMask(GL_TRUE);
+
+	//glDisable(GL_CULL_FACE);
 
 	glUseProgram(gpuProgramHandle);
 	glBindVertexArray(vertexArrayHandle);
 
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+
+	SetupMatrices();
+
+	glUniformMatrix4fv(viewMatrixHandle, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+	glUniformMatrix4fv(projectionMatrixHandle, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, mossTextureHandle);
 
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-	
+	static MossBlob blob = MossBlob( {0.0f, 0.0f, 0.1f}, {0.0f, 0.0f, 1.0f}, 1.0f, 0.0f );
+	RenderMossBlob(blob);
+
 	//for (const auto& blob : renderData)
 	//{
 	//	RenderMossBlob(blob);
 	//}
 
+	// Must make sure to "unuse" everything afterwards,
+	// otherwise VGUI2 might get a lil buggy
 	glBindTexture(GL_TEXTURE_2D, 0);
 
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(0);
+
 	glBindVertexArray(0);
+
 	glUseProgram(0);
 
 	glEnable(GL_CULL_FACE);
-	//glDisable(GL_ALPHA_TEST);
+	glDisable(GL_ALPHA_TEST);
 
 	PopAttributes();
 }
 
+bool MossRenderer::ReloadShaders()
+{
+	if (gpuProgramHandle)
+	{
+		glDeleteProgram(gpuProgramHandle);
+	}
+
+	return LoadShader();
+}
+
+static glm::vec3 convert( const Vector& v )
+{
+	return {v.x, v.y, v.z};
+}
+
+void MossRenderer::SetupMatrices()
+{
+	// GoldSRC uses horizontal FOV, must compensate for this
+	constexpr float baseAspectRatio = 4.0f / 3.0f;
+	const float aspectRatio = (float(ScreenWidth) / float(ScreenHeight));
+	const float relativeAspectRatio = aspectRatio / baseAspectRatio;
+
+	const float& horizontalFov = gHUD.m_iFOV;
+	const float verticalFov = (horizontalFov / relativeAspectRatio) * 0.95f;
+
+	// We gotta match this up with the engine's perspective, hmm...
+	projectionMatrix = glm::perspective(glm::radians(verticalFov), aspectRatio, -1.0f, 1.0f);
+
+	Vector forward, right, up;
+	AngleVectors(gHUD.GetViewAngles(), forward, right, up);
+
+	const Vector eye = gHUD.GetViewOrigin();
+	const Vector center = eye + forward;
+
+	viewMatrix = glm::lookAt(convert(eye), convert(center), convert(up));
+}
+
 void MossRenderer::RenderMossBlob(const MossBlob& blob)
 {
-	glDrawElements(GL_TRIANGLES, 4, GL_UNSIGNED_INT, nullptr);
+	const glm::vec3 position = convert(blob.GetPosition());
+	// Multiplied by -1 so we get the proper orientation
+	const glm::quat orientation = glm::angleAxis(glm::radians(blob.GetAngle()), convert(blob.GetNormal()));
+
+	const float pitch = glm::pitch(orientation) + glm::radians(180.0f);
+	const float yaw = glm::yaw(orientation);
+	const float roll = glm::roll(orientation);
+
+	constexpr glm::vec3 forward{1.0f, 0.0f, 0.0f};
+	constexpr glm::vec3 right{0.0f, -1.0f, 0.0f};
+	constexpr glm::vec3 up{0.0f, 0.0f, 1.0f};
+
+	// Temporary hackity little hack
+	static glm::mat4 modelMatrix;
+
+	modelMatrix = glm::identity<glm::mat4>();
+	// Translation
+	modelMatrix = glm::translate(modelMatrix, position);
+	// Orientation
+	// There is probably a simpler and more efficient way to do this, but we'll roll with this
+	modelMatrix = glm::rotate(modelMatrix, roll, forward);
+	modelMatrix = glm::rotate(modelMatrix, pitch, right);
+	modelMatrix = glm::rotate(modelMatrix, yaw, up);
+	// Scale
+	modelMatrix = glm::scale(modelMatrix, glm::vec3(blob.GetScale() * 128.0f));
+
+	glUniformMatrix4fv(modelMatrixHandle, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 }
 
 bool MossRenderer::LoadShader()
@@ -236,6 +322,10 @@ bool MossRenderer::LoadShader()
 	GLuint diffuseMapHandle = glGetUniformLocation(gpuProgramHandle, "diffuseMap");
 	glUniform1i(diffuseMapHandle, 0);
 	
+	viewMatrixHandle = glGetUniformLocation(gpuProgramHandle, "viewMatrix");
+	projectionMatrixHandle = glGetUniformLocation(gpuProgramHandle, "projectionMatrix");
+	modelMatrixHandle = glGetUniformLocation(gpuProgramHandle, "modelMatrix");
+
 	glUseProgram(0);
 
 	return true;

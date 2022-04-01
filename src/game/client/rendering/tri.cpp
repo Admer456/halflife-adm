@@ -33,6 +33,8 @@ Non-transparent triangles-- add them here
 void DLLEXPORT HUD_DrawNormalTriangles()
 {
 	//	RecClDrawNormalTriangles();
+	gMoss.Render();
+
 
 	gHUD.m_Spectator.DrawOverview();
 }
@@ -48,7 +50,6 @@ Render any triangles with transparent rendermode needs here
 void DLLEXPORT HUD_DrawTransparentTriangles()
 {
 	//	RecClDrawTransparentTriangles();
-	gMoss.Render();
 
 	if (g_pParticleMan)
 		g_pParticleMan->Update();
