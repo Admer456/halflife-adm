@@ -145,7 +145,7 @@ void MossRenderer::RenderFrame(const MossBlobVector& renderData)
 	PushAttributes();
 
 	glEnable(GL_ALPHA_TEST);
-	glAlphaFunc(GL_GREATER, 0.5f);
+	glAlphaFunc(GL_GREATER, 1.0f - (gHUD.m_flTime * 0.001f));
 
 	glUseProgram(gpuProgramHandle);
 	glBindVertexArray(vertexArrayHandle);
@@ -229,9 +229,10 @@ void MossRenderer::SetupMatrices()
 void MossRenderer::RenderMossBlob(const MossBlob& blob)
 {
 	const glm::vec3 position = convert(blob.GetPosition());
-	// Multiplied by -1 so we get the proper orientation
 	const glm::quat orientation = glm::angleAxis(glm::radians(blob.GetAngle()), convert(blob.GetNormal()));
 
+	// Adding 180 degs here, otherwise the model is flipped in-game
+	// Dunno the maths and I'm too lazy to fix
 	const float pitch = glm::pitch(orientation) + glm::radians(180.0f);
 	const float yaw = glm::yaw(orientation);
 	const float roll = glm::roll(orientation);
@@ -247,11 +248,12 @@ void MossRenderer::RenderMossBlob(const MossBlob& blob)
 	// Translation
 	modelMatrix = glm::translate(modelMatrix, position);
 	// Orientation
-	// There is probably a simpler and more efficient way to do this, but we'll roll with this
+	// There is probably a simpler and more efficient way to do this,
+	// e.g. AngleVectors into the matrix or something like that, but we'll roll with this
 	modelMatrix = glm::rotate(modelMatrix, roll, forward);
 	modelMatrix = glm::rotate(modelMatrix, pitch, right);
 	modelMatrix = glm::rotate(modelMatrix, yaw, up);
-	// Scale
+	// Scale, multiplied by 128 here arbitrarily, might wanna let MossWorld do that instead
 	modelMatrix = glm::scale(modelMatrix, glm::vec3(blob.GetScale() * 128.0f));
 
 	glUniformMatrix4fv(modelMatrixHandle, 1, GL_FALSE, glm::value_ptr(modelMatrix));
@@ -381,11 +383,12 @@ bool MossRenderer::LoadTexture()
 
 	glGenerateMipmap(GL_TEXTURE_2D);
 
+	// TODO: react to gl_texturemode
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
 
 	return true;
 }
