@@ -13,6 +13,8 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+cvar_t* sv_zmax;
+
 // Taken from FoxGLBox:
 // https://github.com/Admer456/FoxGLBox/blob/master/renderer/src/Backends/OpenGL45/Renderer.cpp#L25
 static const char* glTranslateError(GLenum error)
@@ -122,6 +124,8 @@ void MossRenderer::Init()
 
 	PopAttributes();
 	GLError("Init: popped GL attributes");
+
+	sv_zmax = CVAR_GET_POINTER("sv_zmax");
 }
 
 void MossRenderer::Shutdown(const char* why)
@@ -143,10 +147,6 @@ void MossRenderer::RenderFrame(const MossBlobVector& renderData)
 	glEnable(GL_ALPHA_TEST);
 	glAlphaFunc(GL_GREATER, 0.5f);
 
-	//glDepthMask(GL_TRUE);
-
-	//glDisable(GL_CULL_FACE);
-
 	glUseProgram(gpuProgramHandle);
 	glBindVertexArray(vertexArrayHandle);
 
@@ -161,7 +161,7 @@ void MossRenderer::RenderFrame(const MossBlobVector& renderData)
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, mossTextureHandle);
 
-	static MossBlob blob = MossBlob( {0.0f, 0.0f, 0.1f}, {0.0f, 0.0f, 1.0f}, 1.0f, 0.0f );
+	static MossBlob blob = MossBlob( {0.0f, 0.0f, 0.01f}, {0.0f, 0.0f, 1.0f}, 1.0f, 0.0f );
 	RenderMossBlob(blob);
 
 	//for (const auto& blob : renderData)
@@ -209,15 +209,20 @@ void MossRenderer::SetupMatrices()
 	// Thanks coyo_t for enlightening me
 	const float verticalFov = std::atanf(std::tanf(horizontalFov * 0.5f) * (1.0f / aspectRatio)) * 2.0f;
 
-	// We gotta match this up with the engine's depth range, hmm...
-	projectionMatrix = glm::perspective(verticalFov, aspectRatio, -1.0f, 1.0f);
+	// Near is 4 according to the Quake engine sources and an apitrace log of Half-Life on bounce.bsp
+	// I should write an article about all that eventually
+	// Also, because zFar can be set by mappers, we gotta link that to a CVar
+	projectionMatrix = glm::perspective(verticalFov, aspectRatio, 4.0f, sv_zmax->value);
 
+	// The rest is taking the view vectors and forming a view matrix
 	Vector forward, right, up;
 	AngleVectors(gHUD.GetViewAngles(), forward, right, up);
 
+	// It could be done much better, for example, we could store the forward, right and up
+	// vectors into the matrix, and set the view origin into the last row
+	// This is actually what lookAt does in the end, but I'm lazy, so
 	const Vector eye = gHUD.GetViewOrigin();
 	const Vector center = eye + forward;
-
 	viewMatrix = glm::lookAt(convert(eye), convert(center), convert(up));
 }
 
