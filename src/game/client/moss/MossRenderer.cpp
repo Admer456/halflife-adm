@@ -204,15 +204,13 @@ static glm::vec3 convert( const Vector& v )
 void MossRenderer::SetupMatrices()
 {
 	// GoldSRC uses horizontal FOV, must compensate for this
-	constexpr float baseAspectRatio = 4.0f / 3.0f;
 	const float aspectRatio = (float(ScreenWidth) / float(ScreenHeight));
-	const float relativeAspectRatio = aspectRatio / baseAspectRatio;
+	const float horizontalFov = glm::radians<float>(gHUD.m_iFOV);
+	// Thanks coyo_t for enlightening me
+	const float verticalFov = std::atanf(std::tanf(horizontalFov * 0.5f) * (1.0f / aspectRatio)) * 2.0f;
 
-	const float& horizontalFov = gHUD.m_iFOV;
-	const float verticalFov = (horizontalFov / relativeAspectRatio) * 0.95f;
-
-	// We gotta match this up with the engine's perspective, hmm...
-	projectionMatrix = glm::perspective(glm::radians(verticalFov), aspectRatio, -1.0f, 1.0f);
+	// We gotta match this up with the engine's depth range, hmm...
+	projectionMatrix = glm::perspective(verticalFov, aspectRatio, -1.0f, 1.0f);
 
 	Vector forward, right, up;
 	AngleVectors(gHUD.GetViewAngles(), forward, right, up);
