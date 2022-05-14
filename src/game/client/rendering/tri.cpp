@@ -35,6 +35,7 @@ void DLLEXPORT HUD_DrawNormalTriangles()
 	gHUD.m_Spectator.DrawOverview();
 }
 
+#include "physics/Physics.hpp"
 
 /*
 =================
@@ -47,6 +48,18 @@ void DLLEXPORT HUD_DrawTransparentTriangles()
 {
 	//	RecClDrawTransparentTriangles();
 
+	auto& TriApi = gEngfuncs.pTriAPI;
+
+	TriApi->Begin(TRI_LINES);
+	TriApi->Vertex3f(0.0f, 128.0f, 64.0f);
+	TriApi->Vertex3f(128.0f, 128.0f, 64.0f);
+	TriApi->Vertex3f(128.0f, 128.0f, 64.0f);
+	TriApi->Vertex3f(128.0f, 0.0f, 64.0f);
+	TriApi->Vertex3f(128.0f, 0.0f, 64.0f);
+	TriApi->Vertex3f(0.0f, 128.0f, 64.0f);
+	TriApi->End();
+
+	gPhysics.Render();
 
 	if (g_pParticleMan)
 		g_pParticleMan->Update();

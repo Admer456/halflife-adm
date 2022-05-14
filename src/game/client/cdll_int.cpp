@@ -51,6 +51,9 @@ void InitInput();
 void EV_HookEvents();
 void IN_Commands();
 
+#include "physics/Physics.hpp"
+#include "physics/DebugRenderer.hpp"
+
 /*
 ================================
 HUD_GetHullBounds
@@ -108,6 +111,45 @@ void DLLEXPORT HUD_PlayerMove(struct playermove_s* ppmove, int server)
 	PM_Move(ppmove, server);
 }
 
+void Cmd_ThrowBox()
+{
+	Vector forward;
+	AngleVectors(gHUD.m_vecAngles, &forward, nullptr, nullptr);
+	//forward.z *= -1.0f;
+
+	Physics::BodyCreateInfo boxInfo{Physics::BodyCreateInfo::ShapeTypes::Box};
+	boxInfo.mPosition = gHUD.m_vecOrigin + forward * 50.0f;
+	boxInfo.mAngles =
+	{
+		RANDOM_FLOAT(0.0f, 360.0f),
+		RANDOM_FLOAT(0.0f, 360.0f),
+		RANDOM_FLOAT(0.0f, 360.0f)
+	};
+	boxInfo.mObjectLayer = Physics::Layers::MOVING;
+	boxInfo.mMotionType = JPH::EMotionType::Dynamic;
+	boxInfo.mShape.box.halfExtents = {8.0f, 18.0f, 25.0f};
+
+	int32_t id = gPhysics.CreateBody(boxInfo);
+	auto* body = gPhysics.GetBodyById(id);
+	if (nullptr == body)
+	{
+		return;
+	}
+
+	body->SetVelocity(forward * 500.0f);
+	body->SetAngularVelocity(boxInfo.mAngles);
+}
+
+void CreatePhysicsFloor()
+{
+	Physics::BodyCreateInfo floorInfo{Physics::BodyCreateInfo::ShapeTypes::Box};
+	floorInfo.mObjectLayer = Physics::Layers::NON_MOVING;
+	floorInfo.mMotionType = JPH::EMotionType::Static;
+	floorInfo.mShape.box.halfExtents = {511.5f, 511.5f, 15.5f};
+
+	gPhysics.CreateBody(floorInfo);
+}
+
 int DLLEXPORT Initialize(cl_enginefunc_t* pEnginefuncs, int iVersion)
 {
 	gEngfuncs = *pEnginefuncs;
@@ -128,6 +170,16 @@ int DLLEXPORT Initialize(cl_enginefunc_t* pEnginefuncs, int iVersion)
 	{
 		return 0;
 	}
+
+	// Inishialaize der deeburg rendera wif da pimziks snyisterm
+	if (!gPhysics.Init(new Physics::DebugRendererImpl(gEngfuncs.pTriAPI)))
+	{
+		return 0;
+	}
+
+	CreatePhysicsFloor();
+
+	gEngfuncs.pfnAddCommand("phys_throwBox", Cmd_ThrowBox);
 
 	// get tracker interface, if any
 	return 1;
@@ -242,6 +294,8 @@ void DLLEXPORT HUD_Frame(double time)
 	//	RecClHudFrame(time);
 
 	GetClientVoiceMgr()->Frame(time);
+
+	gPhysics.Update(gHUD.m_flTimeDelta, 1, 1);
 }
 
 
