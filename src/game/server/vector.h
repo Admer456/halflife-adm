@@ -81,10 +81,15 @@ public:
 	{
 	}
 
-	constexpr Vector(float rgfl[3])
+	constexpr Vector(const float rgfl[3])
 		: x(rgfl[0]), y(rgfl[1]), z(rgfl[2])
 	{
 	}
+
+	//constexpr Vector(float rgfl[3])
+	//	: x(rgfl[0]), y(rgfl[1]), z(rgfl[2])
+	//{
+	//}
 
 	// Operators
 	[[nodiscard]] constexpr Vector operator-() const { return Vector(-x, -y, -z); }
