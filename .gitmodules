@@ -14,3 +14,8 @@
 	path = external/Angelscript
 	url = https://github.com/codecat/angelscript-mirror.git
 	shallow = 1
+[submodule "external/JoltPhysics"]
+	path = external/JoltPhysics
+	url = https://github.com/Joshua-Ashton/JoltPhysics.git
+	branch = 32-bit-jolt
+	shallow = 1
