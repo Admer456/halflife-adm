@@ -68,6 +68,11 @@ add_subdirectory(external/Angelscript/sdk/angelscript/projects/cmake
 	Angelscript-binary-dir
 	EXCLUDE_FROM_ALL)
 
+
+add_subdirectory(external/JoltPhysics/Build
+	Jolt-binary-dir
+	EXCLUDE_FROM_ALL)
+
 # Enable multithreaded building to speed up building these a bit.
 target_compile_options(nlohmann_json_schema_validator PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/MP>)
 target_compile_options(angelscript PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/MP>)
@@ -77,6 +82,7 @@ set_target_properties(
 	nlohmann_json
 	nlohmann_json_schema_validator
 	angelscript
+	Jolt
 	PROPERTIES
 		FOLDER "Dependencies")
 
@@ -90,6 +96,7 @@ if (UNIX)
 	#set_32bit_compilation(nlohmann_json) # Don't set it for this one, it's an INTERFACE library (header-only)
 	set_32bit_compilation(nlohmann_json_schema_validator)
 	set_32bit_compilation(angelscript)
+	set_32bit_compilation(Jolt)
 endif()
 
 # Sets properties common to all projects
@@ -120,12 +127,14 @@ function(set_common_properties TARGET_NAME)
 		angelscript
 		spdlog::spdlog
 		Threads::Threads
+		Jolt
 		${CMAKE_DL_LIBS})
 	
 	# TODO: should be fixed in Angelscript's CMake project
 	target_include_directories(${TARGET_NAME} PRIVATE
 		${CMAKE_CURRENT_FUNCTION_LIST_DIR}/external/Angelscript/sdk/angelscript/include
-		${CMAKE_CURRENT_FUNCTION_LIST_DIR}/external/Angelscript/sdk/add_on)
+		${CMAKE_CURRENT_FUNCTION_LIST_DIR}/external/Angelscript/sdk/add_on
+		${CMAKE_CURRENT_FUNCTION_LIST_DIR}/external/JoltPhysics)
 
 	# TODO: review Linux compiler flags
 	target_compile_options(${TARGET_NAME} PRIVATE
