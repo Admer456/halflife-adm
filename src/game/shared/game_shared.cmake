@@ -58,6 +58,12 @@ function(add_game_shared_sources target)
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/items/weapons/weapons_shared.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/items/weapons/weapons.h
 			
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/physics/Physics.hpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/physics/PhysicsBody.cpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/physics/PhysicsBody.hpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/physics/PhysicsSystem.cpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/physics/PhysicsSystem.hpp
+			
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/player_movement/pm_debug.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/player_movement/pm_debug.h
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/player_movement/pm_defs.h

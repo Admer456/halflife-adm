@@ -128,6 +128,9 @@ target_sources(client PRIVATE
 	particleman/particleman.h
 	particleman/particleman_internal.h
 
+	physics/DebugRenderer.cpp
+	physics/DebugRenderer.hpp
+
 	rendering/GameStudioModelRenderer.cpp
 	rendering/GameStudioModelRenderer.h
 	rendering/StudioModelRenderer.cpp
