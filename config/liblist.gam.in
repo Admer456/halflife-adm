@@ -1,7 +1,7 @@
 // Valve Game Info file
 //  These are key/value pairs.  Certain mods will use different settings.
 //
-game "Half-Life Unified SDK"
+game "Half-Life ADM template"
 icon "game"
 startmap "c0a0"
 trainmap "t0a0"
