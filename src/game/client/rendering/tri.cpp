@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -19,7 +19,6 @@
 
 #include "particleman.h"
 #include "tri.h"
-extern IParticleMan* g_pParticleMan;
 
 /*
 =================

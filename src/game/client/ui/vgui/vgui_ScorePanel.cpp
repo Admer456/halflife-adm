@@ -23,6 +23,7 @@
 #include "const.h"
 #include "entity_state.h"
 #include "cl_entity.h"
+#include "player_info.h"
 #include "vgui_TeamFortressViewport.h"
 #include "vgui_ScorePanel.h"
 #include "vgui_helpers.h"
@@ -30,11 +31,6 @@
 #include "voice_status.h"
 #include "vgui_SpectatorPanel.h"
 #include "vgui_StatsMenuPanel.h"
-
-extern hud_player_info_t g_PlayerInfoList[MAX_PLAYERS_HUD + 1];	   // player info from the engine
-extern extra_player_info_t g_PlayerExtraInfo[MAX_PLAYERS_HUD + 1]; // additional player info sent directly to the client dll
-team_info_t g_TeamInfo[MAX_TEAMS + 1];
-int g_IsSpectator[MAX_PLAYERS_HUD + 1];
 
 constexpr int ScoreColorsFG[5][3] =
 	{
@@ -73,9 +69,9 @@ public:
 
 SBColumnInfo g_ColumnInfo[NUM_COLUMNS] =
 	{
-		{nullptr, 24, Label::a_east},	// tracker column
+		{nullptr, 24, Label::a_east},  // tracker column
 		{nullptr, 140, Label::a_east}, // name
-		{nullptr, 56, Label::a_east},	// class
+		{nullptr, 56, Label::a_east},  // class
 		{"#SCORE", 40, Label::a_east},
 		{"#DEATHS", 46, Label::a_east},
 		{"#LATENCY", 46, Label::a_east},
@@ -119,7 +115,7 @@ ScorePanel::ScorePanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tal
 	m_pCurrentHighlightLabel = nullptr;
 	m_iHighlightRow = -1;
 
-	//m_pTrackerIcon = vgui_LoadTGANoInvertAlpha("gfx/vgui/640_scoreboardtracker.tga");
+	// m_pTrackerIcon = vgui_LoadTGA("gfx/vgui/640_scoreboardtracker.tga", false);
 
 	// Initialize the top title.
 	m_TitleLabel.setFont(tfont);
@@ -501,7 +497,7 @@ int ScorePanel::RebuildTeams()
 
 	if (gHUD.m_Teamplay == 2)
 	{
-		//Hardcoded to 2 because m_iNumTeams may not be the correct value at this time
+		// Hardcoded to 2 because m_iNumTeams may not be the correct value at this time
 		for (i = 1; i <= 2; i++)
 		{
 			g_TeamInfo[i].players = 0;
@@ -530,7 +526,7 @@ int ScorePanel::RebuildTeams()
 
 		if (gHUD.m_Teamplay == 2)
 		{
-			//CTF uses predefined teams with fixed team ids
+			// CTF uses predefined teams with fixed team ids
 			j = g_PlayerExtraInfo[i].teamid;
 
 			if (g_TeamInfo[j].name[0] == '\0')
@@ -736,7 +732,7 @@ void ScorePanel::FillGrid()
 				}
 			}
 
-			// Align 
+			// Align
 			if (col == COLUMN_NAME || col == COLUMN_CLASS)
 			{
 				pLabel->setContentAlignment(vgui::Label::a_west);

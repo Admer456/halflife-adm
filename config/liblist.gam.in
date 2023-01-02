@@ -1,0 +1,12 @@
+// Valve Game Info file
+//  These are key/value pairs.  Certain mods will use different settings.
+//
+game "Half-Life Unified SDK"
+icon "game"
+startmap "c0a0"
+trainmap "t0a0"
+mpentity "info_player_deathmatch"
+gamedll "dlls\server.dll"
+gamedll_linux "dlls/server.so"
+gamedll_osx "dlls/server.dylib"
+secure "1"

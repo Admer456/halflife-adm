@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 
@@ -112,7 +112,7 @@ void GetEyePosition(void* pmodel, float* vecEyePosition)
 
 	if (!pstudiohdr)
 	{
-		ALERT(at_console, "GetEyePosition() Can't get pstudiohdr ptr!\n");
+		CBaseEntity::Logger->error("GetEyePosition() Can't get pstudiohdr ptr!");
 		return;
 	}
 
@@ -149,7 +149,7 @@ bool IsSoundEvent(int eventNumber)
 }
 
 
-void SequencePrecache(void* pmodel, const char* pSequenceName)
+void SequencePrecache(CBaseEntity* self, void* pmodel, const char* pSequenceName)
 {
 	int index = LookupSequence(pmodel, pSequenceName);
 	if (index >= 0)
@@ -178,10 +178,11 @@ void SequencePrecache(void* pmodel, const char* pSequenceName)
 			{
 				if (0 == strlen(pevent[i].options))
 				{
-					ALERT(at_error, "Bad sound event %d in sequence %s :: %s (sound is \"%s\")\n", pevent[i].event, pstudiohdr->name, pSequenceName, pevent[i].options);
+					CBaseEntity::Logger->error("Bad sound event {} in sequence {} :: {} (sound is \"{}\")",
+						pevent[i].event, pstudiohdr->name, pSequenceName, pevent[i].options);
 				}
 
-				PRECACHE_SOUND(STRING(ALLOC_STRING(pevent[i].options)));
+				self->PrecacheSound(STRING(ALLOC_STRING(pevent[i].options)));
 			}
 		}
 	}
@@ -199,7 +200,7 @@ void GetSequenceInfo(void* pmodel, entvars_t* pev, float* pflFrameRate, float* p
 
 	mstudioseqdesc_t* pseqdesc;
 
-	if (pev->sequence >= pstudiohdr->numseq)
+	if (pev->sequence < 0 || pev->sequence >= pstudiohdr->numseq)
 	{
 		*pflFrameRate = 0.0;
 		*pflGroundSpeed = 0.0;
@@ -227,7 +228,7 @@ int GetSequenceFlags(void* pmodel, entvars_t* pev)
 	studiohdr_t* pstudiohdr;
 
 	pstudiohdr = (studiohdr_t*)pmodel;
-	if (!pstudiohdr || pev->sequence >= pstudiohdr->numseq)
+	if (!pstudiohdr || pev->sequence < 0 || pev->sequence >= pstudiohdr->numseq)
 		return 0;
 
 	mstudioseqdesc_t* pseqdesc;
@@ -242,7 +243,7 @@ int GetAnimationEvent(void* pmodel, entvars_t* pev, MonsterEvent_t* pMonsterEven
 	studiohdr_t* pstudiohdr;
 
 	pstudiohdr = (studiohdr_t*)pmodel;
-	if (!pstudiohdr || pev->sequence >= pstudiohdr->numseq || !pMonsterEvent)
+	if (!pstudiohdr || pev->sequence < 0 || pev->sequence >= pstudiohdr->numseq || !pMonsterEvent)
 		return 0;
 
 	int events = 0;
@@ -346,7 +347,7 @@ float SetBlending(void* pmodel, entvars_t* pev, int iBlender, float flValue)
 	studiohdr_t* pstudiohdr;
 
 	pstudiohdr = (studiohdr_t*)pmodel;
-	if (!pstudiohdr)
+	if (!pstudiohdr || pev->sequence < 0 || pev->sequence >= pstudiohdr->numseq)
 		return flValue;
 
 	mstudioseqdesc_t* pseqdesc;
@@ -406,7 +407,7 @@ int FindTransition(void* pmodel, int iEndingAnim, int iGoalAnim, int* piDir)
 
 	int iEndNode;
 
-	// ALERT( at_console, "from %d to %d: ", pEndNode->iEndNode, pGoalNode->iStartNode );
+	// CBaseEntity::Logger->error("from {} to {}", pEndNode->iEndNode, pGoalNode->iStartNode);
 
 	if (*piDir > 0)
 	{
@@ -450,7 +451,7 @@ int FindTransition(void* pmodel, int iEndingAnim, int iGoalAnim, int* piDir)
 		}
 	}
 
-	ALERT(at_console, "error in transition graph");
+	CBaseEntity::Logger->error("error in transition graph");
 	return iGoalAnim;
 }
 

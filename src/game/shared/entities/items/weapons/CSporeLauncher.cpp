@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 #include "UserMessages.h"
 
@@ -32,17 +32,24 @@ IMPLEMENT_SAVERESTORE(CSporeLauncher, CSporeLauncher::BaseClass);
 
 LINK_ENTITY_TO_CLASS(weapon_sporelauncher, CSporeLauncher);
 
+void CSporeLauncher::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_spore_launcher.mdl");
+}
+
 void CSporeLauncher::Precache()
 {
-	PRECACHE_MODEL("models/w_spore_launcher.mdl");
-	PRECACHE_MODEL("models/v_spore_launcher.mdl");
-	PRECACHE_MODEL("models/p_spore_launcher.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/v_spore_launcher.mdl");
+	PrecacheModel("models/p_spore_launcher.mdl");
 
-	PRECACHE_SOUND("weapons/splauncher_fire.wav");
-	PRECACHE_SOUND("weapons/splauncher_altfire.wav");
-	PRECACHE_SOUND("weapons/splauncher_bounce.wav");
-	PRECACHE_SOUND("weapons/splauncher_reload.wav");
-	PRECACHE_SOUND("weapons/splauncher_pet.wav");
+	PrecacheSound("weapons/splauncher_fire.wav");
+	PrecacheSound("weapons/splauncher_altfire.wav");
+	PrecacheSound("weapons/splauncher_bounce.wav");
+	PrecacheSound("weapons/splauncher_reload.wav");
+	PrecacheSound("weapons/splauncher_pet.wav");
 
 	UTIL_PrecacheOther("spore");
 
@@ -55,7 +62,7 @@ void CSporeLauncher::Spawn()
 
 	m_iId = WEAPON_SPORELAUNCHER;
 
-	SET_MODEL(edict(), "models/w_spore_launcher.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = SPORELAUNCHER_DEFAULT_GIVE;
 
@@ -66,18 +73,6 @@ void CSporeLauncher::Spawn()
 	pev->animtime = gpGlobals->time;
 
 	pev->framerate = 1;
-}
-
-bool CSporeLauncher::AddToPlayer(CBasePlayer* pPlayer)
-{
-	if (CBasePlayerWeapon::AddToPlayer(pPlayer))
-	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->edict());
-		WRITE_BYTE(m_iId);
-		MESSAGE_END();
-		return true;
-	}
-	return false;
 }
 
 bool CSporeLauncher::Deploy()
@@ -264,12 +259,10 @@ void CSporeLauncher::Reload()
 {
 	int maxClip = SPORELAUNCHER_MAX_CLIP;
 
-#if false
-	if (m_pPlayer->m_iItems & CTFItem::Backpack)
+	if ((m_pPlayer->m_iItems & CTFItem::Backpack) != 0)
 	{
 		maxClip *= 2;
 	}
-#endif
 
 	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 || m_iClip == maxClip)
 		return;
@@ -346,7 +339,7 @@ void CSporeLauncher::GetWeaponData(weapon_data_t& data)
 {
 	BaseClass::GetWeaponData(data);
 
-	//m_ReloadState is called m_fInSpecialReload in Op4. - Solokiller
+	// m_ReloadState is called m_fInSpecialReload in Op4. - Solokiller
 	data.m_fInSpecialReload = static_cast<int>(m_ReloadState);
 }
 
@@ -380,17 +373,24 @@ class CSporeAmmo : public CBasePlayerAmmo
 public:
 	using BaseClass = CBasePlayerAmmo;
 
+	void OnCreate() override
+	{
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/spore_ammo.mdl");
+	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/spore_ammo.mdl");
-		PRECACHE_SOUND("weapons/spore_ammo.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("weapons/spore_ammo.wav");
 	}
 
 	void Spawn() override
 	{
 		Precache();
 
-		SET_MODEL(edict(), "models/spore_ammo.mdl");
+		SetModel(STRING(pev->model));
 
 		pev->movetype = MOVETYPE_FLY;
 
@@ -441,7 +441,7 @@ public:
 		auto vecLaunchDir = pev->angles;
 
 		vecLaunchDir.x -= 90;
-		//Rotate it so spores that aren't rotated in Hammer point in the right direction. - Solokiller
+		// Rotate it so spores that aren't rotated in Hammer point in the right direction. - Solokiller
 		vecLaunchDir.y += 180;
 
 		vecLaunchDir.x += RANDOM_FLOAT(-20, 20);
@@ -457,7 +457,7 @@ public:
 		return false;
 	}
 
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		if (pOther->GiveAmmo(AMMO_SPORE_GIVE, "spores", SPORELAUNCHER_MAX_CARRY) != -1)
 		{
@@ -510,7 +510,9 @@ public:
 		if (!pOther->IsPlayer() || pev->body == SPOREAMMOBODY_EMPTY)
 			return;
 
-		if (AddAmmo(pOther))
+		auto player = static_cast<CBasePlayer*>(pOther);
+
+		if (AddAmmo(player))
 		{
 			pev->body = SPOREAMMOBODY_EMPTY;
 

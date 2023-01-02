@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // human scientist (passive lab worker)
 //=========================================================
@@ -98,12 +98,12 @@ void CRosenberg::StartTask(Task_t* pTask)
 //=========================================================
 void CRosenberg::Precache()
 {
-	PRECACHE_MODEL("models/scientist.mdl");
-	PRECACHE_SOUND("rosenberg/ro_pain1.wav");
-	PRECACHE_SOUND("rosenberg/ro_pain2.wav");
-	PRECACHE_SOUND("rosenberg/ro_pain3.wav");
-	PRECACHE_SOUND("rosenberg/ro_pain4.wav");
-	PRECACHE_SOUND("rosenberg/ro_pain5.wav");
+	PrecacheModel(STRING(pev->model));
+	PrecacheSound("rosenberg/ro_pain1.wav");
+	PrecacheSound("rosenberg/ro_pain2.wav");
+	PrecacheSound("rosenberg/ro_pain3.wav");
+	PrecacheSound("rosenberg/ro_pain4.wav");
+	PrecacheSound("rosenberg/ro_pain5.wav");
 
 	// every new scientist must call this, otherwise
 	// when a level is loaded, nobody will talk (time is reset to 0)
@@ -146,7 +146,7 @@ void CRosenberg::TalkInit()
 
 bool CRosenberg::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
 {
-	//Disable scientist damage handling so Rosenberg keeps following the player
+	// Disable scientist damage handling so Rosenberg keeps following the player
 	return CTalkMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
 }
 

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== generic grenade.cpp ========================================================
@@ -29,6 +29,22 @@ LINK_ENTITY_TO_CLASS(grenade, CGrenade);
 // Grenades flagged with this will be triggered when the owner calls detonateSatchelCharges
 #define SF_DETONATE 0x0001
 
+void CGrenade::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->model = MAKE_STRING("models/grenade.mdl");
+}
+
+void CGrenade::Precache()
+{
+	// Grenade exploded after save, but hasn't been removed yet. Don't precache.
+	if (!FStringNull(pev->model))
+	{
+		PrecacheModel(STRING(pev->model));
+	}
+}
+
 //
 // Grenade Explode
 //
@@ -45,8 +61,8 @@ void CGrenade::Explode(TraceResult* pTrace, int bitsDamageType)
 {
 	float flRndSound; // sound randomizer
 
-	pev->model = iStringNull; //invisible
-	pev->solid = SOLID_NOT;	  // intangible
+	pev->model = string_t::Null; // invisible
+	pev->solid = SOLID_NOT;		 // intangible
 
 	pev->takedamage = DAMAGE_NO;
 
@@ -208,7 +224,7 @@ void CGrenade::DangerSoundThink()
 	CSoundEnt::InsertSound(bits_SOUND_DANGER, pev->origin + pev->velocity * 0.5, pev->velocity.Length(), 0.2);
 	pev->nextthink = gpGlobals->time + 0.2;
 
-	if (pev->waterlevel != 0)
+	if (pev->waterlevel != WaterLevel::Dry)
 	{
 		pev->velocity = pev->velocity * 0.5;
 	}
@@ -246,7 +262,7 @@ void CGrenade::BounceTouch(CBaseEntity* pOther)
 
 	if (!m_fRegisteredSound && vecTestVelocity.Length() <= 60)
 	{
-		//ALERT( at_console, "Grenade Registered!: %f\n", vecTestVelocity.Length() );
+		// CBaseEntity::Logger->debug("Grenade Registered!: {}", vecTestVelocity.Length());
 
 		// grenade is moving really slow. It's probably very close to where it will ultimately stop moving.
 		// go ahead and emit the danger sound.
@@ -337,7 +353,7 @@ void CGrenade::TumbleThink()
 	{
 		SetThink(&CGrenade::Detonate);
 	}
-	if (pev->waterlevel != 0)
+	if (pev->waterlevel != WaterLevel::Dry)
 	{
 		pev->velocity = pev->velocity * 0.5;
 		pev->framerate = 0.2;
@@ -347,12 +363,13 @@ void CGrenade::TumbleThink()
 
 void CGrenade::Spawn()
 {
+	Precache();
+
 	pev->movetype = MOVETYPE_BOUNCE;
-	pev->classname = MAKE_STRING("grenade");
 
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(ENT(pev), "models/grenade.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
 
 	pev->dmg = 100;
@@ -362,7 +379,7 @@ void CGrenade::Spawn()
 
 CGrenade* CGrenade::ShootContact(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity)
 {
-	CGrenade* pGrenade = GetClassPtr((CGrenade*)nullptr);
+	CGrenade* pGrenade = g_EntityDictionary->Create<CGrenade>("grenade");
 	pGrenade->Spawn();
 	// contact grenades arc lower
 	pGrenade->pev->gravity = 0.5; // lower gravity since grenade is aerodynamic and engine doesn't know it.
@@ -381,7 +398,7 @@ CGrenade* CGrenade::ShootContact(entvars_t* pevOwner, Vector vecStart, Vector ve
 	// Explode on contact
 	pGrenade->SetTouch(&CGrenade::ExplodeTouch);
 
-	pGrenade->pev->dmg = gSkillData.plrDmgM203Grenade;
+	pGrenade->pev->dmg = GetSkillFloat("plr_9mmAR_grenade"sv);
 
 	return pGrenade;
 }
@@ -389,7 +406,7 @@ CGrenade* CGrenade::ShootContact(entvars_t* pevOwner, Vector vecStart, Vector ve
 
 CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity, float time)
 {
-	CGrenade* pGrenade = GetClassPtr((CGrenade*)nullptr);
+	CGrenade* pGrenade = g_EntityDictionary->Create<CGrenade>("grenade");
 	pGrenade->Spawn();
 	UTIL_SetOrigin(pGrenade->pev, vecStart);
 	pGrenade->pev->velocity = vecVelocity;
@@ -420,7 +437,7 @@ CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecV
 	pGrenade->pev->gravity = 0.5;
 	pGrenade->pev->friction = 0.8;
 
-	SET_MODEL(ENT(pGrenade->pev), "models/w_grenade.mdl");
+	pGrenade->SetModel("models/w_grenade.mdl");
 	pGrenade->pev->dmg = 100;
 
 	return pGrenade;
@@ -429,13 +446,12 @@ CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecV
 
 CGrenade* CGrenade::ShootSatchelCharge(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity)
 {
-	CGrenade* pGrenade = GetClassPtr((CGrenade*)nullptr);
+	CGrenade* pGrenade = g_EntityDictionary->Create<CGrenade>("grenade");
 	pGrenade->pev->movetype = MOVETYPE_BOUNCE;
-	pGrenade->pev->classname = MAKE_STRING("grenade");
 
 	pGrenade->pev->solid = SOLID_BBOX;
 
-	SET_MODEL(ENT(pGrenade->pev), "models/grenade.mdl"); // Change this to satchel charge model
+	pGrenade->SetModel("models/grenade.mdl"); // Change this to satchel charge model
 
 	UTIL_SetSize(pGrenade->pev, Vector(0, 0, 0), Vector(0, 0, 0));
 
@@ -460,31 +476,22 @@ CGrenade* CGrenade::ShootSatchelCharge(entvars_t* pevOwner, Vector vecStart, Vec
 
 void CGrenade::UseSatchelCharges(entvars_t* pevOwner, SATCHELCODE code)
 {
-	edict_t* pentFind;
-	edict_t* pentOwner;
-
 	if (!pevOwner)
 		return;
 
 	CBaseEntity* pOwner = CBaseEntity::Instance(pevOwner);
 
-	pentOwner = pOwner->edict();
+	auto pentOwner = pOwner->edict();
 
-	pentFind = FIND_ENTITY_BY_CLASSNAME(nullptr, "grenade");
-	while (!FNullEnt(pentFind))
+	for (auto pEnt : UTIL_FindEntitiesByClassname("grenade"))
 	{
-		CBaseEntity* pEnt = Instance(pentFind);
-		if (pEnt)
+		if (FBitSet(pEnt->pev->spawnflags, SF_DETONATE) && pEnt->pev->owner == pentOwner)
 		{
-			if (FBitSet(pEnt->pev->spawnflags, SF_DETONATE) && pEnt->pev->owner == pentOwner)
-			{
-				if (code == SATCHEL_DETONATE)
-					pEnt->Use(pOwner, pOwner, USE_ON, 0);
-				else // SATCHEL_RELEASE
-					pEnt->pev->owner = nullptr;
-			}
+			if (code == SATCHEL_DETONATE)
+				pEnt->Use(pOwner, pOwner, USE_ON, 0);
+			else // SATCHEL_RELEASE
+				pEnt->pev->owner = nullptr;
 		}
-		pentFind = FIND_ENTITY_BY_CLASSNAME(pentFind, "grenade");
 	}
 }
 

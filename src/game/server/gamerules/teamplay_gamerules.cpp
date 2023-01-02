@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //
 // teamplay_gamerules.cpp
 //
@@ -21,7 +21,7 @@
 #include "ctfplay_gamerules.h"
 #include "UserMessages.h"
 
-//TODO: these should be members of CHalfLifeTeamplay
+// TODO: these should be members of CHalfLifeTeamplay
 static char team_names[MAX_TEAMS][MAX_TEAMNAME_LENGTH];
 static int team_scores[MAX_TEAMS];
 static int num_teams = 0;
@@ -35,13 +35,23 @@ CHalfLifeTeamplay::CHalfLifeTeamplay()
 	memset(team_scores, 0, sizeof(team_scores));
 	num_teams = 0;
 
+	m_MenuSelectCommand = g_ClientCommands.CreateScoped("menuselect", [](CBasePlayer* player, const auto& args)
+		{
+			if (CMD_ARGC() < 2)
+				return;
+
+			int slot = atoi(CMD_ARGV(1));
+
+			// select the item from the current menu
+		});
+
 	// Copy over the team from the server config
 	m_szTeamList[0] = 0;
 
 	// Cache this because the team code doesn't want to deal with changing this in the middle of a game
 	strncpy(m_szTeamList, teamlist.string, TEAMPLAY_TEAMLISTLENGTH);
 
-	edict_t* pWorld = INDEXENT(0);
+	edict_t* pWorld = CBaseEntity::World->edict();
 	if (pWorld && !FStringNull(pWorld->v.team))
 	{
 		if (0 != teamoverride.value)
@@ -130,31 +140,6 @@ void CHalfLifeTeamplay::Think()
 
 	last_frags = frags_remaining;
 	last_time = time_remaining;
-}
-
-//=========================================================
-// ClientCommand
-// the user has typed a command which is unrecognized by everything else;
-// this check to see if the gamerules knows anything about the command
-//=========================================================
-bool CHalfLifeTeamplay::ClientCommand(CBasePlayer* pPlayer, const char* pcmd)
-{
-	if (g_VoiceGameMgr.ClientCommand(pPlayer, pcmd))
-		return true;
-
-	if (FStrEq(pcmd, "menuselect"))
-	{
-		if (CMD_ARGC() < 2)
-			return true;
-
-		int slot = atoi(CMD_ARGV(1));
-
-		// select the item from the current menu
-
-		return true;
-	}
-
-	return false;
 }
 
 void CHalfLifeTeamplay::UpdateGameMode(CBasePlayer* pPlayer)
@@ -266,8 +251,7 @@ void CHalfLifeTeamplay::ChangePlayerTeam(CBasePlayer* pPlayer, const char* pTeam
 		m_DisableDeathMessages = true;
 		m_DisableDeathPenalty = true;
 
-		entvars_t* pevWorld = VARS(INDEXENT(0));
-		pPlayer->TakeDamage(pevWorld, pevWorld, 900, damageFlags);
+		pPlayer->TakeDamage(CBaseEntity::World->pev, CBaseEntity::World->pev, 900, damageFlags);
 
 		m_DisableDeathMessages = false;
 		m_DisableDeathPenalty = false;
@@ -285,24 +269,13 @@ void CHalfLifeTeamplay::ChangePlayerTeam(CBasePlayer* pPlayer, const char* pTeam
 	WRITE_STRING(pPlayer->m_szTeamName);
 	MESSAGE_END();
 
-	MESSAGE_BEGIN(MSG_ALL, gmsgScoreInfo);
-	WRITE_BYTE(clientIndex);
-	WRITE_SHORT(pPlayer->pev->frags);
-	WRITE_SHORT(pPlayer->m_iDeaths);
-	WRITE_SHORT(0);
-	WRITE_SHORT(g_pGameRules->GetTeamIndex(pPlayer->m_szTeamName) + 1);
-	MESSAGE_END();
+	pPlayer->SendScoreInfoAll();
 
 	auto nickName = STRING(pPlayer->pev->netname);
 
 	if (nickName && '\0' != *nickName)
 	{
-		UTIL_LogPrintf("\"%s<%i><%u><%s>\" changed role to \"%s\"\n",
-			nickName,
-			GETPLAYERUSERID(pPlayer->edict()),
-			g_engfuncs.pfnGetPlayerWONId(pPlayer->edict()),
-			GetTeamName(pPlayer->edict()),
-			pTeamName);
+		Logger->trace("{} changed role to \"{}\"", PlayerLogInfo{*pPlayer}, pTeamName);
 	}
 }
 
@@ -346,12 +319,7 @@ void CHalfLifeTeamplay::ClientUserInfoChanged(CBasePlayer* pPlayer, char* infobu
 	sprintf(text, "* %s has changed to team \'%s\'\n", STRING(pPlayer->pev->netname), mdls);
 	UTIL_SayTextAll(text, pPlayer);
 
-	UTIL_LogPrintf("\"%s<%i><%s><%s>\" joined team \"%s\"\n",
-		STRING(pPlayer->pev->netname),
-		GETPLAYERUSERID(pPlayer->edict()),
-		GETPLAYERAUTHID(pPlayer->edict()),
-		pPlayer->m_szTeamName,
-		mdls);
+	Logger->trace("{} joined team \"{}\"", PlayerLogInfo{*pPlayer}, mdls);
 
 	ChangePlayerTeam(pPlayer, mdls, true, true);
 	// recound stuff
@@ -613,7 +581,7 @@ void CHalfLifeTeamplay::RecountTeams(bool bResendInfo)
 				team_scores[tm] += plr->pev->frags;
 			}
 
-			if (bResendInfo) //Someone's info changed, let's send the team info again.
+			if (bResendInfo) // Someone's info changed, let's send the team info again.
 			{
 				if (plr && IsValidTeam(plr->TeamID()))
 				{

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== h_cycler.cpp ========================================================
@@ -27,9 +27,10 @@ class CCycler : public CBaseMonster
 public:
 	int ObjectCaps() override { return (CBaseEntity::ObjectCaps() | FCAP_IMPULSE_USE); }
 	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	void OnCreate() override;
 	void Spawn() override;
 	void Think() override;
-	//void Pain( float flDamage );
+	// void Pain( float flDamage );
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
 
 	// Don't treat as a live target
@@ -53,6 +54,13 @@ IMPLEMENT_SAVERESTORE(CCycler, CBaseMonster);
 
 // Cycler member functions
 
+void CCycler::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = 80000; // no cycler should die
+}
+
 void CCycler::Spawn()
 {
 	const char* szModel = STRING(pev->model);
@@ -62,20 +70,19 @@ void CCycler::Spawn()
 
 	if (!szModel || '\0' == *szModel)
 	{
-		ALERT(at_error, "cycler at %.0f %.0f %0.f missing modelname", pev->origin.x, pev->origin.y, pev->origin.z);
+		CBaseEntity::Logger->error("cycler at {:.0f} missing modelname", pev->origin);
 		REMOVE_ENTITY(ENT(pev));
 		return;
 	}
 
-	PRECACHE_MODEL(szModel);
-	SET_MODEL(ENT(pev), szModel);
+	PrecacheModel(szModel);
+	SetModel(szModel);
 
 	InitBoneControllers();
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_NONE;
 	pev->takedamage = DAMAGE_YES;
 	pev->effects = 0;
-	pev->health = 80000; // no cycler should die
 	pev->yaw_speed = 5;
 	pev->ideal_yaw = pev->angles.y;
 	ChangeYaw(360);
@@ -143,7 +150,7 @@ void CCycler::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useTyp
 //
 // CyclerPain , changes sequences when shot
 //
-//void CCycler :: Pain( float flDamage )
+// void CCycler :: Pain( float flDamage )
 bool CCycler::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
 {
 	if (m_animate)
@@ -164,7 +171,7 @@ bool CCycler::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float 
 		pev->framerate = 1.0;
 		StudioFrameAdvance(0.1);
 		pev->framerate = 0;
-		ALERT(at_console, "sequence: %d, frame %.0f\n", pev->sequence, pev->frame);
+		CBaseEntity::Logger->debug("sequence: {}, frame {:.0f}", pev->sequence, pev->frame);
 	}
 
 	return false;
@@ -214,8 +221,8 @@ void CCyclerSprite::Spawn()
 	m_animate = true;
 	m_lastTime = gpGlobals->time;
 
-	PRECACHE_MODEL(STRING(pev->model));
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	PrecacheModel(STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	m_maxFrame = (float)MODEL_FRAMES(pev->modelindex) - 1;
 }
@@ -234,7 +241,7 @@ void CCyclerSprite::Think()
 void CCyclerSprite::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
 	m_animate = !m_animate;
-	ALERT(at_console, "Sprite: %s\n", STRING(pev->model));
+	CBaseEntity::Logger->debug("Sprite: {}", STRING(pev->model));
 }
 
 
@@ -271,7 +278,7 @@ public:
 	void SecondaryAttack() override;
 	bool Deploy() override;
 	void Holster() override;
-	int m_iszModel;
+	string_t m_iszModel;
 	int m_iModel;
 };
 LINK_ENTITY_TO_CLASS(cycler_weapon, CWeaponCycler);
@@ -282,8 +289,8 @@ void CWeaponCycler::Spawn()
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_NONE;
 
-	PRECACHE_MODEL(STRING(pev->model));
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	PrecacheModel(STRING(pev->model));
+	SetModel(STRING(pev->model));
 	m_iszModel = pev->model;
 	m_iModel = pev->modelindex;
 
@@ -376,8 +383,8 @@ void CWreckage::Spawn()
 
 	if (!FStringNull(pev->model))
 	{
-		PRECACHE_MODEL(STRING(pev->model));
-		SET_MODEL(ENT(pev), STRING(pev->model));
+		PrecacheModel(STRING(pev->model));
+		SetModel(STRING(pev->model));
 	}
 	// pev->scale = 5.0;
 
@@ -387,7 +394,7 @@ void CWreckage::Spawn()
 void CWreckage::Precache()
 {
 	if (!FStringNull(pev->model))
-		PRECACHE_MODEL(STRING(pev->model));
+		PrecacheModel(STRING(pev->model));
 }
 
 void CWreckage::Think()

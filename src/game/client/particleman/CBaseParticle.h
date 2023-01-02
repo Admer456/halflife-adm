@@ -1,10 +1,12 @@
 #pragma once
 
+struct model_t;
+
 #define TRI_COLLIDEWORLD 0x00000020
 #define TRI_COLLIDEALL 0x00001000  // will collide with world and slideboxes
 #define TRI_COLLIDEKILL 0x00004000 // tent is removed upon collision with anything
 #define TRI_SPIRAL 0x00008000
-#define TRI_ANIMATEDIE 0x00016000 //animate once and then die
+#define TRI_ANIMATEDIE 0x00016000 // animate once and then die
 #define TRI_WATERTRACE 0x00032000
 
 
@@ -18,12 +20,12 @@
 #define LIGHT_INTENSITY (1 << 6)
 
 #define RENDER_FACEPLAYER (1 << 7)		   // m_vAngles == Player view angles
-#define RENDER_FACEPLAYER_ROTATEZ (1 << 8) //Just like above but m_vAngles.z is untouched so the sprite can rotate.
+#define RENDER_FACEPLAYER_ROTATEZ (1 << 8) // Just like above but m_vAngles.z is untouched so the sprite can rotate.
 
 
 #include "CMiniMem.h"
 
-//pure virtual baseclass
+// pure virtual baseclass
 class CBaseParticle
 {
 private:
@@ -32,7 +34,7 @@ private:
 	bool m_bInPVS;
 
 	int m_iCollisionFlags;
-	float m_flPlayerDistance; //Used for sorting the particles, DO NOT TOUCH.
+	float m_flPlayerDistance; // Used for sorting the particles, DO NOT TOUCH.
 
 public:
 	void* operator new(size_t size)
@@ -56,8 +58,8 @@ public:
 	}
 
 	virtual void Think(float time);
-	virtual bool CheckVisibility(void);
-	virtual void Draw(void);
+	virtual bool CheckVisibility();
+	virtual void Draw();
 	virtual void Animate(float time);
 	virtual void AnimateAndDie(float time);
 	virtual void Expand(float time);
@@ -67,24 +69,24 @@ public:
 	virtual void CalculateVelocity(float time);
 	virtual void CheckCollision(float time);
 	virtual void Touch(Vector pos, Vector normal, int index);
-	virtual void Die(void);
-	virtual void InitializeSprite(Vector org, Vector normal, model_s* sprite, float size, float brightness);
-	virtual void Force(void);
+	virtual void Die();
+	virtual void InitializeSprite(Vector org, Vector normal, model_t* sprite, float size, float brightness);
+	virtual void Force();
 
-	float m_flSize;			 //scale of object
-	float m_flScaleSpeed;	 //speed at which object expands
-	float m_flContractSpeed; //speed at which object expands
+	float m_flSize;			 // scale of object
+	float m_flScaleSpeed;	 // speed at which object expands
+	float m_flContractSpeed; // speed at which object expands
 
 	float m_flStretchX;
 	float m_flStretchY;
 
-	float m_flBrightness; //transparency of object
-	float m_flFadeSpeed;  //speed at which object fades
+	float m_flBrightness; // transparency of object
+	float m_flFadeSpeed;  // speed at which object fades
 
-	float m_flTimeCreated; //time object was instanced
-	float m_flDieTime;	   //time to remove an object
+	float m_flTimeCreated; // time object was instanced
+	float m_flDieTime;	   // time to remove an object
 
-	float m_flGravity; //how effected by gravity is this object
+	float m_flGravity; // how effected by gravity is this object
 	float m_flAfterDampGrav;
 	float m_flDampingVelocity;
 	float m_flDampingTime;
@@ -94,8 +96,8 @@ public:
 	int m_iFrame;
 	int m_iRendermode;
 
-	Vector m_vOrigin; //object's position
-	Vector m_vAngles; //normal angles of object
+	Vector m_vOrigin; // object's position
+	Vector m_vAngles; // normal angles of object
 
 	Vector m_vAVelocity;
 
@@ -108,7 +110,7 @@ public:
 	Vector m_vColor;
 	float m_flMass;
 
-	model_s* m_pTexture;
+	model_t* m_pTexture;
 
 	float m_flBounceFactor;
 
@@ -131,12 +133,12 @@ public:
 		m_iRenderFlags |= iFlag;
 	}
 
-	int GetRenderFlags(void)
+	int GetRenderFlags()
 	{
 		return m_iRenderFlags;
 	}
 
-	bool GetParticlePVS(void)
+	bool GetParticlePVS()
 	{
 		return m_bInPVS;
 	}
@@ -146,7 +148,7 @@ public:
 		m_bInPVS = bPVSStat;
 	}
 
-	float GetNextPVSCheck(void)
+	float GetNextPVSCheck()
 	{
 		return m_flNextPVSCheck;
 	}
@@ -166,7 +168,7 @@ public:
 		m_iCollisionFlags &= ~iFlag;
 	}
 
-	int GetCollisionFlags(void)
+	int GetCollisionFlags()
 	{
 		return m_iCollisionFlags;
 	}

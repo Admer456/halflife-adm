@@ -1,23 +1,26 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //
 //  cdll_dll.h
 
 // this file is included by both the game-dll and the client-dll,
 
 #pragma once
+
+#include <optional>
+#include <string_view>
 
 #include "palette.h"
 
@@ -81,6 +84,31 @@ enum class SuitLightType
 	Nightvision
 };
 
+struct SuitLightTypeInfo
+{
+	const std::string_view Name;
+};
+
+constexpr SuitLightTypeInfo SuitLightTypes[] =
+	{
+		{"flashlight"},
+		{"nightvision"}};
+
+constexpr std::optional<SuitLightType> SuitLightTypeFromString(std::string_view value)
+{
+	for (int i = 0; const auto& type : SuitLightTypes)
+	{
+		if (type.Name == value)
+		{
+			return static_cast<SuitLightType>(i);
+		}
+
+		++i;
+	}
+
+	return {};
+}
+
 // used by suit voice to indicate damage sustained and repaired type to player
 
 // instant damage
@@ -101,7 +129,7 @@ enum class SuitLightType
 #define DMG_ALWAYSGIB (1 << 13)	 // with this bit OR'd in, any damage type can be made to gib victims upon death.
 
 // time-based damage
-//mask off TF-specific stuff too
+// mask off TF-specific stuff too
 #define DMG_TIMEBASED (~(0xff003fff)) // mask for time-based damage
 
 #define DMG_DROWN (1 << 14) // Drowning
@@ -117,7 +145,7 @@ enum class SuitLightType
 #define DMG_SLOWFREEZE (1 << 22)   // in a subzero freezer
 #define DMG_MORTAR (1 << 23)	   // Hit by air raid (done to distinguish grenade from mortar)
 
-//TF ADDITIONS
+// TF ADDITIONS
 #define DMG_IGNITE (1 << 24)	   // Players hit by this begin to burn
 #define DMG_RADIUS_MAX (1 << 25)   // Radius damage with this flag doesn't decrease over distance
 #define DMG_RADIUS_QUAKE (1 << 26) // Radius damage is done like Quake. 1/2 damage at 1/2 radius.
@@ -201,7 +229,7 @@ constexpr Vector VEC_DEAD_VIEW(0, 0, -8);
 #define MENU_CLASSHELP 6
 #define MENU_CLASSHELP2 7
 #define MENU_REPEATHELP 8
-//#define MENU_SPECHELP				9
+// #define MENU_SPECHELP				9
 #define MENU_STATSMENU 9
 #define MENU_SCOREBOARD 10
 
@@ -209,5 +237,16 @@ constexpr RGB24 RGB_WHITE{255, 255, 255};
 constexpr RGB24 RGB_YELLOWISH{255, 160, 0};
 constexpr RGB24 RGB_REDISH{255, 16, 16};
 constexpr RGB24 RGB_GREENISH{0, 160, 0};
+constexpr RGB24 RGB_BLUEISH{95, 95, 255};
 
 constexpr RGB24 RGB_HUD_COLOR{RGB_YELLOWISH};
+
+/**
+ *	@brief Amount of time, in seconds, between entity info update checks.
+ */
+constexpr float EntityInfoUpdateInterval = 0.2f;
+
+/**
+ *	@brief Amount of time, in seconds, to draw entity info before disappearing.
+ */
+constexpr float EntityInfoDrawTime = 2.f;

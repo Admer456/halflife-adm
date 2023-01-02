@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 #include "cbase.h"
 #include "customentity.h"
 #include "UserMessages.h"
@@ -37,24 +37,31 @@ IMPLEMENT_SAVERESTORE(CGrapple, CGrapple::BaseClass);
 
 LINK_ENTITY_TO_CLASS(weapon_grapple, CGrapple);
 
+void CGrapple::OnCreate()
+{
+	BaseClass::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_bgrap.mdl");
+}
+
 void CGrapple::Precache()
 {
-	PRECACHE_MODEL("models/v_bgrap.mdl");
-	PRECACHE_MODEL("models/w_bgrap.mdl");
-	PRECACHE_MODEL("models/p_bgrap.mdl");
+	PrecacheModel("models/v_bgrap.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/p_bgrap.mdl");
 
-	PRECACHE_SOUND("weapons/bgrapple_release.wav");
-	PRECACHE_SOUND("weapons/bgrapple_impact.wav");
-	PRECACHE_SOUND("weapons/bgrapple_fire.wav");
-	PRECACHE_SOUND("weapons/bgrapple_cough.wav");
-	PRECACHE_SOUND("weapons/bgrapple_pull.wav");
-	PRECACHE_SOUND("weapons/bgrapple_wait.wav");
-	PRECACHE_SOUND("weapons/alienweap_draw.wav");
-	PRECACHE_SOUND("barnacle/bcl_chew1.wav");
-	PRECACHE_SOUND("barnacle/bcl_chew2.wav");
-	PRECACHE_SOUND("barnacle/bcl_chew3.wav");
+	PrecacheSound("weapons/bgrapple_release.wav");
+	PrecacheSound("weapons/bgrapple_impact.wav");
+	PrecacheSound("weapons/bgrapple_fire.wav");
+	PrecacheSound("weapons/bgrapple_cough.wav");
+	PrecacheSound("weapons/bgrapple_pull.wav");
+	PrecacheSound("weapons/bgrapple_wait.wav");
+	PrecacheSound("weapons/alienweap_draw.wav");
+	PrecacheSound("barnacle/bcl_chew1.wav");
+	PrecacheSound("barnacle/bcl_chew2.wav");
+	PrecacheSound("barnacle/bcl_chew3.wav");
 
-	PRECACHE_MODEL("sprites/tongue.spr");
+	PrecacheModel("sprites/tongue.spr");
 
 	UTIL_PrecacheOther("grapple_tip");
 }
@@ -65,7 +72,7 @@ void CGrapple::Spawn()
 
 	m_iId = WEAPON_GRAPPLE;
 
-	SET_MODEL(edict(), "models/w_bgrap.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iClip = WEAPON_NOCLIP;
 
@@ -74,20 +81,6 @@ void CGrapple::Spawn()
 	m_bGrappling = false;
 
 	FallInit();
-}
-
-bool CGrapple::AddToPlayer(CBasePlayer* pPlayer)
-{
-	if (BaseClass::AddToPlayer(pPlayer))
-	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->edict());
-		WRITE_BYTE(m_iId);
-		MESSAGE_END();
-
-		return true;
-	}
-
-	return false;
 }
 
 bool CGrapple::Deploy()
@@ -170,7 +163,7 @@ void CGrapple::PrimaryAttack()
 			if (m_pTip->GetGrappleType() > CGrappleTip::TargetClass::SMALL)
 			{
 				m_pPlayer->pev->movetype = MOVETYPE_FLY;
-				//Tells the physics code that the player is not on a ladder - Solokiller
+				// Tells the physics code that the player is not on a ladder - Solokiller
 				m_pPlayer->pev->flags |= FL_IMMUNE_LAVA;
 			}
 
@@ -194,7 +187,7 @@ void CGrapple::PrimaryAttack()
 				break;
 
 			case CGrappleTip::TargetClass::SMALL:
-				//pTarget->BarnacleVictimGrabbed( this );
+				// pTarget->BarnacleVictimGrabbed( this );
 				UTIL_SetOrigin(m_pTip->pev, pTarget->Center());
 
 				pTarget->pev->velocity = pTarget->pev->velocity + (m_pPlayer->pev->origin - pTarget->pev->origin);
@@ -208,7 +201,7 @@ void CGrapple::PrimaryAttack()
 			case CGrappleTip::TargetClass::MEDIUM:
 			case CGrappleTip::TargetClass::LARGE:
 			case CGrappleTip::TargetClass::FIXED:
-				//pTarget->BarnacleVictimGrabbed( this );
+				// pTarget->BarnacleVictimGrabbed( this );
 
 				if (m_pTip->GetGrappleType() != CGrappleTip::TargetClass::FIXED)
 					UTIL_SetOrigin(m_pTip->pev, pTarget->Center());
@@ -319,7 +312,7 @@ void CGrapple::PrimaryAttack()
 
 			if (tr.flFraction < 1.0)
 			{
-				//If we've hit a solid object see if we're hurting it
+				// If we've hit a solid object see if we're hurting it
 				if (!tr.pHit || FNullEnt(tr.pHit) || GET_PRIVATE<CBaseEntity>(tr.pHit)->IsBSPModel())
 				{
 					FindHullIntersection(vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer->edict());
@@ -356,7 +349,7 @@ void CGrapple::PrimaryAttack()
 #ifndef CLIENT_DLL
 						ClearMultiDamage();
 
-						float flDamage = gSkillData.plrDmgGrapple;
+						float flDamage = GetSkillFloat("plr_grapple"sv);
 
 						if (g_pGameRules->IsMultiplayer())
 						{
@@ -501,9 +494,7 @@ void CGrapple::CreateEffect()
 #ifndef CLIENT_DLL
 	DestroyEffect();
 
-	m_pTip = GetClassPtr<CGrappleTip>(nullptr);
-
-	m_pTip->pev->classname = MAKE_STRING("grapple_tip");
+	m_pTip = g_EntityDictionary->Create<CGrappleTip>("grapple_tip");
 
 	m_pTip->Spawn();
 

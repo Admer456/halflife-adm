@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 
 #include "ctf/CTFDefs.h"
@@ -24,7 +24,7 @@
 
 namespace
 {
-//TODO: can probably be smarter - Solokiller
+// TODO: can probably be smarter - Solokiller
 const char* const displace[] =
 	{
 		"monster_bloater",
@@ -69,12 +69,12 @@ LINK_ENTITY_TO_CLASS(displacer_ball, CDisplacerBall);
 
 void CDisplacerBall::Precache()
 {
-	PRECACHE_MODEL("sprites/exit1.spr");
-	PRECACHE_MODEL("sprites/lgtning.spr");
-	m_iTrail = PRECACHE_MODEL("sprites/disp_ring.spr");
+	PrecacheModel("sprites/exit1.spr");
+	PrecacheModel("sprites/lgtning.spr");
+	m_iTrail = PrecacheModel("sprites/disp_ring.spr");
 
-	PRECACHE_SOUND("weapons/displacer_impact.wav");
-	PRECACHE_SOUND("weapons/displacer_teleport.wav");
+	PrecacheSound("weapons/displacer_impact.wav");
+	PrecacheSound("weapons/displacer_teleport.wav");
 }
 
 void CDisplacerBall::Spawn()
@@ -84,7 +84,7 @@ void CDisplacerBall::Spawn()
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(edict(), "sprites/exit1.spr");
+	SetModel("sprites/exit1.spr");
 
 	UTIL_SetOrigin(pev, pev->origin);
 
@@ -158,7 +158,7 @@ void CDisplacerBall::BallTouch(CBaseEntity* pOther)
 	{
 		CBasePlayer* pPlayer = static_cast<CBasePlayer*>(pOther);
 
-		//Clear any flags set on player (onground, using grapple, etc).
+		// Clear any flags set on player (onground, using grapple, etc).
 		pPlayer->pev->flags &= FL_FAKECLIENT;
 		pPlayer->pev->flags |= FL_CLIENT;
 		pPlayer->m_flFallVelocity = 0;
@@ -262,7 +262,7 @@ void CDisplacerBall::FizzleThink()
 {
 	ClearBeams();
 
-	pev->dmg = gSkillData.plrDmgDisplacerOther;
+	pev->dmg = GetSkillFloat("plr_displacer_other"sv);
 
 	MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, pev->origin);
 	WRITE_BYTE(TE_DLIGHT);
@@ -290,13 +290,13 @@ void CDisplacerBall::ExplodeThink()
 {
 	ClearBeams();
 
-	pev->dmg = gSkillData.plrDmgDisplacerOther;
+	pev->dmg = GetSkillFloat("plr_displacer_other"sv);
 
 	auto pOwner = VARS(pev->owner);
 
 	pev->owner = nullptr;
 
-	RadiusDamage(pev->origin, pev, pOwner, pev->dmg, gSkillData.plrRadiusDisplacer, CLASS_NONE, DMG_ALWAYSGIB | DMG_BLAST);
+	RadiusDamage(pev->origin, pev, pOwner, pev->dmg, GetSkillFloat("plr_displacer_radius"sv), CLASS_NONE, DMG_ALWAYSGIB | DMG_BLAST);
 
 	EMIT_SOUND(edict(), CHAN_WEAPON, "weapons/displacer_teleport.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 
@@ -309,7 +309,7 @@ void CDisplacerBall::KillThink()
 	{
 		pTarget->SetThink(&CBaseEntity::SUB_Remove);
 
-		//TODO: no next think? - Solokiller
+		// TODO: no next think? - Solokiller
 	}
 
 	SetThink(&CDisplacerBall::ExplodeThink);
@@ -343,7 +343,7 @@ void CDisplacerBall::ClearBeams()
 
 void CDisplacerBall::ArmBeam(int iSide)
 {
-	//This method is identical to the Alien Slave's ArmBeam, except it treats m_pBeam as a circular buffer.
+	// This method is identical to the Alien Slave's ArmBeam, except it treats m_pBeam as a circular buffer.
 	if (m_uiBeams >= NUM_BEAMS)
 		m_uiBeams = 0;
 
@@ -369,7 +369,7 @@ void CDisplacerBall::ArmBeam(int iSide)
 	if (flDist == 1.0)
 		return;
 
-	//The beam might already exist if we've created all beams before. - Solokiller
+	// The beam might already exist if we've created all beams before. - Solokiller
 	if (!m_pBeam[m_uiBeams])
 		m_pBeam[m_uiBeams] = CBeam::BeamCreate("sprites/lgtning.spr", 30);
 
@@ -380,7 +380,7 @@ void CDisplacerBall::ArmBeam(int iSide)
 
 	if (pHit && pHit->pev->takedamage != DAMAGE_NO)
 	{
-		//Beam hit something, deal radius damage to it. - Solokiller
+		// Beam hit something, deal radius damage to it. - Solokiller
 		m_pBeam[m_uiBeams]->EntsInit(pHit->entindex(), entindex());
 
 		m_pBeam[m_uiBeams]->SetColor(255, 255, 255);
@@ -418,9 +418,7 @@ bool CDisplacerBall::ClassifyTarget(CBaseEntity* pTarget)
 
 CDisplacerBall* CDisplacerBall::CreateDisplacerBall(const Vector& vecOrigin, const Vector& vecAngles, CBaseEntity* pOwner)
 {
-	auto pBall = GetClassPtr<CDisplacerBall>(nullptr);
-
-	pBall->pev->classname = MAKE_STRING("displacer_ball");
+	auto pBall = g_EntityDictionary->Create<CDisplacerBall>("displacer_ball");
 
 	UTIL_SetOrigin(pBall->pev, vecOrigin);
 

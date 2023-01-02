@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // human scientist (passive lab worker)
 //=========================================================
@@ -29,28 +29,19 @@
 class CCleansuitScientist : public CScientist
 {
 public:
-	void Spawn() override;
-	void Precache() override;
+	void OnCreate() override;
 
 	void Heal() override;
 };
 
 LINK_ENTITY_TO_CLASS(monster_cleansuit_scientist, CCleansuitScientist);
 
-//=========================================================
-// Spawn
-//=========================================================
-void CCleansuitScientist::Spawn()
+void CCleansuitScientist::OnCreate()
 {
-	SpawnCore("models/cleansuit_scientist.mdl", gSkillData.cleansuitScientistHealth);
-}
+	CScientist::OnCreate();
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
-void CCleansuitScientist::Precache()
-{
-	PrecacheCore("models/cleansuit_scientist.mdl");
+	pev->health = GetSkillFloat("cleansuit_scientist_health"sv);
+	pev->model = MAKE_STRING("models/cleansuit_scientist.mdl");
 }
 
 void CCleansuitScientist::Heal()
@@ -62,7 +53,7 @@ void CCleansuitScientist::Heal()
 	if (target.Length() > 100)
 		return;
 
-	m_hTargetEnt->TakeHealth(gSkillData.cleansuitScientistHeal, DMG_GENERIC);
+	m_hTargetEnt->TakeHealth(GetSkillFloat("cleansuit_scientist_heal"sv), DMG_GENERIC);
 	// Don't heal again for 1 minute
 	m_healTime = gpGlobals->time + 60;
 }
@@ -73,6 +64,7 @@ void CCleansuitScientist::Heal()
 class CDeadCleansuitScientist : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	int Classify() override { return CLASS_HUMAN_PASSIVE; }
 
@@ -92,6 +84,15 @@ const char* CDeadCleansuitScientist::m_szPoses[] =
 		"scientist_deadpose1",
 		"dead_against_wall"};
 
+void CDeadCleansuitScientist::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	// Corpses have less health
+	pev->health = 8; // GetSkillFloat("scientist_health"sv);
+	pev->model = MAKE_STRING("models/cleansuit_scientist.mdl");
+}
+
 bool CDeadCleansuitScientist::KeyValue(KeyValueData* pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "pose"))
@@ -109,13 +110,11 @@ LINK_ENTITY_TO_CLASS(monster_cleansuit_scientist_dead, CDeadCleansuitScientist);
 //
 void CDeadCleansuitScientist::Spawn()
 {
-	PRECACHE_MODEL("models/cleansuit_scientist.mdl");
-	SET_MODEL(ENT(pev), "models/cleansuit_scientist.mdl");
+	PrecacheModel(STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	pev->effects = 0;
 	pev->sequence = 0;
-	// Corpses have less health
-	pev->health = 8; //gSkillData.scientistHealth;
 
 	m_bloodColor = BLOOD_COLOR_RED;
 
@@ -132,7 +131,7 @@ void CDeadCleansuitScientist::Spawn()
 	pev->sequence = LookupSequence(m_szPoses[m_iPose]);
 	if (pev->sequence == -1)
 	{
-		ALERT(at_console, "Dead scientist with bad pose\n");
+		AILogger->debug("Dead scientist with bad pose");
 	}
 
 	//	pev->skin += 2; // use bloody skin -- UNDONE: Turn this back on when we have a bloody skin again!
@@ -146,15 +145,12 @@ void CDeadCleansuitScientist::Spawn()
 class CSittingCleansuitScientist : public CSittingScientist // kdb: changed from public CBaseMonster so he can speak
 {
 public:
-	void Spawn() override;
+	void OnCreate()
+	{
+		CSittingScientist::OnCreate();
+
+		pev->model = MAKE_STRING("models/cleansuit_scientist.mdl");
+	}
 };
 
 LINK_ENTITY_TO_CLASS(monster_sitting_cleansuit_scientist, CSittingCleansuitScientist);
-
-//
-// ********** Scientist SPAWN **********
-//
-void CSittingCleansuitScientist::Spawn()
-{
-	SpawnCore("models/cleansuit_scientist.mdl");
-}

@@ -1,25 +1,25 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #include "cbase.h"
 #include "talkmonster.h"
 #include "blackmesa/barney.h"
 
 /**
-*	@brief A copy of Barney that speaks military loudly
-*/
+ *	@brief A copy of Barney that speaks military loudly
+ */
 class CDrillSergeant : public CBarney
 {
 public:
@@ -27,13 +27,11 @@ public:
 
 	void DeclineFollowing() override;
 
-	void Spawn() override;
+	void OnCreate() override;
 
 	void AlertSound() override;
 
 	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
-
-	void Precache() override;
 
 	void TalkInit() override;
 
@@ -47,6 +45,14 @@ protected:
 
 LINK_ENTITY_TO_CLASS(monster_drillsergeant, CDrillSergeant);
 
+void CDrillSergeant::OnCreate()
+{
+	CBarney::OnCreate();
+
+	pev->health = GetSkillFloat("barney_health"sv);
+	pev->model = MAKE_STRING("models/drill.mdl");
+}
+
 void CDrillSergeant::DeclineFollowing()
 {
 	PlaySentence("DR_POK", 2, VOL_NORM, ATTN_NORM);
@@ -59,12 +65,7 @@ void CDrillSergeant::SpeakKilledEnemy()
 
 void CDrillSergeant::DropWeapon()
 {
-	//Nothing to drop
-}
-
-void CDrillSergeant::Spawn()
-{
-	SpawnCore("models/drill.mdl", gSkillData.barneyHealth);
+	// Nothing to drop
 }
 
 void CDrillSergeant::AlertSound()
@@ -116,11 +117,6 @@ bool CDrillSergeant::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker,
 	return ret;
 }
 
-void CDrillSergeant::Precache()
-{
-	PrecacheCore("models/drill.mdl");
-}
-
 void CDrillSergeant::TalkInit()
 {
 	CTalkMonster::TalkInit();
@@ -142,8 +138,8 @@ void CDrillSergeant::TalkInit()
 	m_szGrp[TLK_PLHURT2] = "!DR_CUREB";
 	m_szGrp[TLK_PLHURT3] = "!DR_CUREC";
 
-	m_szGrp[TLK_PHELLO] = nullptr;			  //"BA_PHELLO";		// UNDONE
-	m_szGrp[TLK_PIDLE] = nullptr;			  //"BA_PIDLE";			// UNDONE
+	m_szGrp[TLK_PHELLO] = nullptr;		  //"BA_PHELLO";		// UNDONE
+	m_szGrp[TLK_PIDLE] = nullptr;		  //"BA_PIDLE";			// UNDONE
 	m_szGrp[TLK_PQUESTION] = "DR_PQUEST"; // UNDONE
 
 	m_szGrp[TLK_SMELL] = "DR_SMELL";

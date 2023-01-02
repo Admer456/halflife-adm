@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2001, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2001, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -6,8 +6,6 @@
 //=============================================================================
 
 #pragma once
-
-#include <string>
 
 #include "VGUI_Label.h"
 #include "VGUI_LineBorder.h"
@@ -85,6 +83,8 @@ public:
 	virtual int Init(
 		IVoiceStatusHelper* m_pHelper,
 		vgui::Panel** pParentPanel);
+
+	void Shutdown();
 
 	// ackPosition is the bottom position of where CVoiceStatus will draw the voice acknowledgement labels.
 	virtual bool VidInit();
@@ -169,8 +169,8 @@ public:
 	// It is checked periodically, and the server is told to squelch or unsquelch the appropriate players.
 	CPlayerBitVec m_ServerBannedPlayers;
 
-	cl_entity_s m_VoiceHeadModels[MAX_PLAYERS]; // These aren't necessarily in the order of players. They are just
-													  // a place for it to put data in during CreateEntities.
+	cl_entity_t m_VoiceHeadModels[MAX_PLAYERS]; // These aren't necessarily in the order of players. They are just
+												// a place for it to put data in during CreateEntities.
 
 	IVoiceStatusHelper* m_pHelper; // Each mod provides an implementation of this.
 
@@ -210,9 +210,6 @@ public:
 
 	// Labels telling who is speaking.
 	CVoiceLabel m_Labels[MAX_VOICE_SPEAKERS];
-
-	// Cache the game directory for use when we shut down
-	std::string m_pchGameDir;
 };
 
 

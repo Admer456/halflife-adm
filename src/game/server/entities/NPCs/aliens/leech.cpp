@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // leech - basic little swimming monster
 //=========================================================
@@ -64,6 +64,7 @@
 class CLeech : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 
@@ -169,13 +170,21 @@ const char* CLeech::pAlertSounds[] =
 		"leech/leech_alert2.wav",
 };
 
+void CLeech::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = GetSkillFloat("leech_health"sv);
+	pev->model = MAKE_STRING("models/leech.mdl");
+
+	// Just for fun
+	// pev->model = MAKE_STRING("models/icky.mdl");
+}
 
 void CLeech::Spawn()
 {
 	Precache();
-	SET_MODEL(ENT(pev), "models/leech.mdl");
-	// Just for fun
-	//	SET_MODEL(ENT(pev), "models/icky.mdl");
+	SetModel(STRING(pev->model));
 
 	//	UTIL_SetSize( pev, g_vecZero, g_vecZero );
 	UTIL_SetSize(pev, Vector(-1, -1, 0), Vector(1, 1, 2));
@@ -183,7 +192,6 @@ void CLeech::Spawn()
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_FLY;
 	SetBits(pev->flags, FL_SWIM);
-	pev->health = gSkillData.leechHealth;
 
 	m_flFieldOfView = -0.5; // 180 degree FOV
 	m_flDistLook = 750;
@@ -246,7 +254,7 @@ void CLeech::SwitchLeechState()
 	{
 		Look(m_flDistLook);
 		CBaseEntity* pEnemy = BestVisibleEnemy();
-		if (pEnemy && pEnemy->pev->waterlevel != 0)
+		if (pEnemy && pEnemy->pev->waterlevel != WaterLevel::Dry)
 		{
 			m_hEnemy = pEnemy;
 			SetState(MONSTERSTATE_COMBAT);
@@ -284,8 +292,7 @@ void CLeech::AlertSound()
 
 void CLeech::Precache()
 {
-	//PRECACHE_MODEL("models/icky.mdl");
-	PRECACHE_MODEL("models/leech.mdl");
+	PrecacheModel(STRING(pev->model));
 
 	PRECACHE_SOUND_ARRAY(pAttackSounds);
 	PRECACHE_SOUND_ARRAY(pAlertSounds);
@@ -328,7 +335,7 @@ void CLeech::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 
 			if (DotProduct(dir, face) > 0.9) // Only take damage if the leech is facing the prey
-				pEnemy->TakeDamage(pev, pev, gSkillData.leechDmgBite, DMG_SLASH);
+				pEnemy->TakeDamage(pev, pev, GetSkillFloat("leech_dmg_bite"sv), DMG_SLASH);
 		}
 		m_stateTime -= 2;
 		break;
@@ -361,7 +368,7 @@ float CLeech::ObstacleDistance(CBaseEntity* pTarget)
 	Vector vecTest;
 
 	// use VELOCITY, not angles, not all boids point the direction they are flying
-	//Vector vecDir = UTIL_VecToAngles( pev->velocity );
+	// Vector vecDir = UTIL_VecToAngles( pev->velocity );
 	MakeVectors();
 
 	// check for obstacle ahead
@@ -371,7 +378,7 @@ float CLeech::ObstacleDistance(CBaseEntity* pTarget)
 	if (0 != tr.fStartSolid)
 	{
 		pev->speed = -LEECH_SWIM_SPEED * 0.5;
-		//		ALERT( at_console, "Stuck from (%f %f %f) to (%f %f %f)\n", pev->oldorigin.x, pev->oldorigin.y, pev->oldorigin.z, pev->origin.x, pev->origin.y, pev->origin.z );
+		//		AILogger->debug("Stuck from ({}) to ({})", pev->oldorigin, pev->origin);
 		//		UTIL_SetOrigin( pev, pev->oldorigin );
 	}
 
@@ -491,7 +498,7 @@ void CLeech::UpdateMotion()
 		m_IdealActivity = ACT_MELEE_ATTACK1;
 
 	// Out of water check
-	if (0 == pev->waterlevel)
+	if (WaterLevel::Dry == pev->waterlevel)
 	{
 		pev->movetype = MOVETYPE_TOSS;
 		m_IdealActivity = ACT_TWITCH;
@@ -681,14 +688,14 @@ void CLeech::Killed(entvars_t* pevAttacker, int iGib)
 	Vector vecSplatDir;
 	TraceResult tr;
 
-	//ALERT(at_aiconsole, "Leech: killed\n");
-	// tell owner ( if any ) that we're dead.This is mostly for MonsterMaker functionality.
+	// AILogger->debug("Leech: killed");
+	//  tell owner ( if any ) that we're dead.This is mostly for MonsterMaker functionality.
 	CBaseEntity* pOwner = CBaseEntity::Instance(pev->owner);
 	if (pOwner)
 		pOwner->DeathNotice(pev);
 
 	// When we hit the ground, play the "death_end" activity
-	if (0 != pev->waterlevel)
+	if (WaterLevel::Dry != pev->waterlevel)
 	{
 		pev->angles.z = 0;
 		pev->angles.x = 0;

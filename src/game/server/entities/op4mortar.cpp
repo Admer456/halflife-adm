@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 #include "cbase.h"
 
 class CMortarShell : public CGrenade
@@ -51,10 +51,10 @@ LINK_ENTITY_TO_CLASS(mortar_shell, CMortarShell);
 
 void CMortarShell::Precache()
 {
-	PRECACHE_MODEL("models/mortarshell.mdl");
-	m_iTrail = PRECACHE_MODEL("sprites/wep_smoke_01.spr");
-	PRECACHE_SOUND("weapons/gauss2.wav");
-	PRECACHE_SOUND("weapons/ofmortar.wav");
+	PrecacheModel("models/mortarshell.mdl");
+	m_iTrail = PrecacheModel("sprites/wep_smoke_01.spr");
+	PrecacheSound("weapons/gauss2.wav");
+	PrecacheSound("weapons/ofmortar.wav");
 }
 
 void CMortarShell::Spawn()
@@ -64,11 +64,10 @@ void CMortarShell::Spawn()
 	pev->movetype = MOVETYPE_BOUNCE;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(edict(), "models/mortarshell.mdl");
+	SetModel("models/mortarshell.mdl");
 
 	UTIL_SetSize(pev, g_vecZero, g_vecZero);
 	UTIL_SetOrigin(pev, pev->origin);
-	pev->classname = MAKE_STRING("mortar_shell");
 
 	SetThink(&CMortarShell::BurnThink);
 	SetTouch(&CMortarShell::MortarExplodeTouch);
@@ -78,8 +77,8 @@ void CMortarShell::Spawn()
 	pev->velocity = -(gpGlobals->v_forward * m_velocity);
 	pev->gravity = 1;
 
-	//Deal twice the damage that the RPG does
-	pev->dmg = 2 * gSkillData.plrDmgRPG;
+	// Deal twice the damage that the RPG does
+	pev->dmg = 2 * GetSkillFloat("plr_rpg"sv);
 
 	pev->nextthink = gpGlobals->time + 0.01;
 	m_flIgniteTime = gpGlobals->time;
@@ -139,7 +138,7 @@ void CMortarShell::MortarExplodeTouch(CBaseEntity* pOther)
 	TraceResult tr;
 	UTIL_TraceLine(vecSpot, vecSpot + direction * 64, ignore_monsters, edict(), &tr);
 
-	pev->model = 0;
+	pev->model = string_t::Null;
 
 	pev->solid = SOLID_NOT;
 	pev->takedamage = DAMAGE_NO;
@@ -179,8 +178,8 @@ void CMortarShell::MortarExplodeTouch(CBaseEntity* pOther)
 	else
 		UTIL_DecalTrace(&tr, DECAL_SCORCH1);
 
-	//TODO: never used?
-	//g_engfuncs.pfnRandomFloat( 0.0, 1.0 );
+	// TODO: never used?
+	// g_engfuncs.pfnRandomFloat( 0.0, 1.0 );
 
 	switch (RANDOM_LONG(0, 2))
 	{
@@ -216,7 +215,7 @@ void CMortarShell::MortarExplodeTouch(CBaseEntity* pOther)
 
 CMortarShell* CMortarShell::CreateMortarShell(Vector vecOrigin, Vector vecAngles, CBaseEntity* pOwner, int velocity)
 {
-	auto pShell = GetClassPtr<CMortarShell>(nullptr);
+	auto pShell = g_EntityDictionary->Create<CMortarShell>("mortar_shell");
 
 	UTIL_SetOrigin(pShell->pev, vecOrigin);
 
@@ -242,6 +241,8 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	bool KeyValue(KeyValueData* pkvd) override;
+
+	void OnCreate() override;
 
 	void Precache() override;
 
@@ -360,12 +361,20 @@ bool COp4Mortar::KeyValue(KeyValueData* pkvd)
 	return CBaseToggle::KeyValue(pkvd);
 }
 
+void COp4Mortar::OnCreate()
+{
+	CBaseToggle::OnCreate();
+
+	pev->health = 1;
+	pev->model = MAKE_STRING("models/mortar.mdl");
+}
+
 void COp4Mortar::Precache()
 {
-	PRECACHE_MODEL("models/mortar.mdl");
+	PrecacheModel(STRING(pev->model));
 	UTIL_PrecacheOther("mortar_shell");
-	PRECACHE_SOUND("weapons/mortarhit.wav");
-	PRECACHE_SOUND("player/pl_grate1.wav");
+	PrecacheSound("weapons/mortarhit.wav");
+	PrecacheSound("player/pl_grate1.wav");
 }
 
 void COp4Mortar::Spawn()
@@ -374,9 +383,8 @@ void COp4Mortar::Spawn()
 
 	UTIL_SetOrigin(pev, pev->origin);
 
-	SET_MODEL(edict(), "models/mortar.mdl");
+	SetModel(STRING(pev->model));
 
-	pev->health = 1;
 	pev->sequence = LookupSequence("idle");
 
 	ResetSequenceInfo();
@@ -502,7 +510,7 @@ void COp4Mortar::MortarThink()
 
 bool COp4Mortar::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
 {
-	//Ignore all damage
+	// Ignore all damage
 	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, 0, bitsDamageType);
 }
 
@@ -588,7 +596,7 @@ void COp4Mortar::AIUpdatePosition()
 
 CBaseEntity* COp4Mortar::FindTarget()
 {
-	auto pPlayerTarget = UTIL_FindEntityByClassname(nullptr, "player");
+	auto pPlayerTarget = UTIL_GetLocalPlayer();
 
 	if (!pPlayerTarget)
 		return pPlayerTarget;
@@ -749,11 +757,11 @@ void COp4Mortar::UpdatePosition(int direction, int controller)
 
 void COp4Mortar::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
-	if (useType == USE_TOGGLE && (!pActivator || pActivator->Classify() == CLASS_PLAYER))
+	if (useType == USE_TOGGLE && (!pActivator || pActivator->IsPlayer()))
 	{
 		if ((pev->spawnflags & SF_MORTAR_ACTIVE) == 0 && (pev->spawnflags & SF_MORTAR_CONTROLLABLE) != 0)
 		{
-			//Player fired a mortar
+			// Player fired a mortar
 			EMIT_SOUND(edict(), CHAN_VOICE, "weapons/mortarhit.wav", VOL_NORM, ATTN_NONE);
 			UTIL_ScreenShake(pev->origin, 12.0, 100.0, 2.0, 1000.0);
 
@@ -774,7 +782,7 @@ void COp4Mortar::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE use
 		}
 	}
 
-	//Toggle AI active state
+	// Toggle AI active state
 	if (ShouldToggle(useType, (pev->spawnflags & SF_MORTAR_ACTIVE) != 0))
 	{
 		pev->spawnflags ^= SF_MORTAR_ACTIVE;
@@ -835,7 +843,7 @@ void COp4MortarController::Spawn()
 
 	UTIL_SetOrigin(pev, pev->origin);
 
-	SET_MODEL(edict(), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	m_direction = 1;
 	m_lastpush = gpGlobals->time;

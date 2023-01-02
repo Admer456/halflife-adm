@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // Voltigore - Tank like alien
 //=========================================================
@@ -27,11 +27,13 @@
 #define BABYVOLTIGORE_AE_RIGHT_FOOT (11)
 #define BABYVOLTIGORE_AE_RUN 14
 
+constexpr float BabyVoltigoreMeleeDist = 64;
+
 class COFBabyVoltigore : public COFVoltigore
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
-	void Precache() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	void SetObjectCollisionBox() override
 	{
@@ -45,13 +47,23 @@ public:
 	CBaseEntity* CheckTraceHullAttack(float flDist, int iDamage, int iDmgType);
 
 protected:
-	//So babies can't fire off attacks if they happen to have an activity for it
+	// So babies can't fire off attacks if they happen to have an activity for it
 	bool CanUseRangeAttacks() const override { return false; }
 
-	//Babies don't blow up
+	// Babies don't blow up
 	bool BlowsUpOnDeath() const override { return false; }
+
+	float GetMeleeDistance() const override { return BabyVoltigoreMeleeDist; }
 };
 LINK_ENTITY_TO_CLASS(monster_alien_babyvoltigore, COFBabyVoltigore);
+
+void COFBabyVoltigore::OnCreate()
+{
+	COFVoltigore::OnCreate();
+
+	pev->health = GetSkillFloat("babyvoltigore_health"sv);
+	pev->model = MAKE_STRING("models/baby_voltigore.mdl");
+}
 
 //=========================================================
 // AlertSound
@@ -109,7 +121,7 @@ void COFBabyVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case VOLTIGORE_AE_LEFT_PUNCH:
 	{
-		CBaseEntity* pHurt = CheckTraceHullAttack(VOLTIGORE_MELEE_DIST, gSkillData.babyvoltigoreDmgPunch, DMG_CLUB);
+		CBaseEntity* pHurt = CheckTraceHullAttack(GetMeleeDistance(), GetSkillFloat("babyvoltigore_dmg_punch"sv), DMG_CLUB);
 
 		if (pHurt)
 		{
@@ -139,7 +151,7 @@ void COFBabyVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case VOLTIGORE_AE_RIGHT_PUNCH:
 	{
-		CBaseEntity* pHurt = CheckTraceHullAttack(VOLTIGORE_MELEE_DIST, gSkillData.babyvoltigoreDmgPunch, DMG_CLUB);
+		CBaseEntity* pHurt = CheckTraceHullAttack(GetMeleeDistance(), GetSkillFloat("babyvoltigore_dmg_punch"sv), DMG_CLUB);
 
 		if (pHurt)
 		{
@@ -191,17 +203,8 @@ void COFBabyVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 //=========================================================
 void COFBabyVoltigore::Spawn()
 {
-	SpawnCore("models/baby_voltigore.mdl", {-16, -16, 0}, {16, 16, 32}, gSkillData.babyvoltigoreHealth);
+	SpawnCore({-16, -16, 0}, {16, 16, 32});
 }
-
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
-void COFBabyVoltigore::Precache()
-{
-	PrecacheCore("models/baby_voltigore.mdl");
-}
-
 //=========================================================
 // CheckTraceHullAttack - expects a length to trace, amount
 // of damage to do, and damage type. Returns a pointer to
@@ -220,7 +223,7 @@ CBaseEntity* COFBabyVoltigore::CheckTraceHullAttack(float flDist, int iDamage, i
 		UTIL_MakeAimVectors(pev->angles);
 
 	Vector vecStart = pev->origin;
-	//Don't rescale the Z size for us since we're just a baby
+	// Don't rescale the Z size for us since we're just a baby
 	vecStart.z += pev->size.z;
 	Vector vecEnd = vecStart + (gpGlobals->v_forward * flDist);
 

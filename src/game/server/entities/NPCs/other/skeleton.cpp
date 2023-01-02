@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 #include "cbase.h"
 
 //=========================================================
@@ -20,6 +20,7 @@
 class COFSkeleton : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	int Classify() override { return CLASS_HUMAN_MILITARY; }
 
@@ -30,6 +31,15 @@ public:
 };
 
 const char* COFSkeleton::m_szPoses[] = {"s_onback", "s_sitting", "dead_against_wall", "dead_stomach"};
+
+void COFSkeleton::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	// Corpses have less health
+	pev->health = 8;
+	pev->model = MAKE_STRING("models/skeleton.mdl");
+}
 
 bool COFSkeleton::KeyValue(KeyValueData* pkvd)
 {
@@ -49,8 +59,8 @@ LINK_ENTITY_TO_CLASS(monster_skeleton_dead, COFSkeleton);
 //=========================================================
 void COFSkeleton::Spawn()
 {
-	PRECACHE_MODEL("models/skeleton.mdl");
-	SET_MODEL(ENT(pev), "models/skeleton.mdl");
+	PrecacheModel(STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	pev->effects = 0;
 	pev->yaw_speed = 8;
@@ -61,11 +71,8 @@ void COFSkeleton::Spawn()
 
 	if (pev->sequence == -1)
 	{
-		ALERT(at_console, "Dead skeleton with bad pose\n");
+		AILogger->debug("Dead skeleton with bad pose");
 	}
-
-	// Corpses have less health
-	pev->health = 8;
 
 	MonsterInitDead();
 }

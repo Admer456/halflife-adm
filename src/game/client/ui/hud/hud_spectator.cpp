@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2001, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2001, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -23,22 +23,20 @@
 #include "event_api.h"
 #include "studio_util.h"
 #include "screenfade.h"
-
+#include "view.h"
 
 extern bool iJumpSpectator;
-extern float vJumpOrigin[3];
-extern float vJumpAngles[3];
+extern Vector vJumpOrigin;
+extern Vector vJumpAngles;
 
 
-extern void V_GetInEyePos(int entity, float* origin, float* angles);
-extern void V_ResetChaseCam();
-extern void V_GetChasePos(int target, float* cl_angles, float* origin, float* angles);
-extern float* GetClientColor(int clientIndex);
+void V_GetInEyePos(int entity, float* origin, float* angles);
+void V_ResetChaseCam();
+void V_GetChasePos(int target, float* cl_angles, float* origin, Vector& angles);
+Vector* GetClientColor(int clientIndex);
 
-extern Vector v_origin;	   // last view origin
-extern Vector v_angles;	   // last view angle
-extern Vector v_cl_angles; // last client/mouse angle
-extern Vector v_sim_org;   // last sim origin
+// Same color as in TeamFortressViewport::UpdateSpectatorPanel
+Vector DefaultPlayerColor = {143 / 255.f, 143 / 255.f, 54 / 255.f};
 
 void UnpackRGB(int& r, int& g, int& b, unsigned long ulRGB)
 {
@@ -118,8 +116,8 @@ void SpectatorHelp()
 {
 	if (gViewPort)
 	{
-		//TODO: none of this spectator stuff exists in Op4
-		//gViewPort->ShowVGUIMenu( MENU_SPECHELP );
+		// TODO: none of this spectator stuff exists in Op4
+		// gViewPort->ShowVGUIMenu( MENU_SPECHELP );
 	}
 	else
 	{
@@ -186,7 +184,7 @@ bool CHudSpectator::Init()
 	gEngfuncs.pfnAddCommand("spec_decal", SpectatorSpray);
 	gEngfuncs.pfnAddCommand("spec_help", SpectatorHelp);
 	gEngfuncs.pfnAddCommand("spec_menu", SpectatorMenu);
-	//gEngfuncs.pfnAddCommand("togglescores", ToggleScores);
+	// gEngfuncs.pfnAddCommand("togglescores", ToggleScores);
 
 	m_drawnames = gEngfuncs.pfnRegisterVariable("spec_drawnames", "1", 0);
 	m_drawcone = gEngfuncs.pfnRegisterVariable("spec_drawcone", "1", 0);
@@ -201,38 +199,6 @@ bool CHudSpectator::Init()
 	}
 
 	return true;
-}
-
-
-//-----------------------------------------------------------------------------
-// UTIL_StringToVector originally from ..\dlls\util.cpp, slightly changed
-//-----------------------------------------------------------------------------
-
-void UTIL_StringToVector(float* pVector, const char* pString)
-{
-	char *pstr, *pfront, tempString[128];
-	int j;
-
-	strcpy(tempString, pString);
-	pstr = pfront = tempString;
-
-	for (j = 0; j < 3; j++)
-	{
-		pVector[j] = atof(pfront);
-
-		while ('\0' != *pstr && *pstr != ' ')
-			pstr++;
-		if ('\0' == *pstr)
-			break;
-		pstr++;
-		pfront = pstr;
-	}
-
-	if (j < 2)
-	{
-		for (j = j + 1; j < 3; j++)
-			pVector[j] = 0;
-	}
 }
 
 bool UTIL_FindEntityInMap(const char* name, float* origin, float* angle)
@@ -604,7 +570,7 @@ bool CHudSpectator::Draw(float flTime)
 	int lx;
 
 	char string[256];
-	float* color;
+	Vector* color;
 
 	// draw only in spectator mode
 	if (0 == g_iUser1)
@@ -663,12 +629,18 @@ bool CHudSpectator::Draw(float flTime)
 
 		color = GetClientColor(i + 1);
 
+		// TODO: this is pretty ugly, need a better way.
+		if (!color)
+		{
+			color = &DefaultPlayerColor;
+		}
+
 		// draw the players name and health underneath
 		sprintf(string, "%s", g_PlayerInfoList[i + 1].name);
 
 		lx = strlen(string) * 3; // 3 is avg. character length :)
 
-		gEngfuncs.pfnDrawSetTextColor(color[0], color[1], color[2]);
+		gEngfuncs.pfnDrawSetTextColor(color->x, color->y, color->z);
 		DrawConsoleString(m_vPlayerPos[i][0] - lx, m_vPlayerPos[i][1], string);
 	}
 
@@ -809,7 +781,7 @@ void CHudSpectator::DirectorMessage(int iSize, void* pbuf)
 		break;
 
 	case DRC_CMD_STUFFTEXT:
-		EngineClientCmd(READ_STRING());
+		gEngfuncs.pfnFilteredClientCmd(READ_STRING());
 		break;
 
 	case DRC_CMD_CAMPATH:
@@ -1021,7 +993,7 @@ void CHudSpectator::HandleButtonsDown(int ButtonPressed)
 	if (!gViewPort)
 		return;
 
-	//Not in intermission.
+	// Not in intermission.
 	if (gHUD.m_iIntermission)
 		return;
 
@@ -1252,8 +1224,6 @@ bool CHudSpectator::ParseOverviewFile()
 	char token[1024];
 	float height;
 
-	char* pfile = nullptr;
-
 	memset(&m_OverviewData, 0, sizeof(m_OverviewData));
 
 	// fill in standrd values
@@ -1277,14 +1247,15 @@ bool CHudSpectator::ParseOverviewFile()
 
 	sprintf(filename, "overviews/%s.txt", levelname);
 
-	pfile = (char*)gEngfuncs.COM_LoadFile(filename, 5, nullptr);
+	const auto fileContents = FileSystem_LoadFileIntoBuffer(filename, FileContentFormat::Text);
 
-	if (!pfile)
+	if (fileContents.empty())
 	{
 		gEngfuncs.Con_DPrintf("Couldn't open file %s. Using default values for overiew mode.\n", filename);
 		return false;
 	}
 
+	auto pfile = reinterpret_cast<const char*>(fileContents.data());
 
 	while (true)
 	{
@@ -1393,8 +1364,6 @@ bool CHudSpectator::ParseOverviewFile()
 		}
 	}
 
-	gEngfuncs.COM_FreeFile(pfile);
-
 	m_mapZoom = m_OverviewData.zoom;
 	m_mapOrigin = m_OverviewData.origin;
 
@@ -1418,7 +1387,7 @@ void CHudSpectator::DrawOverviewLayer()
 	int ix, iy, i, xTiles, yTiles, frame;
 
 	bool hasMapImage = nullptr != m_MapSprite;
-	model_t* dummySprite = (struct model_s*)gEngfuncs.GetSpritePointer(m_hsprUnkownMap);
+	model_t* dummySprite = (model_t*)gEngfuncs.GetSpritePointer(m_hsprUnkownMap);
 
 	if (hasMapImage)
 	{
@@ -1540,7 +1509,7 @@ void CHudSpectator::DrawOverviewLayer()
 void CHudSpectator::DrawOverviewEntities()
 {
 	int i;
-	struct model_s* hSpriteModel;
+	model_t* hSpriteModel;
 	Vector origin, angles, point, forward, right, left, up, world, screen, offset;
 	float x, y, z, r, g, b, sizeScale = 4.0f;
 	cl_entity_t* ent;
@@ -1567,7 +1536,7 @@ void CHudSpectator::DrawOverviewEntities()
 		if (0 == m_OverviewEntities[i].hSprite)
 			continue;
 
-		hSpriteModel = (struct model_s*)gEngfuncs.GetSpritePointer(m_OverviewEntities[i].hSprite);
+		hSpriteModel = (model_t*)gEngfuncs.GetSpritePointer(m_OverviewEntities[i].hSprite);
 		ent = m_OverviewEntities[i].entity;
 
 		gEngfuncs.pTriAPI->SpriteTexture(hSpriteModel, 0);
@@ -1619,7 +1588,7 @@ void CHudSpectator::DrawOverviewEntities()
 
 		gEngfuncs.pTriAPI->RenderMode(kRenderTransAdd);
 
-		hSpriteModel = (struct model_s*)gEngfuncs.GetSpritePointer(m_hsprBeam);
+		hSpriteModel = (model_t*)gEngfuncs.GetSpritePointer(m_hsprBeam);
 		gEngfuncs.pTriAPI->SpriteTexture(hSpriteModel, 0);
 
 		gEngfuncs.pTriAPI->Color4f(r, g, b, 0.3);
@@ -1703,7 +1672,7 @@ void CHudSpectator::DrawOverviewEntities()
 
 	angles[0] = 0; // always show horizontal camera sprite
 
-	hSpriteModel = (struct model_s*)gEngfuncs.GetSpritePointer(m_hsprCamera);
+	hSpriteModel = (model_t*)gEngfuncs.GetSpritePointer(m_hsprCamera);
 	gEngfuncs.pTriAPI->RenderMode(kRenderTransAdd);
 	gEngfuncs.pTriAPI->SpriteTexture(hSpriteModel, 0);
 
@@ -1770,7 +1739,7 @@ void CHudSpectator::CheckOverviewEntities()
 	}
 }
 
-bool CHudSpectator::AddOverviewEntity(int type, struct cl_entity_s* ent, const char* modelname)
+bool CHudSpectator::AddOverviewEntity(int type, cl_entity_t* ent, const char* modelname)
 {
 	HSPRITE hSprite = 0;
 	double duration = -1.0f; // duration -1 means show it only this frame;

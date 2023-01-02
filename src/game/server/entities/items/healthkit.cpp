@@ -1,24 +1,25 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 #include "items.h"
 #include "UserMessages.h"
 
 class CHealthKit : public CItem
 {
-	void Spawn() override;
+public:
+	void OnCreate() override;
 	void Precache() override;
 	bool MyTouch(CBasePlayer* pPlayer) override;
 
@@ -43,18 +44,17 @@ TYPEDESCRIPTION	CHealthKit::m_SaveData[] =
 IMPLEMENT_SAVERESTORE( CHealthKit, CItem);
 */
 
-void CHealthKit::Spawn()
+void CHealthKit::OnCreate()
 {
-	Precache();
-	SET_MODEL(ENT(pev), "models/w_medkit.mdl");
+	CItem::OnCreate();
 
-	CItem::Spawn();
+	pev->model = MAKE_STRING("models/w_medkit.mdl");
 }
 
 void CHealthKit::Precache()
 {
-	PRECACHE_MODEL("models/w_medkit.mdl");
-	PRECACHE_SOUND("items/smallmedkit1.wav");
+	CItem::Precache();
+	PrecacheSound("items/smallmedkit1.wav");
 }
 
 bool CHealthKit::MyTouch(CBasePlayer* pPlayer)
@@ -64,7 +64,7 @@ bool CHealthKit::MyTouch(CBasePlayer* pPlayer)
 		return false;
 	}
 
-	if (pPlayer->TakeHealth(gSkillData.healthkitCapacity, DMG_GENERIC))
+	if (pPlayer->TakeHealth(GetSkillFloat("healthkit"sv), DMG_GENERIC))
 	{
 		MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, pPlayer->pev);
 		WRITE_STRING(STRING(pev->classname));
@@ -72,7 +72,7 @@ bool CHealthKit::MyTouch(CBasePlayer* pPlayer)
 
 		EMIT_SOUND(ENT(pPlayer->pev), CHAN_ITEM, "items/smallmedkit1.wav", 1, ATTN_NORM);
 
-		//TODO: incorrect check here, but won't respawn due to respawn delay being -1 in singleplayer
+		// TODO: incorrect check here, but won't respawn due to respawn delay being -1 in singleplayer
 		if (0 != g_pGameRules->ItemShouldRespawn(this))
 		{
 			Respawn();
@@ -157,16 +157,16 @@ void CWallHealth::Spawn()
 
 	UTIL_SetOrigin(pev, pev->origin); // set size and link into world
 	UTIL_SetSize(pev, pev->mins, pev->maxs);
-	SET_MODEL(ENT(pev), STRING(pev->model));
-	m_iJuice = gSkillData.healthchargerCapacity;
+	SetModel(STRING(pev->model));
+	m_iJuice = GetSkillFloat("healthcharger"sv);
 	pev->frame = 0;
 }
 
 void CWallHealth::Precache()
 {
-	PRECACHE_SOUND("items/medshot4.wav");
-	PRECACHE_SOUND("items/medshotno1.wav");
-	PRECACHE_SOUND("items/medcharge4.wav");
+	PrecacheSound("items/medshot4.wav");
+	PrecacheSound("items/medshotno1.wav");
+	PrecacheSound("items/medcharge4.wav");
 }
 
 
@@ -234,7 +234,7 @@ void CWallHealth::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE us
 void CWallHealth::Recharge()
 {
 	EMIT_SOUND(ENT(pev), CHAN_ITEM, "items/medshot4.wav", 1.0, ATTN_NORM);
-	m_iJuice = gSkillData.healthchargerCapacity;
+	m_iJuice = GetSkillFloat("healthcharger"sv);
 	pev->frame = 0;
 	SetThink(&CWallHealth::SUB_DoNothing);
 }

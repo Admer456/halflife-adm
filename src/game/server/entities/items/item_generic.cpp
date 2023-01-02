@@ -1,21 +1,23 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 #include "cbase.h"
 
 const auto SF_ITEMGENERIC_DROP_TO_FLOOR = 1 << 0;
+const auto SF_ITEMGENERIC_SOLID = 1 << 1;
 
+// TODO: needs save/restore
 class CGenericItem : public CBaseAnimating
 {
 public:
@@ -29,7 +31,7 @@ public:
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
 
 	float m_lastTime;
-	int m_iSequence;
+	string_t m_iSequence;
 };
 
 LINK_ENTITY_TO_CLASS(item_generic, CGenericItem);
@@ -57,7 +59,7 @@ bool CGenericItem::KeyValue(KeyValueData* pkvd)
 
 void CGenericItem::Precache()
 {
-	PRECACHE_MODEL(const_cast<char*>(STRING(pev->model)));
+	PrecacheModel(STRING(pev->model));
 }
 
 void CGenericItem::Spawn()
@@ -69,7 +71,7 @@ void CGenericItem::Spawn()
 
 	Precache();
 
-	SET_MODEL(edict(), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	if (!FStringNull(m_iSequence))
 	{
@@ -81,9 +83,30 @@ void CGenericItem::Spawn()
 	{
 		if (0 == g_engfuncs.pfnDropToFloor(pev->pContainingEntity))
 		{
-			ALERT(at_error, "Item %s fell out of level at %f,%f,%f", STRING(pev->classname), pev->origin.x, pev->origin.y, pev->origin.z);
+			CBaseEntity::Logger->error("Item {} fell out of level at {}", STRING(pev->classname), pev->origin);
 			UTIL_Remove(this);
 		}
+	}
+
+	if ((pev->spawnflags & SF_ITEMGENERIC_SOLID) != 0)
+	{
+		Vector mins, maxs;
+
+		pev->solid = SOLID_SLIDEBOX;
+		int sequence = LookupSequence(STRING(m_iSequence));
+
+		if (sequence == -1)
+		{
+			CBaseEntity::Logger->debug("ERROR! FIX ME: item generic: {}, model: {}, does not have animation: {}",
+				STRING(pev->targetname), STRING(pev->model), STRING(m_iSequence));
+
+			sequence = 0;
+		}
+
+		ExtractBbox(sequence, mins, maxs);
+
+		UTIL_SetSize(pev, mins, maxs);
+		UTIL_SetOrigin(pev, pev->origin);
 	}
 }
 

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //=========================================================
 // Hornets
 //=========================================================
@@ -84,7 +84,7 @@ void CHornet::Spawn()
 		m_flFlySpeed = HORNET_ORANGE_SPEED;
 	}
 
-	SET_MODEL(ENT(pev), "models/hornet.mdl");
+	SetModel("models/hornet.mdl");
 	UTIL_SetSize(pev, Vector(-4, -4, -4), Vector(4, 4, 4));
 
 	SetTouch(&CHornet::DieTouch);
@@ -96,12 +96,12 @@ void CHornet::Spawn()
 
 	if (!FNullEnt(pev->owner) && (pev->owner->v.flags & FL_CLIENT) != 0)
 	{
-		pev->dmg = gSkillData.plrDmgHornet;
+		pev->dmg = GetSkillFloat("plr_hornet_dmg"sv);
 	}
 	else
 	{
 		// no real owner, or owner isn't a client.
-		pev->dmg = gSkillData.monDmgHornet;
+		pev->dmg = GetSkillFloat("hornet_dmg"sv);
 	}
 
 	pev->nextthink = gpGlobals->time + 0.1;
@@ -111,22 +111,22 @@ void CHornet::Spawn()
 
 void CHornet::Precache()
 {
-	PRECACHE_MODEL("models/hornet.mdl");
+	PrecacheModel("models/hornet.mdl");
 
-	PRECACHE_SOUND("agrunt/ag_fire1.wav");
-	PRECACHE_SOUND("agrunt/ag_fire2.wav");
-	PRECACHE_SOUND("agrunt/ag_fire3.wav");
+	PrecacheSound("agrunt/ag_fire1.wav");
+	PrecacheSound("agrunt/ag_fire2.wav");
+	PrecacheSound("agrunt/ag_fire3.wav");
 
-	PRECACHE_SOUND("hornet/ag_buzz1.wav");
-	PRECACHE_SOUND("hornet/ag_buzz2.wav");
-	PRECACHE_SOUND("hornet/ag_buzz3.wav");
+	PrecacheSound("hornet/ag_buzz1.wav");
+	PrecacheSound("hornet/ag_buzz2.wav");
+	PrecacheSound("hornet/ag_buzz3.wav");
 
-	PRECACHE_SOUND("hornet/ag_hornethit1.wav");
-	PRECACHE_SOUND("hornet/ag_hornethit2.wav");
-	PRECACHE_SOUND("hornet/ag_hornethit3.wav");
+	PrecacheSound("hornet/ag_hornethit1.wav");
+	PrecacheSound("hornet/ag_hornethit2.wav");
+	PrecacheSound("hornet/ag_hornethit3.wav");
 
-	iHornetPuff = PRECACHE_MODEL("sprites/muz1.spr");
-	iHornetTrail = PRECACHE_MODEL("sprites/laserbeam.spr");
+	iHornetPuff = PrecacheModel("sprites/muz1.spr");
+	iHornetTrail = PrecacheModel("sprites/laserbeam.spr");
 }
 
 //=========================================================
@@ -403,8 +403,8 @@ void CHornet::DartTouch(CBaseEntity* pOther)
 
 void CHornet::DieTouch(CBaseEntity* pOther)
 {
-	//Only deal damage if the owner exists in this map.
-	//Hornets that transition without their owner (e.g. Alien Grunt) will otherwise pass a null pointer down to TakeDamage.
+	// Only deal damage if the owner exists in this map.
+	// Hornets that transition without their owner (e.g. Alien Grunt) will otherwise pass a null pointer down to TakeDamage.
 	if (pOther && 0 != pOther->pev->takedamage && nullptr != pev->owner)
 	{ // do the damage
 

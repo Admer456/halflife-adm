@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 #include "customentity.h"
 
@@ -30,11 +30,11 @@ LINK_ENTITY_TO_CLASS(shock_beam, CShockBeam);
 
 void CShockBeam::Precache()
 {
-	PRECACHE_MODEL("sprites/flare3.spr");
-	PRECACHE_MODEL("sprites/lgtning.spr");
-	PRECACHE_MODEL("sprites/glow01.spr");
-	PRECACHE_MODEL("models/shock_effect.mdl");
-	PRECACHE_SOUND("weapons/shock_impact.wav");
+	PrecacheModel("sprites/flare3.spr");
+	PrecacheModel("sprites/lgtning.spr");
+	PrecacheModel("sprites/glow01.spr");
+	PrecacheModel("models/shock_effect.mdl");
+	PrecacheSound("weapons/shock_impact.wav");
 }
 
 void CShockBeam::Spawn()
@@ -44,7 +44,7 @@ void CShockBeam::Spawn()
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(edict(), "models/shock_effect.mdl");
+	SetModel("models/shock_effect.mdl");
 
 	UTIL_SetOrigin(pev, pev->origin);
 
@@ -112,7 +112,7 @@ void CShockBeam::Spawn()
 
 void CShockBeam::FlyThink()
 {
-	if (pev->waterlevel == 3)
+	if (pev->waterlevel == WaterLevel::Head)
 	{
 		SetThink(&CShockBeam::WaterExplodeThink);
 	}
@@ -148,7 +148,7 @@ void CShockBeam::BallTouch(CBaseEntity* pOther)
 
 		ClearMultiDamage();
 
-		const auto damage = g_pGameRules->IsMultiplayer() ? gSkillData.plrDmgShockRoachM : gSkillData.plrDmgShockRoachS;
+		const auto damage = g_pGameRules->IsMultiplayer() ? GetSkillFloat("plr_shockroachm"sv) : GetSkillFloat("plr_shockroachs"sv);
 
 		auto bitsDamageTypes = DMG_ALWAYSGIB | DMG_SHOCK;
 
@@ -237,7 +237,7 @@ void CShockBeam::Explode()
 
 CShockBeam* CShockBeam::CreateShockBeam(const Vector& vecOrigin, const Vector& vecAngles, CBaseEntity* pOwner)
 {
-	auto pBeam = GetClassPtr<CShockBeam>(nullptr);
+	auto pBeam = g_EntityDictionary->Create<CShockBeam>("shock_beam");
 
 	pBeam->pev->angles = vecAngles;
 	pBeam->pev->angles.x = -pBeam->pev->angles.x;
@@ -248,8 +248,6 @@ CShockBeam* CShockBeam::CreateShockBeam(const Vector& vecOrigin, const Vector& v
 
 	pBeam->pev->velocity = gpGlobals->v_forward * 2000.0;
 	pBeam->pev->velocity.z = -pBeam->pev->velocity.z;
-
-	pBeam->pev->classname = MAKE_STRING("shock_beam");
 
 	pBeam->Spawn();
 

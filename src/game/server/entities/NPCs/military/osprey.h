@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #pragma once
 
@@ -27,6 +27,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 	int ObjectCaps() override { return CBaseMonster::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int Classify() override { return CLASS_MACHINE; }
@@ -48,7 +49,7 @@ public:
 	void EXPORT DyingThink();
 	void EXPORT CommandUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 
-	bool TakeDamage( entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType ) override;
+	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
 	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 	void ShowDamage();
 	void Update();
@@ -91,20 +92,14 @@ public:
 
 protected:
 	/**
-	*	@brief Class name of the monster to spawn
-	*	@details Must return a string literal
-	*/
+	 *	@brief Class name of the monster to spawn
+	 *	@details Must return a string literal
+	 */
 	virtual const char* GetMonsterClassname() const { return "monster_human_grunt"; }
 
 	/**
-	*	@brief Precaches all Osprey assets
-	*	@details Inputs must be string literals
-	*/
-	void PrecacheCore(const char* ospreyModel, const char* tailModel, const char* bodyModel, const char* engineModel);
-
-	/**
-	*	@brief Spawns the Osprey
-	*	@param model Name of the Osprey model. Must be a string literal
-	*/
-	void SpawnCore(const char* model);
+	 *	@brief Precaches all Osprey assets
+	 *	@details Inputs must be string literals
+	 */
+	void PrecacheCore(const char* tailModel, const char* bodyModel, const char* engineModel);
 };

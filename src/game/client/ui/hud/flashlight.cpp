@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //
 // flashlight.cpp
 //
@@ -39,7 +39,7 @@ bool CHudFlashlight::Init()
 	gHUD.AddHudElem(this);
 
 	return true;
-};
+}
 
 void CHudFlashlight::Reset()
 {
@@ -49,7 +49,8 @@ void CHudFlashlight::Reset()
 
 bool CHudFlashlight::VidInit()
 {
-	auto setup = [](const char* empty, const char* full, const char* beam) {
+	auto setup = [](const char* empty, const char* full, const char* beam)
+	{
 		const int HUD_flash_empty = gHUD.GetSpriteIndex(empty);
 		const int HUD_flash_full = gHUD.GetSpriteIndex(full);
 		const int HUD_flash_beam = gHUD.GetSpriteIndex(beam);
@@ -73,7 +74,7 @@ bool CHudFlashlight::VidInit()
 	m_nvSprite = LoadSprite("sprites/of_nv_b.spr");
 
 	return true;
-};
+}
 
 bool CHudFlashlight::MsgFunc_FlashBat(const char* pszName, int iSize, void* pbuf)
 {
@@ -94,7 +95,7 @@ bool CHudFlashlight::MsgFunc_Flashlight(const char* pszName, int iSize, void* pb
 	m_iBat = x;
 	m_flBat = ((float)x) / 100.0;
 
-	//Always update this, so that changing to flashlight type disables NVG effects
+	// Always update this, so that changing to flashlight type disables NVG effects
 	gHUD.SetNightVisionState(m_SuitLightType == SuitLightType::Nightvision && m_fOn);
 
 	return true;

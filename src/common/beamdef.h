@@ -1,19 +1,22 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
+
+struct model_t;
+struct particle_t;
 
 #define FBEAM_STARTENTITY 0x00000001
 #define FBEAM_ENDENTITY 0x00000002
@@ -28,8 +31,7 @@
 #define FBEAM_ISACTIVE 0x40000000
 #define FBEAM_FOREVER 0x80000000
 
-typedef struct beam_s BEAM;
-struct beam_s
+struct BEAM
 {
 	BEAM* next;
 	int type;
@@ -52,6 +54,6 @@ struct beam_s
 	int endEntity;
 	int modelIndex;
 	int frameCount;
-	struct model_s* pFollowModel;
-	struct particle_s* particles;
+	model_t* pFollowModel;
+	particle_t* particles;
 };

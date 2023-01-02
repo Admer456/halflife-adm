@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #pragma once
 
@@ -34,15 +34,35 @@
 #define HGRUNT_GRENADELAUNCHER (1 << 2)
 #define HGRUNT_SHOTGUN (1 << 3)
 
-#define HEAD_GROUP 1
-#define HEAD_GRUNT 0
-#define HEAD_COMMANDER 1
-#define HEAD_SHOTGUN 2
-#define HEAD_M203 3
-#define GUN_GROUP 2
-#define GUN_MP5 0
-#define GUN_SHOTGUN 1
-#define GUN_NONE 2
+namespace HGruntBodyGroup
+{
+enum HGruntBodyGroup
+{
+	Head = 1,
+	Weapons = 2
+};
+}
+
+namespace HGruntHead
+{
+enum HGruntHead
+{
+	Grunt = 0,
+	Commander,
+	Shotgun,
+	M203
+};
+}
+
+namespace HGruntWeapon
+{
+enum HGruntWeapon
+{
+	Blank = 0,
+	MP5,
+	Shotgun,
+};
+}
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -106,6 +126,7 @@ enum HGRUNT_SENTENCE_TYPES
 class CHGrunt : public CSquadMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
@@ -169,25 +190,19 @@ public:
 	static const char* pGruntSentences[];
 
 protected:
-	/**
-	*	@brief Precaches all grunt assets
-	*	@param model Must be a string literal
-	*/
-	void PrecacheCore(const char* model);
-
 	bool CheckRangeAttack2Core(float flDot, float flDist, float grenadeSpeed);
 
 	virtual std::tuple<int, Activity> GetSequenceForActivity(Activity NewActivity);
 
 	/**
-	*	@brief Gets a reference to the global grunt question variable used to communicate between grunts
-	*/
+	 *	@brief Gets a reference to the global grunt question variable used to communicate between grunts
+	 */
 	virtual int& GetGruntQuestion();
 };
 
 /**
-*	@brief when triggered, spawns a monster_human_grunt repelling down a line.
-*/
+ *	@brief when triggered, spawns a monster_human_grunt repelling down a line.
+ */
 class CHGruntRepel : public CBaseMonster
 {
 public:
@@ -198,24 +213,25 @@ public:
 
 protected:
 	/**
-	*	@brief Precaches all repel assets
-	*	@param classname Must be a string literal
-	*/
+	 *	@brief Precaches all repel assets
+	 *	@param classname Must be a string literal
+	 */
 	void PrecacheCore(const char* classname);
 
 	/**
-	*	@brief Creates a monster in a repel state
-	*	@param classname Must be a string literal
-	*/
+	 *	@brief Creates a monster in a repel state
+	 *	@param classname Must be a string literal
+	 */
 	void CreateMonster(const char* classname);
 };
 
 /**
-*	@brief DEAD HGRUNT PROP
-*/
+ *	@brief DEAD HGRUNT PROP
+ */
 class CDeadHGrunt : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	int Classify() override { return CLASS_HUMAN_MILITARY; }
 
@@ -225,5 +241,5 @@ public:
 	static constexpr const char* m_szPoses[3] = {"deadstomach", "deadside", "deadsitting"};
 
 protected:
-	void SpawnCore(const char* model);
+	void SpawnCore();
 };

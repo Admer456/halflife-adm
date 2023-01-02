@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // hgrunt
 //=========================================================
@@ -67,6 +67,14 @@ const char* CHGrunt::pGruntSentences[] =
 		"HG_TAUNT",	  // say rude things
 };
 
+void CHGrunt::OnCreate()
+{
+	CSquadMonster::OnCreate();
+
+	pev->health = GetSkillFloat("hgrunt_health"sv);
+	pev->model = MAKE_STRING("models/hgrunt.mdl");
+}
+
 int& CHGrunt::GetGruntQuestion()
 {
 	return g_fGruntQuestion;
@@ -94,7 +102,7 @@ void CHGrunt::SpeakSentence()
 
 	if (FOkToSpeak())
 	{
-		SENTENCEG_PlayRndSz(ENT(pev), pGruntSentences[m_iSentence], HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+		sentences::g_Sentences.PlayRndSz(ENT(pev), pGruntSentences[m_iSentence], HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 		JustSpoke();
 	}
 }
@@ -121,7 +129,7 @@ void CHGrunt::GibMonster()
 	Vector vecGunPos;
 	Vector vecGunAngles;
 
-	if (GetBodygroup(2) != 2)
+	if (GetBodygroup(HGruntBodyGroup::Weapons) != HGruntWeapon::Blank)
 	{ // throw a gun if the grunt has one
 		GetAttachment(0, vecGunPos, vecGunAngles);
 
@@ -329,7 +337,7 @@ bool CHGrunt::CheckRangeAttack2Core(float flDot, float flDist, float grenadeSpee
 		return m_fThrowGrenade;
 	}
 
-	if (!FBitSet(m_hEnemy->pev->flags, FL_ONGROUND) && m_hEnemy->pev->waterlevel == 0 && m_vecEnemyLKP.z > pev->absmax.z)
+	if (!FBitSet(m_hEnemy->pev->flags, FL_ONGROUND) && m_hEnemy->pev->waterlevel == WaterLevel::Dry && m_vecEnemyLKP.z > pev->absmax.z)
 	{
 		//!!!BUGBUG - we should make this check movetype and make sure it isn't FLY? Players who jump a lot are unlikely to
 		// be grenaded.
@@ -441,7 +449,7 @@ bool CHGrunt::CheckRangeAttack2Core(float flDot, float flDist, float grenadeSpee
 //=========================================================
 bool CHGrunt::CheckRangeAttack2(float flDot, float flDist)
 {
-	return CheckRangeAttack2Core(flDot, flDist, gSkillData.hgruntGrenadeSpeed);
+	return CheckRangeAttack2Core(flDot, flDist, GetSkillFloat("hgrunt_gspeed"sv));
 }
 
 //=========================================================
@@ -453,7 +461,7 @@ void CHGrunt::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir,
 	if (ptr->iHitgroup == 11)
 	{
 		// make sure we're wearing one
-		if (GetBodygroup(1) == HEAD_GRUNT && (bitsDamageType & (DMG_BULLET | DMG_SLASH | DMG_BLAST | DMG_CLUB)) != 0)
+		if (GetBodygroup(HGruntBodyGroup::Head) == HGruntHead::Grunt && (bitsDamageType & (DMG_BULLET | DMG_SLASH | DMG_BLAST | DMG_CLUB)) != 0)
 		{
 			// absorb damage
 			flDamage -= 20;
@@ -541,15 +549,15 @@ void CHGrunt::IdleSound()
 			switch (RANDOM_LONG(0, 2))
 			{
 			case 0: // check in
-				SENTENCEG_PlayRndSz(ENT(pev), "HG_CHECK", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_CHECK", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				question = 1;
 				break;
 			case 1: // question
-				SENTENCEG_PlayRndSz(ENT(pev), "HG_QUEST", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_QUEST", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				question = 2;
 				break;
 			case 2: // statement
-				SENTENCEG_PlayRndSz(ENT(pev), "HG_IDLE", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_IDLE", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			}
 		}
@@ -558,10 +566,10 @@ void CHGrunt::IdleSound()
 			switch (question)
 			{
 			case 1: // check in
-				SENTENCEG_PlayRndSz(ENT(pev), "HG_CLEAR", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_CLEAR", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			case 2: // question
-				SENTENCEG_PlayRndSz(ENT(pev), "HG_ANSWER", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_ANSWER", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			}
 			question = 0;
@@ -672,7 +680,7 @@ void CHGrunt::Shoot(bool firstShotInBurst)
 	}
 	else
 	{
-		//Check this so shotgunners don't shoot bursts if the animation happens to have the events
+		// Check this so shotgunners don't shoot bursts if the animation happens to have the events
 		if (firstShotInBurst)
 		{
 			Vector vecShootOrigin = GetGunPosition();
@@ -682,7 +690,7 @@ void CHGrunt::Shoot(bool firstShotInBurst)
 
 			Vector vecShellVelocity = gpGlobals->v_right * RANDOM_FLOAT(40, 90) + gpGlobals->v_up * RANDOM_FLOAT(75, 200) + gpGlobals->v_forward * RANDOM_FLOAT(-40, 40);
 			EjectBrass(vecShootOrigin - vecShootDir * 24, vecShellVelocity, pev->angles.y, m_iShotgunShell, TE_BOUNCE_SHOTSHELL);
-			FireBullets(gSkillData.hgruntShotgunPellets, vecShootOrigin, vecShootDir, VECTOR_CONE_15DEGREES, 2048, BULLET_PLAYER_BUCKSHOT, 0); // shoot +-7.5 degrees
+			FireBullets(GetSkillFloat("hgrunt_pellets"sv), vecShootOrigin, vecShootDir, VECTOR_CONE_15DEGREES, 2048, BULLET_PLAYER_BUCKSHOT, 0); // shoot +-7.5 degrees
 
 			pev->effects |= EF_MUZZLEFLASH;
 
@@ -720,7 +728,7 @@ void CHGrunt::HandleAnimEvent(MonsterEvent_t* pEvent)
 		GetAttachment(0, vecGunPos, vecGunAngles);
 
 		// switch to body group with no gun.
-		SetBodygroup(GUN_GROUP, GUN_NONE);
+		SetBodygroup(HGruntBodyGroup::Weapons, HGruntWeapon::Blank);
 
 		// now spawn a gun.
 		if (FBitSet(pev->weapons, HGRUNT_SHOTGUN))
@@ -761,7 +769,7 @@ void CHGrunt::HandleAnimEvent(MonsterEvent_t* pEvent)
 		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/glauncher.wav", 0.8, ATTN_NORM);
 		CGrenade::ShootContact(pev, GetGunPosition(), m_vecTossVelocity);
 		m_fThrowGrenade = false;
-		if (g_iSkillLevel == SKILL_HARD)
+		if (g_Skill.GetSkillLevel() == SkillLevel::Hard)
 			m_flNextGrenadeCheck = gpGlobals->time + RANDOM_FLOAT(2, 5); // wait a random amount of time before shooting again
 		else
 			m_flNextGrenadeCheck = gpGlobals->time + 6; // wait six seconds before even looking again to see if a grenade can be thrown.
@@ -791,7 +799,7 @@ void CHGrunt::HandleAnimEvent(MonsterEvent_t* pEvent)
 			UTIL_MakeVectors(pev->angles);
 			pHurt->pev->punchangle.x = 15;
 			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 100 + gpGlobals->v_up * 50;
-			pHurt->TakeDamage(pev, pev, gSkillData.hgruntDmgKick, DMG_CLUB);
+			pHurt->TakeDamage(pev, pev, GetSkillFloat("hgrunt_kick"sv), DMG_CLUB);
 		}
 	}
 	break;
@@ -800,7 +808,7 @@ void CHGrunt::HandleAnimEvent(MonsterEvent_t* pEvent)
 	{
 		if (FOkToSpeak())
 		{
-			SENTENCEG_PlayRndSz(ENT(pev), "HG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+			sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 			JustSpoke();
 		}
 	}
@@ -819,14 +827,13 @@ void CHGrunt::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/hgrunt.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_RED;
 	pev->effects = 0;
-	pev->health = gSkillData.hgruntHealth;
 	m_flFieldOfView = 0.2; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 	m_flNextGrenadeCheck = gpGlobals->time + 1;
@@ -850,11 +857,12 @@ void CHGrunt::Spawn()
 
 	if (FBitSet(pev->weapons, HGRUNT_SHOTGUN))
 	{
-		SetBodygroup(GUN_GROUP, GUN_SHOTGUN);
+		SetBodygroup(HGruntBodyGroup::Weapons, HGruntWeapon::Shotgun);
 		m_cClipSize = 8;
 	}
 	else
 	{
+		SetBodygroup(HGruntBodyGroup::Weapons, HGruntWeapon::MP5);
 		m_cClipSize = GRUNT_CLIP_SIZE;
 	}
 	m_cAmmoLoaded = m_cClipSize;
@@ -866,11 +874,11 @@ void CHGrunt::Spawn()
 
 	if (FBitSet(pev->weapons, HGRUNT_SHOTGUN))
 	{
-		SetBodygroup(HEAD_GROUP, HEAD_SHOTGUN);
+		SetBodygroup(HGruntBodyGroup::Head, HGruntHead::Shotgun);
 	}
 	else if (FBitSet(pev->weapons, HGRUNT_GRENADELAUNCHER))
 	{
-		SetBodygroup(HEAD_GROUP, HEAD_M203);
+		SetBodygroup(HGruntBodyGroup::Head, HGruntHead::M203);
 		pev->skin = 1; // alway dark skin
 	}
 
@@ -879,30 +887,30 @@ void CHGrunt::Spawn()
 	MonsterInit();
 }
 
-void CHGrunt::PrecacheCore(const char* model)
+void CHGrunt::Precache()
 {
-	PRECACHE_MODEL(model);
+	PrecacheModel(STRING(pev->model));
 
-	PRECACHE_SOUND("hgrunt/gr_mgun1.wav");
-	PRECACHE_SOUND("hgrunt/gr_mgun2.wav");
+	PrecacheSound("hgrunt/gr_mgun1.wav");
+	PrecacheSound("hgrunt/gr_mgun2.wav");
 
-	PRECACHE_SOUND("hgrunt/gr_die1.wav");
-	PRECACHE_SOUND("hgrunt/gr_die2.wav");
-	PRECACHE_SOUND("hgrunt/gr_die3.wav");
+	PrecacheSound("hgrunt/gr_die1.wav");
+	PrecacheSound("hgrunt/gr_die2.wav");
+	PrecacheSound("hgrunt/gr_die3.wav");
 
-	PRECACHE_SOUND("hgrunt/gr_pain1.wav");
-	PRECACHE_SOUND("hgrunt/gr_pain2.wav");
-	PRECACHE_SOUND("hgrunt/gr_pain3.wav");
-	PRECACHE_SOUND("hgrunt/gr_pain4.wav");
-	PRECACHE_SOUND("hgrunt/gr_pain5.wav");
+	PrecacheSound("hgrunt/gr_pain1.wav");
+	PrecacheSound("hgrunt/gr_pain2.wav");
+	PrecacheSound("hgrunt/gr_pain3.wav");
+	PrecacheSound("hgrunt/gr_pain4.wav");
+	PrecacheSound("hgrunt/gr_pain5.wav");
 
-	PRECACHE_SOUND("hgrunt/gr_reload1.wav");
+	PrecacheSound("hgrunt/gr_reload1.wav");
 
-	PRECACHE_SOUND("weapons/glauncher.wav");
+	PrecacheSound("weapons/glauncher.wav");
 
-	PRECACHE_SOUND("weapons/sbarrel1.wav");
+	PrecacheSound("weapons/sbarrel1.wav");
 
-	PRECACHE_SOUND("zombie/claw_miss2.wav"); // because we use the basemonster SWIPE animation event
+	PrecacheSound("zombie/claw_miss2.wav"); // because we use the basemonster SWIPE animation event
 
 	// get voice pitch
 	if (RANDOM_LONG(0, 1))
@@ -910,16 +918,8 @@ void CHGrunt::PrecacheCore(const char* model)
 	else
 		m_voicePitch = 100;
 
-	m_iBrassShell = PRECACHE_MODEL("models/shell.mdl"); // brass shell
-	m_iShotgunShell = PRECACHE_MODEL("models/shotgunshell.mdl");
-}
-
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
-void CHGrunt::Precache()
-{
-	PrecacheCore("models/hgrunt.mdl");
+	m_iBrassShell = PrecacheModel("models/shell.mdl"); // brass shell
+	m_iShotgunShell = PrecacheModel("models/shotgunshell.mdl");
 }
 
 //=========================================================
@@ -1013,7 +1013,7 @@ void CHGrunt::PainSound()
 			// pain sentences are rare
 			if (FOkToSpeak())
 			{
-				SENTENCEG_PlayRndSz(ENT(pev), "HG_PAIN", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, PITCH_NORM);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_PAIN", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, PITCH_NORM);
 				JustSpoke();
 				return;
 			}
@@ -1771,7 +1771,7 @@ void CHGrunt::SetActivity(Activity NewActivity)
 	else
 	{
 		// Not available try to get default anim
-		ALERT(at_console, "%s has no sequence for act:%d\n", STRING(pev->classname), activity);
+		AILogger->debug("{} has no sequence for act:{}", STRING(pev->classname), activity);
 		pev->sequence = 0; // Set to the reset anim (if it's there)
 	}
 }
@@ -1825,7 +1825,7 @@ Schedule_t* CHGrunt::GetSchedule()
 
 				if (FOkToSpeak())
 				{
-					SENTENCEG_PlayRndSz(ENT(pev), "HG_GREN", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_GREN", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_TAKE_COVER_FROM_BEST_SOUND);
@@ -1874,13 +1874,13 @@ Schedule_t* CHGrunt::GetSchedule()
 					{
 						if ((m_hEnemy != nullptr) && m_hEnemy->IsPlayer())
 							// player
-							SENTENCEG_PlayRndSz(ENT(pev), "HG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+							sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 						else if ((m_hEnemy != nullptr) &&
 								 (m_hEnemy->Classify() != CLASS_PLAYER_ALLY) &&
 								 (m_hEnemy->Classify() != CLASS_HUMAN_PASSIVE) &&
 								 (m_hEnemy->Classify() != CLASS_MACHINE))
 							// monster
-							SENTENCEG_PlayRndSz(ENT(pev), "HG_MONST", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+							sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_MONST", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 
 						JustSpoke();
 					}
@@ -1920,9 +1920,9 @@ Schedule_t* CHGrunt::GetSchedule()
 				//!!!KELLY - this grunt was hit and is going to run to cover.
 				if (FOkToSpeak()) // && RANDOM_LONG(0,1))
 				{
-					//SENTENCEG_PlayRndSz( ENT(pev), "HG_COVER", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					// sentences::g_Sentences.PlayRndSz( ENT(pev), "HG_COVER", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					m_iSentence = HGRUNT_SENT_COVER;
-					//JustSpoke();
+					// JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_TAKE_COVER_FROM_ENEMY);
 			}
@@ -1982,7 +1982,7 @@ Schedule_t* CHGrunt::GetSchedule()
 				//!!!KELLY - this grunt is about to throw or fire a grenade at the player. Great place for "fire in the hole"  "frag out" etc
 				if (FOkToSpeak())
 				{
-					SENTENCEG_PlayRndSz(ENT(pev), "HG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_RANGE_ATTACK2);
@@ -1993,9 +1993,9 @@ Schedule_t* CHGrunt::GetSchedule()
 				// charge the enemy's position.
 				if (FOkToSpeak()) // && RANDOM_LONG(0,1))
 				{
-					//SENTENCEG_PlayRndSz( ENT(pev), "HG_CHARGE", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					// sentences::g_Sentences.PlayRndSz( ENT(pev), "HG_CHARGE", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					m_iSentence = HGRUNT_SENT_CHARGE;
-					//JustSpoke();
+					// JustSpoke();
 				}
 
 				return GetScheduleOfType(SCHED_GRUNT_ESTABLISH_LINE_OF_FIRE);
@@ -2007,7 +2007,7 @@ Schedule_t* CHGrunt::GetSchedule()
 				// grunt's covered position. Good place for a taunt, I guess?
 				if (FOkToSpeak() && RANDOM_LONG(0, 1))
 				{
-					SENTENCEG_PlayRndSz(ENT(pev), "HG_TAUNT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_TAUNT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_STANDOFF);
@@ -2035,11 +2035,11 @@ Schedule_t* CHGrunt::GetScheduleOfType(int Type)
 	{
 		if (InSquad())
 		{
-			if (g_iSkillLevel == SKILL_HARD && HasConditions(bits_COND_CAN_RANGE_ATTACK2) && OccupySlot(bits_SLOTS_HGRUNT_GRENADE))
+			if (g_Skill.GetSkillLevel() == SkillLevel::Hard && HasConditions(bits_COND_CAN_RANGE_ATTACK2) && OccupySlot(bits_SLOTS_HGRUNT_GRENADE))
 			{
 				if (FOkToSpeak())
 				{
-					SENTENCEG_PlayRndSz(ENT(pev), "HG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(ENT(pev), "HG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return slGruntTossGrenadeCover;
@@ -2191,7 +2191,7 @@ void CHGruntRepel::Spawn()
 void CHGruntRepel::PrecacheCore(const char* classname)
 {
 	UTIL_PrecacheOther(classname);
-	m_iSpriteTexture = PRECACHE_MODEL("sprites/rope.spr");
+	m_iSpriteTexture = PrecacheModel("sprites/rope.spr");
 }
 
 void CHGruntRepel::Precache()
@@ -2231,6 +2231,15 @@ void CHGruntRepel::RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_T
 	CreateMonster("monster_human_grunt");
 }
 
+void CDeadHGrunt::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	// Corpses have less health
+	pev->health = 8;
+	pev->model = MAKE_STRING("models/hgrunt.mdl");
+}
+
 bool CDeadHGrunt::KeyValue(KeyValueData* pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "pose"))
@@ -2244,10 +2253,10 @@ bool CDeadHGrunt::KeyValue(KeyValueData* pkvd)
 
 LINK_ENTITY_TO_CLASS(monster_hgrunt_dead, CDeadHGrunt);
 
-void CDeadHGrunt::SpawnCore(const char* model)
+void CDeadHGrunt::SpawnCore()
 {
-	PRECACHE_MODEL(model);
-	SET_MODEL(ENT(pev), model);
+	PrecacheModel(STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	pev->effects = 0;
 	pev->yaw_speed = 8;
@@ -2258,18 +2267,15 @@ void CDeadHGrunt::SpawnCore(const char* model)
 
 	if (pev->sequence == -1)
 	{
-		ALERT(at_console, "Dead hgrunt with bad pose\n");
+		AILogger->debug("Dead hgrunt with bad pose");
 	}
-
-	// Corpses have less health
-	pev->health = 8;
 
 	MonsterInitDead();
 }
 
 void CDeadHGrunt::Spawn()
 {
-	SpawnCore("models/hgrunt.mdl");
+	SpawnCore();
 
 	// map old bodies onto new bodies
 	switch (pev->body)
@@ -2277,26 +2283,26 @@ void CDeadHGrunt::Spawn()
 	case 0: // Grunt with Gun
 		pev->body = 0;
 		pev->skin = 0;
-		SetBodygroup(HEAD_GROUP, HEAD_GRUNT);
-		SetBodygroup(GUN_GROUP, GUN_MP5);
+		SetBodygroup(HGruntBodyGroup::Head, HGruntHead::Grunt);
+		SetBodygroup(HGruntBodyGroup::Weapons, HGruntWeapon::MP5);
 		break;
 	case 1: // Commander with Gun
 		pev->body = 0;
 		pev->skin = 0;
-		SetBodygroup(HEAD_GROUP, HEAD_COMMANDER);
-		SetBodygroup(GUN_GROUP, GUN_MP5);
+		SetBodygroup(HGruntBodyGroup::Head, HGruntHead::Commander);
+		SetBodygroup(HGruntBodyGroup::Weapons, HGruntWeapon::MP5);
 		break;
 	case 2: // Grunt no Gun
 		pev->body = 0;
 		pev->skin = 0;
-		SetBodygroup(HEAD_GROUP, HEAD_GRUNT);
-		SetBodygroup(GUN_GROUP, GUN_NONE);
+		SetBodygroup(HGruntBodyGroup::Head, HGruntHead::Grunt);
+		SetBodygroup(HGruntBodyGroup::Weapons, HGruntWeapon::Blank);
 		break;
 	case 3: // Commander no Gun
 		pev->body = 0;
 		pev->skin = 0;
-		SetBodygroup(HEAD_GROUP, HEAD_COMMANDER);
-		SetBodygroup(GUN_GROUP, GUN_NONE);
+		SetBodygroup(HGruntBodyGroup::Head, HGruntHead::Commander);
+		SetBodygroup(HGruntBodyGroup::Weapons, HGruntWeapon::Blank);
 		break;
 	}
 }

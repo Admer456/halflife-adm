@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 #include "cbase.h"
 
 #include "com_model.h"
@@ -22,7 +22,7 @@ LINK_ENTITY_TO_CLASS(grapple_tip, CGrappleTip);
 
 namespace
 {
-//TODO: this should be handled differently. A method that returns an overall size, another whether it's fixed, etc. - Solokiller
+// TODO: this should be handled differently. A method that returns an overall size, another whether it's fixed, etc. - Solokiller
 const char* const grapple_small[] =
 	{
 		"monster_bloater",
@@ -86,7 +86,7 @@ const char* const grapple_fixed[] =
 
 void CGrappleTip::Precache()
 {
-	PRECACHE_MODEL("models/shock_effect.mdl");
+	PrecacheModel("models/shock_effect.mdl");
 }
 
 void CGrappleTip::Spawn()
@@ -96,7 +96,7 @@ void CGrappleTip::Spawn()
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(edict(), "models/shock_effect.mdl");
+	SetModel("models/shock_effect.mdl");
 
 	UTIL_SetSize(pev, g_vecZero, g_vecZero);
 
@@ -154,7 +154,7 @@ void CGrappleTip::FlyThink()
 		maxSpeed = 1600;
 	}
 
-	//TODO: should probably clamp at sv_maxvelocity to prevent the tip from going off course. - Solokiller
+	// TODO: should probably clamp at sv_maxvelocity to prevent the tip from going off course. - Solokiller
 	if (pev->velocity.Length() > maxSpeed)
 	{
 		pev->velocity = pev->velocity.Normalize() * maxSpeed;
@@ -166,7 +166,7 @@ void CGrappleTip::FlyThink()
 
 void CGrappleTip::OffsetThink()
 {
-	//Nothing
+	// Nothing
 }
 
 void CGrappleTip::TongueTouch(CBaseEntity* pOther)
@@ -234,7 +234,7 @@ CGrappleTip::TargetClass CGrappleTip::ClassifyTarget(CBaseEntity* pTarget)
 	auto pHit = tr.pHit;
 
 	if (!tr.pHit)
-		pHit = INDEXENT(0);
+		pHit = World->edict();
 
 	const auto pszTexture = TRACE_TEXTURE(pHit, pev->origin, vecEnd);
 

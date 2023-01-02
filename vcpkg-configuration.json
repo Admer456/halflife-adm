@@ -1,0 +1,14 @@
+{
+	"registries": [
+		{
+			"kind": "filesystem",
+			"path": "vcpkg_config/registry",
+			"baseline": "2022-09-20",
+			"packages": [
+				"eastl",
+				"json-schema-validator",
+				"libnyquist"
+			]
+		}
+  ]
+}

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 // shared event functions
 #include "hud.h"
 #include "const.h"
@@ -32,7 +32,7 @@ GetEntity
 Return's the requested cl_entity_t
 =================
 */
-struct cl_entity_s* GetEntity(int idx)
+cl_entity_t* GetEntity(int idx)
 {
 	return gEngfuncs.GetEntityByIndex(idx);
 }
@@ -44,7 +44,7 @@ GetViewEntity
 Return's the current weapon/view model
 =================
 */
-struct cl_entity_s* GetViewEntity()
+cl_entity_t* GetViewEntity()
 {
 	return gEngfuncs.GetViewModel();
 }

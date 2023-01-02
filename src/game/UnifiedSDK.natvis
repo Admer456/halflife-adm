@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<Type Name="string_t">
+		<!--
+			Intrinsic functions are side-effect free so they don't require manual evaluation in the debugger
+			See https://stackoverflow.com/questions/47041809/is-there-a-way-around-this-expression-has-side-effects-and-will-not-be-evaluate
+		-->
+		<Intrinsic Name="CString" Expression="(gpGlobals->pStringBase + m_Value)"/>
+		
+		<!-- Display "Null string" if the offset is the default to differentiate from an empty string. -->
+		<DisplayString Condition="m_Value != 0">{{ {CString()} }}</DisplayString>
+		<DisplayString Condition="m_Value == 0">Null string_t</DisplayString>
+	</Type>
+	
+	<Type Name="CBaseEntity">		
+		<DisplayString>{{ classname={pev->classname} }}</DisplayString>
+		<Expand>
+			<Item Name="[classname]">pev->classname</Item>
+			<Item Name="[targetname]">pev->targetname</Item>
+			<Item Name="[target]">pev->target</Item>
+			<Item Name="[model]">pev->model</Item>
+			<Item Name="[netname]">pev->netname</Item>
+			<Item Name="[message]">pev->message</Item>
+		</Expand>
+	</Type>
+</AutoVisualizer>

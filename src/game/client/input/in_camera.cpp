@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -18,8 +18,6 @@
 #include "SDL2/SDL_mouse.h"
 
 float CL_KeyState(kbutton_t* key);
-
-extern cl_enginefunc_t gEngfuncs;
 
 //-------------------------------------------------- Constants
 
@@ -63,11 +61,11 @@ Vector cam_ofs;
 
 // In third person
 bool cam_thirdperson;
-bool cam_mousemove; //true if we are moving the cam with the mouse, False if not
+bool cam_mousemove; // true if we are moving the cam with the mouse, False if not
 bool iMouseInUse = false;
 bool cam_distancemove;
-extern int mouse_x, mouse_y;		  //used to determine what the current x and y values are
-int cam_old_mouse_x, cam_old_mouse_y; //holds the last ticks mouse movement
+extern int mouse_x, mouse_y;		  // used to determine what the current x and y values are
+int cam_old_mouse_x, cam_old_mouse_y; // holds the last ticks mouse movement
 Point cam_mouse;
 //-------------------------------------------------- Local Variables
 
@@ -134,7 +132,7 @@ float MoveToward(float cur, float goal, float maxspeed)
 
 //-------------------------------------------------- Gobal Functions
 
-typedef struct
+struct moveclip_t
 {
 	Vector boxmins, boxmaxs; // enclose the test object along entire move
 	float *mins, *maxs;		 // size of the moving object
@@ -144,9 +142,7 @@ typedef struct
 	int type;
 	edict_t* passedict;
 	qboolean monsterclip;
-} moveclip_t;
-
-extern trace_t SV_ClipMoveToEntity(edict_t* ent, Vector start, Vector mins, Vector maxs, Vector end);
+};
 
 void DLLEXPORT CAM_Think()
 {
@@ -193,22 +189,22 @@ void DLLEXPORT CAM_Think()
 	camAngles[YAW] = cam_idealyaw->value;
 	dist = cam_idealdist->value;
 	//
-	//movement of the camera with the mouse
+	// movement of the camera with the mouse
 	//
 	if (cam_mousemove)
 	{
-		//get windows cursor position
+		// get windows cursor position
 		SDL_GetCursorPos(&cam_mouse);
-		//check for X delta values and adjust accordingly
-		//eventually adjust YAW based on amount of movement
-		//don't do any movement of the cam using YAW/PITCH if we are zooming in/out the camera
+		// check for X delta values and adjust accordingly
+		// eventually adjust YAW based on amount of movement
+		// don't do any movement of the cam using YAW/PITCH if we are zooming in/out the camera
 		if (!cam_distancemove)
 		{
 
-			//keep the camera within certain limits around the player (ie avoid certain bad viewing angles)
+			// keep the camera within certain limits around the player (ie avoid certain bad viewing angles)
 			if (cam_mouse.x > gEngfuncs.GetWindowCenterX())
 			{
-				//if ((camAngles[YAW]>=225.0)||(camAngles[YAW]<135.0))
+				// if ((camAngles[YAW]>=225.0)||(camAngles[YAW]<135.0))
 				if (camAngles[YAW] < c_maxyaw->value)
 				{
 					camAngles[YAW] += (CAM_ANGLE_MOVE) * ((cam_mouse.x - gEngfuncs.GetWindowCenterX()) / 2);
@@ -221,7 +217,7 @@ void DLLEXPORT CAM_Think()
 			}
 			else if (cam_mouse.x < gEngfuncs.GetWindowCenterX())
 			{
-				//if ((camAngles[YAW]<=135.0)||(camAngles[YAW]>225.0))
+				// if ((camAngles[YAW]<=135.0)||(camAngles[YAW]>225.0))
 				if (camAngles[YAW] > c_minyaw->value)
 				{
 					camAngles[YAW] -= (CAM_ANGLE_MOVE) * ((gEngfuncs.GetWindowCenterX() - cam_mouse.x) / 2);
@@ -232,9 +228,9 @@ void DLLEXPORT CAM_Think()
 				}
 			}
 
-			//check for y delta values and adjust accordingly
-			//eventually adjust PITCH based on amount of movement
-			//also make sure camera is within bounds
+			// check for y delta values and adjust accordingly
+			// eventually adjust PITCH based on amount of movement
+			// also make sure camera is within bounds
 			if (cam_mouse.y > gEngfuncs.GetWindowCenterY())
 			{
 				if (camAngles[PITCH] < c_maxpitch->value)
@@ -258,8 +254,8 @@ void DLLEXPORT CAM_Think()
 				}
 			}
 
-			//set old mouse coordinates to current mouse coordinates
-			//since we are done with the mouse
+			// set old mouse coordinates to current mouse coordinates
+			// since we are done with the mouse
 
 			if ((flSensitivity = gHUD.GetSensitivity()) != 0)
 			{
@@ -275,7 +271,7 @@ void DLLEXPORT CAM_Think()
 		}
 	}
 
-	//Nathan code here
+	// Nathan code here
 	if (0 != CL_KeyState(&cam_pitchup))
 		camAngles[PITCH] += CAM_ANGLE_DELTA;
 	else if (0 != CL_KeyState(&cam_pitchdown))
@@ -324,8 +320,8 @@ void DLLEXPORT CAM_Think()
 				dist = c_mindistance->value;
 			}
 		}
-		//set old mouse coordinates to current mouse coordinates
-		//since we are done with the mouse
+		// set old mouse coordinates to current mouse coordinates
+		// since we are done with the mouse
 		cam_old_mouse_x = cam_mouse.x * gHUD.GetSensitivity();
 		cam_old_mouse_y = cam_mouse.y * gHUD.GetSensitivity();
 		SDL_SetCursorPos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
@@ -408,8 +404,8 @@ void DLLEXPORT CAM_Think()
 	cam_ofs[2] = dist;
 }
 
-extern void KeyDown(kbutton_t* b); // HACK
-extern void KeyUp(kbutton_t* b);   // HACK
+void KeyDown(kbutton_t* b); // HACK
+void KeyUp(kbutton_t* b);	// HACK
 
 void CAM_PitchUpDown() { KeyDown(&cam_pitchup); }
 void CAM_PitchUpUp() { KeyUp(&cam_pitchup); }
@@ -532,11 +528,11 @@ void CAM_StartMouseMove()
 {
 	float flSensitivity;
 
-	//only move the cam with mouse if we are in third person.
+	// only move the cam with mouse if we are in third person.
 	if (cam_thirdperson)
 	{
-		//set appropriate flags and initialize the old mouse position
-		//variables for mouse camera movement
+		// set appropriate flags and initialize the old mouse position
+		// variables for mouse camera movement
 		if (!cam_mousemove)
 		{
 			cam_mousemove = true;
@@ -555,7 +551,7 @@ void CAM_StartMouseMove()
 			}
 		}
 	}
-	//we are not in 3rd person view..therefore do not allow camera movement
+	// we are not in 3rd person view..therefore do not allow camera movement
 	else
 	{
 		cam_mousemove = false;
@@ -563,8 +559,8 @@ void CAM_StartMouseMove()
 	}
 }
 
-//the key has been released for camera movement
-//tell the engine that mouse camera movement is off
+// the key has been released for camera movement
+// tell the engine that mouse camera movement is off
 void CAM_EndMouseMove()
 {
 	cam_mousemove = false;
@@ -573,16 +569,16 @@ void CAM_EndMouseMove()
 
 
 //----------------------------------------------------------
-//routines to start the process of moving the cam in or out
-//using the mouse
+// routines to start the process of moving the cam in or out
+// using the mouse
 //----------------------------------------------------------
 void CAM_StartDistance()
 {
-	//only move the cam with mouse if we are in third person.
+	// only move the cam with mouse if we are in third person.
 	if (cam_thirdperson)
 	{
-		//set appropriate flags and initialize the old mouse position
-		//variables for mouse camera movement
+		// set appropriate flags and initialize the old mouse position
+		// variables for mouse camera movement
 		if (!cam_distancemove)
 		{
 			cam_distancemove = true;
@@ -593,7 +589,7 @@ void CAM_StartDistance()
 			cam_old_mouse_y = cam_mouse.y * gHUD.GetSensitivity();
 		}
 	}
-	//we are not in 3rd person view..therefore do not allow camera movement
+	// we are not in 3rd person view..therefore do not allow camera movement
 	else
 	{
 		cam_distancemove = false;
@@ -602,8 +598,8 @@ void CAM_StartDistance()
 	}
 }
 
-//the key has been released for camera movement
-//tell the engine that mouse camera movement is off
+// the key has been released for camera movement
+// tell the engine that mouse camera movement is off
 void CAM_EndDistance()
 {
 	cam_distancemove = false;

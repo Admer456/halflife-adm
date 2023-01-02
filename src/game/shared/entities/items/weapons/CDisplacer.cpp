@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 #include "UserMessages.h"
 
@@ -23,27 +23,34 @@
 #include "ctf/CTFGoal.h"
 #include "ctf/CTFGoalFlag.h"
 
-extern edict_t* EntSelectSpawnPoint(CBasePlayer* pPlayer);
+edict_t* EntSelectSpawnPoint(CBasePlayer* pPlayer);
 #endif
 
 #include "CDisplacer.h"
 
 LINK_ENTITY_TO_CLASS(weapon_displacer, CDisplacer);
 
+void CDisplacer::OnCreate()
+{
+	BaseClass::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_displacer.mdl");
+}
+
 void CDisplacer::Precache()
 {
-	PRECACHE_MODEL("models/v_displacer.mdl");
-	PRECACHE_MODEL("models/w_displacer.mdl");
-	PRECACHE_MODEL("models/p_displacer.mdl");
+	PrecacheModel("models/v_displacer.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/p_displacer.mdl");
 
-	PRECACHE_SOUND("weapons/displacer_fire.wav");
-	PRECACHE_SOUND("weapons/displacer_self.wav");
-	PRECACHE_SOUND("weapons/displacer_spin.wav");
-	PRECACHE_SOUND("weapons/displacer_spin2.wav");
+	PrecacheSound("weapons/displacer_fire.wav");
+	PrecacheSound("weapons/displacer_self.wav");
+	PrecacheSound("weapons/displacer_spin.wav");
+	PrecacheSound("weapons/displacer_spin2.wav");
 
-	PRECACHE_SOUND("buttons/button11.wav");
+	PrecacheSound("buttons/button11.wav");
 
-	m_iSpriteTexture = PRECACHE_MODEL("sprites/shockwave.spr");
+	m_iSpriteTexture = PrecacheModel("sprites/shockwave.spr");
 
 	UTIL_PrecacheOther("displacer_ball");
 
@@ -58,23 +65,11 @@ void CDisplacer::Spawn()
 
 	m_iId = WEAPON_DISPLACER;
 
-	SET_MODEL(edict(), "models/w_displacer.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = DISPLACER_DEFAULT_GIVE;
 
 	FallInit();
-}
-
-bool CDisplacer::AddToPlayer(CBasePlayer* pPlayer)
-{
-	if (CBasePlayerWeapon::AddToPlayer(pPlayer))
-	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->edict());
-		WRITE_BYTE(m_iId);
-		MESSAGE_END();
-		return true;
-	}
-	return false;
 }
 
 bool CDisplacer::Deploy()
@@ -182,7 +177,7 @@ void CDisplacer::SecondaryAttack()
 
 void CDisplacer::Reload()
 {
-	//Nothing
+	// Nothing
 }
 
 void CDisplacer::SpinupThink()
@@ -195,11 +190,11 @@ void CDisplacer::SpinupThink()
 
 		int flags;
 
-		//#if defined( CLIENT_WEAPONS )
+		// #if defined( CLIENT_WEAPONS )
 		//		flags = FEV_NOTHOST;
-		//#else
+		// #else
 		flags = 0;
-		//#endif
+		// #endif
 
 		PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usFireDisplacer, 0, g_vecZero, g_vecZero,
 			0, 0, static_cast<int>(m_Mode), 0, 0, 0);
@@ -240,11 +235,11 @@ void CDisplacer::AltSpinupThink()
 
 		int flags;
 
-		//#if defined( CLIENT_WEAPONS )
+		// #if defined( CLIENT_WEAPONS )
 		//		flags = FEV_NOTHOST;
-		//#else
+		// #else
 		flags = 0;
-		//#endif
+		// #endif
 
 		PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usFireDisplacer, 0, g_vecZero, g_vecZero,
 			0, 0, static_cast<int>(m_Mode), 0, 0, 0);
@@ -310,7 +305,7 @@ void CDisplacer::FireThink()
 
 	Vector vecSrc = m_pPlayer->GetGunPosition();
 
-	//Update auto-aim
+	// Update auto-aim
 	m_pPlayer->GetAutoaimVectorFromPoint(vecSrc, AUTOAIM_10DEGREES);
 
 	CDisplacerBall::CreateDisplacerBall(vecSrc, vecAnglesAim, m_pPlayer);
@@ -341,7 +336,7 @@ void CDisplacer::AltFireThink()
 
 	m_pPlayer->m_DisplacerReturn = m_pPlayer->pev->origin;
 
-	m_pPlayer->m_flDisplacerSndRoomtype = m_pPlayer->m_flSndRoomtype;
+	m_pPlayer->m_DisplacerSndRoomtype = m_pPlayer->m_SndRoomtype;
 
 #ifndef CLIENT_DLL
 	if (g_pGameRules->IsCTF() && m_pPlayer->m_pFlag)
@@ -408,7 +403,7 @@ void CDisplacer::AltFireThink()
 		m_pPlayer->m_iWeaponFlash = BRIGHT_GUN_FLASH;
 
 #ifndef CLIENT_DLL
-		//Must always be handled on the server side in order to play the right sounds and effects. - Solokiller
+		// Must always be handled on the server side in order to play the right sounds and effects. - Solokiller
 		int flags = 0;
 
 		PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usFireDisplacer, 0, g_vecZero, g_vecZero,

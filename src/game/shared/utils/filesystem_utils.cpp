@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include <limits>
 
@@ -29,7 +29,7 @@ bool FileSystem_LoadFileSystem()
 {
 	if (nullptr != g_pFileSystem)
 	{
-		//Already loaded.
+		// Already loaded.
 		return true;
 	}
 
@@ -88,7 +88,20 @@ void FileSystem_FreeFileSystem()
 	}
 }
 
-std::vector<std::byte> FileSystem_LoadFileIntoBuffer(const char* fileName, const char* pathID)
+std::string FileSystem_GetGameDirectory()
+{
+#ifdef CLIENT_DLL
+	return gEngfuncs.pfnGetGameDirectory();
+#else
+	char gameDir[MAX_PATH_LENGTH];
+	g_engfuncs.pfnGetGameDir(gameDir);
+	gameDir[sizeof(gameDir) - 1] = '\0';
+
+	return gameDir;
+#endif
+}
+
+std::vector<std::byte> FileSystem_LoadFileIntoBuffer(const char* fileName, FileContentFormat format, const char* pathID)
 {
 	assert(nullptr != g_pFileSystem);
 
@@ -101,19 +114,22 @@ std::vector<std::byte> FileSystem_LoadFileIntoBuffer(const char* fileName, const
 	{
 		const auto size = file.Size();
 
-		//Null terminate it in case it's actually text.
 		std::vector<std::byte> buffer;
 
-		buffer.resize(size + 1);
+		buffer.resize(size + (format == FileContentFormat::Text ? 1 : 0));
 
 		file.Read(buffer.data(), size);
 
-		buffer[size] = std::byte{'\0'};
+		if (format == FileContentFormat::Text)
+		{
+			// Null terminate it in case it's actually text.
+			buffer[size] = std::byte{'\0'};
+		}
 
 		return buffer;
 	}
 
-	Con_Printf("FileSystem_LoadFileIntoBuffer: couldn't open file \"%s\" for reading\n", fileName);
+	Con_DPrintf("FileSystem_LoadFileIntoBuffer: couldn't open file \"%s\" for reading\n", fileName);
 	return {};
 }
 

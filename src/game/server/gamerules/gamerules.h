@@ -1,22 +1,28 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //=========================================================
 // GameRules
 //=========================================================
 
 #pragma once
+
+#include <memory>
+
+#include <spdlog/logger.h>
+
+#include "ClientCommandRegistry.h"
 
 class CBasePlayerItem;
 class CBasePlayer;
@@ -68,17 +74,21 @@ enum
 class CGameRules
 {
 public:
-	virtual void RefreshSkillData();						 // fill skill data struct with proper values
+	static inline std::shared_ptr<spdlog::logger> Logger;
+
+	CGameRules();
+	virtual ~CGameRules() = default;
+
 	virtual void Think() = 0;								 // GR_Think - runs every server frame, should handle any timer tasks, periodic events, etc.
 	virtual bool IsAllowedToSpawn(CBaseEntity* pEntity) = 0; // Can this item spawn (eg monsters don't spawn in deathmatch).
 
-	virtual bool FAllowFlashlight() = 0;													   // Are players allowed to switch on their flashlight?
-	virtual bool FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon) = 0;	   // should the player switch to this weapon?
+	virtual bool FAllowFlashlight() = 0;																			  // Are players allowed to switch on their flashlight?
+	virtual bool FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon) = 0;							  // should the player switch to this weapon?
 	virtual bool GetNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pCurrentWeapon, bool alwaysSearch = false); // I can't use this weapon anymore, get me the next best one.
 
 	// Functions to verify the single/multiplayer status of a game
 	virtual bool IsMultiplayer() = 0;								 // is this a multiplayer game? (either coop or deathmatch)
-	virtual bool IsDeathmatch() = 0;								 //is this a deathmatch game?
+	virtual bool IsDeathmatch() = 0;								 // is this a deathmatch game?
 	virtual bool IsTeamplay() { return false; }						 // is this deathmatch game being played with team rules?
 	virtual bool IsCoOp() = 0;										 // is this a coop game?
 	virtual bool IsCTF() = 0;										 // is this a ctf game?
@@ -103,8 +113,7 @@ public:
 	virtual edict_t* GetPlayerSpawnSpot(CBasePlayer* pPlayer); // Place this player on their spawnspot and face them the proper direction.
 
 	virtual bool AllowAutoTargetCrosshair() { return true; }
-	virtual bool ClientCommand(CBasePlayer* pPlayer, const char* pcmd) { return false; } // handles the user commands;  returns true if command handled properly
-	virtual void ClientUserInfoChanged(CBasePlayer* pPlayer, char* infobuffer) {}		 // the player has changed userinfo;  can change it now
+	virtual void ClientUserInfoChanged(CBasePlayer* pPlayer, char* infobuffer) {} // the player has changed userinfo;  can change it now
 
 	// Client kills/scoring
 	virtual int IPointsForKill(CBasePlayer* pAttacker, CBasePlayer* pKilled) = 0; // how many points do I award whoever kills this player?
@@ -170,16 +179,22 @@ public:
 	virtual bool PlayFootstepSounds(CBasePlayer* pl, float fvol) { return true; }
 
 	// Monsters
-	virtual bool FAllowMonsters() = 0; //are monsters allowed
+	virtual bool FAllowMonsters() = 0; // are monsters allowed
 
 	// Immediately end a multiplayer game
 	virtual void EndMultiplayerGame() {}
 
 protected:
 	CBasePlayerItem* FindNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pCurrentWeapon);
+
+	virtual void BecomeSpectator(CBasePlayer* player, const CommandArgs& args);
+
+private:
+	ScopedClientCommand m_SpectateCommand;
+	ScopedClientCommand m_SpecModeCommand;
 };
 
-extern CGameRules* InstallGameRules(CBaseEntity* pWorld);
+CGameRules* InstallGameRules(CBaseEntity* pWorld);
 
 
 //=========================================================
@@ -267,6 +282,9 @@ public:
 	// Teamplay stuff
 	const char* GetTeamID(CBaseEntity* pEntity) override { return ""; }
 	int PlayerRelationship(CBaseEntity* pPlayer, CBaseEntity* pTarget) override;
+
+private:
+	ScopedClientCommand m_VModEnableCommand;
 };
 
 //=========================================================
@@ -277,10 +295,10 @@ class CHalfLifeMultiplay : public CGameRules
 {
 public:
 	CHalfLifeMultiplay();
+	~CHalfLifeMultiplay() override;
 
 	// GR_Think
 	void Think() override;
-	void RefreshSkillData() override;
 	bool IsAllowedToSpawn(CBaseEntity* pEntity) override;
 	bool FAllowFlashlight() override;
 
@@ -313,7 +331,6 @@ public:
 	edict_t* GetPlayerSpawnSpot(CBasePlayer* pPlayer) override;
 
 	bool AllowAutoTargetCrosshair() override;
-	bool ClientCommand(CBasePlayer* pPlayer, const char* pcmd) override;
 	void ClientUserInfoChanged(CBasePlayer* pPlayer, char* infobuffer) override;
 
 	// Client kills/scoring
@@ -383,3 +400,5 @@ protected:
 inline DLL_GLOBAL CGameRules* g_pGameRules = nullptr;
 inline DLL_GLOBAL bool g_fGameOver;
 inline bool g_teamplay = false;
+
+const char* GetTeamName(edict_t* pEntity);

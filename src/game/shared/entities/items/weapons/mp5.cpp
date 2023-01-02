@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "UserMessages.h"
@@ -19,6 +19,12 @@
 LINK_ENTITY_TO_CLASS(weapon_mp5, CMP5);
 LINK_ENTITY_TO_CLASS(weapon_9mmAR, CMP5);
 
+void CMP5::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_9mmAR.mdl");
+}
 
 //=========================================================
 //=========================================================
@@ -26,7 +32,7 @@ void CMP5::Spawn()
 {
 	pev->classname = MAKE_STRING("weapon_9mmAR"); // hack to allow for old names
 	Precache();
-	SET_MODEL(ENT(pev), "models/w_9mmAR.mdl");
+	SetModel(STRING(pev->model));
 	m_iId = WEAPON_MP5;
 
 	m_iDefaultAmmo = MP5_DEFAULT_GIVE;
@@ -39,28 +45,28 @@ void CMP5::Spawn()
 
 void CMP5::Precache()
 {
-	PRECACHE_MODEL("models/v_9mmAR.mdl");
-	PRECACHE_MODEL("models/w_9mmAR.mdl");
-	PRECACHE_MODEL("models/p_9mmAR.mdl");
+	PrecacheModel("models/v_9mmAR.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/p_9mmAR.mdl");
 
-	m_iShell = PRECACHE_MODEL("models/shell.mdl"); // brass shellTE_MODEL
+	m_iShell = PrecacheModel("models/shell.mdl"); // brass shellTE_MODEL
 
-	PRECACHE_MODEL("models/grenade.mdl"); // grenade
+	PrecacheModel("models/grenade.mdl"); // grenade
 
-	PRECACHE_MODEL("models/w_9mmARclip.mdl");
-	PRECACHE_SOUND("items/9mmclip1.wav");
+	PrecacheModel("models/w_9mmARclip.mdl");
+	PrecacheSound("items/9mmclip1.wav");
 
-	PRECACHE_SOUND("items/clipinsert1.wav");
-	PRECACHE_SOUND("items/cliprelease1.wav");
+	PrecacheSound("items/clipinsert1.wav");
+	PrecacheSound("items/cliprelease1.wav");
 
-	PRECACHE_SOUND("weapons/hks1.wav"); // H to the K
-	PRECACHE_SOUND("weapons/hks2.wav"); // H to the K
-	PRECACHE_SOUND("weapons/hks3.wav"); // H to the K
+	PrecacheSound("weapons/hks1.wav"); // H to the K
+	PrecacheSound("weapons/hks2.wav"); // H to the K
+	PrecacheSound("weapons/hks3.wav"); // H to the K
 
-	PRECACHE_SOUND("weapons/glauncher.wav");
-	PRECACHE_SOUND("weapons/glauncher2.wav");
+	PrecacheSound("weapons/glauncher.wav");
+	PrecacheSound("weapons/glauncher2.wav");
 
-	PRECACHE_SOUND("weapons/357_cock1.wav");
+	PrecacheSound("weapons/357_cock1.wav");
 
 	m_usMP5 = PRECACHE_EVENT(1, "events/mp5.sc");
 	m_usMP52 = PRECACHE_EVENT(1, "events/mp52.sc");
@@ -106,7 +112,7 @@ bool CMP5::Deploy()
 void CMP5::PrimaryAttack()
 {
 	// don't fire underwater
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 		PlayEmptySound();
 		m_flNextPrimaryAttack = 0.15;
@@ -172,7 +178,7 @@ void CMP5::PrimaryAttack()
 void CMP5::SecondaryAttack()
 {
 	// don't fire underwater
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 		PlayEmptySound();
 		m_flNextPrimaryAttack = 0.15;
@@ -261,18 +267,20 @@ void CMP5::WeaponIdle()
 
 class CMP5AmmoClip : public CBasePlayerAmmo
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_9mmARclip.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_9mmARclip.mdl");
 	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_9mmARclip.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		bool bResult = (pOther->GiveAmmo(AMMO_MP5CLIP_GIVE, "9mm", _9MM_MAX_CARRY) != -1);
 		if (bResult)
@@ -289,18 +297,20 @@ LINK_ENTITY_TO_CLASS(ammo_9mmAR, CMP5AmmoClip);
 
 class CMP5Chainammo : public CBasePlayerAmmo
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_chainammo.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_chainammo.mdl");
 	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_chainammo.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		bool bResult = (pOther->GiveAmmo(AMMO_CHAINBOX_GIVE, "9mm", _9MM_MAX_CARRY) != -1);
 		if (bResult)
@@ -315,18 +325,20 @@ LINK_ENTITY_TO_CLASS(ammo_9mmbox, CMP5Chainammo);
 
 class CMP5AmmoGrenade : public CBasePlayerAmmo
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_ARgrenade.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_ARgrenade.mdl");
 	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_ARgrenade.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		bool bResult = (pOther->GiveAmmo(AMMO_M203BOX_GIVE, "ARgrenades", M203_GRENADE_MAX_CARRY) != -1);
 

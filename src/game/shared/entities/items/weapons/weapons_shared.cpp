@@ -1,21 +1,21 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 
 // Precaches the ammo and queues the ammo info for sending to clients
-void AddAmmoNameToAmmoRegistry(const char* szAmmoname)
+void AddAmmoNameToAmmoRegistry(const char* szAmmoname, const char* weaponName)
 {
 	// make sure it's not already in the registry
 	for (int i = 0; i < MAX_AMMO_SLOTS; i++)
@@ -33,8 +33,11 @@ void AddAmmoNameToAmmoRegistry(const char* szAmmoname)
 	if (giAmmoIndex >= MAX_AMMO_SLOTS)
 		giAmmoIndex = 0;
 
-	CBasePlayerItem::AmmoInfoArray[giAmmoIndex].pszName = szAmmoname;
-	CBasePlayerItem::AmmoInfoArray[giAmmoIndex].iId = giAmmoIndex; // yes, this info is redundant
+	auto& ammoType = CBasePlayerItem::AmmoInfoArray[giAmmoIndex];
+
+	ammoType.pszName = szAmmoname;
+	ammoType.iId = giAmmoIndex; // yes, this info is redundant
+	ammoType.WeaponName = weaponName;
 }
 
 void FindHullIntersection(const Vector& vecSrc, TraceResult& tr, const Vector& mins, const Vector& maxs, edict_t* pEntity)
@@ -163,7 +166,7 @@ void CBasePlayerWeapon::ItemPostFrame()
 	int maxClip = iMaxClip();
 
 #ifndef CLIENT_DLL
-	//Reset max clip and max ammo to default values
+	// Reset max clip and max ammo to default values
 	if ((m_pPlayer->m_iItems & CTFItem::Backpack) == 0)
 	{
 		if (m_iClip > iMaxClip())
@@ -291,6 +294,20 @@ void CBasePlayer::SelectLastItem()
 	CBasePlayerItem* pTemp = m_pActiveItem;
 	m_pActiveItem = m_pLastItem;
 	m_pLastItem = pTemp;
+
+	auto weapon = m_pActiveItem->GetWeaponPtr();
+
+	if (weapon)
+	{
+		weapon->m_ForceSendAnimations = true;
+	}
+
 	m_pActiveItem->Deploy();
+
+	if (weapon)
+	{
+		weapon->m_ForceSendAnimations = false;
+	}
+
 	m_pActiveItem->UpdateItemInfo();
 }

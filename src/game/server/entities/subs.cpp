@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== subs.cpp ========================================================
@@ -24,7 +24,7 @@
 #include "nodes.h"
 #include "doors.h"
 
-extern bool FEntIsVisible(entvars_t* pev, entvars_t* pevTarget);
+bool FEntIsVisible(entvars_t* pev, entvars_t* pevTarget);
 
 // Landmark class
 void CPointEntity::Spawn()
@@ -110,7 +110,7 @@ void CBaseEntity::SUB_Remove()
 	{
 		// this situation can screw up monsters who can't tell their entity pointers are invalid.
 		pev->health = 0;
-		ALERT(at_aiconsole, "SUB_Remove called on entity with health > 0\n");
+		Logger->debug("SUB_Remove called on entity \"{}\" ({}) with health > 0", STRING(pev->targetname), STRING(pev->classname));
 	}
 
 	REMOVE_ENTITY(ENT(pev));
@@ -178,23 +178,17 @@ void CBaseEntity::SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, floa
 
 void FireTargets(const char* targetName, CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
-	edict_t* pentTarget = nullptr;
 	if (!targetName)
 		return;
 
-	ALERT(at_aiconsole, "Firing: (%s)\n", targetName);
+	CBaseEntity::IOLogger->debug("Firing: ({})", targetName);
 
-	for (;;)
+	for (auto target : UTIL_FindEntitiesByTargetname(targetName))
 	{
-		pentTarget = FIND_ENTITY_BY_TARGETNAME(pentTarget, targetName);
-		if (FNullEnt(pentTarget))
-			break;
-
-		CBaseEntity* pTarget = CBaseEntity::Instance(pentTarget);
-		if (pTarget && (pTarget->pev->flags & FL_KILLME) == 0) // Don't use dying ents
+		if (target && (target->pev->flags & FL_KILLME) == 0) // Don't use dying ents
 		{
-			ALERT(at_aiconsole, "Found: %s, firing (%s)\n", STRING(pTarget->pev->classname), targetName);
-			pTarget->Use(pActivator, pCaller, useType, value);
+			CBaseEntity::IOLogger->debug("Found: {}, firing ({})", STRING(target->pev->classname), targetName);
+			target->Use(pActivator, pCaller, useType, value);
 		}
 	}
 }
@@ -216,8 +210,7 @@ void CBaseDelay::SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float
 	if (m_flDelay != 0)
 	{
 		// create a temp object to fire at a later time
-		CBaseDelay* pTemp = GetClassPtr((CBaseDelay*)nullptr);
-		pTemp->pev->classname = MAKE_STRING("DelayedUse");
+		CBaseDelay* pTemp = g_EntityDictionary->Create<CBaseDelay>("DelayedUse");
 
 		pTemp->pev->nextthink = gpGlobals->time + m_flDelay;
 
@@ -251,16 +244,12 @@ void CBaseDelay::SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float
 
 	if (!FStringNull(m_iszKillTarget))
 	{
-		edict_t* pentKillTarget = nullptr;
+		CBaseEntity::IOLogger->debug("KillTarget: {}", STRING(m_iszKillTarget));
 
-		ALERT(at_aiconsole, "KillTarget: %s\n", STRING(m_iszKillTarget));
-		pentKillTarget = FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(m_iszKillTarget));
-		while (!FNullEnt(pentKillTarget))
+		for (auto killTarget : UTIL_FindEntitiesByTargetname(STRING(m_iszKillTarget)))
 		{
-			UTIL_Remove(CBaseEntity::Instance(pentKillTarget));
-
-			ALERT(at_aiconsole, "killing %s\n", STRING(pentKillTarget->v.classname));
-			pentKillTarget = FIND_ENTITY_BY_TARGETNAME(pentKillTarget, STRING(m_iszKillTarget));
+			UTIL_Remove(killTarget);
+			CBaseEntity::IOLogger->debug("killing {}", STRING(killTarget->pev->classname));
 		}
 	}
 
@@ -269,7 +258,7 @@ void CBaseDelay::SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float
 	//
 	if (!FStringNull(pev->target))
 	{
-		FireTargets(STRING(pev->target), pActivator, this, useType, value);
+		FireTargets(GetTarget(), pActivator, this, useType, value);
 	}
 }
 

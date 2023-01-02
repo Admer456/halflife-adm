@@ -1,26 +1,26 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
 
-typedef enum
+enum Explosions
 {
 	expRandom,
 	expDirected
-} Explosions;
-typedef enum
+};
+enum Materials
 {
 	matGlass = 0,
 	matWood,
@@ -33,7 +33,7 @@ typedef enum
 	matRocks,
 	matNone,
 	matLastMaterial
-} Materials;
+};
 
 #define NUM_SHARDS 6 // this many shards spawned when breakable objects break;
 
@@ -54,7 +54,6 @@ public:
 	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 
 	bool IsBreakable();
-	bool SparkWhenHit();
 
 	int DamageDecal(int bitsDamageType) override;
 
@@ -67,7 +66,7 @@ public:
 	inline int ExplosionMagnitude() { return pev->impulse; }
 	inline void ExplosionSetMagnitude(int magnitude) { pev->impulse = magnitude; }
 
-	static void MaterialSoundPrecache(Materials precacheMaterial);
+	static void MaterialSoundPrecache(CBaseEntity* self, Materials precacheMaterial);
 	static void MaterialSoundRandom(edict_t* pEdict, Materials soundMaterial, float volume);
 	static const char** MaterialSoundList(Materials precacheMaterial, int& soundCount);
 
@@ -84,6 +83,6 @@ public:
 	Explosions m_Explosion;
 	int m_idShard;
 	float m_angle;
-	int m_iszGibModel;
-	int m_iszSpawnObject;
+	string_t m_iszGibModel;
+	string_t m_iszSpawnObject;
 };

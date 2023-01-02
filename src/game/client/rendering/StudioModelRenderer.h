@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -26,7 +26,7 @@ public:
 public:
 	// Public Interfaces
 	virtual bool StudioDrawModel(int flags);
-	virtual bool StudioDrawPlayer(int flags, struct entity_state_s* pplayer);
+	virtual bool StudioDrawPlayer(int flags, entity_state_t* pplayer);
 
 public:
 	// Local interfaces
@@ -160,11 +160,11 @@ public:
 	float m_fSoftwareXScale, m_fSoftwareYScale;
 
 	// Current view vectors and render origin
-	float m_vUp[3];
-	float m_vRight[3];
-	float m_vNormal[3];
+	Vector m_vUp;
+	Vector m_vRight;
+	Vector m_vNormal;
 
-	float m_vRenderOrigin[3];
+	Vector m_vRenderOrigin;
 
 	// Model render counters ( from engine )
 	int* m_pStudioModelCount;

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "UserMessages.h"
@@ -44,8 +44,7 @@ LINK_ENTITY_TO_CLASS(crossbow_bolt, CCrossbowBolt);
 CCrossbowBolt* CCrossbowBolt::BoltCreate()
 {
 	// Create a new entity with CCrossbowBolt private data
-	CCrossbowBolt* pBolt = GetClassPtr((CCrossbowBolt*)nullptr);
-	pBolt->pev->classname = MAKE_STRING("bolt");
+	CCrossbowBolt* pBolt = g_EntityDictionary->Create<CCrossbowBolt>("crossbow_bolt");
 	pBolt->Spawn();
 
 	return pBolt;
@@ -59,7 +58,7 @@ void CCrossbowBolt::Spawn()
 
 	pev->gravity = 0.5;
 
-	SET_MODEL(ENT(pev), "models/crossbow_bolt.mdl");
+	SetModel("models/crossbow_bolt.mdl");
 
 	UTIL_SetOrigin(pev, pev->origin);
 	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
@@ -72,13 +71,13 @@ void CCrossbowBolt::Spawn()
 
 void CCrossbowBolt::Precache()
 {
-	PRECACHE_MODEL("models/crossbow_bolt.mdl");
-	PRECACHE_SOUND("weapons/xbow_hitbod1.wav");
-	PRECACHE_SOUND("weapons/xbow_hitbod2.wav");
-	PRECACHE_SOUND("weapons/xbow_fly1.wav");
-	PRECACHE_SOUND("weapons/xbow_hit1.wav");
-	PRECACHE_SOUND("fvox/beep.wav");
-	m_iTrail = PRECACHE_MODEL("sprites/streak.spr");
+	PrecacheModel("models/crossbow_bolt.mdl");
+	PrecacheSound("weapons/xbow_hitbod1.wav");
+	PrecacheSound("weapons/xbow_hitbod2.wav");
+	PrecacheSound("weapons/xbow_fly1.wav");
+	PrecacheSound("weapons/xbow_hit1.wav");
+	PrecacheSound("fvox/beep.wav");
+	m_iTrail = PrecacheModel("sprites/streak.spr");
 }
 
 
@@ -104,11 +103,11 @@ void CCrossbowBolt::BoltTouch(CBaseEntity* pOther)
 
 		if (pOther->IsPlayer())
 		{
-			pOther->TraceAttack(pevOwner, gSkillData.plrDmgCrossbowClient, pev->velocity.Normalize(), &tr, DMG_NEVERGIB);
+			pOther->TraceAttack(pevOwner, GetSkillFloat("plr_xbow_bolt_client"sv), pev->velocity.Normalize(), &tr, DMG_NEVERGIB);
 		}
 		else
 		{
-			pOther->TraceAttack(pevOwner, gSkillData.plrDmgCrossbowMonster, pev->velocity.Normalize(), &tr, DMG_BULLET | DMG_NEVERGIB);
+			pOther->TraceAttack(pevOwner, GetSkillFloat("plr_xbow_bolt_monster"sv), pev->velocity.Normalize(), &tr, DMG_BULLET | DMG_NEVERGIB);
 		}
 
 		ApplyMultiDamage(pev, pevOwner);
@@ -168,7 +167,7 @@ void CCrossbowBolt::BubbleThink()
 {
 	pev->nextthink = gpGlobals->time + 0.1;
 
-	if (pev->waterlevel == 0)
+	if (pev->waterlevel == WaterLevel::Dry)
 		return;
 
 	UTIL_BubbleTrail(pev->origin - pev->velocity * 0.1, pev->origin, 1);
@@ -217,11 +216,18 @@ void CCrossbowBolt::ExplodeThink()
 
 LINK_ENTITY_TO_CLASS(weapon_crossbow, CCrossbow);
 
+void CCrossbow::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_crossbow.mdl");
+}
+
 void CCrossbow::Spawn()
 {
 	Precache();
 	m_iId = WEAPON_CROSSBOW;
-	SET_MODEL(ENT(pev), "models/w_crossbow.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = CROSSBOW_DEFAULT_GIVE;
 
@@ -230,12 +236,12 @@ void CCrossbow::Spawn()
 
 void CCrossbow::Precache()
 {
-	PRECACHE_MODEL("models/w_crossbow.mdl");
-	PRECACHE_MODEL("models/v_crossbow.mdl");
-	PRECACHE_MODEL("models/p_crossbow.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/v_crossbow.mdl");
+	PrecacheModel("models/p_crossbow.mdl");
 
-	PRECACHE_SOUND("weapons/xbow_fire1.wav");
-	PRECACHE_SOUND("weapons/xbow_reload1.wav");
+	PrecacheSound("weapons/xbow_fire1.wav");
+	PrecacheSound("weapons/xbow_reload1.wav");
 
 	UTIL_PrecacheOther("crossbow_bolt");
 
@@ -386,7 +392,7 @@ void CCrossbow::FireBolt()
 	pBolt->pev->angles = anglesAim;
 	pBolt->pev->owner = m_pPlayer->edict();
 
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 		pBolt->pev->velocity = vecDir * BOLT_WATER_VELOCITY;
 		pBolt->pev->speed = BOLT_WATER_VELOCITY;
@@ -488,18 +494,20 @@ void CCrossbow::WeaponIdle()
 
 class CCrossbowAmmo : public CBasePlayerAmmo
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_crossbow_clip.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_crossbow_clip.mdl");
 	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_crossbow_clip.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		if (pOther->GiveAmmo(AMMO_CROSSBOWCLIP_GIVE, "bolts", BOLT_MAX_CARRY) != -1)
 		{

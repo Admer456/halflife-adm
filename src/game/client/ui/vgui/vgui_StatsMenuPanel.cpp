@@ -107,7 +107,7 @@ CStatsMenuPanel::CStatsMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int w
 	// Create the Scroll panel
 	m_pScrollPanel = new CTFScrollPanel(STATSMENU_WINDOW_X, STATSMENU_WINDOW_Y, STATSMENU_WINDOW_SIZE_X, STATSMENU_WINDOW_SIZE_Y);
 	m_pScrollPanel->setParent(this);
-	//force the scrollbars on, so after the validate clientClip will be smaller
+	// force the scrollbars on, so after the validate clientClip will be smaller
 	m_pScrollPanel->setScrollBarAutoVisible(false, false);
 	m_pScrollPanel->setScrollBarVisible(true, true);
 	m_pScrollPanel->setBorder(new LineBorder(Color(0, 112, 0, 0)));
@@ -115,7 +115,7 @@ CStatsMenuPanel::CStatsMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int w
 
 	int clientWide = m_pScrollPanel->getClient()->getWide();
 
-	//turn scrollpanel back into auto show scrollbar mode and validate
+	// turn scrollpanel back into auto show scrollbar mode and validate
 	m_pScrollPanel->setScrollBarAutoVisible(false, true);
 	m_pScrollPanel->setScrollBarVisible(false, false);
 	m_pScrollPanel->validate();
@@ -123,7 +123,7 @@ CStatsMenuPanel::CStatsMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int w
 	for (int i = 0; i < StatsTeamsCount; ++i)
 	{
 		char sz[256];
-		//TODO: this is using YRES for an X coord. Bugged in vanilla
+		// TODO: this is using YRES for an X coord. Bugged in vanilla
 		int iXPos = STATSMENU_TOPLEFT_BUTTON_X + ((STATSMENU_BUTTON_SIZE_X + STATSMENU_BUTTON_SPACER_Y) * i);
 
 		strcpy(sz, CHudTextMessage::BufferedLocaliseTextString(sLocalisedStatsTeams[i]));
@@ -136,10 +136,10 @@ CStatsMenuPanel::CStatsMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int w
 		m_pButtons[i]->setParent(this);
 
 		// Create the Class Info Window
-		//m_pClassInfoPanel[i] = new CTransparentPanel( 255, CLASSMENU_WINDOW_X, CLASSMENU_WINDOW_Y, CLASSMENU_WINDOW_SIZE_X, CLASSMENU_WINDOW_SIZE_Y );
+		// m_pClassInfoPanel[i] = new CTransparentPanel( 255, CLASSMENU_WINDOW_X, CLASSMENU_WINDOW_Y, CLASSMENU_WINDOW_SIZE_X, CLASSMENU_WINDOW_SIZE_Y );
 		m_pClassInfoPanel[i] = new CTransparentPanel(255, 0, 0, clientWide, STATSMENU_WINDOW_SIZE_Y);
 		m_pClassInfoPanel[i]->setParent(m_pScrollPanel->getClient());
-		//m_pClassInfoPanel[i]->setVisible( false );
+		// m_pClassInfoPanel[i]->setVisible( false );
 
 		// don't show class pic in lower resolutions
 		int textOffs = XRES(8);
@@ -155,7 +155,7 @@ CStatsMenuPanel::CStatsMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int w
 		pSchemes->getBgColor(hTitleScheme, r, g, b, a);
 		pNameLabel->setBgColor(r, g, b, a);
 		pNameLabel->setContentAlignment(vgui::Label::a_west);
-		//pNameLabel->setBorder(new LineBorder());
+		// pNameLabel->setBorder(new LineBorder());
 		pNameLabel->setText("%s", localName);
 
 		if (ScreenWidth > 639)
@@ -194,7 +194,7 @@ CStatsMenuPanel::CStatsMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int w
 		int maxX = xx + wide;
 		int maxY = yy + tall;
 
-		//check to see if the image goes lower than the text
+		// check to see if the image goes lower than the text
 		if (m_pClassImages[i] != nullptr)
 		{
 			m_pClassImages[i]->getPos(xx, yy);
@@ -351,9 +351,9 @@ bool CStatsMenuPanel::MsgFunc_StatsInfo(const char* pszName, int iSize, void* pb
 		char sz[64];
 		sprintf(sz, "stats/stats_%s.ost", sCTFStatsSelection[teamNum]);
 
-		char* pfile = (char*)gEngfuncs.COM_LoadFile(sz, 5, nullptr);
+		const auto fileContents = FileSystem_LoadFileIntoBuffer(sz, FileContentFormat::Text);
 
-		if (pfile)
+		if (!fileContents.empty())
 		{
 			if (iNumPlayers <= 0)
 			{
@@ -363,11 +363,11 @@ bool CStatsMenuPanel::MsgFunc_StatsInfo(const char* pszName, int iSize, void* pb
 			{
 				gViewPort->GetAllPlayersInfo();
 
-				//TODO: this passes an arbitrary string as the format string which is incredibly dangerous (also in vanilla)
-				//Overcomplicated time calculations, can just use modulo instead for seconds
+				// TODO: this passes an arbitrary string as the format string which is incredibly dangerous (also in vanilla)
+				// Overcomplicated time calculations, can just use modulo instead for seconds
 				sprintf(
 					szStatsBuf[teamNum],
-					pfile,
+					reinterpret_cast<const char*>(fileContents.data()),
 					g_TeamStatInfo[teamNum].szMVP,
 					g_TeamStatInfo[teamNum].iMVPVal,
 					g_TeamStatInfo[teamNum].szMostKills,
@@ -410,9 +410,6 @@ bool CStatsMenuPanel::MsgFunc_StatsInfo(const char* pszName, int iSize, void* pb
 			int wide, tall;
 			m_pStatsWindow[teamNum]->getTextImage()->getSize(wide, tall);
 			m_pStatsWindow[teamNum]->setSize(wide, tall);
-
-			//TODO: missing from vanilla
-			gEngfuncs.COM_FreeFile(pfile);
 		}
 	}
 
@@ -444,15 +441,15 @@ bool CStatsMenuPanel::MsgFunc_StatsPlayer(const char* pszName, int iSize, void* 
 		char sz[64];
 		sprintf(sz, "stats/stats_%s.ost", sCTFStatsSelection[3]);
 
-		char* pfile = (char*)gEngfuncs.COM_LoadFile(sz, 5, nullptr);
+		const auto fileContents = FileSystem_LoadFileIntoBuffer(sz, FileContentFormat::Text);
 
-		if (pfile)
+		if (!fileContents.empty())
 		{
-			//TODO: this passes an arbitrary string as the format string which is incredibly dangerous (also in vanilla)
-			//Overcomplicated time calculations, can just use modulo instead for seconds
+			// TODO: this passes an arbitrary string as the format string which is incredibly dangerous (also in vanilla)
+			// Overcomplicated time calculations, can just use modulo instead for seconds
 			sprintf(
 				szStatsBuf[3],
-				pfile,
+				reinterpret_cast<const char*>(fileContents.data()),
 				iMVPVal,
 				iKillsVal,
 				iCTFVal,
@@ -479,9 +476,6 @@ bool CStatsMenuPanel::MsgFunc_StatsPlayer(const char* pszName, int iSize, void* 
 			int wide, tall;
 			m_pStatsWindow[3]->getTextImage()->getSize(wide, tall);
 			m_pStatsWindow[3]->setSize(wide, tall);
-
-			//TODO: missing from vanilla
-			gEngfuncs.COM_FreeFile(pfile);
 		}
 	}
 

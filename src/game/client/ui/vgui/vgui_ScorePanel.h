@@ -1,4 +1,4 @@
-//========= Copyright � 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright ï¿½ 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -256,7 +256,7 @@ private:
 	CLabelHeader m_PlayerEntries[NUM_COLUMNS][NUM_ROWS]; // Labels for the grid entries.
 
 	ScorePanel::HitTestPanel m_HitTestPanel;
-	//CommandButton* m_pCloseButton;
+	// CommandButton* m_pCloseButton;
 	CommandButton* m_pStatsButton;
 	CLabelHeader* GetPlayerEntry(int x, int y) { return &m_PlayerEntries[x][y]; }
 

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // pit drone - medium sized, fires sharp teeth like spikes and swipes with sharp appendages
 //=========================================================
@@ -82,24 +82,23 @@ IMPLEMENT_SAVERESTORE(CPitdroneSpike, CBaseEntity);
 
 void CPitdroneSpike::Precache()
 {
-	PRECACHE_MODEL("models/pit_drone_spike.mdl");
-	PRECACHE_SOUND("weapons/xbow_hitbod1.wav");
-	PRECACHE_SOUND("weapons/xbox_hit1.wav");
+	PrecacheModel("models/pit_drone_spike.mdl");
+	PrecacheSound("weapons/xbow_hitbod1.wav");
+	PrecacheSound("weapons/xbow_hit1.wav");
 
-	iSpikeTrail = PRECACHE_MODEL("sprites/spike_trail.spr");
+	iSpikeTrail = PrecacheModel("sprites/spike_trail.spr");
 }
 
 void CPitdroneSpike::Spawn()
 {
 	pev->movetype = MOVETYPE_FLY;
-	pev->classname = MAKE_STRING("pitdronespike");
 
 	pev->solid = SOLID_BBOX;
 	pev->takedamage = DAMAGE_YES;
 	pev->flags |= FL_MONSTER;
 	pev->health = 1;
 
-	SET_MODEL(ENT(pev), "models/pit_drone_spike.mdl");
+	SetModel("models/pit_drone_spike.mdl");
 	pev->frame = 0;
 	pev->scale = 0.5;
 
@@ -110,7 +109,7 @@ void CPitdroneSpike::Spawn()
 
 void CPitdroneSpike::Shoot(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity, Vector vecAngles)
 {
-	CPitdroneSpike* pSpit = GetClassPtr((CPitdroneSpike*)nullptr);
+	CPitdroneSpike* pSpit = g_EntityDictionary->Create<CPitdroneSpike>("pitdronespike");
 
 	pSpit->pev->angles = vecAngles;
 	UTIL_SetOrigin(pSpit->pev, vecStart);
@@ -135,14 +134,14 @@ void CPitdroneSpike::SpikeTouch(CBaseEntity* pOther)
 	}
 	else
 	{
-		pOther->TakeDamage(pev, pev, gSkillData.pitdroneDmgSpit, DMG_GENERIC);
+		pOther->TakeDamage(pev, pev, GetSkillFloat("pitdrone_dmg_spit"sv), DMG_GENERIC);
 		EMIT_SOUND_DYN(edict(), CHAN_VOICE, "weapons/xbow_hitbod1.wav", VOL_NORM, ATTN_NORM, 0, iPitch);
 	}
 
 	SetTouch(nullptr);
 
-	//Stick it in the world for a bit
-	//TODO: maybe stick it on any entity that reports FL_WORLDBRUSH too?
+	// Stick it in the world for a bit
+	// TODO: maybe stick it on any entity that reports FL_WORLDBRUSH too?
 	if (0 == strcmp("worldspawn", STRING(pOther->pev->classname)))
 	{
 		const auto vecDir = pev->velocity.Normalize();
@@ -167,7 +166,7 @@ void CPitdroneSpike::SpikeTouch(CBaseEntity* pOther)
 	}
 	else
 	{
-		//Hit something else, remove
+		// Hit something else, remove
 		SetThink(&CBaseEntity::SUB_Remove);
 		pev->nextthink = gpGlobals->time + 0.1;
 	}
@@ -222,6 +221,7 @@ enum PitdroneWeapon
 class CPitdrone : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
@@ -269,6 +269,14 @@ TYPEDESCRIPTION CPitdrone::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE(CPitdrone, CBaseMonster);
 
+void CPitdrone::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = GetSkillFloat("pitdrone_health"sv);
+	pev->model = MAKE_STRING("models/pit_drone.mdl");
+}
+
 //=========================================================
 // IgnoreConditions
 //=========================================================
@@ -287,7 +295,7 @@ int CPitdrone::IgnoreConditions()
 
 int CPitdrone::IRelationship(CBaseEntity* pTarget)
 {
-	//Always mark pit drones as allies
+	// Always mark pit drones as allies
 	if (FClassnameIs(pTarget->pev, "monster_pitdrone"))
 	{
 		return R_AL;
@@ -371,7 +379,7 @@ bool CPitdrone::FValidateHintType(short sHint)
 		}
 	}
 
-	ALERT(at_aiconsole, "Couldn't validate hint type");
+	AILogger->debug("Couldn't validate hint type");
 	return false;
 }
 
@@ -547,12 +555,12 @@ void CPitdrone::HandleAnimEvent(MonsterEvent_t* pEvent)
 	case PITDRONE_AE_BITE:
 	{
 		// SOUND HERE!
-		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.pitdroneDmgBite, DMG_SLASH);
+		CBaseEntity* pHurt = CheckTraceHullAttack(70, GetSkillFloat("pitdrone_dmg_bite"sv), DMG_SLASH);
 
 		if (pHurt)
 		{
-			//pHurt->pev->punchangle.z = -15;
-			//pHurt->pev->punchangle.x = -45;
+			// pHurt->pev->punchangle.z = -15;
+			// pHurt->pev->punchangle.x = -45;
 			pHurt->pev->velocity = pHurt->pev->velocity - gpGlobals->v_forward * 100;
 			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 100;
 		}
@@ -561,7 +569,7 @@ void CPitdrone::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case PITDRONE_AE_TAILWHIP:
 	{
-		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.pitdroneDmgWhip, DMG_CLUB | DMG_ALWAYSGIB);
+		CBaseEntity* pHurt = CheckTraceHullAttack(70, GetSkillFloat("pitdrone_dmg_whip"sv), DMG_CLUB | DMG_ALWAYSGIB);
 		if (pHurt)
 		{
 			pHurt->pev->punchangle.z = -20;
@@ -611,9 +619,9 @@ void CPitdrone::HandleAnimEvent(MonsterEvent_t* pEvent)
 			}
 
 
-			//pHurt->pev->punchangle.x = RANDOM_LONG(0,34) - 5;
-			//pHurt->pev->punchangle.z = RANDOM_LONG(0,49) - 25;
-			//pHurt->pev->punchangle.y = RANDOM_LONG(0,89) - 45;
+			// pHurt->pev->punchangle.x = RANDOM_LONG(0,34) - 5;
+			// pHurt->pev->punchangle.z = RANDOM_LONG(0,49) - 25;
+			// pHurt->pev->punchangle.y = RANDOM_LONG(0,89) - 45;
 
 			// screeshake transforms the viewmodel as well as the viewangle. No problems with seeing the ends of the viewmodels.
 			UTIL_ScreenShake(pHurt->pev->origin, 25.0, 1.5, 0.7, 2);
@@ -655,14 +663,13 @@ void CPitdrone::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/pit_drone.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 48));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_GREEN;
 	pev->effects = 0;
-	pev->health = gSkillData.pitdroneHealth;
 	m_flFieldOfView = VIEW_FIELD_WIDE; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
@@ -679,7 +686,7 @@ void CPitdrone::Spawn()
 	}
 	else
 	{
-		//TODO: constrain value to valid range
+		// TODO: constrain value to valid range
 		SetBodygroup(PitdroneBodygroup::Weapons, (PitdroneWeapon::One + 1) - m_iInitialAmmo);
 	}
 
@@ -698,42 +705,42 @@ void CPitdrone::Spawn()
 //=========================================================
 void CPitdrone::Precache()
 {
-	PRECACHE_MODEL("models/pit_drone.mdl");
-	PRECACHE_MODEL("models/pit_drone_gibs.mdl");
+	PrecacheModel(STRING(pev->model));
+	PrecacheModel("models/pit_drone_gibs.mdl");
 
 	UTIL_PrecacheOther("pitdronespike");
 
-	iPitdroneSpitSprite = PRECACHE_MODEL("sprites/tinyspit.spr"); // client side spittle.
+	iPitdroneSpitSprite = PrecacheModel("sprites/tinyspit.spr"); // client side spittle.
 
-	PRECACHE_SOUND("zombie/claw_miss2.wav"); // because we use the basemonster SWIPE animation event
+	PrecacheSound("zombie/claw_miss2.wav"); // because we use the basemonster SWIPE animation event
 
-	PRECACHE_SOUND("pitdrone/pit_drone_alert1.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_alert2.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_alert3.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_attack_spike1.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_attack_spike2.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_communicate1.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_communicate2.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_communicate3.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_communicate4.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_die1.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_die2.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_die3.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_hunt1.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_hunt2.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_hunt3.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_idle1.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_idle2.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_idle3.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_melee_attack1.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_melee_attack2.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_pain1.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_pain2.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_pain3.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_pain4.wav");
-	PRECACHE_SOUND("pitdrone/pit_drone_run_on_grate.wav");
-	PRECACHE_SOUND("bullchicken/bc_bite2.wav");
-	PRECACHE_SOUND("bullchicken/bc_bite3.wav");
+	PrecacheSound("pitdrone/pit_drone_alert1.wav");
+	PrecacheSound("pitdrone/pit_drone_alert2.wav");
+	PrecacheSound("pitdrone/pit_drone_alert3.wav");
+	PrecacheSound("pitdrone/pit_drone_attack_spike1.wav");
+	PrecacheSound("pitdrone/pit_drone_attack_spike2.wav");
+	PrecacheSound("pitdrone/pit_drone_communicate1.wav");
+	PrecacheSound("pitdrone/pit_drone_communicate2.wav");
+	PrecacheSound("pitdrone/pit_drone_communicate3.wav");
+	PrecacheSound("pitdrone/pit_drone_communicate4.wav");
+	PrecacheSound("pitdrone/pit_drone_die1.wav");
+	PrecacheSound("pitdrone/pit_drone_die2.wav");
+	PrecacheSound("pitdrone/pit_drone_die3.wav");
+	PrecacheSound("pitdrone/pit_drone_hunt1.wav");
+	PrecacheSound("pitdrone/pit_drone_hunt2.wav");
+	PrecacheSound("pitdrone/pit_drone_hunt3.wav");
+	PrecacheSound("pitdrone/pit_drone_idle1.wav");
+	PrecacheSound("pitdrone/pit_drone_idle2.wav");
+	PrecacheSound("pitdrone/pit_drone_idle3.wav");
+	PrecacheSound("pitdrone/pit_drone_melee_attack1.wav");
+	PrecacheSound("pitdrone/pit_drone_melee_attack2.wav");
+	PrecacheSound("pitdrone/pit_drone_pain1.wav");
+	PrecacheSound("pitdrone/pit_drone_pain2.wav");
+	PrecacheSound("pitdrone/pit_drone_pain3.wav");
+	PrecacheSound("pitdrone/pit_drone_pain4.wav");
+	PrecacheSound("pitdrone/pit_drone_run_on_grate.wav");
+	PrecacheSound("bullchicken/bc_bite2.wav");
+	PrecacheSound("bullchicken/bc_bite3.wav");
 }
 
 //========================================================
@@ -1136,7 +1143,7 @@ void CPitdrone::StartTask(Task_t* pTask)
 		}
 		else
 		{
-			ALERT(at_aiconsole, "GetPathToEnemy failed!!\n");
+			AILogger->debug("GetPathToEnemy failed!!");
 			TaskFail();
 		}
 		break;
@@ -1191,7 +1198,7 @@ void CPitdrone::GibMonster()
 
 	if (CVAR_GET_FLOAT("violence_agibs") != 0) // Should never get here, but someone might call it directly
 	{
-		//Note: the original doesn't check for German censorship
+		// Note: the original doesn't check for German censorship
 		CGib::SpawnRandomGibs(pev, 6, PitDroneGibs); // Throw alien gibs
 	}
 

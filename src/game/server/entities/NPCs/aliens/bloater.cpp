@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // Bloater
 //=========================================================
@@ -28,6 +28,7 @@
 class CBloater : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
@@ -46,6 +47,14 @@ public:
 };
 
 LINK_ENTITY_TO_CLASS(monster_bloater, CBloater);
+
+void CBloater::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = 40;
+	pev->model = MAKE_STRING("models/floater.mdl");
+}
 
 //=========================================================
 // Classify - indicates this monster's place in the
@@ -186,14 +195,13 @@ void CBloater::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/floater.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_FLY;
 	pev->spawnflags |= FL_FLY;
 	m_bloodColor = BLOOD_COLOR_GREEN;
-	pev->health = 40;
 	pev->view_ofs = VEC_VIEW; // position of the eyes relative to monster's origin.
 	m_flFieldOfView = 0.5;	  // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
@@ -206,7 +214,7 @@ void CBloater::Spawn()
 //=========================================================
 void CBloater::Precache()
 {
-	PRECACHE_MODEL("models/floater.mdl");
+	PrecacheModel(STRING(pev->model));
 }
 
 //=========================================================

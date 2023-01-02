@@ -1,19 +1,21 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
+
+struct edict_t;
 
 //
 // Constants shared by the engine and dlls
@@ -67,8 +69,8 @@
 
 // edict->movetype values
 #define MOVETYPE_NONE 0 // never moves
-//#define	MOVETYPE_ANGLENOCLIP	1
-//#define	MOVETYPE_ANGLECLIP		2
+// #define	MOVETYPE_ANGLENOCLIP	1
+// #define	MOVETYPE_ANGLECLIP		2
 #define MOVETYPE_WALK 3			  // Player only - moving on the ground
 #define MOVETYPE_STEP 4			  // gravity, special edge handling -- monsters use this
 #define MOVETYPE_FLY 5			  // No gravity, but still collides with stuff
@@ -713,40 +715,31 @@ enum
 	kRenderFxExplode,		  // Scale up really big!
 	kRenderFxGlowShell,		  // Glowing Shell
 	kRenderFxClampMinScale,	  // Keep this sprite from getting very small (SPRITES only!)
-	kRenderFxLightMultiplier, //CTM !!!CZERO added to tell the studiorender that the value in iuser2 is a lightmultiplier
+	kRenderFxLightMultiplier, // CTM !!!CZERO added to tell the studiorender that the value in iuser2 is a lightmultiplier
 };
 
-#define _DEF_BYTE_
-
-typedef struct
+struct color24
 {
 	byte r, g, b;
-} color24;
+};
 
-typedef struct
+struct colorVec
 {
 	unsigned r, g, b, a;
-} colorVec;
+};
 
-typedef struct
+struct link_t
 {
-	unsigned short r, g, b, a;
-} PackedColorVec;
+	link_t *prev, *next;
+};
 
-typedef struct link_s
-{
-	struct link_s *prev, *next;
-} link_t;
-
-typedef struct edict_s edict_t;
-
-typedef struct
+struct plane_t
 {
 	Vector normal;
 	float dist;
-} plane_t;
+};
 
-typedef struct
+struct trace_t
 {
 	qboolean allsolid;	 // if true, plane is not valid
 	qboolean startsolid; // if true, the initial point was in a solid area
@@ -756,4 +749,31 @@ typedef struct
 	plane_t plane;	// surface normal at impact
 	edict_t* ent;	// entity the surface is on
 	int hitgroup;	// 0 == generic, non zero is specific body part
-} trace_t;
+};
+
+/**
+ *	@brief Constants for entvars_t::waterlevel
+ *	@see entvars_t::waterlevel
+ */
+enum class WaterLevel : int
+{
+	/**
+	 *	Not in water at all
+	 */
+	Dry = 0,
+
+	/**
+	 *	Standing in water, feet only
+	 */
+	Feet = 1,
+
+	/**
+	 *	Halfway submerged
+	 */
+	Waist = 2,
+
+	/**
+	 *	Submerged up to eyes or more
+	 */
+	Head = 3
+};

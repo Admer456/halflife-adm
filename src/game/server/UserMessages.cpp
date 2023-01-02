@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "shake.h"
@@ -33,14 +33,14 @@ void LinkUserMessages()
 	gmsgDamage = REG_USER_MSG("Damage", 12);
 	gmsgBattery = REG_USER_MSG("Battery", 2);
 	gmsgTrain = REG_USER_MSG("Train", 1);
-	//gmsgHudText = REG_USER_MSG( "HudTextPro", -1 );
+	// gmsgHudText = REG_USER_MSG( "HudTextPro", -1 );
 	gmsgHudText = REG_USER_MSG("HudText", -1); // we don't use the message but 3rd party addons may!
 	gmsgSayText = REG_USER_MSG("SayText", -1);
 	gmsgTextMsg = REG_USER_MSG("TextMsg", -1);
 	gmsgWeaponList = REG_USER_MSG("WeaponList", -1);
 	gmsgResetHUD = REG_USER_MSG("ResetHUD", 1); // called every respawn
 	gmsgInitHUD = REG_USER_MSG("InitHUD", 0);	// called every time a new player joins the server
-	gmsgShowGameTitle = REG_USER_MSG("GameTitle", 1);
+	gmsgShowGameTitle = REG_USER_MSG("GameTitle", -1);
 	gmsgDeathMsg = REG_USER_MSG("DeathMsg", -1);
 	gmsgScoreInfo = REG_USER_MSG("ScoreInfo", 9);
 	gmsgTeamInfo = REG_USER_MSG("TeamInfo", -1);   // sets the name of a player's team
@@ -78,4 +78,9 @@ void LinkUserMessages()
 	gmsgTeamFull = g_engfuncs.pfnRegUserMsg("TeamFull", 1);
 	gmsgCustomIcon = g_engfuncs.pfnRegUserMsg("CustomIcon", -1);
 	gmsgWeapons = REG_USER_MSG("Weapons", 8);
+
+	gmsgProjectInfo = REG_USER_MSG("ProjectInfo", -1);
+	gmsgEntityInfo = REG_USER_MSG("EntityInfo", -1);
+	gmsgEmitSound = REG_USER_MSG("EmitSound", -1);
+	gmsgSoundRpl = REG_USER_MSG("SoundRpl", -1);
 }

@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -210,7 +210,7 @@ bool ScrollBar2::hasFullRange()
 	return _slider->hasFullRange();
 }
 
-//LEAK: new and old slider will leak
+// LEAK: new and old slider will leak
 void ScrollBar2::setButton(Button* button, int index)
 {
 	if (_button[index] != nullptr)
@@ -232,7 +232,7 @@ Button* ScrollBar2::getButton(int index)
 	return _button[index];
 }
 
-//LEAK: new and old slider will leak
+// LEAK: new and old slider will leak
 void ScrollBar2::setSlider(Slider2* slider)
 {
 	if (_slider != nullptr)

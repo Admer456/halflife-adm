@@ -1,24 +1,30 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
 
+#include <memory>
+#include <spdlog/logger.h>
+
+#include "basemonster.h"
+#include "CBaseAnimating.h"
 #include "effects.h"
 #include "weaponinfo.h"
 
 class CBasePlayer;
+class CBasePlayerWeapon;
 
 void DeactivateSatchels(CBasePlayer* pOwner);
 
@@ -26,13 +32,15 @@ void DeactivateSatchels(CBasePlayer* pOwner);
 class CGrenade : public CBaseMonster
 {
 public:
+	void OnCreate() override;
+	void Precache() override;
 	void Spawn() override;
 
-	typedef enum
+	enum SATCHELCODE
 	{
 		SATCHEL_DETONATE = 0,
 		SATCHEL_RELEASE
-	} SATCHELCODE;
+	};
 
 	static CGrenade* ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity, float time);
 	static CGrenade* ShootContact(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity);
@@ -114,7 +122,7 @@ public:
 // the maximum amount of ammo each weapon's clip can hold
 #define WEAPON_NOCLIP -1
 
-//#define CROWBAR_MAX_CLIP		WEAPON_NOCLIP
+// #define CROWBAR_MAX_CLIP		WEAPON_NOCLIP
 #define GLOCK_MAX_CLIP 17
 #define PYTHON_MAX_CLIP 6
 #define MP5_MAX_CLIP 50
@@ -178,7 +186,7 @@ public:
 #define AMMO_SNIPERRIFLE_GIVE 5
 
 // bullet types
-typedef enum
+enum Bullet
 {
 	BULLET_NONE = 0,
 	BULLET_PLAYER_9MM,		// glock
@@ -194,7 +202,7 @@ typedef enum
 	BULLET_PLAYER_556,
 	BULLET_PLAYER_762,
 	BULLET_PLAYER_EAGLE,
-} Bullet;
+};
 
 
 #define ITEM_FLAG_SELECTONEMPTY 1
@@ -205,7 +213,7 @@ typedef enum
 
 #define WEAPON_IS_ONTARGET 0x40
 
-typedef struct
+struct ItemInfo
 {
 	int iSlot;
 	int iPosition;
@@ -218,22 +226,29 @@ typedef struct
 	int iId;
 	int iFlags;
 	int iWeight; // this value used to determine this weapon's importance in autoselection.
-} ItemInfo;
+};
 
-typedef struct
+struct AmmoInfo
 {
 	const char* pszName;
 	int iId;
-} AmmoInfo;
+
+	/**
+	 *	@brief For exhaustible weapons. If provided, and the player does not have this weapon in their inventory yet it will be given to them.
+	 */
+	const char* WeaponName = nullptr;
+};
 
 inline int giAmmoIndex = 0;
 
-void AddAmmoNameToAmmoRegistry(const char* szAmmoname);
+void AddAmmoNameToAmmoRegistry(const char* szAmmoname, const char* weaponName);
 
 // Items that the player has in their inventory that they can use
 class CBasePlayerItem : public CBaseAnimating
 {
 public:
+	static inline std::shared_ptr<spdlog::logger> WeaponsLogger;
+
 	void SetObjectCollisionBox() override;
 
 	bool Save(CSave& save) override;
@@ -241,7 +256,9 @@ public:
 
 	static TYPEDESCRIPTION m_SaveData[];
 
-	virtual bool AddToPlayer(CBasePlayer* pPlayer);						// return true if the item you want the item added to the player inventory
+	virtual bool CanAddToPlayer(CBasePlayer* player) { return true; } // return true if the item you want the item added to the player inventory
+
+	virtual void AddToPlayer(CBasePlayer* pPlayer);
 	virtual bool AddDuplicate(CBasePlayerItem* pItem) { return false; } // return true if you want your duplicate removed from world
 	void EXPORT DestroyItem();
 	void EXPORT DefaultTouch(CBaseEntity* pOther); // default weapon touch
@@ -276,7 +293,7 @@ public:
 
 	virtual bool UpdateClientData(CBasePlayer* pPlayer) { return false; }
 
-	virtual CBasePlayerItem* GetWeaponPtr() { return nullptr; }
+	virtual CBasePlayerWeapon* GetWeaponPtr() { return nullptr; }
 
 	virtual void GetWeaponData(weapon_data_t& data) {}
 
@@ -305,6 +322,9 @@ public:
 
 	// int		m_iIdPrimary;										// Unique Id for primary ammo
 	// int		m_iIdSecondary;										// Unique Id for secondary ammo
+
+	// Hack so deploy animations work when weapon prediction is enabled.
+	bool m_ForceSendAnimations = false;
 };
 
 
@@ -318,17 +338,11 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	// generic weapon versions of CBasePlayerItem calls
-	bool AddToPlayer(CBasePlayer* pPlayer) override;
+	void AddToPlayer(CBasePlayer* pPlayer) override;
 	bool AddDuplicate(CBasePlayerItem* pItem) override;
 
 	virtual bool ExtractAmmo(CBasePlayerWeapon* pWeapon);	  //{ return true; }			// Return true if you can add ammo to yourself when picked up
 	virtual bool ExtractClipAmmo(CBasePlayerWeapon* pWeapon); // { return true; }			// Return true if you can add ammo to yourself when picked up
-
-	virtual bool AddWeapon()
-	{
-		ExtractAmmo(this);
-		return true;
-	} // Return true if you want to add yourself to the player
 
 	// generic "shared" ammo handlers
 	bool AddPrimaryAmmo(int iCount, const char* szName, int iMaxClip, int iMaxCarry);
@@ -346,6 +360,9 @@ public:
 
 	bool CanDeploy() override;
 	virtual bool IsUseable();
+
+	void SetWeaponModels(const char* viewModel, const char* weaponModel);
+
 	bool DefaultDeploy(const char* szViewModel, const char* szWeaponModel, int iAnim, const char* szAnimExt, int body = 0);
 	bool DefaultReload(int iClipSize, int iAnim, float fDelay, int body = 0);
 
@@ -356,9 +373,23 @@ public:
 	virtual void Reload() {}							  // do "+RELOAD"
 	virtual void WeaponIdle() {}						  // called when no buttons pressed
 	bool UpdateClientData(CBasePlayer* pPlayer) override; // sends hud info to client dll, if things have changed
-	virtual void RetireWeapon();
+	void RetireWeapon();
+
+	// Can't use virtual functions as think functions so this wrapper is needed.
+	void EXPORT CallDoRetireWeapon()
+	{
+		DoRetireWeapon();
+	}
+
+	virtual void DoRetireWeapon();
 	virtual bool ShouldWeaponIdle() { return false; }
 	void Holster() override;
+
+	/**
+	*	@brief Whether to use relative time values that are decremented every frame or absolute time values.
+	*	Relative time values are required for predicted weapons.
+	*	@see UTIL_WeaponTimeBase
+	*/
 	virtual bool UseDecrement() { return false; }
 
 	int PrimaryAmmoIndex() override;
@@ -366,7 +397,7 @@ public:
 
 	void PrintState();
 
-	CBasePlayerItem* GetWeaponPtr() override { return (CBasePlayerItem*)this; }
+	CBasePlayerWeapon* GetWeaponPtr() override { return this; }
 	float GetNextAttackDelay(float delay);
 
 	float m_flPumpTime;
@@ -386,15 +417,20 @@ public:
 	// hle time creep vars
 	float m_flPrevPrimaryAttack;
 	float m_flLastFireTime;
+
+	string_t m_WorldModel;
+	string_t m_ViewModel;
+	string_t m_PlayerModel;
 };
 
 
 class CBasePlayerAmmo : public CBaseEntity
 {
 public:
+	void Precache() override;
 	void Spawn() override;
 	void EXPORT DefaultTouch(CBaseEntity* pOther); // default weapon touch
-	virtual bool AddAmmo(CBaseEntity* pOther) { return true; }
+	virtual bool AddAmmo(CBasePlayer* pOther) { return true; }
 
 	CBaseEntity* Respawn() override;
 	void EXPORT Materialize();
@@ -412,21 +448,21 @@ inline DLL_GLOBAL short g_sModelIndexBubbles;	 // holds the index for the bubble
 inline DLL_GLOBAL short g_sModelIndexBloodDrop;	 // holds the sprite index for blood drops
 inline DLL_GLOBAL short g_sModelIndexBloodSpray; // holds the sprite index for blood spray (bigger)
 
-extern void ClearMultiDamage();
-extern void ApplyMultiDamage(entvars_t* pevInflictor, entvars_t* pevAttacker);
-extern void AddMultiDamage(entvars_t* pevInflictor, CBaseEntity* pEntity, float flDamage, int bitsDamageType);
+void ClearMultiDamage();
+void ApplyMultiDamage(entvars_t* pevInflictor, entvars_t* pevAttacker);
+void AddMultiDamage(entvars_t* pevInflictor, CBaseEntity* pEntity, float flDamage, int bitsDamageType);
 
-extern void DecalGunshot(TraceResult* pTrace, int iBulletType);
-extern void SpawnBlood(Vector vecSpot, int bloodColor, float flDamage);
-extern int DamageDecal(CBaseEntity* pEntity, int bitsDamageType);
-extern void RadiusDamage(Vector vecSrc, entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, float flRadius, int iClassIgnore, int bitsDamageType);
+void DecalGunshot(TraceResult* pTrace, int iBulletType);
+void SpawnBlood(Vector vecSpot, int bloodColor, float flDamage);
+int DamageDecal(CBaseEntity* pEntity, int bitsDamageType);
+void RadiusDamage(Vector vecSrc, entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, float flRadius, int iClassIgnore, int bitsDamageType);
 
-typedef struct
+struct MULTIDAMAGE
 {
 	CBaseEntity* pEntity;
 	float amount;
 	int type;
-} MULTIDAMAGE;
+};
 
 inline MULTIDAMAGE gMultiDamage;
 
@@ -465,6 +501,8 @@ void FindHullIntersection(const Vector& vecSrc, TraceResult& tr, const Vector& m
 //=========================================================
 class CWeaponBox : public CBaseEntity
 {
+public:
+	void OnCreate() override;
 	void Precache() override;
 	void Spawn() override;
 	void Touch(CBaseEntity* pOther) override;
@@ -473,7 +511,6 @@ class CWeaponBox : public CBaseEntity
 	int GiveAmmo(int iCount, const char* szName, int iMax, int* pIndex = nullptr);
 	void SetObjectCollisionBox() override;
 
-public:
 	void EXPORT Kill();
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
@@ -481,12 +518,12 @@ public:
 
 	bool HasWeapon(CBasePlayerItem* pCheckItem);
 	bool PackWeapon(CBasePlayerItem* pWeapon);
-	bool PackAmmo(int iszName, int iCount);
+	bool PackAmmo(string_t iszName, int iCount);
 
 	CBasePlayerItem* m_rgpPlayerItems[MAX_ITEM_TYPES]; // one slot for each
 
-	int m_rgiszAmmo[MAX_AMMO_SLOTS]; // ammo names
-	int m_rgAmmo[MAX_AMMO_SLOTS];	 // ammo quantities
+	string_t m_rgiszAmmo[MAX_AMMO_SLOTS]; // ammo names
+	int m_rgAmmo[MAX_AMMO_SLOTS];		  // ammo quantities
 
 	int m_cAmmoTypes; // how many ammo types packed into this box (if packed by a level designer)
 };
@@ -512,6 +549,7 @@ enum glock_e
 class CGlock : public CBasePlayerWeapon
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 2; }
@@ -559,6 +597,7 @@ enum crowbar_e
 class CCrowbar : public CBasePlayerWeapon
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 1; }
@@ -601,6 +640,7 @@ enum python_e
 class CPython : public CBasePlayerWeapon
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 2; }
@@ -641,6 +681,7 @@ enum mp5_e
 class CMP5 : public CBasePlayerWeapon
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 3; }
@@ -689,6 +730,7 @@ enum crossbow_e
 class CCrossbow : public CBasePlayerWeapon
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 3; }
@@ -741,7 +783,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 #endif
 
-
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 3; }
@@ -754,7 +796,7 @@ public:
 	void Reload() override;
 	void WeaponIdle() override;
 	void ItemPostFrame() override;
-	int m_fInReload; //TODO: not used, remove
+	int m_fInReload; // TODO: not used, remove
 	float m_flNextReload;
 	int m_iShell;
 
@@ -809,6 +851,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 #endif
 
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void Reload() override;
@@ -847,9 +890,12 @@ private:
 class CRpgRocket : public CGrenade
 {
 public:
+	~CRpgRocket() override;
+
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
 	static TYPEDESCRIPTION m_SaveData[];
+
 	void Spawn() override;
 	void Precache() override;
 	void EXPORT FollowThink();
@@ -887,6 +933,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 #endif
 
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 4; }
@@ -972,6 +1019,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 #endif
 
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 4; }
@@ -1040,11 +1088,12 @@ enum hgun_e
 class CHgun : public CBasePlayerWeapon
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 4; }
 	bool GetItemInfo(ItemInfo* p) override;
-	bool AddToPlayer(CBasePlayer* pPlayer) override;
+	void AddToPlayer(CBasePlayer* pPlayer) override;
 
 	void PrimaryAttack() override;
 	void SecondaryAttack() override;
@@ -1087,6 +1136,7 @@ enum handgrenade_e
 class CHandGrenade : public CBasePlayerWeapon
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 5; }
@@ -1135,11 +1185,12 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 #endif
 
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 5; }
 	bool GetItemInfo(ItemInfo* p) override;
-	bool AddToPlayer(CBasePlayer* pPlayer) override;
+	void AddToPlayer(CBasePlayer* pPlayer) override;
 	void PrimaryAttack() override;
 	void SecondaryAttack() override;
 	bool AddDuplicate(CBasePlayerItem* pOriginal) override;
@@ -1177,6 +1228,7 @@ enum tripmine_e
 class CTripmine : public CBasePlayerWeapon
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 5; }
@@ -1219,6 +1271,7 @@ enum squeak_e
 class CSqueak : public CBasePlayerWeapon
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int iItemSlot() override { return 5; }

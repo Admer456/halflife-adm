@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
 
@@ -33,7 +33,7 @@
 #define SF_CORNER_TELEPORT 0x002
 #define SF_CORNER_FIREONCE 0x004
 
-//#define PATH_SPARKLE_DEBUG		1	// This makes a particle effect around path_track entities for debugging
+// #define PATH_SPARKLE_DEBUG		1	// This makes a particle effect around path_track entities for debugging
 class CPathTrack : public CPointEntity
 {
 public:
@@ -48,7 +48,7 @@ public:
 	CPathTrack* ValidPath(CPathTrack* ppath, bool testFlag); // Returns ppath if enabled, nullptr otherwise
 	void Project(CPathTrack* pstart, CPathTrack* pend, Vector* origin, float dist);
 
-	static CPathTrack* Instance(edict_t* pent);
+	static CPathTrack* Instance(CBaseEntity* pent);
 
 	CPathTrack* LookAhead(Vector* origin, float dist, bool move);
 	CPathTrack* Nearest(Vector origin);
@@ -96,7 +96,7 @@ public:
 	void StopSound();
 	void UpdateSound();
 
-	static CFuncTrackTrain* Instance(edict_t* pent);
+	static CFuncTrackTrain* Instance(CBaseEntity* pent);
 
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
@@ -115,11 +115,12 @@ public:
 	Vector m_controlMins;
 	Vector m_controlMaxs;
 	bool m_soundPlaying;
-	int m_sounds;
+	string_t m_sounds;
 	float m_flVolume;
 	float m_flBank;
 	float m_oldSpeed;
 
 private:
-	unsigned short m_usAdjustPitch;
+	float m_CachedPitch;
+	float m_LastPlayerJoinTimeCheck;
 };

@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -44,7 +44,7 @@ public:
 	virtual void setButtonPressedScrollValue(int value);
 	virtual void validate();
 
-public: //bullshit public
+public: // bullshit public
 	virtual void fireIntChangeSignal();
 
 protected:

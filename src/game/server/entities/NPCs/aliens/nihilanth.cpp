@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #include "cbase.h"
 #include "nodes.h"
@@ -26,6 +26,7 @@ public:
 	bool Restore(CRestore& restore) override;
 	static TYPEDESCRIPTION m_SaveData[];
 
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int Classify() override { return CLASS_ALIEN_MILITARY; }
@@ -198,9 +199,6 @@ public:
 	void MovetoTarget(Vector vecTarget);
 	virtual void Crawl();
 
-	void Zap();
-	void Teleport();
-
 	float m_flIdealVel;
 	Vector m_vecIdeal;
 	CNihilanth* m_pNihilanth;
@@ -269,6 +267,13 @@ const char* CNihilanth::pDeathSounds[] =
 		"X/x_die1.wav",
 };
 
+void CNihilanth::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->max_health = pev->health = GetSkillFloat("nihilanth_health"sv);
+	pev->model = MAKE_STRING("models/nihilanth.mdl");
+}
 
 void CNihilanth::Spawn()
 {
@@ -277,14 +282,13 @@ void CNihilanth::Spawn()
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(edict(), "models/nihilanth.mdl");
+	SetModel(STRING(pev->model));
 	// UTIL_SetSize(pev, Vector( -300, -300, 0), Vector(300, 300, 512));
 	UTIL_SetSize(pev, Vector(-32, -32, 0), Vector(32, 32, 64));
 	UTIL_SetOrigin(pev, pev->origin);
 
 	pev->flags |= FL_MONSTER | FL_FLY;
 	pev->takedamage = DAMAGE_AIM;
-	pev->health = gSkillData.nihilanthHealth;
 	pev->view_ofs = Vector(0, 0, 300);
 
 	m_flFieldOfView = -1; // 360 degrees
@@ -328,8 +332,8 @@ void CNihilanth::Spawn()
 
 void CNihilanth::Precache()
 {
-	PRECACHE_MODEL("models/nihilanth.mdl");
-	PRECACHE_MODEL("sprites/lgtning.spr");
+	PrecacheModel(STRING(pev->model));
+	PrecacheModel("sprites/lgtning.spr");
 	UTIL_PrecacheOther("nihilanth_energy_ball");
 	UTIL_PrecacheOther("monster_alien_controller");
 	UTIL_PrecacheOther("monster_alien_slave");
@@ -341,7 +345,7 @@ void CNihilanth::Precache()
 	PRECACHE_SOUND_ARRAY(pLaughSounds);
 	PRECACHE_SOUND_ARRAY(pPainSounds);
 	PRECACHE_SOUND_ARRAY(pDeathSounds);
-	PRECACHE_SOUND("debris/beamstart7.wav");
+	PrecacheSound("debris/beamstart7.wav");
 }
 
 
@@ -353,7 +357,7 @@ void CNihilanth::PainSound()
 
 	m_flNextPainSound = gpGlobals->time + RANDOM_FLOAT(2, 5);
 
-	if (pev->health > gSkillData.nihilanthHealth / 2)
+	if (pev->health > pev->max_health / 2)
 	{
 		EMIT_SOUND(edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pLaughSounds), 1.0, 0.2);
 	}
@@ -712,7 +716,7 @@ void CNihilanth::NextActivity()
 		}
 	}
 
-	if ((pev->health < gSkillData.nihilanthHealth / 2 || m_iActiveSpheres < N_SPHERES / 2) && m_hRecharger == nullptr && m_iLevel <= 9)
+	if ((pev->health < pev->max_health / 2 || m_iActiveSpheres < N_SPHERES / 2) && m_hRecharger == nullptr && m_iLevel <= 9)
 	{
 		char szName[128];
 
@@ -743,7 +747,7 @@ void CNihilanth::NextActivity()
 		else
 		{
 			m_hRecharger = nullptr;
-			ALERT(at_aiconsole, "nihilanth can't find %s\n", szName);
+			AILogger->debug("nihilanth can't find {}", szName);
 			m_iLevel++;
 			if (m_iLevel > 9)
 				m_irritation = 2;
@@ -767,7 +771,7 @@ void CNihilanth::NextActivity()
 				sprintf(szText, "%s%d", m_szDrawUse, m_iLevel);
 				FireTargets(szText, this, this, USE_ON, 1.0);
 
-				ALERT(at_console, "fireing %s\n", szText);
+				AILogger->debug("fireing {}", szText);
 			}
 			pev->sequence = LookupSequence("recharge");
 		}
@@ -798,7 +802,7 @@ void CNihilanth::NextActivity()
 	{
 		if (m_flLastSeen + 5 > gpGlobals->time && flDist < 256 && flDot > 0)
 		{
-			if (m_irritation >= 2 && pev->health < gSkillData.nihilanthHealth / 2.0)
+			if (m_irritation >= 2 && pev->health < pev->max_health / 2.0)
 			{
 				pev->sequence = LookupSequence("attack1_open");
 			}
@@ -854,12 +858,12 @@ void CNihilanth::HuntThink()
 		return;
 	}
 
-	// ALERT( at_console, "health %.0f\n", pev->health );
+	// AILogger->debug("health {:.0f}", pev->health);
 
 	// if damaged, try to abosorb some spheres
-	if (pev->health < gSkillData.nihilanthHealth && AbsorbSphere())
+	if (pev->health < pev->max_health && AbsorbSphere())
 	{
-		pev->health += gSkillData.nihilanthHealth / N_SPHERES;
+		pev->health += pev->max_health / N_SPHERES;
 	}
 
 	// get new sequence
@@ -869,7 +873,7 @@ void CNihilanth::HuntThink()
 		pev->frame = 0;
 		NextActivity();
 		ResetSequenceInfo();
-		pev->framerate = 2.0 - 1.0 * (pev->health / gSkillData.nihilanthHealth);
+		pev->framerate = 2.0 - 1.0 * (pev->health / pev->max_health);
 	}
 
 	// look for current enemy
@@ -968,7 +972,7 @@ void CNihilanth::Flight()
 	UTIL_SetOrigin(pev, pev->origin + m_velocity * 0.1);
 	pev->angles = pev->angles + m_avelocity * 0.1;
 
-	// ALERT( at_console, "%5.0f %5.0f : %4.0f : %3.0f : %2.0f\n", m_posDesired.z, pev->origin.z, m_velocity.z, m_avelocity.y, m_flForce );
+	// AILogger->debug("{:5.0f} {:5.0f} : {:4.0f} : {:3.0f} : {:2.0f}", m_posDesired.z, pev->origin.z, m_velocity.z, m_avelocity.y, m_flForce);
 }
 
 
@@ -1119,7 +1123,7 @@ void CNihilanth::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 				EMIT_SOUND(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBallSounds), 1.0, 0.2);
 
-				ALERT(at_aiconsole, "nihilanth can't target %s\n", szText);
+				AILogger->debug("nihilanth can't target {}", szText);
 
 				MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);
 				WRITE_BYTE(TE_ELIGHT);
@@ -1211,7 +1215,7 @@ void CNihilanth::CommandUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_T
 			// if the player is using "notarget", the ending sequence won't fire unless we catch it here
 			else
 			{
-				CBaseEntity* pEntity = UTIL_FindEntityByClassname(nullptr, "player");
+				CBaseEntity* pEntity = UTIL_GetLocalPlayer();
 				if (pEntity != nullptr && pEntity->IsAlive())
 				{
 					pTouch->Touch(pEntity);
@@ -1266,7 +1270,7 @@ void CNihilanth::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecD
 	{
 		Vector vecBlood = (ptr->vecEndPos - pev->origin).Normalize();
 
-		UTIL_BloodStream(ptr->vecEndPos, vecBlood, BloodColor(), flDamage + (100 - 100 * (pev->health / gSkillData.nihilanthHealth)));
+		UTIL_BloodStream(ptr->vecEndPos, vecBlood, BloodColor(), flDamage + (100 - 100 * (pev->health / pev->max_health)));
 	}
 
 	// SpawnBlood(ptr->vecEndPos, BloodColor(), flDamage * 5.0);// a little surface blood.
@@ -1316,16 +1320,16 @@ void CNihilanthHVR::Spawn()
 
 void CNihilanthHVR::Precache()
 {
-	PRECACHE_MODEL("sprites/flare6.spr");
-	PRECACHE_MODEL("sprites/nhth1.spr");
-	PRECACHE_MODEL("sprites/exit1.spr");
-	PRECACHE_MODEL("sprites/tele1.spr");
-	PRECACHE_MODEL("sprites/animglow01.spr");
-	PRECACHE_MODEL("sprites/xspark4.spr");
-	PRECACHE_MODEL("sprites/muzzleflash3.spr");
-	PRECACHE_SOUND("debris/zap4.wav");
-	PRECACHE_SOUND("weapons/electro4.wav");
-	PRECACHE_SOUND("x/x_teleattack1.wav");
+	PrecacheModel("sprites/flare6.spr");
+	PrecacheModel("sprites/nhth1.spr");
+	PrecacheModel("sprites/exit1.spr");
+	PrecacheModel("sprites/tele1.spr");
+	PrecacheModel("sprites/animglow01.spr");
+	PrecacheModel("sprites/xspark4.spr");
+	PrecacheModel("sprites/muzzleflash3.spr");
+	PrecacheSound("debris/zap4.wav");
+	PrecacheSound("weapons/electro4.wav");
+	PrecacheSound("x/x_teleattack1.wav");
 }
 
 
@@ -1335,10 +1339,10 @@ void CNihilanthHVR::CircleInit(CBaseEntity* pTarget)
 	pev->movetype = MOVETYPE_NOCLIP;
 	pev->solid = SOLID_NOT;
 
-	// SET_MODEL(edict(), "sprites/flare6.spr");
+	// SetModel("sprites/flare6.spr");
 	// pev->scale = 3.0;
-	// SET_MODEL(edict(), "sprites/xspark4.spr");
-	SET_MODEL(edict(), "sprites/muzzleflash3.spr");
+	// SetModel("sprites/xspark4.spr");
+	SetModel("sprites/muzzleflash3.spr");
 	pev->rendercolor.x = 255;
 	pev->rendercolor.y = 224;
 	pev->rendercolor.z = 192;
@@ -1442,7 +1446,7 @@ void CNihilanthHVR::ZapInit(CBaseEntity* pEnemy)
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(edict(), "sprites/nhth1.spr");
+	SetModel("sprites/nhth1.spr");
 
 	pev->rendercolor.x = 255;
 	pev->rendercolor.y = 255;
@@ -1489,7 +1493,7 @@ void CNihilanthHVR::ZapThink()
 		if (pEntity != nullptr && 0 != pEntity->pev->takedamage)
 		{
 			ClearMultiDamage();
-			pEntity->TraceAttack(pev, gSkillData.nihilanthZap, pev->velocity, &tr, DMG_SHOCK);
+			pEntity->TraceAttack(pev, GetSkillFloat("nihilanth_zap"sv), pev->velocity, &tr, DMG_SHOCK);
 			ApplyMultiDamage(pev, pev);
 		}
 
@@ -1571,7 +1575,7 @@ void CNihilanthHVR::TeleportInit(CNihilanth* pOwner, CBaseEntity* pEnemy, CBaseE
 	pev->rendercolor.z = 255;
 	pev->velocity.z *= 0.2;
 
-	SET_MODEL(edict(), "sprites/exit1.spr");
+	SetModel("sprites/exit1.spr");
 
 	m_pNihilanth = pOwner;
 	m_hEnemy = pEnemy;
@@ -1596,7 +1600,7 @@ void CNihilanthHVR::GreenBallInit()
 	pev->rendercolor.z = 255;
 	pev->scale = 1.0;
 
-	SET_MODEL(edict(), "sprites/exit1.spr");
+	SetModel("sprites/exit1.spr");
 
 	SetTouch(&CNihilanthHVR::RemoveTouch);
 }
@@ -1749,12 +1753,12 @@ bool CNihilanthHVR::CircleTarget(Vector vecTarget)
 
 	if (d1 < 0 && d2 <= d1)
 	{
-		// ALERT( at_console, "too close\n");
+		// AILogger->debug("too close");
 		m_vecIdeal = m_vecIdeal - (vecDest - vecSrc).Normalize() * 50;
 	}
 	else if (d1 > 0 && d2 >= d1)
 	{
-		// ALERT( at_console, "too far\n");
+		// AILogger->debug("too far");
 		m_vecIdeal = m_vecIdeal + (vecDest - vecSrc).Normalize() * 50;
 	}
 	pev->avelocity.z = d1 * 20;
@@ -1779,7 +1783,7 @@ bool CNihilanthHVR::CircleTarget(Vector vecTarget)
 
 	pev->velocity = m_vecIdeal;
 
-	// ALERT( at_console, "%.0f %.0f %.0f\n", m_vecIdeal.x, m_vecIdeal.y, m_vecIdeal.z );
+	// AILogger->debug("{:.0f}", m_vecIdeal);
 	return fClose;
 }
 

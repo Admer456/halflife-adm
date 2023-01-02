@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 //
 // pm_shared.h
@@ -19,15 +19,17 @@
 
 #pragma once
 
-struct playermove_s;
+#include "Platform.h"
+#include "sound/MaterialSystem.h"
 
-void PM_Init(playermove_s* ppmove);
-void PM_Move(playermove_s* ppmove, int server);
-char PM_FindTextureType(char* name);
+struct playermove_t;
+
+void PM_Init(playermove_t* ppmove);
+void PM_Move(playermove_t* ppmove, qboolean server);
 
 /**
-*	@brief Engine calls this to enumerate player collision hulls, for prediction. Return false if the hullnumber doesn't exist.
-*/
+ *	@brief Engine calls this to enumerate player collision hulls, for prediction. Return false if the hullnumber doesn't exist.
+ */
 bool PM_GetHullBounds(int hullnumber, float* mins, float* maxs);
 
 // Spectator Movement modes (stored in pev->iuser1, so the physics code can get at them)
@@ -39,4 +41,6 @@ bool PM_GetHullBounds(int hullnumber, float* mins, float* maxs);
 #define OBS_MAP_FREE 5
 #define OBS_MAP_CHASE 6
 
-extern playermove_s* pmove;
+extern playermove_t* pmove;
+
+inline bool g_CheckForPlayerStuck = false;

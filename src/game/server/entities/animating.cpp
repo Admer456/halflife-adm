@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== monsters.cpp ========================================================
@@ -24,13 +24,13 @@
 #include "animation.h"
 #include "studio.h"
 
-TYPEDESCRIPTION	CBaseAnimating::m_SaveData[] =
-{
-	DEFINE_FIELD(CBaseAnimating, m_flFrameRate, FIELD_FLOAT),
-	DEFINE_FIELD(CBaseAnimating, m_flGroundSpeed, FIELD_FLOAT),
-	DEFINE_FIELD(CBaseAnimating, m_flLastEventCheck, FIELD_TIME),
-	DEFINE_FIELD(CBaseAnimating, m_fSequenceFinished, FIELD_BOOLEAN),
-	DEFINE_FIELD(CBaseAnimating, m_fSequenceLoops, FIELD_BOOLEAN),
+TYPEDESCRIPTION CBaseAnimating::m_SaveData[] =
+	{
+		DEFINE_FIELD(CBaseAnimating, m_flFrameRate, FIELD_FLOAT),
+		DEFINE_FIELD(CBaseAnimating, m_flGroundSpeed, FIELD_FLOAT),
+		DEFINE_FIELD(CBaseAnimating, m_flLastEventCheck, FIELD_TIME),
+		DEFINE_FIELD(CBaseAnimating, m_fSequenceFinished, FIELD_BOOLEAN),
+		DEFINE_FIELD(CBaseAnimating, m_fSequenceLoops, FIELD_BOOLEAN),
 };
 
 IMPLEMENT_SAVERESTORE(CBaseAnimating, CBaseDelay);
@@ -139,7 +139,7 @@ void CBaseAnimating::DispatchAnimEvents(float flInterval)
 
 	if (!pmodel)
 	{
-		ALERT(at_aiconsole, "Gibbed monster is thinking!\n");
+		CBaseEntity::Logger->debug("Gibbed monster is thinking!");
 		return;
 	}
 
@@ -248,10 +248,10 @@ int CBaseAnimating::GetBodygroupSubmodelCount(int group)
 	auto pstudiohdr = reinterpret_cast<studiohdr_t*>(GET_MODEL_PTR(ENT(pev)));
 
 	if (!pstudiohdr)
-		return 0;
+		return 1;
 
 	if (group < 0 || group >= pstudiohdr->numbodyparts)
-		return 0;
+		return 1;
 
 	auto pbodypart = (mstudiobodyparts_t*)((byte*)pstudiohdr + pstudiohdr->bodypartindex) + group;
 
@@ -275,7 +275,7 @@ void CBaseAnimating::SetSequenceBox()
 	{
 		// expand box for rotation
 		// find min / max for rotations
-		float yaw = pev->angles.y * (M_PI / 180.0);
+		float yaw = pev->angles.y * (PI / 180.0);
 
 		Vector xvector, yvector;
 		xvector.x = cos(yaw);

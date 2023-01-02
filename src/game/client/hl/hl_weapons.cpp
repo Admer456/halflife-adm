@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 
 #include "CDisplacer.h"
@@ -35,6 +35,7 @@
 #include "cl_dll.h"
 #include "../com_weapons.h"
 #include "../demo.h"
+#include "view.h"
 
 extern int g_iUser1;
 
@@ -95,14 +96,14 @@ Print debug messages to console
 void AlertMessage(ALERT_TYPE atype, const char* szFmt, ...)
 {
 	va_list argptr;
-	static char string[1024];
+	static char string[8192];
 
 	va_start(argptr, szFmt);
 	vsprintf(string, szFmt, argptr);
 	va_end(argptr);
 
-	gEngfuncs.Con_Printf("cl:  ");
-	gEngfuncs.Con_Printf(string);
+	gEngfuncs.Con_DPrintf("cl:  ");
+	gEngfuncs.Con_DPrintf(string);
 }
 
 void ServerPrint(const char* msg)
@@ -115,10 +116,10 @@ void AddServerCommand(const char* cmd_name, void (*function)())
 	gEngfuncs.pfnAddCommand(cmd_name, function);
 }
 
-//Just loads a v_ model.
+// Just loads a v_ model.
 void LoadVModel(const char* szViewModel, CBasePlayer* m_pPlayer)
 {
-	gEngfuncs.CL_LoadModel(szViewModel, &m_pPlayer->pev->viewmodel);
+	gEngfuncs.CL_LoadModel(szViewModel, reinterpret_cast<int*>(&m_pPlayer->pev->viewmodel.m_Value));
 }
 
 /*
@@ -134,6 +135,7 @@ void HUD_PrepEntity(CBaseEntity* pEntity, CBasePlayer* pWeaponOwner)
 	memset(&ev[num_ents], 0, sizeof(entvars_t));
 	pEntity->pev = &ev[num_ents++];
 
+	pEntity->OnCreate();
 	pEntity->Precache();
 	pEntity->Spawn();
 
@@ -149,14 +151,16 @@ void HUD_PrepEntity(CBaseEntity* pEntity, CBasePlayer* pWeaponOwner)
 
 		CBasePlayerItem::ItemInfoArray[info.iId] = info;
 
+		const char* weaponName = ((info.iFlags & ITEM_FLAG_EXHAUSTIBLE) != 0) ? STRING(pEntity->pev->classname) : nullptr;
+
 		if (info.pszAmmo1 && '\0' != *info.pszAmmo1)
 		{
-			AddAmmoNameToAmmoRegistry(info.pszAmmo1);
+			AddAmmoNameToAmmoRegistry(info.pszAmmo1, weaponName);
 		}
 
 		if (info.pszAmmo2 && '\0' != *info.pszAmmo2)
 		{
-			AddAmmoNameToAmmoRegistry(info.pszAmmo2);
+			AddAmmoNameToAmmoRegistry(info.pszAmmo2, weaponName);
 		}
 
 		g_pWpns[info.iId] = (CBasePlayerWeapon*)pEntity;
@@ -186,7 +190,7 @@ bool CBasePlayerWeapon::DefaultDeploy(const char* szViewModel, const char* szWea
 	if (!CanDeploy())
 		return false;
 
-	gEngfuncs.CL_LoadModel(szViewModel, &m_pPlayer->pev->viewmodel);
+	gEngfuncs.CL_LoadModel(szViewModel, reinterpret_cast<int*>(&m_pPlayer->pev->viewmodel.m_Value));
 
 	SendWeaponAnim(iAnim, body);
 
@@ -224,7 +228,7 @@ void CBasePlayerWeapon::Holster()
 {
 	m_fInReload = false; // cancel any reload in progress.
 	g_irunninggausspred = false;
-	m_pPlayer->pev->viewmodel = 0;
+	m_pPlayer->pev->viewmodel = string_t::Null;
 }
 
 /*
@@ -266,8 +270,8 @@ Vector CBaseEntity::FireBulletsPlayer(unsigned int cShots, Vector vecSrc, Vector
 		}
 		else
 		{
-			//Use player's random seed.
-			// get circular gaussian spread
+			// Use player's random seed.
+			//  get circular gaussian spread
 			x = UTIL_SharedRandomFloat(shared_rand + iShot, -0.5, 0.5) + UTIL_SharedRandomFloat(shared_rand + (1 + iShot), -0.5, 0.5);
 			y = UTIL_SharedRandomFloat(shared_rand + (2 + iShot), -0.5, 0.5) + UTIL_SharedRandomFloat(shared_rand + (3 + iShot), -0.5, 0.5);
 			z = x * x + y * y;
@@ -460,16 +464,18 @@ void HUD_SetupServerEngineInterface()
 	g_engfuncs.pfnCVarGetPointer = gEngfuncs.pfnGetCvarPointer;
 	g_engfuncs.pfnCVarGetString = gEngfuncs.pfnGetCvarString;
 	g_engfuncs.pfnCVarGetFloat = gEngfuncs.pfnGetCvarFloat;
-	g_engfuncs.pfnCvar_DirectSet = [](cvar_t* cvar, const char* value) { gEngfuncs.Cvar_Set(cvar->name, value); };
-	g_engfuncs.pfnServerCommand = [](const char* cmd) { gEngfuncs.pfnClientCmd(cmd); };
+	g_engfuncs.pfnCvar_DirectSet = [](cvar_t* cvar, const char* value)
+	{ gEngfuncs.Cvar_Set(cvar->name, value); };
+	g_engfuncs.pfnServerCommand = [](const char* cmd)
+	{ gEngfuncs.pfnClientCmd(cmd); };
 	g_engfuncs.pfnCheckParm = gEngfuncs.CheckParm;
 	g_engfuncs.pfnCmd_Argc = gEngfuncs.Cmd_Argc;
 	g_engfuncs.pfnCmd_Argv = gEngfuncs.Cmd_Argv;
 }
 
 /**
-*	@brief Set up weapons, player needed to run weapons code client-side.
-*/
+ *	@brief Set up weapons, player needed to run weapons code client-side.
+ */
 void HUD_InitClientWeapons()
 {
 	static bool initialized = false;
@@ -616,7 +622,7 @@ HUD_WeaponsPostThink
 Run Weapon firing code on client
 =====================
 */
-void HUD_WeaponsPostThink(local_state_s* from, local_state_s* to, usercmd_t* cmd, double time, unsigned int random_seed)
+void HUD_WeaponsPostThink(local_state_t* from, local_state_t* to, usercmd_t* cmd, double time, unsigned int random_seed)
 {
 	int i;
 	int buttonsChanged;
@@ -627,10 +633,10 @@ void HUD_WeaponsPostThink(local_state_s* from, local_state_s* to, usercmd_t* cmd
 	memset(&nulldata, 0, sizeof(nulldata));
 
 	// Get current clock
-	//Use actual time instead of prediction frame time because that time value breaks anything that uses absolute time values.
-	gpGlobals->time = gEngfuncs.GetClientTime(); //time;
+	// Use actual time instead of prediction frame time because that time value breaks anything that uses absolute time values.
+	gpGlobals->time = gEngfuncs.GetClientTime(); // time;
 
-	//Lets weapons code use frametime to decrement timers and stuff.
+	// Lets weapons code use frametime to decrement timers and stuff.
 	gpGlobals->frametime = cmd->msec / 1000.0f;
 
 	// Fill in data based on selected weapon
@@ -720,17 +726,17 @@ void HUD_WeaponsPostThink(local_state_s* from, local_state_s* to, usercmd_t* cmd
 	player.pev->maxspeed = from->client.maxspeed;
 	player.m_iFOV = from->client.fov;
 	player.pev->weaponanim = from->client.weaponanim;
-	player.pev->viewmodel = from->client.viewmodel;
+	player.pev->viewmodel = static_cast<string_t>(from->client.viewmodel);
 	player.m_flNextAttack = from->client.m_flNextAttack;
 	player.m_flNextAmmoBurn = from->client.fuser2;
 	player.m_flAmmoStartCharge = from->client.fuser3;
 	player.m_iItems = static_cast<CTFItem::CTFItem>(from->client.iuser4);
 
-	//Stores all our ammo info, so the client side weapons can use them.
+	// Stores all our ammo info, so the client side weapons can use them.
 	player.ammo_9mm = (int)from->client.vuser1[0];
 	player.ammo_357 = (int)from->client.vuser1[1];
 	player.ammo_argrens = (int)from->client.vuser1[2];
-	player.ammo_bolts = (int)from->client.ammo_nails; //is an int anyways...
+	player.ammo_bolts = (int)from->client.ammo_nails; // is an int anyways...
 	player.ammo_buckshot = (int)from->client.ammo_shells;
 	player.ammo_uranium = (int)from->client.ammo_cells;
 	player.ammo_hornets = (int)from->client.vuser2[0];
@@ -794,7 +800,7 @@ void HUD_WeaponsPostThink(local_state_s* from, local_state_s* to, usercmd_t* cmd
 	}
 
 	// Copy in results of prediction code
-	to->client.viewmodel = player.pev->viewmodel;
+	to->client.viewmodel = static_cast<int>(player.pev->viewmodel.m_Value);
 	to->client.fov = player.m_iFOV;
 	to->client.weaponanim = player.pev->weaponanim;
 	to->client.m_flNextAttack = player.m_flNextAttack;
@@ -803,7 +809,7 @@ void HUD_WeaponsPostThink(local_state_s* from, local_state_s* to, usercmd_t* cmd
 	to->client.maxspeed = player.pev->maxspeed;
 	to->client.iuser4 = player.m_iItems;
 
-	//HL Weapons
+	// HL Weapons
 	to->client.vuser1[0] = player.ammo_9mm;
 	to->client.vuser1[1] = player.ammo_357;
 	to->client.vuser1[2] = player.ammo_argrens;
@@ -826,7 +832,7 @@ void HUD_WeaponsPostThink(local_state_s* from, local_state_s* to, usercmd_t* cmd
 	//  over the wire ( fixes some animation glitches )
 	if (g_runfuncs && (HUD_GetWeaponAnim() != to->client.weaponanim))
 	{
-		//Make sure the 357 has the right body
+		// Make sure the 357 has the right body
 		g_Python.pev->body = UTIL_IsMultiplayer() ? 1 : 0;
 
 		// Force a fixed anim down to viewmodel
@@ -951,13 +957,13 @@ runfuncs is 1 if this is the first time we've predicted this command.  If so, so
 be ignored
 =====================
 */
-void DLLEXPORT HUD_PostRunCmd(struct local_state_s* from, struct local_state_s* to, struct usercmd_s* cmd, int runfuncs, double time, unsigned int random_seed)
+void DLLEXPORT HUD_PostRunCmd(local_state_t* from, local_state_t* to, usercmd_t* cmd, int runfuncs, double time, unsigned int random_seed)
 {
 	//	RecClPostRunCmd(from, to, cmd, runfuncs, time, random_seed);
 
 	g_runfuncs = 0 != runfuncs;
 
-	//Event code depends on this stuff, so always initialize it.
+	// Event code depends on this stuff, so always initialize it.
 	HUD_InitClientWeapons();
 
 #if defined(CLIENT_WEAPONS)

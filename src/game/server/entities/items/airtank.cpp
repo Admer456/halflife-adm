@@ -1,21 +1,23 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 
 class CAirtank : public CGrenade
 {
+public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void EXPORT TankThink();
@@ -40,6 +42,13 @@ TYPEDESCRIPTION CAirtank::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE(CAirtank, CGrenade);
 
+void CAirtank::OnCreate()
+{
+	CGrenade::OnCreate();
+
+	pev->health = 20;
+	pev->model = MAKE_STRING("models/w_oxygen.mdl");
+}
 
 void CAirtank::Spawn()
 {
@@ -48,7 +57,7 @@ void CAirtank::Spawn()
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(ENT(pev), "models/w_oxygen.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 36));
 	UTIL_SetOrigin(pev, pev->origin);
 
@@ -57,15 +66,14 @@ void CAirtank::Spawn()
 
 	pev->flags |= FL_MONSTER;
 	pev->takedamage = DAMAGE_YES;
-	pev->health = 20;
 	pev->dmg = 50;
 	m_state = true;
 }
 
 void CAirtank::Precache()
 {
-	PRECACHE_MODEL("models/w_oxygen.mdl");
-	PRECACHE_SOUND("doors/aliendoor3.wav");
+	PrecacheModel(STRING(pev->model));
+	PrecacheSound("doors/aliendoor3.wav");
 }
 
 

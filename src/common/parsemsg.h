@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1999, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1999, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //
 //  parsemsg.h
 //	MDC - copying from cstrike\cl_dll so career-mode stuff can catch messages
@@ -19,6 +19,8 @@
 //
 
 #pragma once
+
+#include "palette.h"
 
 //--------------------------------------------------------------------------------------------------------------
 void BEGIN_READ(void* buf, int size);
@@ -33,6 +35,17 @@ float READ_COORD();
 float READ_ANGLE();
 float READ_HIRESANGLE();
 bool READ_OK();
+
+inline RGB24 READ_RGB24()
+{
+	RGB24 color;
+
+	color.Red = READ_BYTE();
+	color.Green = READ_BYTE();
+	color.Blue = READ_BYTE();
+
+	return color;
+}
 
 //--------------------------------------------------------------------------------------------------------------
 class BufferWriter

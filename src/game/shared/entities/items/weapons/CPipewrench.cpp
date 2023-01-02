@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "CPipewrench.h"
@@ -32,12 +32,19 @@ IMPLEMENT_SAVERESTORE(CPipewrench, CPipewrench::BaseClass);
 
 LINK_ENTITY_TO_CLASS(weapon_pipewrench, CPipewrench);
 
+void CPipewrench::OnCreate()
+{
+	BaseClass::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_pipe_wrench.mdl");
+}
+
 void CPipewrench::Spawn()
 {
 	pev->classname = MAKE_STRING("weapon_pipewrench");
 	Precache();
 	m_iId = WEAPON_PIPEWRENCH;
-	SET_MODEL(edict(), "models/w_pipe_wrench.mdl");
+	SetModel(STRING(pev->model));
 	m_iClip = WEAPON_NOCLIP;
 	m_iSwingMode = SWING_NONE;
 
@@ -46,24 +53,24 @@ void CPipewrench::Spawn()
 
 void CPipewrench::Precache()
 {
-	PRECACHE_MODEL("models/v_pipe_wrench.mdl");
-	PRECACHE_MODEL("models/w_pipe_wrench.mdl");
-	PRECACHE_MODEL("models/p_pipe_wrench.mdl");
+	PrecacheModel("models/v_pipe_wrench.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/p_pipe_wrench.mdl");
 	// Shepard - The commented sounds below are unused
 	// in Opposing Force, if you wish to use them,
 	// uncomment all the appropriate lines.
-	/*PRECACHE_SOUND("weapons/pwrench_big_hit1.wav");
-	PRECACHE_SOUND("weapons/pwrench_big_hit2.wav");*/
-	PRECACHE_SOUND("weapons/pwrench_big_hitbod1.wav");
-	PRECACHE_SOUND("weapons/pwrench_big_hitbod2.wav");
-	PRECACHE_SOUND("weapons/pwrench_big_miss.wav");
-	PRECACHE_SOUND("weapons/pwrench_hit1.wav");
-	PRECACHE_SOUND("weapons/pwrench_hit2.wav");
-	PRECACHE_SOUND("weapons/pwrench_hitbod1.wav");
-	PRECACHE_SOUND("weapons/pwrench_hitbod2.wav");
-	PRECACHE_SOUND("weapons/pwrench_hitbod3.wav");
-	PRECACHE_SOUND("weapons/pwrench_miss1.wav");
-	PRECACHE_SOUND("weapons/pwrench_miss2.wav");
+	/*PrecacheSound("weapons/pwrench_big_hit1.wav");
+	PrecacheSound("weapons/pwrench_big_hit2.wav");*/
+	PrecacheSound("weapons/pwrench_big_hitbod1.wav");
+	PrecacheSound("weapons/pwrench_big_hitbod2.wav");
+	PrecacheSound("weapons/pwrench_big_miss.wav");
+	PrecacheSound("weapons/pwrench_hit1.wav");
+	PrecacheSound("weapons/pwrench_hit2.wav");
+	PrecacheSound("weapons/pwrench_hitbod1.wav");
+	PrecacheSound("weapons/pwrench_hitbod2.wav");
+	PrecacheSound("weapons/pwrench_hitbod3.wav");
+	PrecacheSound("weapons/pwrench_miss1.wav");
+	PrecacheSound("weapons/pwrench_miss2.wav");
 
 	m_usPipewrench = PRECACHE_EVENT(1, "events/pipewrench.sc");
 }
@@ -75,7 +82,7 @@ bool CPipewrench::Deploy()
 
 void CPipewrench::Holster()
 {
-	//Cancel any swing in progress.
+	// Cancel any swing in progress.
 	m_iSwingMode = SWING_NONE;
 	SetThink(nullptr);
 
@@ -211,12 +218,12 @@ bool CPipewrench::Swing(const bool bFirst)
 			if ((m_flNextPrimaryAttack + 1 < UTIL_WeaponTimeBase()) || g_pGameRules->IsMultiplayer())
 			{
 				// first swing does full damage
-				pEntity->TraceAttack(m_pPlayer->pev, gSkillData.plrDmgPipewrench, gpGlobals->v_forward, &tr, DMG_CLUB);
+				pEntity->TraceAttack(m_pPlayer->pev, GetSkillFloat("plr_pipewrench"sv), gpGlobals->v_forward, &tr, DMG_CLUB);
 			}
 			else
 			{
 				// subsequent swings do half
-				pEntity->TraceAttack(m_pPlayer->pev, gSkillData.plrDmgPipewrench / 2, gpGlobals->v_forward, &tr, DMG_CLUB);
+				pEntity->TraceAttack(m_pPlayer->pev, GetSkillFloat("plr_pipewrench"sv) / 2, gpGlobals->v_forward, &tr, DMG_CLUB);
 			}
 
 			ApplyMultiDamage(m_pPlayer->pev, m_pPlayer->pev);
@@ -360,7 +367,7 @@ void CPipewrench::BigSwing()
 		{
 			ClearMultiDamage();
 
-			float flDamage = (gpGlobals->time - m_flBigSwingStart) * gSkillData.plrDmgPipewrench + 25.0f;
+			float flDamage = (gpGlobals->time - m_flBigSwingStart) * GetSkillFloat("plr_pipewrench"sv) + 25.0f;
 			if ((m_flNextPrimaryAttack + 1 < UTIL_WeaponTimeBase()) || g_pGameRules->IsMultiplayer())
 			{
 				// first swing does full damage
@@ -425,11 +432,11 @@ void CPipewrench::BigSwing()
 			{
 			case 0:
 				EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_ITEM, "weapons/pwrench_hit1.wav", fvolbar, ATTN_NORM, 0, 98 + RANDOM_LONG(0, 3));
-				//EMIT_SOUND_DYN( m_pPlayer, CHAN_ITEM, "weapons/pwrench_big_hit1.wav", fvolbar, ATTN_NORM, 0, 98 + RANDOM_LONG(0,3));
+				// EMIT_SOUND_DYN( m_pPlayer, CHAN_ITEM, "weapons/pwrench_big_hit1.wav", fvolbar, ATTN_NORM, 0, 98 + RANDOM_LONG(0,3));
 				break;
 			case 1:
 				EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_ITEM, "weapons/pwrench_hit2.wav", fvolbar, ATTN_NORM, 0, 98 + RANDOM_LONG(0, 3));
-				//EMIT_SOUND_DYN( m_pPlayer, CHAN_ITEM, "weapons/pwrench_big_hit2.wav", fvolbar, ATTN_NORM, 0, 98 + RANDOM_LONG(0,3));
+				// EMIT_SOUND_DYN( m_pPlayer, CHAN_ITEM, "weapons/pwrench_big_hit2.wav", fvolbar, ATTN_NORM, 0, 98 + RANDOM_LONG(0,3));
 				break;
 			}
 

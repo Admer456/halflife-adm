@@ -1,15 +1,14 @@
 // cl.input.c  -- builds an intended movement command to send to the server
 
-//xxxxxx Move bob and pitch drifting code here and other stuff from view if needed
+// xxxxxx Move bob and pitch drifting code here and other stuff from view if needed
 
 // Quake is a trademark of Id Software, Inc., (c) 1996 Id Software, Inc. All
 // rights reserved.
 
-#include <sstream>
 #include <string>
 
 #include "hud.h"
-#include "CClientLibrary.h"
+#include "ClientLibrary.h"
 #include "camera.h"
 #include "kbutton.h"
 #include "cvardef.h"
@@ -26,7 +25,6 @@
 extern bool g_iAlive;
 
 extern int g_weaponselect;
-extern cl_enginefunc_t gEngfuncs;
 
 // Defined in pm_math.c
 float anglemod(float a);
@@ -110,12 +108,12 @@ kbutton_t in_score;
 kbutton_t in_break;
 kbutton_t in_graph; // Display the netgraph
 
-typedef struct kblist_s
+struct kblist_t
 {
-	struct kblist_s* next;
+	kblist_t* next;
 	kbutton_t* pkey;
 	char name[32];
-} kblist_t;
+};
 
 kblist_t* g_kbkeys = nullptr;
 
@@ -135,7 +133,7 @@ std::string KB_ConvertString(const char* in)
 	char* pEnd;
 	const char* pBinding;
 
-	std::ostringstream buffer;
+	std::string buffer;
 
 	p = in;
 	while ('\0' != *p)
@@ -159,7 +157,7 @@ std::string KB_ConvertString(const char* in)
 
 			if (pBinding)
 			{
-				buffer << '[';
+				buffer += '[';
 				pEnd = (char*)pBinding;
 			}
 			else
@@ -169,21 +167,21 @@ std::string KB_ConvertString(const char* in)
 
 			while ('\0' != *pEnd)
 			{
-				buffer << *pEnd++;
+				buffer += *pEnd++;
 			}
 
 			if (pBinding)
 			{
-				buffer << ']';
+				buffer += ']';
 			}
 		}
 		else
 		{
-			buffer << *p++;
+			buffer += *p++;
 		}
 	}
 
-	return buffer.str();
+	return buffer;
 }
 
 /*
@@ -193,7 +191,7 @@ KB_Find
 Allows the engine to get a kbutton_t directly ( so it can check +mlook state, etc ) for saving out to .cfg files
 ============
 */
-struct kbutton_s DLLEXPORT* KB_Find(const char* name)
+kbutton_t DLLEXPORT* KB_Find(const char* name)
 {
 	//	RecClFindKey(name);
 
@@ -334,7 +332,7 @@ void KeyUp(kbutton_t* b)
 		return; // key up without coresponding down (menu pass through)
 	if (0 != b->down[0] || 0 != b->down[1])
 	{
-		//Con_Printf ("Keys down for button: '%c' '%c' '%c' (%d,%d,%d)!\n", b->down[0], b->down[1], c, b->down[0], b->down[1], c);
+		// Con_Printf ("Keys down for button: '%c' '%c' '%c' (%d,%d,%d)!\n", b->down[0], b->down[1], c, b->down[0], b->down[1], c);
 		return; // some other key is still holding it down
 	}
 
@@ -434,7 +432,7 @@ void IN_StrafeDown() { KeyDown(&in_strafe); }
 void IN_StrafeUp() { KeyUp(&in_strafe); }
 
 // needs capture by hud/vgui also
-extern void __CmdFunc_InputPlayerSpecial();
+void __CmdFunc_InputPlayerSpecial();
 
 void IN_Attack2Down()
 {
@@ -644,7 +642,7 @@ if active == 1 then we are 1) not playing back demos ( where our commands are ig
 2 ) we have finished signing on to server
 ================
 */
-void DLLEXPORT CL_CreateMove(float frametime, struct usercmd_s* cmd, int active)
+void DLLEXPORT CL_CreateMove(float frametime, usercmd_t* cmd, int active)
 {
 	//	RecClCL_CreateMove(frametime, cmd, active);
 
@@ -654,8 +652,8 @@ void DLLEXPORT CL_CreateMove(float frametime, struct usercmd_s* cmd, int active)
 
 	if (0 != active)
 	{
-		//memset( viewangles, 0, sizeof( Vector ) );
-		//viewangles[ 0 ] = viewangles[ 1 ] = viewangles[ 2 ] = 0.0;
+		// memset( viewangles, 0, sizeof( Vector ) );
+		// viewangles[ 0 ] = viewangles[ 1 ] = viewangles[ 2 ] = 0.0;
 		gEngfuncs.GetViewAngles(viewangles);
 
 		CL_AdjustAngles(frametime, viewangles);
@@ -1012,6 +1010,8 @@ void CL_UnloadParticleMan();
 void DLLEXPORT HUD_Shutdown()
 {
 	//	RecClShutdown();
+
+	gHUD.Shutdown();
 
 	ShutdownInput();
 

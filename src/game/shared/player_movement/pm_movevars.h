@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -10,9 +10,7 @@
 #pragma once
 
 // movevars_t                  // Physics variables.
-typedef struct movevars_s movevars_t;
-
-struct movevars_s
+struct movevars_t
 {
 	float gravity;	 // Gravity for map
 	float stopspeed; // Deceleration when not moving

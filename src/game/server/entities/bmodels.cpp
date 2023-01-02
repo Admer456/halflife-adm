@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== bmodels.cpp ========================================================
@@ -26,11 +26,6 @@
 #define SF_BRUSH_ACCDCC 16		 // brush should accelerate and decelerate when toggled
 #define SF_BRUSH_HURT 32		 // rotating brush that inflicts pain based on rotation speed
 #define SF_ROTATING_NOT_SOLID 64 // some special rotating objects are not solid.
-
-// covering cheesy noise1, noise2, & noise3 fields so they make more sense (for rotating fans)
-#define noiseStart noise1
-#define noiseStop noise2
-#define noiseRunning noise3
 
 #define SF_PENDULUM_SWING 2 // spawnflag that makes a pendulum a rope swing.
 //
@@ -63,7 +58,7 @@ void CFuncWall::Spawn()
 	pev->angles = g_vecZero;
 	pev->movetype = MOVETYPE_PUSH; // so it doesn't get pushed by anything
 	pev->solid = SOLID_BSP;
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	// If it can't move/go away, it's really part of the world
 	pev->flags |= FL_WORLDBRUSH;
@@ -205,7 +200,6 @@ class CFuncIllusionary : public CBaseToggle
 {
 public:
 	void Spawn() override;
-	void EXPORT SloshTouch(CBaseEntity* pOther);
 	bool KeyValue(KeyValueData* pkvd) override;
 	int ObjectCaps() override { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 };
@@ -214,7 +208,7 @@ LINK_ENTITY_TO_CLASS(func_illusionary, CFuncIllusionary);
 
 bool CFuncIllusionary::KeyValue(KeyValueData* pkvd)
 {
-	if (FStrEq(pkvd->szKeyName, "skin")) //skin is used for content type
+	if (FStrEq(pkvd->szKeyName, "skin")) // skin is used for content type
 	{
 		pev->skin = atof(pkvd->szValue);
 		return true;
@@ -228,7 +222,7 @@ void CFuncIllusionary::Spawn()
 	pev->angles = g_vecZero;
 	pev->movetype = MOVETYPE_NONE;
 	pev->solid = SOLID_NOT; // always solid_not
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	// I'd rather eat the network bandwidth of this than figure out how to save/restore
 	// these entities after they have been moved to the client, or respawn them ala Quake
@@ -291,7 +285,7 @@ public:
 	float m_flAttenuation;
 	float m_flVolume;
 	float m_pitch;
-	int m_sounds;
+	string_t m_sounds;
 };
 
 TYPEDESCRIPTION CFuncRotating::m_SaveData[] =
@@ -300,7 +294,7 @@ TYPEDESCRIPTION CFuncRotating::m_SaveData[] =
 		DEFINE_FIELD(CFuncRotating, m_flAttenuation, FIELD_FLOAT),
 		DEFINE_FIELD(CFuncRotating, m_flVolume, FIELD_FLOAT),
 		DEFINE_FIELD(CFuncRotating, m_pitch, FIELD_FLOAT),
-		DEFINE_FIELD(CFuncRotating, m_sounds, FIELD_INTEGER)};
+		DEFINE_FIELD(CFuncRotating, m_sounds, FIELD_SOUNDNAME)};
 
 IMPLEMENT_SAVERESTORE(CFuncRotating, CBaseEntity);
 
@@ -334,7 +328,7 @@ bool CFuncRotating::KeyValue(KeyValueData* pkvd)
 	}
 	else if (FStrEq(pkvd->szKeyName, "sounds"))
 	{
-		m_sounds = atoi(pkvd->szValue);
+		m_sounds = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 
@@ -413,7 +407,7 @@ void CFuncRotating::Spawn()
 	}
 
 	UTIL_SetOrigin(pev, pev->origin);
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	SetUse(&CFuncRotating::RotatingUse);
 	// did level designer forget to assign speed?
@@ -442,60 +436,12 @@ void CFuncRotating::Spawn()
 
 void CFuncRotating::Precache()
 {
-	const char* szSoundFile = STRING(pev->message);
-
-	// set up fan sounds
-
-	if (!FStringNull(pev->message) && strlen(szSoundFile) > 0)
+	if (FStrEq("", STRING(m_sounds)))
 	{
-		// if a path is set for a wave, use it
-
-		PRECACHE_SOUND(szSoundFile);
-
-		pev->noiseRunning = ALLOC_STRING(szSoundFile);
+		m_sounds = ALLOC_STRING("common/null.wav");
 	}
-	else
-	{
-		// otherwise use preset sound
-		switch (m_sounds)
-		{
-		case 1:
-			PRECACHE_SOUND("fans/fan1.wav");
-			pev->noiseRunning = ALLOC_STRING("fans/fan1.wav");
-			break;
-		case 2:
-			PRECACHE_SOUND("fans/fan2.wav");
-			pev->noiseRunning = ALLOC_STRING("fans/fan2.wav");
-			break;
-		case 3:
-			PRECACHE_SOUND("fans/fan3.wav");
-			pev->noiseRunning = ALLOC_STRING("fans/fan3.wav");
-			break;
-		case 4:
-			PRECACHE_SOUND("fans/fan4.wav");
-			pev->noiseRunning = ALLOC_STRING("fans/fan4.wav");
-			break;
-		case 5:
-			PRECACHE_SOUND("fans/fan5.wav");
-			pev->noiseRunning = ALLOC_STRING("fans/fan5.wav");
-			break;
 
-		case 0:
-		default:
-			if (!FStringNull(pev->message) && strlen(szSoundFile) > 0)
-			{
-				PRECACHE_SOUND(szSoundFile);
-
-				pev->noiseRunning = ALLOC_STRING(szSoundFile);
-				break;
-			}
-			else
-			{
-				pev->noiseRunning = ALLOC_STRING("common/null.wav");
-				break;
-			}
-		}
-	}
+	PrecacheSound(STRING(m_sounds));
 
 	if (pev->avelocity != g_vecZero)
 	{
@@ -572,7 +518,7 @@ void CFuncRotating::RampPitchVol(bool fUp)
 
 	// change the fan's vol and pitch
 
-	EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(pev->noiseRunning),
+	EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds),
 		fvol, m_flAttenuation, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
 }
 
@@ -581,7 +527,7 @@ void CFuncRotating::RampPitchVol(bool fUp)
 //
 void CFuncRotating::SpinUp()
 {
-	Vector vecAVel; //rotational velocity
+	Vector vecAVel; // rotational velocity
 
 	pev->nextthink = pev->ltime + 0.1;
 	pev->avelocity = pev->avelocity + (pev->movedir * (pev->speed * m_flFanFriction));
@@ -594,7 +540,7 @@ void CFuncRotating::SpinUp()
 		fabs(vecAVel.z) >= fabs(pev->movedir.z * pev->speed))
 	{
 		pev->avelocity = pev->movedir * pev->speed; // set speed in case we overshot
-		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(pev->noiseRunning),
+		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds),
 			m_flVolume, m_flAttenuation, SND_CHANGE_PITCH | SND_CHANGE_VOL, FANPITCHMAX);
 
 		SetThink(&CFuncRotating::Rotate);
@@ -611,12 +557,12 @@ void CFuncRotating::SpinUp()
 //
 void CFuncRotating::SpinDown()
 {
-	Vector vecAVel; //rotational velocity
+	Vector vecAVel; // rotational velocity
 	vec_t vecdir;
 
 	pev->nextthink = pev->ltime + 0.1;
 
-	pev->avelocity = pev->avelocity - (pev->movedir * (pev->speed * m_flFanFriction)); //spin down slower than spinup
+	pev->avelocity = pev->avelocity - (pev->movedir * (pev->speed * m_flFanFriction)); // spin down slower than spinup
 
 	vecAVel = pev->avelocity; // cache entity's rotational velocity
 
@@ -635,7 +581,7 @@ void CFuncRotating::SpinDown()
 		pev->avelocity = g_vecZero; // set speed in case we overshot
 
 		// stop sound, we're done
-		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(pev->noiseRunning /* Stop */),
+		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds /* Stop */),
 			0, 0, SND_STOP, m_pitch);
 
 		SetThink(&CFuncRotating::Rotate);
@@ -664,7 +610,7 @@ void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 		if (pev->avelocity != g_vecZero)
 		{
 			SetThink(&CFuncRotating::SpinDown);
-			//EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, (char *)STRING(pev->noiseStop),
+			// EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, (char *)STRING(pev->noise2),
 			//	m_flVolume, m_flAttenuation, 0, m_pitch);
 
 			pev->nextthink = pev->ltime + 0.1;
@@ -672,20 +618,20 @@ void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 		else // fan is not moving, so start it
 		{
 			SetThink(&CFuncRotating::SpinUp);
-			EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(pev->noiseRunning),
+			EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds),
 				0.01, m_flAttenuation, 0, FANPITCHMIN);
 
 			pev->nextthink = pev->ltime + 0.1;
 		}
 	}
-	else if (!FBitSet(pev->spawnflags, SF_BRUSH_ACCDCC)) //this is a normal start/stop brush.
+	else if (!FBitSet(pev->spawnflags, SF_BRUSH_ACCDCC)) // this is a normal start/stop brush.
 	{
 		if (pev->avelocity != g_vecZero)
 		{
 			// play stopping sound here
 			SetThink(&CFuncRotating::SpinDown);
 
-			// EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, (char *)STRING(pev->noiseStop),
+			// EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, (char *)STRING(pev->noise2),
 			//	m_flVolume, m_flAttenuation, 0, m_pitch);
 
 			pev->nextthink = pev->ltime + 0.1;
@@ -693,7 +639,7 @@ void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 		}
 		else
 		{
-			EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(pev->noiseRunning),
+			EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds),
 				m_flVolume, m_flAttenuation, 0, FANPITCHMAX);
 			pev->avelocity = pev->movedir * pev->speed;
 
@@ -718,7 +664,7 @@ void CFuncRotating::Blocked(CBaseEntity* pOther)
 
 
 
-//#endif
+// #endif
 
 
 class CPendulum : public CBaseEntity
@@ -794,7 +740,7 @@ void CPendulum::Spawn()
 		pev->solid = SOLID_BSP;
 	pev->movetype = MOVETYPE_PUSH;
 	UTIL_SetOrigin(pev, pev->origin);
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	if (m_distance == 0)
 		return;
@@ -937,7 +883,7 @@ void CPendulum::RopeTouch(CBaseEntity* pOther)
 
 	if (!pOther->IsPlayer())
 	{ // not a player!
-		ALERT(at_console, "Not a client\n");
+		Logger->debug("Not a client");
 		return;
 	}
 

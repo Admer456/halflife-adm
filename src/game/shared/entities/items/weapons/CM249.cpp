@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 #include "UserMessages.h"
 
@@ -34,20 +34,27 @@ IMPLEMENT_SAVERESTORE(CM249, CM249::BaseClass);
 
 LINK_ENTITY_TO_CLASS(weapon_m249, CM249);
 
+void CM249::OnCreate()
+{
+	BaseClass::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_saw.mdl");
+}
+
 void CM249::Precache()
 {
-	PRECACHE_MODEL("models/v_saw.mdl");
-	PRECACHE_MODEL("models/w_saw.mdl");
-	PRECACHE_MODEL("models/p_saw.mdl");
+	PrecacheModel("models/v_saw.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/p_saw.mdl");
 
-	m_iShell = PRECACHE_MODEL("models/saw_shell.mdl");
-	m_iLink = PRECACHE_MODEL("models/saw_link.mdl");
-	m_iSmoke = PRECACHE_MODEL("sprites/wep_smoke_01.spr");
-	m_iFire = PRECACHE_MODEL("sprites/xfire.spr");
+	m_iShell = PrecacheModel("models/saw_shell.mdl");
+	m_iLink = PrecacheModel("models/saw_link.mdl");
+	m_iSmoke = PrecacheModel("sprites/wep_smoke_01.spr");
+	m_iFire = PrecacheModel("sprites/xfire.spr");
 
-	PRECACHE_SOUND("weapons/saw_reload.wav");
-	PRECACHE_SOUND("weapons/saw_reload2.wav");
-	PRECACHE_SOUND("weapons/saw_fire1.wav");
+	PrecacheSound("weapons/saw_reload.wav");
+	PrecacheSound("weapons/saw_reload2.wav");
+	PrecacheSound("weapons/saw_fire1.wav");
 
 	m_usFireM249 = PRECACHE_EVENT(1, "events/m249.sc");
 }
@@ -60,27 +67,13 @@ void CM249::Spawn()
 
 	m_iId = WEAPON_M249;
 
-	SET_MODEL(edict(), "models/w_saw.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = M249_DEFAULT_GIVE;
 
 	m_bAlternatingEject = false;
 
 	FallInit(); // get ready to fall down.
-}
-
-bool CM249::AddToPlayer(CBasePlayer* pPlayer)
-{
-	if (BaseClass::AddToPlayer(pPlayer))
-	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->edict());
-		WRITE_BYTE(m_iId);
-		MESSAGE_END();
-
-		return true;
-	}
-
-	return false;
 }
 
 bool CM249::Deploy()
@@ -107,7 +100,7 @@ void CM249::WeaponIdle()
 {
 	ResetEmptySound();
 
-	//Update auto-aim
+	// Update auto-aim
 	m_pPlayer->GetAutoaimVector(AUTOAIM_5DEGREES);
 
 	if (m_bReloading && gpGlobals->time >= m_flReloadStart + 1.33)
@@ -142,7 +135,7 @@ void CM249::WeaponIdle()
 
 void CM249::PrimaryAttack()
 {
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 		PlayEmptySound();
 
@@ -276,7 +269,7 @@ void CM249::PrimaryAttack()
 	{
 		m_pPlayer->pev->velocity = m_pPlayer->pev->velocity - vecInvPushDir;
 
-		//Restore Z velocity to make deathmatch easier.
+		// Restore Z velocity to make deathmatch easier.
 		m_pPlayer->pev->velocity.z = flZVel;
 	}
 	else
@@ -373,22 +366,20 @@ class CAmmo556 : public CBasePlayerAmmo
 public:
 	using BaseClass = CBasePlayerAmmo;
 
+	void OnCreate() override
+	{
+		BaseClass::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_saw_clip.mdl");
+	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_saw_clip.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
 
-	void Spawn() override
-	{
-		Precache();
-
-		SET_MODEL(edict(), "models/w_saw_clip.mdl");
-
-		BaseClass::Spawn();
-	}
-
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		if (pOther->GiveAmmo(AMMO_M249_GIVE, "556", M249_MAX_CARRY) != -1)
 		{

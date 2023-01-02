@@ -1,20 +1,22 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
 
+#include "basemonster.h"
+#include "gamerules.h"
 #include "pm_materials.h"
 #include "ctf/CTFDefs.h"
 #include "palette.h"
@@ -43,7 +45,7 @@ class CRope;
 // generic player
 //
 //-----------------------------------------------------
-//This is Half-Life player entity
+// This is Half-Life player entity
 //-----------------------------------------------------
 #define CSUITPLAYLIST 4 // max of 4 suit sentences queued up at any time
 
@@ -68,7 +70,7 @@ class CRope;
 
 #define TEAM_NAME_LENGTH 16
 
-typedef enum
+enum PLAYER_ANIM
 {
 	PLAYER_IDLE,
 	PLAYER_WALK,
@@ -77,7 +79,7 @@ typedef enum
 	PLAYER_DIE,
 	PLAYER_ATTACK1,
 	PLAYER_GRAPPLE,
-} PLAYER_ANIM;
+};
 
 #define MAX_ID_RANGE 2048
 #define SBAR_STRING_SIZE 128
@@ -88,6 +90,12 @@ enum sbar_data
 	SBAR_ID_TARGETHEALTH,
 	SBAR_ID_TARGETARMOR,
 	SBAR_END,
+};
+
+enum Cheat
+{
+	InfiniteAir = 0,
+	InfiniteArmor,
 };
 
 class CBasePlayer : public CBaseMonster
@@ -108,7 +116,7 @@ public:
 	int random_seed; // See that is shared between client & server for shared weapons code
 
 	Vector m_DisplacerReturn;
-	float m_flDisplacerSndRoomtype;
+	int m_DisplacerSndRoomtype;
 
 	int m_iPlayerSound;		// the index of the sound list slot reserved for this player
 	int m_iTargetVolume;	// ideal sound volume.
@@ -118,10 +126,10 @@ public:
 	float m_flStopExtraSoundTime;
 
 	/**
-	*	@brief What type of suit light the player can use
-	*	@details The initial value here is the default
-	*	To change this setting at runtime call @see SetSuitLightType so that player state is updated properly
-	*/
+	 *	@brief What type of suit light the player can use
+	 *	@details The initial value here is the default
+	 *	To change this setting at runtime call @see SetSuitLightType so that player state is updated properly
+	 */
 	SuitLightType m_SuitLightType = SuitLightType::Flashlight;
 	float m_flFlashLightTime; // Time until next battery draw/Recharge
 	int m_iFlashBattery;	  // Flashlight Battery Draw
@@ -130,9 +138,10 @@ public:
 	int m_afButtonPressed;
 	int m_afButtonReleased;
 
-	edict_t* m_pentSndLast; // last sound entity to modify player room type
-	float m_flSndRoomtype;	// last roomtype set by sound entity
-	float m_flSndRange;		// dist from player to sound entity
+	EHANDLE m_SndLast;	   // last sound entity to modify player room type
+	int m_SndRoomtype = 0; // last roomtype set by sound entity. Defaults to 0 on new maps to disable it by default.
+	int m_ClientSndRoomtype;
+	float m_flSndRange; // dist from player to sound entity
 
 	float m_flFallVelocity;
 
@@ -178,7 +187,7 @@ public:
 
 	EHANDLE m_pTank;		 // the tank which the player is currently controlling,  nullptr if no tank
 	EHANDLE m_hViewEntity;	 // The view entity being used, or null if the player is using itself as the view entity
-	bool m_bResetViewEntity; //True if the player's view needs to be set back to the view entity
+	bool m_bResetViewEntity; // True if the player's view needs to be set back to the view entity
 	float m_fDeadTime;		 // the time at which the player died  (used in PlayerDeathThink())
 
 	bool m_fNoPlayerSound; // a debugging feature. Player makes no sound if this is true.
@@ -236,7 +245,7 @@ public:
 
 	std::uint64_t m_WeaponBits;
 
-	//Not saved, used to update client.
+	// Not saved, used to update client.
 	std::uint64_t m_ClientWeaponBits;
 
 	// shared ammo slots
@@ -288,8 +297,8 @@ public:
 	bool SwitchWeapon(CBasePlayerItem* pWeapon);
 
 	/**
-	*	@brief Equips an appropriate weapon for the player if they don't have one equipped already.
-	*/
+	 *	@brief Equips an appropriate weapon for the player if they don't have one equipped already.
+	 */
 	void EquipWeapon();
 
 	void SetWeaponBit(int id);
@@ -323,7 +332,6 @@ public:
 
 	int Classify() override;
 	void SetAnimation(PLAYER_ANIM playerAnim);
-	void SetWeaponAnimType(const char* szExtention);
 	char m_szAnimExtention[32];
 
 	// custom player functions
@@ -333,10 +341,10 @@ public:
 	void StartDeathCam();
 	void StartObserver(Vector vecPosition, Vector vecViewAngle);
 
-	void AddPoints(int score, bool bAllowNegativeScore) override;
-	void AddPointsToTeam(int score, bool bAllowNegativeScore) override;
-	bool AddPlayerItem(CBasePlayerItem* pItem) override;
-	bool RemovePlayerItem(CBasePlayerItem* pItem) override;
+	void AddPoints(int score, bool bAllowNegativeScore);
+	void AddPointsToTeam(int score, bool bAllowNegativeScore);
+	bool AddPlayerItem(CBasePlayerItem* pItem);
+	bool RemovePlayerItem(CBasePlayerItem* pItem);
 	void DropPlayerItem(const char* pszItemName);
 	bool HasPlayerItem(CBasePlayerItem* pCheckItem);
 	bool HasNamedPlayerItem(const char* pszItemName);
@@ -348,9 +356,10 @@ public:
 	void ItemPreFrame();
 	void ItemPostFrame();
 	void GiveNamedItem(const char* szName);
+	void GiveNamedItem(const char* szName, int defaultAmmo);
 	void EnableControl(bool fControl);
 
-	int GiveAmmo(int iAmount, const char* szName, int iMax) override;
+	int GiveAmmo(int iAmount, const char* szName, int iMax);
 	void SendAmmoUpdate();
 	void SendSingleAmmoUpdate(int ammoIndex);
 
@@ -381,8 +390,6 @@ public:
 
 	void ForceClientDllUpdate(); // Forces all client .dll specific data to be resent to client.
 
-	void DeathMessage(entvars_t* pevKiller);
-
 	void SetCustomDecalFrames(int nFrames);
 	int GetCustomDecalFrames();
 
@@ -393,7 +400,7 @@ public:
 	float m_flPlayAftershock;
 	float m_flNextAmmoBurn; // while charging, when to absorb another unit of player's ammo?
 
-	//Player ID
+	// Player ID
 	void InitStatusBar();
 	void UpdateStatusBar();
 	int m_izSBarState[SBAR_END];
@@ -401,6 +408,14 @@ public:
 	float m_flStatusBarDisappearDelay;
 	char m_SbarString0[SBAR_STRING_SIZE];
 	char m_SbarString1[SBAR_STRING_SIZE];
+
+	void UpdateEntityInfo();
+
+	// Not saved, reset on map change.
+	float m_NextEntityInfoUpdateTime;
+
+	// Assume this is false on map start since the client clears it anyway.
+	bool m_EntityInfoEnabled{false};
 
 	float m_flNextChatTime;
 
@@ -417,7 +432,7 @@ public:
 
 	bool m_bRestored;
 
-	//True if the player is currently spawning.
+	// True if the player is currently spawning.
 	bool m_bIsSpawning = false;
 
 	bool IsOnRope() const { return (m_afPhysicsFlags & PFLAG_ONROPE) != 0; }
@@ -447,12 +462,23 @@ private:
 	float m_flLastClimbTime = 0;
 	bool m_bIsClimbing = false;
 
+	// For saving and level changes.
+	int m_HudColor = RGB_HUD_COLOR.ToInteger();
+
+	bool m_bInfiniteAir;
+	bool m_bInfiniteArmor;
+
 public:
 	/**
-	*	@brief Sets the player's hud color
-	*	@details The player must be fully connected and ready to receive user messages for this to work
-	*/
+	 *	@brief Sets the player's hud color
+	 *	@details The player must be fully connected and ready to receive user messages for this to work
+	 */
 	void SetHudColor(RGB24 color);
+
+	void SendScoreInfo(CBasePlayer* destination);
+	void SendScoreInfoAll();
+
+	void ToggleCheat(Cheat cheat);
 };
 
 inline void CBasePlayer::SetWeaponBit(int id)
@@ -490,7 +516,7 @@ inline void CBasePlayer::SetHasSuit(bool hasSuit)
 class CPlayerIterator
 {
 public:
-	static const int FirstPlayerIndex = 1;
+	static constexpr int FirstPlayerIndex = 1;
 
 public:
 	CPlayerIterator()
@@ -561,8 +587,8 @@ public:
 	}
 
 private:
-	int m_iNextIndex = 1;
 	CBasePlayer* m_pPlayer;
+	int m_iNextIndex;
 };
 
 class CPlayerEnumerator
@@ -619,13 +645,48 @@ inline CPlayerEnumeratorWithStart UTIL_FindPlayers(CBasePlayer* pStartEntity)
 	return {pStartEntity};
 }
 
+/**
+ *	@brief Tag type to log player info in the form <tt>\"netname<userid><steamid><teamname>\"</tt>.
+ */
+struct PlayerLogInfo
+{
+	CBasePlayer& Player;
+};
+
+template <>
+struct fmt::formatter<PlayerLogInfo>
+{
+	constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin())
+	{
+		auto it = ctx.begin();
+
+		if (it != ctx.end() && *it != '}')
+		{
+			throw format_error("invalid format");
+		}
+
+		return it;
+	}
+
+	template <typename FormatContext>
+	auto format(const PlayerLogInfo& info, FormatContext& ctx) const -> decltype(ctx.out())
+	{
+		auto edict = info.Player.edict();
+
+		return fmt::format_to(ctx.out(), "\"{}<{}><{}><{}>\"",
+			STRING(info.Player.pev->netname),
+			g_engfuncs.pfnGetPlayerUserId(edict),
+			GETPLAYERAUTHID(edict),
+			GetTeamName(edict));
+	}
+};
+
 inline bool gInitHUD = true;
 inline bool gEvilImpulse101 = false;
 inline bool giPrecacheGrunt = false;
 
 /**
-*	@brief Display the game title if this key is set
-*/
-inline DLL_GLOBAL bool gDisplayTitle = false;
-inline DLL_GLOBAL unsigned int g_ulModelIndexPlayer = 0;
+ *	@brief Display the game title if this key is set
+ */
+inline DLL_GLOBAL std::string g_DisplayTitleName;
 inline DLL_GLOBAL CBaseEntity* g_pLastSpawn = nullptr;

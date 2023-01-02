@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 
 #define PENGUIN_DETONATE_DELAY 15.0
@@ -32,6 +32,7 @@ public:
 
 	static TYPEDESCRIPTION m_SaveData[];
 
+	void OnCreate() override;
 	void Precache() override;
 	void GibMonster() override;
 	void EXPORT SuperBounceTouch(CBaseEntity* pOther);
@@ -70,16 +71,24 @@ IMPLEMENT_SAVERESTORE(CPenguinGrenade, CGrenade);
 
 LINK_ENTITY_TO_CLASS(monster_penguin, CPenguinGrenade);
 
+void CPenguinGrenade::OnCreate()
+{
+	CGrenade::OnCreate();
+
+	pev->health = GetSkillFloat("snark_health"sv);
+	pev->model = MAKE_STRING("models/w_penguin.mdl");
+}
+
 void CPenguinGrenade::Precache()
 {
-	g_engfuncs.pfnPrecacheModel("models/w_penguin.mdl");
-	g_engfuncs.pfnPrecacheSound("squeek/sqk_blast1.wav");
-	g_engfuncs.pfnPrecacheSound("common/bodysplat.wav");
-	g_engfuncs.pfnPrecacheSound("squeek/sqk_die1.wav");
-	g_engfuncs.pfnPrecacheSound("squeek/sqk_hunt1.wav");
-	g_engfuncs.pfnPrecacheSound("squeek/sqk_hunt2.wav");
-	g_engfuncs.pfnPrecacheSound("squeek/sqk_hunt3.wav");
-	g_engfuncs.pfnPrecacheSound("squeek/sqk_deploy1.wav");
+	PrecacheModel(STRING(pev->model));
+	PrecacheSound("squeek/sqk_blast1.wav");
+	PrecacheSound("common/bodysplat.wav");
+	PrecacheSound("squeek/sqk_die1.wav");
+	PrecacheSound("squeek/sqk_hunt1.wav");
+	PrecacheSound("squeek/sqk_hunt2.wav");
+	PrecacheSound("squeek/sqk_hunt3.wav");
+	PrecacheSound("squeek/sqk_deploy1.wav");
 }
 
 void CPenguinGrenade::GibMonster()
@@ -116,7 +125,7 @@ void CPenguinGrenade::SuperBounceTouch(CBaseEntity* pOther)
 
 		if (g_pGameRules->IsMultiplayer())
 		{
-			//TODO: set to null earlier on, so this can never be valid
+			// TODO: set to null earlier on, so this can never be valid
 			auto owner = CBaseEntity::Instance(pev->owner);
 
 			auto ownerPlayer = owner->IsPlayer() ? owner : nullptr;
@@ -142,9 +151,9 @@ void CPenguinGrenade::SuperBounceTouch(CBaseEntity* pOther)
 			// and it's not another squeakgrenade
 			if (tr.pHit->v.modelindex != pev->modelindex)
 			{
-				// ALERT( at_console, "hit enemy\n");
+				// AILogger->debug("hit enemy");
 				ClearMultiDamage();
-				pOther->TraceAttack(pev, gSkillData.snarkDmgBite, gpGlobals->v_forward, &tr, DMG_SLASH);
+				pOther->TraceAttack(pev, GetSkillFloat("snark_dmg_bite"sv), gpGlobals->v_forward, &tr, DMG_SLASH);
 				if (m_hOwner != nullptr)
 					ApplyMultiDamage(pev, m_hOwner->pev);
 				else
@@ -152,9 +161,9 @@ void CPenguinGrenade::SuperBounceTouch(CBaseEntity* pOther)
 
 				// add more explosion damage
 				if (hurtTarget)
-					pev->dmg += gSkillData.plrDmgHandGrenade;
+					pev->dmg += GetSkillFloat("plr_hand_grenade"sv);
 				else
-					pev->dmg += gSkillData.plrDmgHandGrenade / 5.0;
+					pev->dmg += GetSkillFloat("plr_hand_grenade"sv) / 5.0;
 
 				if (pev->dmg > 500.0)
 				{
@@ -170,7 +179,7 @@ void CPenguinGrenade::SuperBounceTouch(CBaseEntity* pOther)
 		}
 		else
 		{
-			// ALERT( at_console, "been hit\n");
+			// AILogger->debug("been hit");
 		}
 	}
 
@@ -216,7 +225,7 @@ void CPenguinGrenade::Spawn()
 	pev->movetype = MOVETYPE_BOUNCE;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(ENT(pev), "models/w_penguin.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-4, -4, 0), Vector(4, 4, 8));
 	UTIL_SetOrigin(pev, pev->origin);
 
@@ -227,11 +236,10 @@ void CPenguinGrenade::Spawn()
 
 	pev->flags |= FL_MONSTER;
 	pev->takedamage = DAMAGE_AIM;
-	pev->health = gSkillData.snarkHealth;
 	pev->gravity = 0.5;
 	pev->friction = 0.5;
 
-	pev->dmg = gSkillData.plrDmgHandGrenade;
+	pev->dmg = GetSkillFloat("plr_hand_grenade"sv);
 
 	m_flDie = gpGlobals->time + PENGUIN_DETONATE_DELAY;
 
@@ -242,7 +250,7 @@ void CPenguinGrenade::Spawn()
 
 	m_flNextBounceSoundTime = gpGlobals->time; // reset each time a snark is spawned.
 
-	//TODO: shouldn't use index
+	// TODO: shouldn't use index
 	pev->sequence = MONSTERPENGUIN_RUN;
 	ResetSequenceInfo();
 }
@@ -301,7 +309,7 @@ void CPenguinGrenade::Killed(entvars_t* pevAttacker, int iGib)
 
 void CPenguinGrenade::HuntThink()
 {
-	// ALERT( at_console, "think\n" );
+	// AILogger->debug("think");
 
 	if (!IsInWorld())
 	{
@@ -323,7 +331,7 @@ void CPenguinGrenade::HuntThink()
 	}
 
 	// float
-	if (pev->waterlevel != 0)
+	if (pev->waterlevel != WaterLevel::Dry)
 	{
 		if (pev->movetype == MOVETYPE_BOUNCE)
 		{
@@ -386,9 +394,9 @@ void CPenguinGrenade::HuntThink()
 		if (flAdj > 1.2)
 			flAdj = 1.2;
 
-		// ALERT( at_console, "think : enemy\n");
+		// AILogger->debug("think : enemy");
 
-		// ALERT( at_console, "%.0f %.2f %.2f %.2f\n", flVel, m_vecTarget.x, m_vecTarget.y, m_vecTarget.z );
+		// AILogger->debug("{:.0f} {:.2f}", flVel, m_vecTarget);
 
 		pev->velocity = pev->velocity * flAdj + m_vecTarget * 300;
 	}

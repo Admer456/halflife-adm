@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #pragma once
 
@@ -27,33 +27,14 @@ namespace GuardBodyGroup
 {
 enum GuardBodyGroup
 {
-	Weapons = 1,
-	Heads = 2
-};
-}
-
-namespace GuardWeapon
-{
-enum GuardWeapon
-{
-	Random = -1,
-	None = 0,
-	Gun,
-};
-}
-
-namespace GuardHead
-{
-enum GuardHead
-{
-	Random = -1,
-	Default = 0,
+	Weapons = 1
 };
 }
 
 class CBarney : public CTalkMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
@@ -95,25 +76,12 @@ public:
 	bool m_lastAttackCheck;
 
 
-	//Used during spawn to set initial values, not restored
+	// Used during spawn to set initial values, not restored
 	int m_iGuardBody;
-	int m_iGuardHead;
 
 	CUSTOM_SCHEDULES;
 
 protected:
-	/**
-	*	@brief Precaches all Security Guard assets
-	*	@param model Must be a string literal
-	*/
-	void PrecacheCore(const char* model);
-
-	/**
-	*	@brief Spawns the Security Guard
-	*	@param model Must be a string literal
-	*/
-	void SpawnCore(const char* model, float health);
-
 	virtual void DropWeapon();
 
 	virtual void SpeakKilledEnemy();

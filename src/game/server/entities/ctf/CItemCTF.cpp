@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 #include "CItemCTF.h"
 #include "CItemSpawnCTF.h"
@@ -30,17 +30,17 @@ bool CItemCTF::KeyValue(KeyValueData* pkvd)
 		return true;
 	}
 
-	//TODO: should invoke base class KeyValue here
+	// TODO: should invoke base class KeyValue here
 	return false;
 }
 
 void CItemCTF::Precache()
 {
 	if (!FStringNull(pev->model))
-		PRECACHE_MODEL(const_cast<char*>(STRING(pev->model)));
+		PrecacheModel(STRING(pev->model));
 
-	PRECACHE_SOUND("ctf/itemthrow.wav");
-	PRECACHE_SOUND("items/ammopickup1.wav");
+	PrecacheSound("ctf/itemthrow.wav");
+	PrecacheSound("items/ammopickup1.wav");
 }
 
 void CItemCTF::Spawn()
@@ -56,14 +56,14 @@ void CItemCTF::Spawn()
 
 	if (DROP_TO_FLOOR(edict()) == 0)
 	{
-		ALERT(at_error, "Item %s fell out of level at %f,%f,%f", STRING(pev->classname), pev->origin.x, pev->origin.y, pev->origin.z);
+		CBaseEntity::Logger->error("Item {} fell out of level at {}", STRING(pev->classname), pev->origin);
 		UTIL_Remove(this);
 		return;
 	}
 
 	if (!FStringNull(pev->model))
 	{
-		SET_MODEL(edict(), STRING(pev->model));
+		SetModel(STRING(pev->model));
 
 		pev->sequence = LookupSequence("idle");
 
@@ -83,7 +83,7 @@ void CItemCTF::Spawn()
 	m_iLastTouched = 0;
 	m_flPickupTime = 0;
 
-	//TODO: already done above
+	// TODO: already done above
 	SetTouch(&CItemCTF::ItemTouch);
 
 	m_flNextTouchTime = 0;
@@ -197,7 +197,7 @@ void CItemCTF::DropThink()
 	}
 
 	if (searchedForSpawns && nTested > 0)
-		ALERT(at_console, "Warning: No available spawn points found.  Powerup returned to original coordinates.");
+		CBaseEntity::Logger->debug("Warning: No available spawn points found.  Powerup returned to original coordinates.");
 
 	m_pLastSpawn = pSpawn;
 
@@ -205,7 +205,7 @@ void CItemCTF::DropThink()
 
 	if (0 == g_engfuncs.pfnDropToFloor(edict()))
 	{
-		ALERT(at_error, "Item %s fell out of level at %f,%f,%f", STRING(pev->classname), pev->origin.x, pev->origin.y, pev->origin.z);
+		CBaseEntity::Logger->error("Item {} fell out of level at {}", STRING(pev->classname), pev->origin);
 		UTIL_Remove(this);
 	}
 }
@@ -234,12 +234,14 @@ void CItemCTF::CarryThink()
 
 void CItemCTF::ItemTouch(CBaseEntity* pOther)
 {
-	//TODO: really shouldn't be using the index here tbh
+	// TODO: really shouldn't be using the index here tbh
 	if (pOther->IsPlayer() && pOther->IsAlive() && (m_iLastTouched != pOther->entindex() || m_flNextTouchTime <= gpGlobals->time))
 	{
 		m_iLastTouched = 0;
 
-		if (MyTouch(static_cast<CBasePlayer*>(pOther)))
+		auto player = static_cast<CBasePlayer*>(pOther);
+
+		if (MyTouch(player))
 		{
 			SUB_UseTargets(pOther, USE_TOGGLE, 0);
 			SetTouch(nullptr);
@@ -257,13 +259,7 @@ void CItemCTF::ItemTouch(CBaseEntity* pOther)
 
 			m_flPickupTime = gpGlobals->time;
 
-			UTIL_LogPrintf(
-				"\"%s<%i><%u><%s>\" triggered \"take_%s_Powerup\"\n",
-				STRING(pOther->pev->netname),
-				GETPLAYERUSERID(pOther->edict()),
-				g_engfuncs.pfnGetPlayerWONId(pOther->edict()),
-				GetTeamName(pOther->edict()),
-				m_pszItemName);
+			CGameRules::Logger->trace("{} triggered \"take_{}_Powerup\"", PlayerLogInfo{*player}, m_pszItemName);
 		}
 	}
 }
@@ -274,13 +270,7 @@ void CItemCTF::DropItem(CBasePlayer* pPlayer, bool bForceRespawn)
 	{
 		RemoveEffect(pPlayer);
 
-		UTIL_LogPrintf(
-			"\"%s<%i><%u><%s>\" triggered \"drop_%s_Powerup\"\n",
-			STRING(pPlayer->pev->netname),
-			GETPLAYERUSERID(pPlayer->edict()),
-			g_engfuncs.pfnGetPlayerWONId(pPlayer->edict()),
-			GetTeamName(pPlayer->edict()),
-			m_pszItemName);
+		CGameRules::Logger->trace("{} triggered \"drop_{}_Powerup\"", PlayerLogInfo{*pPlayer}, m_pszItemName);
 
 		pev->origin = pPlayer->pev->origin + Vector(0, 0, (pPlayer->pev->flags & FL_DUCKING) != 0 ? 34 : 16);
 	}
@@ -364,13 +354,7 @@ void CItemCTF::ScatterItem(CBasePlayer* pPlayer)
 	m_iLastTouched = pPlayer->entindex();
 	m_flNextTouchTime = 5.0 + gpGlobals->time;
 
-	UTIL_LogPrintf(
-		"\"%s<%i><%u><%s>\" triggered \"drop_%s_Powerup\"\n",
-		STRING(pPlayer->pev->netname),
-		GETPLAYERUSERID(pPlayer->edict()),
-		g_engfuncs.pfnGetPlayerWONId(pPlayer->edict()),
-		GetTeamName(pPlayer->edict()),
-		m_pszItemName);
+	CGameRules::Logger->trace("{} triggered \"drop_{}_Powerup\"", PlayerLogInfo{*pPlayer}, m_pszItemName);
 }
 
 void CItemCTF::ThrowItem(CBasePlayer* pPlayer)
@@ -415,11 +399,5 @@ void CItemCTF::ThrowItem(CBasePlayer* pPlayer)
 	m_iLastTouched = pPlayer->entindex();
 	m_flNextTouchTime = 5.0 + gpGlobals->time;
 
-	UTIL_LogPrintf(
-		"\"%s<%i><%u><%s>\" triggered \"drop_%s_Powerup\"\n",
-		STRING(pPlayer->pev->netname),
-		GETPLAYERUSERID(pPlayer->edict()),
-		g_engfuncs.pfnGetPlayerWONId(pPlayer->edict()),
-		GetTeamName(pPlayer->edict()),
-		m_pszItemName);
+	CGameRules::Logger->trace("{} triggered \"drop_{}_Powerup\"", PlayerLogInfo{*pPlayer}, m_pszItemName);
 }

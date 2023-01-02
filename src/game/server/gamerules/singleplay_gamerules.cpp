@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //
 // teamplay_gamerules.cpp
 //
@@ -24,7 +24,8 @@
 //=========================================================
 CHalfLifeRules::CHalfLifeRules()
 {
-	RefreshSkillData();
+	// Define this as a dummy command to silence console errors.
+	m_VModEnableCommand = g_ClientCommands.CreateScoped("vmodenable", [](auto, const auto&) {});
 }
 
 //=========================================================
@@ -77,10 +78,8 @@ bool CHalfLifeRules::FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerItem* 
 //=========================================================
 bool CHalfLifeRules::GetNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pCurrentWeapon, bool alwaysSearch)
 {
-	//If this is an exhaustible weapon and it's out of ammo, always try to switch even in singleplayer.
-	if (alwaysSearch || ((pCurrentWeapon->iFlags() & ITEM_FLAG_EXHAUSTIBLE) != 0
-		&& pCurrentWeapon->PrimaryAmmoIndex() != -1
-		&& pPlayer->m_rgAmmo[pCurrentWeapon->PrimaryAmmoIndex()] == 0))
+	// If this is an exhaustible weapon and it's out of ammo, always try to switch even in singleplayer.
+	if (alwaysSearch || ((pCurrentWeapon->iFlags() & ITEM_FLAG_EXHAUSTIBLE) != 0 && pCurrentWeapon->PrimaryAmmoIndex() != -1 && pPlayer->m_rgAmmo[pCurrentWeapon->PrimaryAmmoIndex()] == 0))
 	{
 		return CGameRules::GetNextBestWeapon(pPlayer, pCurrentWeapon);
 	}
@@ -125,7 +124,7 @@ void CHalfLifeRules::PlayerSpawn(CBasePlayer* pPlayer)
 //=========================================================
 bool CHalfLifeRules::AllowAutoTargetCrosshair()
 {
-	return (g_iSkillLevel == SKILL_EASY);
+	return (g_Skill.GetSkillLevel() == SkillLevel::Easy);
 }
 
 //=========================================================
@@ -146,7 +145,7 @@ bool CHalfLifeRules::FPlayerCanRespawn(CBasePlayer* pPlayer)
 //=========================================================
 float CHalfLifeRules::FlPlayerSpawnTime(CBasePlayer* pPlayer)
 {
-	return gpGlobals->time; //now!
+	return gpGlobals->time; // now!
 }
 
 //=========================================================

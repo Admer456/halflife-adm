@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -10,5 +10,5 @@
 void VGui_Startup();
 void VGui_Shutdown();
 
-//Only safe to call from inside subclass of Panel::paintBackground
+// Only safe to call from inside subclass of Panel::paintBackground
 void VGui_ViewportPaintBackground(int extents[4]);

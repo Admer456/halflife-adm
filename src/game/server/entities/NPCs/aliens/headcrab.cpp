@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // headcrab.cpp - tiny, jumpy alien parasite
 //=========================================================
@@ -64,6 +64,7 @@ Schedule_t slHCRangeAttack1Fast[] =
 class CHeadCrab : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void RunTask(Task_t* pTask) override;
@@ -83,7 +84,7 @@ public:
 	bool CheckRangeAttack2(float flDot, float flDist) override;
 	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
 
-	virtual float GetDamageAmount() { return gSkillData.headcrabDmgBite; }
+	virtual float GetDamageAmount() { return GetSkillFloat("headcrab_dmg_bite"sv); }
 	virtual int GetVoicePitch() { return 100; }
 	virtual float GetSoundVolue() { return 1.0; }
 	Schedule_t* GetScheduleOfType(int Type) override;
@@ -139,6 +140,14 @@ const char* CHeadCrab::pBiteSounds[] =
 	{
 		"headcrab/hc_headbite.wav",
 };
+
+void CHeadCrab::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = GetSkillFloat("headcrab_health"sv);
+	pev->model = MAKE_STRING("models/headcrab.mdl");
+}
 
 //=========================================================
 // Classify - indicates this monster's place in the
@@ -269,14 +278,13 @@ void CHeadCrab::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/headcrab.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-12, -12, 0), Vector(12, 12, 24));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_GREEN;
 	pev->effects = 0;
-	pev->health = gSkillData.headcrabHealth;
 	pev->view_ofs = Vector(0, 0, 20); // position of the eyes relative to monster's origin.
 	pev->yaw_speed = 5;				  //!!! should we put this in the monster's changeanim function since turn rates may vary with state/anim?
 	m_flFieldOfView = 0.5;			  // indicates the width of this monster's forward view cone ( as a dotproduct result )
@@ -297,7 +305,7 @@ void CHeadCrab::Precache()
 	PRECACHE_SOUND_ARRAY(pDeathSounds);
 	PRECACHE_SOUND_ARRAY(pBiteSounds);
 
-	PRECACHE_MODEL("models/headcrab.mdl");
+	PrecacheModel(STRING(pev->model));
 }
 
 
@@ -474,10 +482,10 @@ Schedule_t* CHeadCrab::GetScheduleOfType(int Type)
 class CBabyCrab : public CHeadCrab
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
-	void Precache() override;
 	void SetYawSpeed() override;
-	float GetDamageAmount() override { return gSkillData.headcrabDmgBite * 0.3; }
+	float GetDamageAmount() override { return GetSkillFloat("headcrab_dmg_bite"sv) * 0.3; }
 	bool CheckRangeAttack1(float flDot, float flDist) override;
 	Schedule_t* GetScheduleOfType(int Type) override;
 	int GetVoicePitch() override { return PITCH_NORM + RANDOM_LONG(40, 50); }
@@ -485,23 +493,21 @@ public:
 };
 LINK_ENTITY_TO_CLASS(monster_babycrab, CBabyCrab);
 
+void CBabyCrab::OnCreate()
+{
+	CHeadCrab::OnCreate();
+
+	pev->health = GetSkillFloat("headcrab_health"sv) * 0.25; // less health than full grown
+	pev->model = MAKE_STRING("models/baby_headcrab.mdl");
+}
+
 void CBabyCrab::Spawn()
 {
 	CHeadCrab::Spawn();
-	SET_MODEL(ENT(pev), "models/baby_headcrab.mdl");
 	pev->rendermode = kRenderTransTexture;
 	pev->renderamt = 192;
 	UTIL_SetSize(pev, Vector(-12, -12, 0), Vector(12, 12, 24));
-
-	pev->health = gSkillData.headcrabHealth * 0.25; // less health than full grown
 }
-
-void CBabyCrab::Precache()
-{
-	PRECACHE_MODEL("models/baby_headcrab.mdl");
-	CHeadCrab::Precache();
-}
-
 
 void CBabyCrab::SetYawSpeed()
 {

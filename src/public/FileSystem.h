@@ -1,4 +1,4 @@
-//========= Copyright � 1996-2001, Valve LLC, All rights reserved. ============
+//========= Copyright © 1996-2001, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -21,19 +21,19 @@ typedef int WaitForResourcesHandle_t;
 //-----------------------------------------------------------------------------
 // Enums used by the interface
 //-----------------------------------------------------------------------------
-typedef enum
+enum FileSystemSeek_t
 {
 	FILESYSTEM_SEEK_HEAD = 0,
 	FILESYSTEM_SEEK_CURRENT,
 	FILESYSTEM_SEEK_TAIL,
-} FileSystemSeek_t;
+};
 
 enum
 {
 	FILESYSTEM_INVALID_FIND_HANDLE = -1
 };
 
-typedef enum
+enum FileWarningLevel_t
 {
 	// Don't print anything
 	FILESYSTEM_WARNING_QUIET = 0,
@@ -46,7 +46,7 @@ typedef enum
 
 	// Report all open/close events to console ( !slow! )
 	FILESYSTEM_WARNING_REPORTALLACCESSES
-} FileWarningLevel_t;
+};
 
 #define FILESYSTEM_INVALID_HANDLE (FileHandle_t)0
 
@@ -60,11 +60,11 @@ class IFileSystem : public IBaseInterface
 {
 public:
 	// Mount and unmount the filesystem
-	virtual void Mount(void) = 0;
-	virtual void Unmount(void) = 0;
+	virtual void Mount() = 0;
+	virtual void Unmount() = 0;
 
 	// Remove all search paths (including write path?)
-	virtual void RemoveAllSearchPaths(void) = 0;
+	virtual void RemoveAllSearchPaths() = 0;
 
 	// Add paths in priority order (mod dir, game dir, ....)
 	// If one or more .pak files are in the specified directory, then they are
@@ -139,7 +139,7 @@ public:
 	virtual bool GetCurrentDirectory(char* pDirectory, int maxlen) = 0;
 
 	// Dump to printf/OutputDebugString the list of files that have not been closed
-	virtual void PrintOpenedFiles(void) = 0;
+	virtual void PrintOpenedFiles() = 0;
 
 	virtual void SetWarningFunc(void (*pfnWarning)(const char* fmt, ...)) = 0;
 	virtual void SetWarningLevel(FileWarningLevel_t level) = 0;
@@ -147,8 +147,8 @@ public:
 	virtual void LogLevelLoadStarted(const char* name) = 0;
 	virtual void LogLevelLoadFinished(const char* name) = 0;
 	virtual int HintResourceNeed(const char* hintlist, int forgetEverything) = 0;
-	virtual int PauseResourcePreloading(void) = 0;
-	virtual int ResumeResourcePreloading(void) = 0;
+	virtual int PauseResourcePreloading() = 0;
+	virtual int ResumeResourcePreloading() = 0;
 	virtual int SetVBuf(FileHandle_t stream, char* buffer, int mode, long size) = 0;
 	virtual void GetInterfaceVersion(char* p, int maxlen) = 0;
 	virtual bool IsFileImmediatelyAvailable(const char* pFileName) = 0;

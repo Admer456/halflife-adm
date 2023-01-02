@@ -66,7 +66,7 @@ void CBasePlayer::Observer_FindNextPlayer(bool bReverse)
 		// Move to the target
 		UTIL_SetOrigin(pev, m_hObserverTarget->pev->origin);
 
-		// ALERT( at_console, "Now Tracking %s\n", STRING( m_hObserverTarget->pev->netname ) );
+		// Logger->debug("Now Tracking {}", STRING(m_hObserverTarget->pev->netname));
 
 		// Store the target in pev so the physics DLL can get to it
 		if (pev->iuser1 != OBS_ROAMING)
@@ -189,7 +189,7 @@ void CBasePlayer::Observer_CheckProperties()
 
 
 			m_iObserverWeapon = weapon;
-			//send weapon update
+			// send weapon update
 			MESSAGE_BEGIN(MSG_ONE, gmsgCurWeapon, nullptr, pev);
 			WRITE_BYTE(1); // 1 = current weapon, not on target
 			WRITE_BYTE(m_iObserverWeapon);

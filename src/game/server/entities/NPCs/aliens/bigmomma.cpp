@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 //=========================================================
 // monster template
@@ -40,7 +40,7 @@ public:
 	bool Restore(CRestore& restore) override;
 	static TYPEDESCRIPTION m_SaveData[];
 
-	int m_preSequence;
+	string_t m_preSequence;
 };
 
 LINK_ENTITY_TO_CLASS(info_bigmomma, CInfoBM);
@@ -167,6 +167,7 @@ void MortarSpray(const Vector& position, const Vector& direction, int spriteMode
 class CBigMomma : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	bool KeyValue(KeyValueData* pkvd) override;
@@ -179,7 +180,7 @@ public:
 	Schedule_t* GetScheduleOfType(int Type) override;
 	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 
-	void NodeStart(int iszNextNode);
+	void NodeStart(string_t iszNextNode);
 	void NodeReach();
 	bool ShouldGoToNode();
 
@@ -188,25 +189,25 @@ public:
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	void LayHeadcrab();
 
-	int GetNodeSequence()
+	string_t GetNodeSequence()
 	{
 		CBaseEntity* pTarget = m_hTargetEnt;
 		if (pTarget)
 		{
 			return pTarget->pev->netname; // netname holds node sequence
 		}
-		return 0;
+		return string_t::Null;
 	}
 
 
-	int GetNodePresequence()
+	string_t GetNodePresequence()
 	{
 		CInfoBM* pTarget = (CInfoBM*)(CBaseEntity*)m_hTargetEnt;
 		if (pTarget)
 		{
 			return pTarget->m_preSequence;
 		}
-		return 0;
+		return string_t::Null;
 	}
 
 	float GetNodeDelay()
@@ -377,7 +378,13 @@ const char* CBigMomma::pFootSounds[] =
 		"gonarch/gon_step3.wav",
 };
 
+void CBigMomma::OnCreate()
+{
+	CBaseMonster::OnCreate();
 
+	pev->health = 150 * GetSkillFloat("bigmomma_health_factor"sv);
+	pev->model = MAKE_STRING("models/big_mom.mdl");
+}
 
 bool CBigMomma::KeyValue(KeyValueData* pkvd)
 {
@@ -456,7 +463,7 @@ void CBigMomma::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 		if (pHurt)
 		{
-			pHurt->TakeDamage(pev, pev, gSkillData.bigmommaDmgSlash, DMG_CRUSH | DMG_SLASH);
+			pHurt->TakeDamage(pev, pev, GetSkillFloat("bigmomma_dmg_slash"sv), DMG_CRUSH | DMG_SLASH);
 			pHurt->pev->punchangle.x = 15;
 			switch (pEvent->event)
 			{
@@ -583,7 +590,7 @@ bool CBigMomma::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, floa
 		{
 			pev->health = flDamage + 1;
 			Remember(bits_MEMORY_ADVANCE_NODE | bits_MEMORY_COMPLETED_NODE);
-			ALERT(at_aiconsole, "BM: Finished node health!!!\n");
+			AILogger->debug("BM: Finished node health!!!");
 		}
 	}
 
@@ -650,13 +657,12 @@ void CBigMomma::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/big_mom.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-32, -32, 0), Vector(32, 32, 64));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_GREEN;
-	pev->health = 150 * gSkillData.bigmommaHealthFactor;
 	pev->view_ofs = Vector(0, 0, 128); // position of the eyes relative to monster's origin.
 	m_flFieldOfView = 0.3;			   // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
@@ -669,7 +675,7 @@ void CBigMomma::Spawn()
 //=========================================================
 void CBigMomma::Precache()
 {
-	PRECACHE_MODEL("models/big_mom.mdl");
+	PrecacheModel(STRING(pev->model));
 
 	PRECACHE_SOUND_ARRAY(pChildDieSounds);
 	PRECACHE_SOUND_ARRAY(pSackSounds);
@@ -684,13 +690,13 @@ void CBigMomma::Precache()
 	UTIL_PrecacheOther(BIG_CHILDCLASS);
 
 	// TEMP: Squid
-	PRECACHE_MODEL("sprites/mommaspit.spr");				// spit projectile.
-	gSpitSprite = PRECACHE_MODEL("sprites/mommaspout.spr"); // client side spittle.
-	gSpitDebrisSprite = PRECACHE_MODEL("sprites/mommablob.spr");
+	PrecacheModel("sprites/mommaspit.spr");				   // spit projectile.
+	gSpitSprite = PrecacheModel("sprites/mommaspout.spr"); // client side spittle.
+	gSpitDebrisSprite = PrecacheModel("sprites/mommablob.spr");
 
-	PRECACHE_SOUND("bullchicken/bc_acid1.wav");
-	PRECACHE_SOUND("bullchicken/bc_spithit1.wav");
-	PRECACHE_SOUND("bullchicken/bc_spithit2.wav");
+	PrecacheSound("bullchicken/bc_acid1.wav");
+	PrecacheSound("bullchicken/bc_spithit1.wav");
+	PrecacheSound("bullchicken/bc_spithit2.wav");
 }
 
 
@@ -701,7 +707,7 @@ void CBigMomma::Activate()
 }
 
 
-void CBigMomma::NodeStart(int iszNextNode)
+void CBigMomma::NodeStart(string_t iszNextNode)
 {
 	pev->netname = iszNextNode;
 
@@ -709,16 +715,12 @@ void CBigMomma::NodeStart(int iszNextNode)
 
 	if (!FStringNull(pev->netname))
 	{
-		edict_t* pentTarget = FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(pev->netname));
-
-		if (!FNullEnt(pentTarget))
-			pTarget = Instance(pentTarget);
+		pTarget = UTIL_FindEntityByTargetname(nullptr, STRING(pev->netname));
 	}
-
 
 	if (!pTarget)
 	{
-		ALERT(at_aiconsole, "BM: Finished the path!!\n");
+		AILogger->debug("BM: Finished the path!!");
 		Remember(bits_MEMORY_PATH_FINISHED);
 		return;
 	}
@@ -737,7 +739,7 @@ void CBigMomma::NodeReach()
 		return;
 
 	if (0 != pTarget->pev->health)
-		pev->max_health = pev->health = pTarget->pev->health * gSkillData.bigmommaHealthFactor;
+		pev->max_health = pev->health = pTarget->pev->health * GetSkillFloat("bigmomma_health_factor"sv);
 
 	if (!HasMemory(bits_MEMORY_FIRED_NODE))
 	{
@@ -918,18 +920,18 @@ void CBigMomma::StartTask(Task_t* pTask)
 		}
 		NodeStart(pev->netname);
 		TaskComplete();
-		ALERT(at_aiconsole, "BM: Found node %s\n", STRING(pev->netname));
+		AILogger->debug("BM: Found node {}", STRING(pev->netname));
 	}
 	break;
 
 	case TASK_NODE_DELAY:
 		m_nodeTime = gpGlobals->time + pTask->flData;
 		TaskComplete();
-		ALERT(at_aiconsole, "BM: FAIL! Delay %.2f\n", pTask->flData);
+		AILogger->debug("BM: FAIL! Delay {:.2f}", pTask->flData);
 		break;
 
 	case TASK_PROCESS_NODE:
-		ALERT(at_aiconsole, "BM: Reached node %s\n", STRING(pev->netname));
+		AILogger->debug("BM: Reached node {}", STRING(pev->netname));
 		NodeReach();
 		TaskComplete();
 		break;
@@ -937,22 +939,22 @@ void CBigMomma::StartTask(Task_t* pTask)
 	case TASK_PLAY_NODE_PRESEQUENCE:
 	case TASK_PLAY_NODE_SEQUENCE:
 	{
-		int sequence;
+		string_t sequence;
 		if (pTask->iTask == TASK_PLAY_NODE_SEQUENCE)
 			sequence = GetNodeSequence();
 		else
 			sequence = GetNodePresequence();
 
-		ALERT(at_aiconsole, "BM: Playing node sequence %s\n", STRING(sequence));
+		AILogger->debug("BM: Playing node sequence {}", STRING(sequence));
 		if (!FStringNull(sequence))
 		{
-			sequence = LookupSequence(STRING(sequence));
-			if (sequence != -1)
+			const int sequenceIndex = LookupSequence(STRING(sequence));
+			if (sequenceIndex != -1)
 			{
-				pev->sequence = sequence;
+				pev->sequence = sequenceIndex;
 				pev->frame = 0;
 				ResetSequenceInfo();
-				ALERT(at_aiconsole, "BM: Sequence %s\n", STRING(GetNodeSequence()));
+				AILogger->debug("BM: Sequence {}", STRING(GetNodeSequence()));
 				return;
 			}
 		}
@@ -968,9 +970,9 @@ void CBigMomma::StartTask(Task_t* pTask)
 	case TASK_WAIT_NODE:
 		m_flWait = gpGlobals->time + GetNodeDelay();
 		if ((m_hTargetEnt->pev->spawnflags & SF_INFOBM_WAIT) != 0)
-			ALERT(at_aiconsole, "BM: Wait at node %s forever\n", STRING(pev->netname));
+			AILogger->debug("BM: Wait at node {} forever", STRING(pev->netname));
 		else
-			ALERT(at_aiconsole, "BM: Wait at node %s for %.2f\n", STRING(pev->netname), GetNodeDelay());
+			AILogger->debug("BM: Wait at node {} for {:.2f}", STRING(pev->netname), GetNodeDelay());
 		break;
 
 
@@ -997,7 +999,7 @@ void CBigMomma::StartTask(Task_t* pTask)
 			}
 		}
 	}
-		ALERT(at_aiconsole, "BM: Moving to node %s\n", STRING(pev->netname));
+		AILogger->debug("BM: Moving to node {}", STRING(pev->netname));
 
 		break;
 
@@ -1033,7 +1035,7 @@ void CBigMomma::RunTask(Task_t* pTask)
 			// overlap the range to prevent oscillation
 			if ((distance < GetNodeRange()) || MovementIsComplete())
 			{
-				ALERT(at_aiconsole, "BM: Reached node!\n");
+				AILogger->debug("BM: Reached node!");
 				TaskComplete();
 				RouteClear(); // Stop moving
 			}
@@ -1048,7 +1050,7 @@ void CBigMomma::RunTask(Task_t* pTask)
 
 		if (gpGlobals->time > m_flWaitFinished)
 			TaskComplete();
-		ALERT(at_aiconsole, "BM: The WAIT is over!\n");
+		AILogger->debug("BM: The WAIT is over!");
 		break;
 
 	case TASK_PLAY_NODE_PRESEQUENCE:
@@ -1141,13 +1143,12 @@ void MortarSpray(const Vector& position, const Vector& direction, int spriteMode
 void CBMortar::Spawn()
 {
 	pev->movetype = MOVETYPE_TOSS;
-	pev->classname = MAKE_STRING("bmortar");
 
 	pev->solid = SOLID_BBOX;
 	pev->rendermode = kRenderTransAlpha;
 	pev->renderamt = 255;
 
-	SET_MODEL(ENT(pev), "sprites/mommaspit.spr");
+	SetModel("sprites/mommaspit.spr");
 	pev->frame = 0;
 	pev->scale = 0.5;
 
@@ -1177,7 +1178,7 @@ void CBMortar::Animate()
 
 CBMortar* CBMortar::Shoot(edict_t* pOwner, Vector vecStart, Vector vecVelocity)
 {
-	CBMortar* pSpit = GetClassPtr((CBMortar*)nullptr);
+	CBMortar* pSpit = g_EntityDictionary->Create<CBMortar>("bmortar");
 	pSpit->Spawn();
 
 	UTIL_SetOrigin(pSpit->pev, vecStart);
@@ -1230,6 +1231,6 @@ void CBMortar::Touch(CBaseEntity* pOther)
 	if (pev->owner)
 		pevOwner = VARS(pev->owner);
 
-	RadiusDamage(pev->origin, pev, pevOwner, gSkillData.bigmommaDmgBlast, gSkillData.bigmommaRadiusBlast, CLASS_NONE, DMG_ACID);
+	RadiusDamage(pev->origin, pev, pevOwner, GetSkillFloat("bigmomma_dmg_blast"sv), GetSkillFloat("bigmomma_radius_blast"sv), CLASS_NONE, DMG_ACID);
 	UTIL_Remove(this);
 }

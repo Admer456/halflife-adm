@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
 
@@ -23,10 +23,6 @@ inline enginefuncs_t g_engfuncs;
 
 // The actual engine callbacks
 #define GETPLAYERUSERID (*g_engfuncs.pfnGetPlayerUserId)
-#define PRECACHE_MODEL (*g_engfuncs.pfnPrecacheModel)
-#define PRECACHE_SOUND (*g_engfuncs.pfnPrecacheSound)
-#define PRECACHE_GENERIC (*g_engfuncs.pfnPrecacheGeneric)
-#define SET_MODEL (*g_engfuncs.pfnSetModel)
 #define MODEL_INDEX (*g_engfuncs.pfnModelIndex)
 #define MODEL_FRAMES (*g_engfuncs.pfnModelFrames)
 #define SET_SIZE (*g_engfuncs.pfnSetSize)
@@ -41,7 +37,6 @@ inline enginefuncs_t g_engfuncs;
 #define MAKE_VECTORS (*g_engfuncs.pfnMakeVectors)
 #define CREATE_ENTITY (*g_engfuncs.pfnCreateEntity)
 #define REMOVE_ENTITY (*g_engfuncs.pfnRemoveEntity)
-#define CREATE_NAMED_ENTITY (*g_engfuncs.pfnCreateNamedEntity)
 #define MAKE_STATIC (*g_engfuncs.pfnMakeStatic)
 #define ENT_IS_ON_FLOOR (*g_engfuncs.pfnEntIsOnFloor)
 #define DROP_TO_FLOOR (*g_engfuncs.pfnDropToFloor)
@@ -82,12 +77,18 @@ inline void MESSAGE_BEGIN(int msg_dest, int msg_type, const float* pOrigin = nul
 #define WRITE_COORD (*g_engfuncs.pfnWriteCoord)
 #define WRITE_STRING (*g_engfuncs.pfnWriteString)
 #define WRITE_ENTITY (*g_engfuncs.pfnWriteEntity)
+
+inline void WRITE_RGB24(RGB24 color)
+{
+	WRITE_BYTE(color.Red);
+	WRITE_BYTE(color.Green);
+	WRITE_BYTE(color.Blue);
+}
+
 #define CVAR_REGISTER (*g_engfuncs.pfnCVarRegister)
 #define CVAR_SET_FLOAT (*g_engfuncs.pfnCVarSetFloat)
 #define CVAR_SET_STRING (*g_engfuncs.pfnCVarSetString)
 #define CVAR_GET_POINTER (*g_engfuncs.pfnCVarGetPointer)
-#define ALERT (*g_engfuncs.pfnAlertMessage)
-#define ENGINE_FPRINTF (*g_engfuncs.pfnEngineFprintf)
 #define ALLOC_PRIVATE (*g_engfuncs.pfnPvAllocEntPrivateData)
 inline void* GET_PRIVATE(edict_t* pent)
 {
@@ -105,9 +106,6 @@ inline T* GET_PRIVATE(edict_t* pent)
 }
 
 #define FREE_PRIVATE (*g_engfuncs.pfnFreeEntPrivateData)
-//#define STRING			(*g_engfuncs.pfnSzFromIndex)
-//#define ALLOC_STRING	(*g_engfuncs.pfnAllocString)
-#define FIND_ENTITY_BY_STRING (*g_engfuncs.pfnFindEntityByString)
 #define GETENTITYILLUM (*g_engfuncs.pfnGetEntityIllum)
 #define FIND_ENTITY_IN_SPHERE (*g_engfuncs.pfnFindEntityInSphere)
 #define FIND_CLIENT_IN_PVS (*g_engfuncs.pfnFindClientInPVS)
@@ -125,7 +123,6 @@ inline T* GET_PRIVATE(edict_t* pent)
 #define GET_ATTACHMENT (*g_engfuncs.pfnGetAttachment)
 #define SET_VIEW (*g_engfuncs.pfnSetView)
 #define SET_CROSSHAIRANGLE (*g_engfuncs.pfnCrosshairAngle)
-#define LOAD_FILE_FOR_ME (*g_engfuncs.pfnLoadFileForMe)
 #define FREE_FILE (*g_engfuncs.pfnFreeFile)
 #define COMPARE_FILE_TIME (*g_engfuncs.pfnCompareFileTime)
 #define GET_GAME_DIR (*g_engfuncs.pfnGetGameDir)

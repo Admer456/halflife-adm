@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 #include "cbase.h"
 
 const int AE_GENEWORM_SPIT_START = 0;
@@ -77,7 +77,7 @@ LINK_ENTITY_TO_CLASS(env_genewormcloud, COFGeneWormCloud);
 
 void COFGeneWormCloud::Precache()
 {
-	PRECACHE_MODEL("sprites/ballsmoke.spr");
+	PrecacheModel("sprites/ballsmoke.spr");
 }
 
 void COFGeneWormCloud::Spawn()
@@ -89,7 +89,7 @@ void COFGeneWormCloud::Spawn()
 	pev->effects = 0;
 	pev->frame = 0;
 
-	SET_MODEL(edict(), "sprites/ballsmoke.spr");
+	SetModel("sprites/ballsmoke.spr");
 
 	UTIL_SetOrigin(pev, pev->origin);
 
@@ -126,7 +126,7 @@ void COFGeneWormCloud::GeneWormCloudTouch(CBaseEntity* pOther)
 	{
 		if (pOther->pev->takedamage != DAMAGE_NO)
 		{
-			pOther->TakeDamage(pev, pev, gSkillData.geneWormDmgSpit, DMG_ACID);
+			pOther->TakeDamage(pev, pev, GetSkillFloat("geneworm_dmg_spit"sv), DMG_ACID);
 		}
 
 		pev->nextthink = gpGlobals->time;
@@ -158,7 +158,7 @@ void COFGeneWormCloud::RunGeneWormCloud(float frames)
 
 	if (pev->frame > m_maxFrame && m_maxFrame > 0)
 	{
-		//TODO: the original code looks like it may be ignoring the modulo, verify this
+		// TODO: the original code looks like it may be ignoring the modulo, verify this
 		pev->frame = fmod(pev->frame, m_maxFrame);
 	}
 }
@@ -179,12 +179,11 @@ void COFGeneWormCloud::TurnOn()
 
 COFGeneWormCloud* COFGeneWormCloud::GeneWormCloudCreate(const Vector& origin)
 {
-	auto pCloud = GetClassPtr<COFGeneWormCloud>(nullptr);
+	auto pCloud = g_EntityDictionary->Create<COFGeneWormCloud>("env_genewormcloud");
 
 	pCloud->Spawn();
 
 	pCloud->pev->origin = origin;
-	pCloud->pev->classname = MAKE_STRING("env_genewormcloud");
 	pCloud->pev->solid = SOLID_BBOX;
 	pCloud->pev->movetype = MOVETYPE_FLY;
 	pCloud->pev->effects = 0;
@@ -277,9 +276,9 @@ LINK_ENTITY_TO_CLASS(env_genewormspawn, COFGeneWormSpawn);
 
 void COFGeneWormSpawn::Precache()
 {
-	PRECACHE_MODEL("sprites/tele1.spr");
-	PRECACHE_MODEL("sprites/lgtning.spr");
-	PRECACHE_MODEL("sprites/boss_glow.spr");
+	PrecacheModel("sprites/tele1.spr");
+	PrecacheModel("sprites/lgtning.spr");
+	PrecacheModel("sprites/boss_glow.spr");
 }
 
 void COFGeneWormSpawn::Spawn()
@@ -291,7 +290,7 @@ void COFGeneWormSpawn::Spawn()
 
 	Precache();
 
-	SET_MODEL(edict(), "sprites/boss_glow.spr");
+	SetModel("sprites/boss_glow.spr");
 
 	UTIL_SetOrigin(pev, pev->origin);
 
@@ -330,7 +329,7 @@ void COFGeneWormSpawn::GeneWormSpawnThink()
 
 void COFGeneWormSpawn::GeneWormSpawnTouch(CBaseEntity* pOther)
 {
-	//Nothing
+	// Nothing
 }
 
 void COFGeneWormSpawn::RunGeneWormSpawn(float frames)
@@ -447,12 +446,11 @@ void COFGeneWormSpawn::TurnOn()
 
 COFGeneWormSpawn* COFGeneWormSpawn::GeneWormSpawnCreate(const Vector& origin)
 {
-	auto pSpawn = GetClassPtr<COFGeneWormSpawn>(nullptr);
+	auto pSpawn = g_EntityDictionary->Create<COFGeneWormSpawn>("env_genewormspawn");
 
 	pSpawn->Spawn();
 
 	pSpawn->pev->origin = origin;
-	pSpawn->pev->classname = MAKE_STRING("env_genewormspawn");
 	pSpawn->pev->solid = SOLID_NOT;
 	pSpawn->pev->movetype = MOVETYPE_NONE;
 	pSpawn->pev->effects = 0;
@@ -476,7 +474,7 @@ void COFGeneWormSpawn::LaunchSpawn(const Vector& origin, const Vector& aim, int 
 	pev->aiment = nullptr;
 	pev->movetype = MOVETYPE_FLY;
 
-	SET_MODEL(edict(), "sprites/tele1.spr");
+	SetModel("sprites/tele1.spr");
 
 	m_maxFrame = MODEL_FRAMES(pev->modelindex) - 1;
 
@@ -556,7 +554,7 @@ public:
 
 	int BloodColor() override { return BLOOD_COLOR_GREEN; }
 
-	//Don't gib ever
+	// Don't gib ever
 	void GibMonster() override {}
 
 	void SetObjectCollisionBox() override
@@ -565,6 +563,7 @@ public:
 		pev->absmax = pev->origin + Vector(425.29, 164.85, 355.68);
 	}
 
+	void OnCreate() override;
 	void Precache() override;
 	void Spawn() override;
 
@@ -699,46 +698,54 @@ const char* COFGeneWorm::pSpawnSounds[] =
 
 void COFGeneWorm::Precache()
 {
-	PRECACHE_MODEL("models/geneworm.mdl");
-	PRECACHE_MODEL("sprites/lgtning.spr");
-	PRECACHE_MODEL("sprites/tele1.spr");
-	PRECACHE_MODEL("sprites/bigspit.spr");
-	PRECACHE_MODEL("sprites/boss_glow.spr");
+	PrecacheModel(STRING(pev->model));
+	PrecacheModel("sprites/lgtning.spr");
+	PrecacheModel("sprites/tele1.spr");
+	PrecacheModel("sprites/bigspit.spr");
+	PrecacheModel("sprites/boss_glow.spr");
 
-	iGeneWormSpitSprite = PRECACHE_MODEL("sprites/tinyspit.spr");
+	iGeneWormSpitSprite = PrecacheModel("sprites/tinyspit.spr");
 
-	PRECACHE_MODEL("sprites/xbeam3.spr");
+	PrecacheModel("sprites/xbeam3.spr");
 
 	UTIL_PrecacheOther("monster_shocktrooper");
 
-	PRECACHE_SOUND("bullchicken/bc_acid1.wav");
-	PRECACHE_SOUND("bullchicken/bc_spithit1.wav");
-	PRECACHE_SOUND("bullchicken/bc_spithit2.wav");
+	PrecacheSound("bullchicken/bc_acid1.wav");
+	PrecacheSound("bullchicken/bc_spithit1.wav");
+	PrecacheSound("bullchicken/bc_spithit2.wav");
 
 	PRECACHE_SOUND_ARRAY(pIdleSounds);
 	PRECACHE_SOUND_ARRAY(pSpawnSounds);
 
-	PRECACHE_SOUND("debris/beamstart7.wav");
-	PRECACHE_SOUND("debris/beamstart2.wav");
+	PrecacheSound("debris/beamstart7.wav");
+	PrecacheSound("debris/beamstart2.wav");
 
-	PRECACHE_MODEL("sprites/xspark4.spr");
-	PRECACHE_MODEL("sprites/ballsmoke.spr");
+	PrecacheModel("sprites/xspark4.spr");
+	PrecacheModel("sprites/ballsmoke.spr");
 
-	PRECACHE_SOUND("geneworm/geneworm_attack_mounted_gun.wav");
-	PRECACHE_SOUND("geneworm/geneworm_attack_mounted_rocket.wav");
+	PrecacheSound("geneworm/geneworm_attack_mounted_gun.wav");
+	PrecacheSound("geneworm/geneworm_attack_mounted_rocket.wav");
 
-	PRECACHE_SOUND("geneworm/geneworm_beam_attack.wav");
-	PRECACHE_SOUND("geneworm/geneworm_big_attack_forward.wav");
+	PrecacheSound("geneworm/geneworm_beam_attack.wav");
+	PrecacheSound("geneworm/geneworm_big_attack_forward.wav");
 
-	PRECACHE_SOUND("geneworm/geneworm_death.wav");
+	PrecacheSound("geneworm/geneworm_death.wav");
 
-	PRECACHE_SOUND("geneworm/geneworm_final_pain1.wav");
-	PRECACHE_SOUND("geneworm/geneworm_final_pain2.wav");
-	PRECACHE_SOUND("geneworm/geneworm_final_pain3.wav");
-	PRECACHE_SOUND("geneworm/geneworm_final_pain4.wav");
-	PRECACHE_SOUND("geneworm/geneworm_shot_in_eye.wav");
+	PrecacheSound("geneworm/geneworm_final_pain1.wav");
+	PrecacheSound("geneworm/geneworm_final_pain2.wav");
+	PrecacheSound("geneworm/geneworm_final_pain3.wav");
+	PrecacheSound("geneworm/geneworm_final_pain4.wav");
+	PrecacheSound("geneworm/geneworm_shot_in_eye.wav");
 
-	PRECACHE_SOUND("geneworm/geneworm_entry.wav");
+	PrecacheSound("geneworm/geneworm_entry.wav");
+}
+
+void COFGeneWorm::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = GetSkillFloat("geneworm_health"sv);
+	pev->model = MAKE_STRING("models/geneworm.mdl");
 }
 
 void COFGeneWorm::Spawn()
@@ -748,7 +755,7 @@ void COFGeneWorm::Spawn()
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_NOT;
 
-	SET_MODEL(edict(), "models/geneworm.mdl");
+	SetModel(STRING(pev->model));
 
 	UTIL_SetSize(pev, {-436.67, -720.49, -331.74}, {425.29, 164.85, 355.68});
 
@@ -759,7 +766,7 @@ void COFGeneWorm::Spawn()
 
 	pev->effects = 0;
 
-	pev->max_health = pev->health = gSkillData.geneWormHealth;
+	pev->max_health = pev->health;
 
 	pev->view_ofs = {0, 0, 300};
 
@@ -984,7 +991,7 @@ void COFGeneWorm::HuntThink()
 
 	if (m_orificeGlow)
 	{
-		//Keep the glow in place relative to the orifice
+		// Keep the glow in place relative to the orifice
 		Vector vecOrigin, vecAngles;
 		GetAttachment(1, vecOrigin, vecAngles);
 		UTIL_SetOrigin(m_orificeGlow->pev, vecOrigin);
@@ -1009,7 +1016,7 @@ void COFGeneWorm::HuntThink()
 	}
 	else
 	{
-		//Look forward
+		// Look forward
 		SetBoneController(0, 0);
 	}
 
@@ -1024,8 +1031,8 @@ void COFGeneWorm::HuntThink()
 
 			if (m_hEnemy)
 			{
-				//This all looks like sprite code, but the cloud class doesn't inherit from it
-				//Could be it originally cast to sprite to use the helper methods
+				// This all looks like sprite code, but the cloud class doesn't inherit from it
+				// Could be it originally cast to sprite to use the helper methods
 				m_pCloud->pev->rendermode = kRenderGlow;
 				m_pCloud->pev->rendercolor.x = 255;
 				m_pCloud->pev->rendercolor.y = 255;
@@ -1081,7 +1088,7 @@ void COFGeneWorm::DyingThink()
 
 		pev->frame = 0;
 
-		//Note: bugged in vanilla, variable is not initialized and causes the ending sequence to break
+		// Note: bugged in vanilla, variable is not initialized and causes the ending sequence to break
 		int iDir = 0;
 
 		pev->sequence = FindTransition(pev->sequence, LookupSequence("death"), &iDir);
@@ -1119,16 +1126,16 @@ void COFGeneWorm::DyingThink()
 
 	if (gpGlobals->time - m_flDeathStart >= 15)
 	{
-		auto pPlayer = UTIL_FindEntityByClassname(nullptr, "player");
+		auto pPlayer = UTIL_GetLocalPlayer();
 
 		if (pPlayer)
 		{
-			//Teleport the player to the end script
-			//TODO: this really shouldn't be hardcoded
+			// Teleport the player to the end script
+			// TODO: this really shouldn't be hardcoded
 			for (auto pTeleport : UTIL_FindEntitiesByTargetname("GeneWormTeleport"))
 			{
 				pTeleport->Touch(pPlayer);
-				ALERT(at_console, "Touching Target GeneWormTeleport\n");
+				AILogger->debug("Touching Target GeneWormTeleport");
 			}
 
 			FireTargets("GeneWormTeleport", pPlayer, pPlayer, USE_ON, 1);
@@ -1169,7 +1176,7 @@ void COFGeneWorm::HitTouch(CBaseEntity* pOther)
 	{
 		m_flHitTime = gpGlobals->time + 0.5;
 
-		//Apply damage to to the toucher based on what was hit
+		// Apply damage to to the toucher based on what was hit
 		switch (tr.iHitgroup)
 		{
 		case 1:
@@ -1189,7 +1196,7 @@ void COFGeneWorm::HitTouch(CBaseEntity* pOther)
 
 		pOther->pev->punchangle.z = 15;
 
-		//TODO: maybe determine direction of velocity to apply?
+		// TODO: maybe determine direction of velocity to apply?
 		pOther->pev->velocity = pOther->pev->velocity + Vector{0, 0, 200};
 
 		pOther->pev->flags &= ~FL_ONGROUND;
@@ -1323,7 +1330,7 @@ bool COFGeneWorm::ClawAttack()
 
 				if (gpGlobals->time > m_flNextRangeTime)
 				{
-					//TODO: never used?
+					// TODO: never used?
 					Vector vecMouthPos, vecMouthAngle;
 					GetAttachment(0, vecMouthPos, vecMouthAngle);
 
@@ -1376,7 +1383,7 @@ bool COFGeneWorm::ClawAttack()
 
 bool COFGeneWorm::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
 {
-	//Never actually die
+	// Never actually die
 	if (flDamage >= pev->health)
 	{
 		pev->health = 1;
@@ -1540,7 +1547,7 @@ void COFGeneWorm::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vec
 					m_iWasHit = 1;
 				}
 
-				pev->health = gSkillData.geneWormHealth;
+				pev->health = pev->max_health;
 			}
 		}
 		break;
@@ -1555,7 +1562,7 @@ bool COFGeneWorm::FVisible(CBaseEntity* pEntity)
 {
 	if ((pEntity->pev->flags & FL_NOTARGET) == 0)
 	{
-		if ((pev->waterlevel != 3 && pEntity->pev->waterlevel != 3) || 0 != pEntity->pev->waterlevel)
+		if ((pev->waterlevel != WaterLevel::Head && pEntity->pev->waterlevel != WaterLevel::Head) || WaterLevel::Dry != pEntity->pev->waterlevel)
 		{
 			return FVisible(pEntity->EyePosition());
 		}
@@ -1577,25 +1584,18 @@ bool COFGeneWorm::FVisible(const Vector& vecOrigin)
 
 void FireHurtTargets(const char* targetName, CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
-	edict_t* pentTarget = nullptr;
 	if (!targetName)
 		return;
 
-	ALERT(at_aiconsole, "Firing: (%s)\n", targetName);
+	CBaseMonster::AILogger->debug("Firing: ({})", targetName);
 
-	for (;;)
+	for (auto target : UTIL_FindEntitiesByTargetname(targetName))
 	{
-		pentTarget = FIND_ENTITY_BY_TARGETNAME(pentTarget, targetName);
-		if (FNullEnt(pentTarget))
-			break;
-
-		CBaseEntity* pTarget = CBaseEntity::Instance(pentTarget);
-
-		//Fire only those targets that were toggled by the last hurt event
-		if (pTarget && !(useType == USE_OFF && pTarget->pev->solid == SOLID_NOT) && !(useType == USE_ON && pTarget->pev->solid == SOLID_TRIGGER) && (pTarget->pev->flags & FL_KILLME) == 0) // Don't use dying ents
+		// Fire only those targets that were toggled by the last hurt event
+		if (target && !(useType == USE_OFF && target->pev->solid == SOLID_NOT) && !(useType == USE_ON && target->pev->solid == SOLID_TRIGGER) && (target->pev->flags & FL_KILLME) == 0) // Don't use dying ents
 		{
-			ALERT(at_aiconsole, "Found: %s, firing (%s)\n", STRING(pTarget->pev->classname), targetName);
-			pTarget->Use(pActivator, pCaller, useType, value);
+			CBaseMonster::AILogger->debug("Found: {}, firing ({})", STRING(target->pev->classname), targetName);
+			target->Use(pActivator, pCaller, useType, value);
 		}
 	}
 }
@@ -1674,6 +1674,6 @@ void COFGeneWorm::TrackHead()
 
 void COFGeneWorm::SpewCloud()
 {
-	//Not much to do here, probably never finished
+	// Not much to do here, probably never finished
 	UTIL_MakeVectors(pev->angles);
 }

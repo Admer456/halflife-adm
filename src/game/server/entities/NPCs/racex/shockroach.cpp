@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // headcrab.cpp - tiny, jumpy alien parasite
 //=========================================================
@@ -64,6 +64,7 @@ Schedule_t slRCRangeAttack1Fast[] =
 class COFShockRoach : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void RunTask(Task_t* pTask) override;
@@ -83,7 +84,7 @@ public:
 	bool CheckRangeAttack2(float flDot, float flDist) override;
 	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
 
-	virtual float GetDamageAmount() { return gSkillData.shockroachDmgBite; }
+	virtual float GetDamageAmount() { return GetSkillFloat("shockroach_dmg_bite"sv); }
 	virtual int GetVoicePitch() { return 100; }
 	virtual float GetSoundVolue() { return 1.0; }
 	Schedule_t* GetScheduleOfType(int Type) override;
@@ -151,6 +152,14 @@ const char* COFShockRoach::pBiteSounds[] =
 	{
 		"shockroach/shock_bite.wav",
 };
+
+void COFShockRoach::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = GetSkillFloat("shockroach_health"sv);
+	pev->model = MAKE_STRING("models/w_shock_rifle.mdl");
+}
 
 //=========================================================
 // Classify - indicates this monster's place in the
@@ -252,9 +261,9 @@ void COFShockRoach::HandleAnimEvent(MonsterEvent_t* pEvent)
 			vecJumpDir = Vector(gpGlobals->v_forward.x, gpGlobals->v_forward.y, gpGlobals->v_up.z) * 350;
 		}
 
-		//Not used for Shock Roach
-		//int iSound = RANDOM_LONG(0,2);
-		//if ( iSound != 0 )
+		// Not used for Shock Roach
+		// int iSound = RANDOM_LONG(0,2);
+		// if ( iSound != 0 )
 		//	EMIT_SOUND_DYN( edict(), CHAN_VOICE, pAttackSounds[iSound], GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch() );
 
 		pev->velocity = vecJumpDir;
@@ -275,14 +284,13 @@ void COFShockRoach::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/w_shock_rifle.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-12, -12, 0), Vector(12, 12, 4));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_FLY;
 	m_bloodColor = BLOOD_COLOR_GREEN;
 	pev->effects = 0;
-	pev->health = gSkillData.shockroachHealth;
 	pev->view_ofs = Vector(0, 0, 20); // position of the eyes relative to monster's origin.
 	pev->yaw_speed = 5;				  //!!! should we put this in the monster's changeanim function since turn rates may vary with state/anim?
 	m_flFieldOfView = 0.5;			  // indicates the width of this monster's forward view cone ( as a dotproduct result )
@@ -306,9 +314,9 @@ void COFShockRoach::Precache()
 	PRECACHE_SOUND_ARRAY(pDeathSounds);
 	PRECACHE_SOUND_ARRAY(pBiteSounds);
 
-	PRECACHE_SOUND("shockroach/shock_walk.wav");
+	PrecacheSound("shockroach/shock_walk.wav");
 
-	PRECACHE_MODEL("models/w_shock_rifle.mdl");
+	PrecacheModel(STRING(pev->model));
 }
 
 
@@ -353,7 +361,7 @@ void COFShockRoach::LeapTouch(CBaseEntity* pOther)
 		return;
 	}
 
-	//Give the player a shock rifle if they don't have one
+	// Give the player a shock rifle if they don't have one
 	if (pOther->IsPlayer())
 	{
 		auto pPlayer = static_cast<CBasePlayer*>(pOther);
@@ -445,11 +453,11 @@ bool COFShockRoach::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, 
 	if ((bitsDamageType & DMG_ACID) != 0)
 		flDamage = 0;
 
-	//Don't take damage while spawning
+	// Don't take damage while spawning
 	if (gpGlobals->time - m_flBirthTime < 2)
 		flDamage = 0;
 
-	//Never gib the roach
+	// Never gib the roach
 	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, (bitsDamageType & ~DMG_ALWAYSGIB) | DMG_NEVERGIB);
 }
 
@@ -510,7 +518,7 @@ void COFShockRoach::MonsterThink()
 		m_fRoachSolid = true;
 	}
 
-	if (lifeTime >= gSkillData.shockroachLifespan)
+	if (lifeTime >= GetSkillFloat("shockroach_lifespan"sv))
 		TakeDamage(pev, pev, pev->health, DMG_NEVERGIB);
 
 	CBaseMonster::MonsterThink();

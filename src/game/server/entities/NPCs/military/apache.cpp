@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #include "cbase.h"
 #include "apache.h"
@@ -41,20 +41,27 @@ TYPEDESCRIPTION CApache::m_SaveData[] =
 };
 IMPLEMENT_SAVERESTORE(CApache, CBaseMonster);
 
-void CApache::SpawnCore(const char* model)
+void CApache::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = GetSkillFloat("apache_health"sv);
+	pev->model = MAKE_STRING("models/apache.mdl");
+}
+
+void CApache::Spawn()
 {
 	Precache();
 	// motor
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(ENT(pev), model);
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-32, -32, -64), Vector(32, 32, 0));
 	UTIL_SetOrigin(pev, pev->origin);
 
 	pev->flags |= FL_MONSTER;
 	pev->takedamage = DAMAGE_AIM;
-	pev->health = gSkillData.apacheHealth;
 	pev->max_health = pev->health;
 
 	m_flFieldOfView = -0.707; // 270 degrees
@@ -81,37 +88,27 @@ void CApache::SpawnCore(const char* model)
 	m_iRockets = 10;
 }
 
-void CApache::Spawn()
-{
-	SpawnCore("models/apache.mdl");
-}
-
-void CApache::PrecacheCore(const char* model)
-{
-	PRECACHE_MODEL(model);
-
-	PRECACHE_SOUND("apache/ap_rotor1.wav");
-	PRECACHE_SOUND("apache/ap_rotor2.wav");
-	PRECACHE_SOUND("apache/ap_rotor3.wav");
-	PRECACHE_SOUND("apache/ap_whine1.wav");
-
-	PRECACHE_SOUND("weapons/mortarhit.wav");
-
-	m_iSpriteTexture = PRECACHE_MODEL("sprites/white.spr");
-
-	PRECACHE_SOUND("turret/tu_fire1.wav");
-
-	PRECACHE_MODEL("sprites/lgtning.spr");
-
-	m_iExplode = PRECACHE_MODEL("sprites/fexplo.spr");
-	m_iBodyGibs = PRECACHE_MODEL("models/metalplategibs_green.mdl");
-
-	UTIL_PrecacheOther("hvr_rocket");
-}
-
 void CApache::Precache()
 {
-	PrecacheCore("models/apache.mdl");
+	PrecacheModel(STRING(pev->model));
+
+	PrecacheSound("apache/ap_rotor1.wav");
+	PrecacheSound("apache/ap_rotor2.wav");
+	PrecacheSound("apache/ap_rotor3.wav");
+	PrecacheSound("apache/ap_whine1.wav");
+
+	PrecacheSound("weapons/mortarhit.wav");
+
+	m_iSpriteTexture = PrecacheModel("sprites/white.spr");
+
+	PrecacheSound("turret/tu_fire1.wav");
+
+	PrecacheModel("sprites/lgtning.spr");
+
+	m_iExplode = PrecacheModel("sprites/fexplo.spr");
+	m_iBodyGibs = PrecacheModel("models/metalplategibs_green.mdl");
+
+	UTIL_PrecacheOther("hvr_rocket");
 }
 
 void CApache::NullThink()
@@ -214,7 +211,7 @@ void CApache::DyingThink()
 		WRITE_BYTE(50);
 
 		// Model
-		WRITE_SHORT(m_iBodyGibs); //model id#
+		WRITE_SHORT(m_iBodyGibs); // model id#
 
 		// # of shards
 		WRITE_BYTE(4); // let client decide
@@ -299,7 +296,7 @@ void CApache::DyingThink()
 		if (/*(pev->spawnflags & SF_NOWRECKAGE) == 0 && */ (pev->flags & FL_ONGROUND) != 0)
 		{
 			CBaseEntity* pWreckage = Create("cycler_wreckage", pev->origin, pev->angles);
-			// SET_MODEL( ENT(pWreckage->pev), STRING(pev->model) );
+			// pWreckage->SetModel(STRING(pev->model));
 			UTIL_SetSize(pWreckage->pev, Vector(-200, -200, -128), Vector(200, 200, -32));
 			pWreckage->pev->frame = pev->frame;
 			pWreckage->pev->sequence = pev->sequence;
@@ -331,7 +328,7 @@ void CApache::DyingThink()
 		WRITE_BYTE(30);
 
 		// Model
-		WRITE_SHORT(m_iBodyGibs); //model id#
+		WRITE_SHORT(m_iBodyGibs); // model id#
 
 		// # of shards
 		WRITE_BYTE(200);
@@ -407,7 +404,7 @@ void CApache::HuntThink()
 		Look(4092);
 		m_hEnemy = BestVisibleEnemy();
 
-		//If i have an enemy i'm in combat, otherwise i'm patrolling.
+		// If i have an enemy i'm in combat, otherwise i'm patrolling.
 		if (m_hEnemy != nullptr)
 		{
 			m_MonsterState = MONSTERSTATE_COMBAT;
@@ -426,7 +423,7 @@ void CApache::HuntThink()
 
 	if (m_hEnemy != nullptr)
 	{
-		// ALERT( at_console, "%s\n", STRING( m_hEnemy->pev->classname ) );
+		// AILogger->debug("{}", STRING(m_hEnemy->pev->classname));
 		if (FVisible(m_hEnemy))
 		{
 			if (m_flLastSeen < gpGlobals->time - 5)
@@ -446,7 +443,7 @@ void CApache::HuntThink()
 
 	if (m_pGoalEnt)
 	{
-		// ALERT( at_console, "%.0f\n", flLength );
+		// AILogger->debug("{:.0f}", flLength);
 
 		if (flLength < 128)
 		{
@@ -485,7 +482,7 @@ void CApache::HuntThink()
 
 	Flight();
 
-	// ALERT( at_console, "%.0f %.0f %.0f\n", gpGlobals->time, m_flLastSeen, m_flPrevSeen );
+	// AILogger->debug("{:.0f} {:.0f} {:.0f}", gpGlobals->time, m_flLastSeen, m_flPrevSeen);
 	if ((m_flLastSeen + 1 > gpGlobals->time) && (m_flPrevSeen + 2 < gpGlobals->time))
 	{
 		if (FireGun())
@@ -496,13 +493,13 @@ void CApache::HuntThink()
 		}
 
 		// don't fire rockets and gun on easy mode
-		if (g_iSkillLevel == SKILL_EASY)
+		if (g_Skill.GetSkillLevel() == SkillLevel::Easy)
 			m_flNextRocket = gpGlobals->time + 10.0;
 	}
 
 	UTIL_MakeAimVectors(pev->angles);
 	Vector vecEst = (gpGlobals->v_forward * 800 + pev->velocity).Normalize();
-	// ALERT( at_console, "%d %d %d %4.2f\n", pev->angles.x < 0, DotProduct( pev->velocity, gpGlobals->v_forward ) > -100, m_flNextRocket < gpGlobals->time, DotProduct( m_vecTarget, vecEst ) );
+	// AILogger->debug("{} {} {} {:4.2f}", pev->angles.x < 0, DotProduct(pev->velocity, gpGlobals->v_forward) > -100, m_flNextRocket < gpGlobals->time, DotProduct(m_vecTarget, vecEst));
 
 	if ((m_iRockets % 2) == 1)
 	{
@@ -636,29 +633,29 @@ void CApache::Flight()
 	// pitch forward or back to get to target
 	if (flDist > 0 && flSpeed < m_flGoalSpeed /* && flSpeed < flDist */ && pev->angles.x + pev->avelocity.x > -40)
 	{
-		// ALERT( at_console, "F " );
+		// AILogger->debug("F ");
 		// lean forward
 		pev->avelocity.x -= 12.0;
 	}
 	else if (flDist < 0 && flSpeed > -50 && pev->angles.x + pev->avelocity.x < 20)
 	{
-		// ALERT( at_console, "B " );
+		// AILogger->debug("B ");
 		// lean backward
 		pev->avelocity.x += 12.0;
 	}
 	else if (pev->angles.x + pev->avelocity.x > 0)
 	{
-		// ALERT( at_console, "f " );
+		// AILogger->debug("f ");
 		pev->avelocity.x -= 4.0;
 	}
 	else if (pev->angles.x + pev->avelocity.x < 0)
 	{
-		// ALERT( at_console, "b " );
+		// AILogger->debug("b ");
 		pev->avelocity.x += 4.0;
 	}
 
-	// ALERT( at_console, "%.0f %.0f : %.0f %.0f : %.0f %.0f : %.0f\n", pev->origin.x, pev->velocity.x, flDist, flSpeed, pev->angles.x, pev->avelocity.x, m_flForce );
-	// ALERT( at_console, "%.0f %.0f : %.0f %0.f : %.0f\n", pev->origin.z, pev->velocity.z, vecEst.z, m_posDesired.z, m_flForce );
+	// AILogger->debug("{:.0f} {:.0f} : {:.0f} {:.0f} : {:.0f} {:.0f} : {:.0f}", pev->origin.x, pev->velocity.x, flDist, flSpeed, pev->angles.x, pev->avelocity.x, m_flForce);
+	// AILogger->debug("{:.0f} {:.0f} : {:.0f} {:0.f} : {:.0f}", pev->origin.z, pev->velocity.z, vecEst.z, m_posDesired.z, m_flForce);
 
 	// make rotor, engine sounds
 	if (m_iSoundState == 0)
@@ -672,7 +669,7 @@ void CApache::Flight()
 	{
 		CBaseEntity* pPlayer = nullptr;
 
-		pPlayer = UTIL_FindEntityByClassname(nullptr, "player");
+		pPlayer = UTIL_GetLocalPlayer();
 		// UNDONE: this needs to send different sounds to every player for multiplayer.
 		if (pPlayer)
 		{
@@ -696,7 +693,7 @@ void CApache::Flight()
 		}
 		// EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "apache/ap_whine1.wav", flVol, 0.2, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
 
-		// ALERT( at_console, "%.0f %.2f\n", pitch, flVol );
+		// AILogger->debug("{:.0f} {:.2f}", pitch, flVol);
 	}
 }
 
@@ -730,23 +727,25 @@ void CApache::FireRocket()
 		break;
 	}
 
-	MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, vecSrc);
-	WRITE_BYTE(TE_SMOKE);
-	WRITE_COORD(vecSrc.x);
-	WRITE_COORD(vecSrc.y);
-	WRITE_COORD(vecSrc.z);
-	WRITE_SHORT(g_sModelIndexSmoke);
-	WRITE_BYTE(20); // scale * 10
-	WRITE_BYTE(12); // framerate
-	MESSAGE_END();
-
 	CBaseEntity* pRocket = CBaseEntity::Create("hvr_rocket", vecSrc, pev->angles, edict());
 	if (pRocket)
+	{
+		MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, vecSrc);
+		WRITE_BYTE(TE_SMOKE);
+		WRITE_COORD(vecSrc.x);
+		WRITE_COORD(vecSrc.y);
+		WRITE_COORD(vecSrc.z);
+		WRITE_SHORT(g_sModelIndexSmoke);
+		WRITE_BYTE(20); // scale * 10
+		WRITE_BYTE(12); // framerate
+		MESSAGE_END();
+
 		pRocket->pev->velocity = pev->velocity + gpGlobals->v_forward * 100;
 
-	m_iRockets--;
+		m_iRockets--;
 
-	side = -side;
+		side = -side;
+	}
 }
 
 
@@ -871,29 +870,29 @@ bool CApache::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float 
 	}
 	*/
 
-	// ALERT( at_console, "%.0f\n", flDamage );
+	// AILogger->debug("{:.0f}", flDamage);
 	const bool result = CBaseEntity::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
 
-	//Are we damaged at all?
+	// Are we damaged at all?
 	if (pev->health < pev->max_health)
 	{
-		//Took some damage.
+		// Took some damage.
 		SetConditions(bits_COND_LIGHT_DAMAGE);
 
 		if (pev->health < (pev->max_health / 2))
 		{
-			//Seriously damaged now.
+			// Seriously damaged now.
 			SetConditions(bits_COND_HEAVY_DAMAGE);
 		}
 		else
 		{
-			//Maybe somebody healed us somehow (trigger_hurt with negative damage?), clear this.
+			// Maybe somebody healed us somehow (trigger_hurt with negative damage?), clear this.
 			ClearConditions(bits_COND_HEAVY_DAMAGE);
 		}
 	}
 	else
 	{
-		//Maybe somebody healed us somehow (trigger_hurt with negative damage?), clear this.
+		// Maybe somebody healed us somehow (trigger_hurt with negative damage?), clear this.
 		ClearConditions(bits_COND_LIGHT_DAMAGE);
 	}
 
@@ -904,7 +903,7 @@ bool CApache::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float 
 
 void CApache::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
-	// ALERT( at_console, "%d %.0f\n", ptr->iHitgroup, flDamage );
+	// AILogger->debug("{} {:.0f}", ptr->iHitgroup, flDamage);
 
 	// ignore blades
 	if (ptr->iHitgroup == 6 && (bitsDamageType & (DMG_ENERGYBEAM | DMG_BULLET | DMG_CLUB)) != 0)
@@ -913,7 +912,7 @@ void CApache::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir,
 	// hit hard, hits cockpit, hits engines
 	if (flDamage > 50 || ptr->iHitgroup == 1 || ptr->iHitgroup == 2)
 	{
-		// ALERT( at_console, "%.0f\n", flDamage );
+		// AILogger->debug("{:.0f}", flDamage);
 		AddMultiDamage(pevAttacker, this, flDamage, bitsDamageType);
 		m_iDoSmokePuff = 3 + (flDamage / 5.0);
 	}
@@ -960,7 +959,7 @@ void CApacheHVR::Spawn()
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(ENT(pev), "models/HVR.mdl");
+	SetModel("models/HVR.mdl");
 	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
 	UTIL_SetOrigin(pev, pev->origin);
 
@@ -979,9 +978,9 @@ void CApacheHVR::Spawn()
 
 void CApacheHVR::Precache()
 {
-	PRECACHE_MODEL("models/HVR.mdl");
-	m_iTrail = PRECACHE_MODEL("sprites/smoke.spr");
-	PRECACHE_SOUND("weapons/rocket1.wav");
+	PrecacheModel("models/HVR.mdl");
+	m_iTrail = PrecacheModel("sprites/smoke.spr");
+	PrecacheSound("weapons/rocket1.wav");
 }
 
 

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // Alien slave monster
 //=========================================================
@@ -33,6 +33,7 @@
 class CISlave : public CSquadMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
@@ -132,6 +133,14 @@ const char* CISlave::pDeathSounds[] =
 		"aslave/slv_die2.wav",
 };
 
+void CISlave::OnCreate()
+{
+	CSquadMonster::OnCreate();
+
+	pev->health = GetSkillFloat("islave_health"sv);
+	pev->model = MAKE_STRING("models/islave.mdl");
+}
+
 //=========================================================
 // Classify - indicates this monster's place in the
 // relationship table.
@@ -153,7 +162,7 @@ int CISlave::IRelationship(CBaseEntity* pTarget)
 
 void CISlave::CallForHelp(const char* szClassname, float flDist, EHANDLE hEnemy, Vector& vecLocation)
 {
-	// ALERT( at_aiconsole, "help " );
+	// AILogger->debug("help");
 
 	// skip ones not on my netname
 	if (FStringNull(pev->netname))
@@ -184,7 +193,7 @@ void CISlave::AlertSound()
 {
 	if (m_hEnemy != nullptr)
 	{
-		SENTENCEG_PlayRndSz(ENT(pev), "SLV_ALERT", 0.85, ATTN_NORM, 0, m_voicePitch);
+		sentences::g_Sentences.PlayRndSz(ENT(pev), "SLV_ALERT", 0.85, ATTN_NORM, 0, m_voicePitch);
 
 		CallForHelp("monster_alien_slave", 512, m_hEnemy, m_vecEnemyLKP);
 	}
@@ -197,7 +206,7 @@ void CISlave::IdleSound()
 {
 	if (RANDOM_LONG(0, 2) == 0)
 	{
-		SENTENCEG_PlayRndSz(ENT(pev), "SLV_IDLE", 0.85, ATTN_NORM, 0, m_voicePitch);
+		sentences::g_Sentences.PlayRndSz(ENT(pev), "SLV_IDLE", 0.85, ATTN_NORM, 0, m_voicePitch);
 	}
 
 #if 0
@@ -300,13 +309,13 @@ void CISlave::SetYawSpeed()
 //=========================================================
 void CISlave::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
-	// ALERT( at_console, "event %d : %f\n", pEvent->event, pev->frame );
+	// AILogger->debug("event {} : {}", pEvent->event, pev->frame);
 	switch (pEvent->event)
 	{
 	case ISLAVE_AE_CLAW:
 	{
 		// SOUND HERE!
-		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.slaveDmgClaw, DMG_SLASH);
+		CBaseEntity* pHurt = CheckTraceHullAttack(70, GetSkillFloat("islave_dmg_claw"sv), DMG_SLASH);
 		if (pHurt)
 		{
 			if ((pHurt->pev->flags & (FL_MONSTER | FL_CLIENT)) != 0)
@@ -327,7 +336,7 @@ void CISlave::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case ISLAVE_AE_CLAWRAKE:
 	{
-		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.slaveDmgClawrake, DMG_SLASH);
+		CBaseEntity* pHurt = CheckTraceHullAttack(70, GetSkillFloat("islave_dmg_clawrake"sv), DMG_SLASH);
 		if (pHurt)
 		{
 			if ((pHurt->pev->flags & (FL_MONSTER | FL_CLIENT)) != 0)
@@ -347,7 +356,7 @@ void CISlave::HandleAnimEvent(MonsterEvent_t* pEvent)
 	case ISLAVE_AE_ZAP_POWERUP:
 	{
 		// speed up attack when on hard
-		if (g_iSkillLevel == SKILL_HARD)
+		if (g_Skill.GetSkillLevel() == SkillLevel::Hard)
 			pev->framerate = 1.5;
 
 		UTIL_MakeAimVectors(pev->angles);
@@ -404,11 +413,6 @@ void CISlave::HandleAnimEvent(MonsterEvent_t* pEvent)
 				WackBeam(1, pNew);
 				UTIL_Remove(m_hDead);
 				EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG(130, 160));
-
-				/*
-				CBaseEntity *pEffect = Create( "test_effect", pNew->Center(), pev->angles );
-				pEffect->Use( this, this, USE_ON, 1 );
-				*/
 				break;
 			}
 		}
@@ -516,14 +520,13 @@ void CISlave::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/islave.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_GREEN;
 	pev->effects = 0;
-	pev->health = gSkillData.slaveHealth;
 	pev->view_ofs = Vector(0, 0, 64);  // position of the eyes relative to monster's origin.
 	m_flFieldOfView = VIEW_FIELD_WIDE; // NOTE: we need a wide field of view so npc will notice player and say hello
 	m_MonsterState = MONSTERSTATE_NONE;
@@ -539,15 +542,15 @@ void CISlave::Spawn()
 //=========================================================
 void CISlave::Precache()
 {
-	PRECACHE_MODEL("models/islave.mdl");
-	PRECACHE_MODEL("sprites/lgtning.spr");
-	PRECACHE_SOUND("debris/zap1.wav");
-	PRECACHE_SOUND("debris/zap4.wav");
-	PRECACHE_SOUND("weapons/electro4.wav");
-	PRECACHE_SOUND("hassault/hw_shoot1.wav");
-	PRECACHE_SOUND("zombie/zo_pain2.wav");
-	PRECACHE_SOUND("headcrab/hc_headbite.wav");
-	PRECACHE_SOUND("weapons/cbar_miss1.wav");
+	PrecacheModel(STRING(pev->model));
+	PrecacheModel("sprites/lgtning.spr");
+	PrecacheSound("debris/zap1.wav");
+	PrecacheSound("debris/zap4.wav");
+	PrecacheSound("weapons/electro4.wav");
+	PrecacheSound("hassault/hw_shoot1.wav");
+	PrecacheSound("zombie/zo_pain2.wav");
+	PrecacheSound("headcrab/hc_headbite.wav");
+	PrecacheSound("weapons/cbar_miss1.wav");
 
 	PRECACHE_SOUND_ARRAY(pAttackHitSounds);
 	PRECACHE_SOUND_ARRAY(pAttackMissSounds);
@@ -664,7 +667,7 @@ Schedule_t* CISlave::GetSchedule()
 				}
 				if (HasConditions(bits_COND_SEE_ENEMY) && HasConditions(bits_COND_ENEMY_FACING_ME))
 				{
-					// ALERT( at_console, "exposed\n");
+					// AILogger->debug("exposed");
 					return GetScheduleOfType(SCHED_TAKE_COVER_FROM_ENEMY);
 				}
 			}
@@ -818,7 +821,7 @@ void CISlave::ZapBeam(int side)
 	pEntity = CBaseEntity::Instance(tr.pHit);
 	if (pEntity != nullptr && 0 != pEntity->pev->takedamage)
 	{
-		pEntity->TraceAttack(pev, gSkillData.slaveDmgZap, vecAim, &tr, DMG_SHOCK);
+		pEntity->TraceAttack(pev, GetSkillFloat("islave_dmg_zap"sv), vecAim, &tr, DMG_SHOCK);
 	}
 	UTIL_EmitAmbientSound(ENT(pev), tr.vecEndPos, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG(140, 160));
 }
@@ -856,6 +859,7 @@ void CISlave::ClearBeams()
 class CDeadISlave : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	int Classify() override { return CLASS_ALIEN_PASSIVE; }
 
@@ -880,13 +884,22 @@ bool CDeadISlave::KeyValue(KeyValueData* pkvd)
 
 LINK_ENTITY_TO_CLASS(monster_alien_slave_dead, CDeadISlave);
 
+void CDeadISlave::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	// Corpses have less health
+	pev->health = 8; // GetSkillFloat("islave_health"sv);
+	pev->model = MAKE_STRING("models/islave.mdl");
+}
+
 //=========================================================
 // ********** DeadISlave SPAWN **********
 //=========================================================
 void CDeadISlave::Spawn()
 {
-	PRECACHE_MODEL("models/islave.mdl");
-	SET_MODEL(ENT(pev), "models/islave.mdl");
+	PrecacheModel(STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	pev->effects = 0;
 	pev->sequence = 0;
@@ -895,10 +908,8 @@ void CDeadISlave::Spawn()
 	pev->sequence = LookupSequence(m_szPoses[m_iPose]);
 	if (pev->sequence == -1)
 	{
-		ALERT(at_console, "Dead slave with bad pose\n");
+		AILogger->debug("Dead slave with bad pose");
 	}
-	// Corpses have less health
-	pev->health = 8; //gSkillData.slaveHealth;
 
 	MonsterInitDead();
 }

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // Zombie
 //=========================================================
@@ -68,23 +68,22 @@ LINK_ENTITY_TO_CLASS(gonomeguts, COFGonomeGuts);
 void COFGonomeGuts::Spawn()
 {
 	pev->movetype = MOVETYPE_FLY;
-	pev->classname = MAKE_STRING("gonomeguts");
 
 	pev->solid = SOLID_BBOX;
 	pev->rendermode = kRenderTransAlpha;
 	pev->renderamt = 255;
 
-	//TODO: probably shouldn't be assinging to x every time
+	// TODO: probably shouldn't be assinging to x every time
 	if (g_Language == LANGUAGE_GERMAN)
 	{
-		SET_MODEL(edict(), "sprites/bigspit.spr");
+		SetModel("sprites/bigspit.spr");
 		pev->rendercolor.x = 0;
 		pev->rendercolor.x = 255;
 		pev->rendercolor.x = 0;
 	}
 	else
 	{
-		SET_MODEL(edict(), "sprites/bigspit.spr");
+		SetModel("sprites/bigspit.spr");
 		pev->rendercolor.x = 128;
 		pev->rendercolor.x = 32;
 		pev->rendercolor.x = 128;
@@ -125,7 +124,7 @@ void COFGonomeGuts::Touch(CBaseEntity* pOther)
 	}
 	else
 	{
-		pOther->TakeDamage(pev, pev, gSkillData.gonomeDmgGuts, DMG_GENERIC);
+		pOther->TakeDamage(pev, pev, GetSkillFloat("gonome_dmg_guts"sv), DMG_GENERIC);
 	}
 
 	SetThink(&COFGonomeGuts::SUB_Remove);
@@ -147,7 +146,7 @@ void COFGonomeGuts::Animate()
 
 void COFGonomeGuts::Shoot(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity)
 {
-	auto pGuts = GetClassPtr<COFGonomeGuts>(nullptr);
+	auto pGuts = g_EntityDictionary->Create<COFGonomeGuts>("gonomeguts");
 	pGuts->Spawn();
 
 	UTIL_SetOrigin(pGuts->pev, vecStart);
@@ -163,7 +162,7 @@ void COFGonomeGuts::Shoot(entvars_t* pevOwner, Vector vecStart, Vector vecVeloci
 
 COFGonomeGuts* COFGonomeGuts::GonomeGutsCreate(const Vector& origin)
 {
-	auto pGuts = GetClassPtr<COFGonomeGuts>(nullptr);
+	auto pGuts = g_EntityDictionary->Create<COFGonomeGuts>("gonomeguts");
 	pGuts->Spawn();
 
 	pGuts->pev->origin = origin;
@@ -197,6 +196,7 @@ public:
 
 	static TYPEDESCRIPTION m_SaveData[];
 
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
@@ -236,13 +236,13 @@ public:
 
 	float m_flNextThrowTime = 0;
 
-	//TODO: needs to be EHANDLE, save/restored or a save during a windup will cause problems
+	// TODO: needs to be EHANDLE, save/restored or a save during a windup will cause problems
 	COFGonomeGuts* m_pGonomeGuts = nullptr;
-	bool m_fPlayerLocked = false;
+	EHANDLE m_PlayerLocked;
 
 protected:
-	float GetOneSlashDamage() override { return gSkillData.gonomeDmgOneSlash; }
-	float GetBothSlashDamage() override { return 0; } //Not used, so just return 0
+	float GetOneSlashDamage() override { return GetSkillFloat("gonome_dmg_one_slash"sv); }
+	float GetBothSlashDamage() override { return 0; } // Not used, so just return 0
 
 	// Take 15% damage from bullets
 	virtual float GetBulletDamageFraction() const override { return 0.15f; }
@@ -251,7 +251,7 @@ protected:
 TYPEDESCRIPTION COFGonome::m_SaveData[] =
 	{
 		DEFINE_FIELD(COFGonome, m_flNextThrowTime, FIELD_TIME),
-		DEFINE_FIELD(COFGonome, m_fPlayerLocked, FIELD_BOOLEAN),
+		DEFINE_FIELD(COFGonome, m_PlayerLocked, FIELD_EHANDLE),
 };
 
 IMPLEMENT_SAVERESTORE(COFGonome, COFGonome::BaseClass);
@@ -285,7 +285,7 @@ Schedule_t slGonomeVictoryDance[] =
 				bits_COND_LIGHT_DAMAGE |
 				bits_COND_HEAVY_DAMAGE,
 			bits_SOUND_NONE,
-			"BabyVoltigoreVictoryDance" //Yup, it's a copy
+			"BabyVoltigoreVictoryDance" // Yup, it's a copy
 		},
 };
 
@@ -293,7 +293,16 @@ DEFINE_CUSTOM_SCHEDULES(COFGonome){
 	slGonomeVictoryDance,
 };
 
+// TODO: need to use CZombie instead of CBaseMonster
 IMPLEMENT_CUSTOM_SCHEDULES(COFGonome, CBaseMonster);
+
+void COFGonome::OnCreate()
+{
+	CZombie::OnCreate();
+
+	pev->health = GetSkillFloat("gonome_health"sv);
+	pev->model = MAKE_STRING("models/gonome.mdl");
+}
 
 void COFGonome::PainSound()
 {
@@ -329,7 +338,7 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case ZOMBIE_AE_ATTACK_GUTS_GRAB:
 	{
-		//Only if we still have an enemy at this point
+		// Only if we still have an enemy at this point
 		if (m_hEnemy)
 		{
 			Vector vecGutsPos, vecGutsAngles;
@@ -340,13 +349,13 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 				m_pGonomeGuts = COFGonomeGuts::GonomeGutsCreate(vecGutsPos);
 			}
 
-			//Attach to hand for throwing
+			// Attach to hand for throwing
 			m_pGonomeGuts->pev->skin = entindex();
 			m_pGonomeGuts->pev->body = 1;
 			m_pGonomeGuts->pev->aiment = edict();
 			m_pGonomeGuts->pev->movetype = MOVETYPE_FOLLOW;
 
-			auto direction = (m_hEnemy->pev->origin - m_hEnemy->pev->view_ofs - vecGutsPos).Normalize();
+			auto direction = (m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs - vecGutsPos).Normalize();
 
 			direction = direction + Vector(
 										RANDOM_FLOAT(-0.05, 0.05),
@@ -360,7 +369,7 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case ZOMBIE_AE_ATTACK_GUTS_THROW:
 	{
-		//Note: this check wasn't in the original. If an enemy dies during gut throw windup, this can be null and crash
+		// Note: this check wasn't in the original. If an enemy dies during gut throw windup, this can be null and crash
 		if (m_hEnemy)
 		{
 			Vector vecGutsPos, vecGutsAngles;
@@ -373,7 +382,7 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 				m_pGonomeGuts = COFGonomeGuts::GonomeGutsCreate(vecGutsPos);
 			}
 
-			auto direction = (m_hEnemy->pev->origin - m_hEnemy->pev->view_ofs - vecGutsPos).Normalize();
+			auto direction = (m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs - vecGutsPos).Normalize();
 
 			direction = direction + Vector(
 										RANDOM_FLOAT(-0.05, 0.05),
@@ -382,7 +391,7 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 			UTIL_BloodDrips(vecGutsPos, direction, BLOOD_COLOR_RED, 35);
 
-			//Detach from owner
+			// Detach from owner
 			m_pGonomeGuts->pev->skin = 0;
 			m_pGonomeGuts->pev->body = 0;
 			m_pGonomeGuts->pev->aiment = nullptr;
@@ -403,21 +412,29 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 	case GONOME_AE_ATTACK_BITE_SECOND:
 	case GONOME_AE_ATTACK_BITE_THIRD:
 	{
-		//TODO: this doesn't check if the enemy is the player, can cause bugs
 		if ((pev->origin - m_hEnemy->pev->origin).Length() < 48)
 		{
-			//TODO: not suited for multiplayer
-			auto pPlayer = static_cast<CBasePlayer*>(UTIL_FindEntityByClassname(nullptr, "player"));
+			// Unfreeze previous player if they were locked.
+			auto prevPlayer = m_PlayerLocked.Entity<CBasePlayer>();
+			m_PlayerLocked = nullptr;
 
-			if (pPlayer && pPlayer->IsAlive())
-				pPlayer->EnableControl(false);
+			if (prevPlayer && prevPlayer->IsAlive())
+			{
+				prevPlayer->EnableControl(true);
+			}
 
-			m_fPlayerLocked = true;
+			auto enemy = m_hEnemy.Entity<CBaseEntity>();
+
+			if (enemy && enemy->IsPlayer() && enemy->IsAlive())
+			{
+				static_cast<CBasePlayer*>(enemy)->EnableControl(false);
+				m_PlayerLocked = enemy;
+			}
 		}
 
 		// do stuff for this event.
-		//		ALERT( at_console, "Slash left!\n" );
-		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.gonomeDmgOneBite, DMG_SLASH);
+		// AILogger->debug("Slash left!");
+		CBaseEntity* pHurt = CheckTraceHullAttack(70, GetSkillFloat("gonome_dmg_one_bite"sv), DMG_SLASH);
 		if (pHurt)
 		{
 			if ((pHurt->pev->flags & (FL_MONSTER | FL_CLIENT)) != 0)
@@ -434,18 +451,18 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case GONOME_AE_ATTACK_BITE_FINISH:
 	{
-		auto pPlayer = static_cast<CBasePlayer*>(UTIL_FindEntityByClassname(nullptr, "player"));
+		auto player = m_PlayerLocked.Entity<CBasePlayer>();
 
-		if (pPlayer && pPlayer->IsAlive())
+		if (player && player->IsAlive())
 		{
-			pPlayer->EnableControl(true);
+			player->EnableControl(true);
 		}
 
-		m_fPlayerLocked = false;
+		m_PlayerLocked = nullptr;
 
 		// do stuff for this event.
-		//		ALERT( at_console, "Slash left!\n" );
-		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.gonomeDmgOneBite, DMG_SLASH);
+		// AILogger->debug("Slash left!");
+		CBaseEntity* pHurt = CheckTraceHullAttack(70, GetSkillFloat("gonome_dmg_one_bite"sv), DMG_SLASH);
 		if (pHurt)
 		{
 			if ((pHurt->pev->flags & (FL_MONSTER | FL_CLIENT)) != 0)
@@ -473,9 +490,9 @@ void COFGonome::Spawn()
 {
 	m_flNextThrowTime = gpGlobals->time;
 	m_pGonomeGuts = nullptr;
-	m_fPlayerLocked = false;
+	m_PlayerLocked = nullptr;
 
-	SpawnCore("models/gonome.mdl", gSkillData.gonomeHealth);
+	CZombie::Spawn();
 }
 
 //=========================================================
@@ -483,8 +500,9 @@ void COFGonome::Spawn()
 //=========================================================
 void COFGonome::Precache()
 {
-	PRECACHE_MODEL("models/gonome.mdl");
-	PRECACHE_MODEL("sprites/bigspit.spr");
+	// Don't call CZombie::Spawn here!
+	PrecacheModel(STRING(pev->model));
+	PrecacheModel("sprites/bigspit.spr");
 
 	PRECACHE_SOUND_ARRAY(pAttackHitSounds);
 	PRECACHE_SOUND_ARRAY(pAttackMissSounds);
@@ -492,21 +510,21 @@ void COFGonome::Precache()
 	PRECACHE_SOUND_ARRAY(pAlertSounds);
 	PRECACHE_SOUND_ARRAY(pPainSounds);
 
-	PRECACHE_SOUND("gonome/gonome_death2.wav");
-	PRECACHE_SOUND("gonome/gonome_death3.wav");
-	PRECACHE_SOUND("gonome/gonome_death4.wav");
+	PrecacheSound("gonome/gonome_death2.wav");
+	PrecacheSound("gonome/gonome_death3.wav");
+	PrecacheSound("gonome/gonome_death4.wav");
 
-	PRECACHE_SOUND("gonome/gonome_jumpattack.wav");
+	PrecacheSound("gonome/gonome_jumpattack.wav");
 
-	PRECACHE_SOUND("gonome/gonome_melee1.wav");
-	PRECACHE_SOUND("gonome/gonome_melee2.wav");
+	PrecacheSound("gonome/gonome_melee1.wav");
+	PrecacheSound("gonome/gonome_melee2.wav");
 
-	PRECACHE_SOUND("gonome/gonome_run.wav");
-	PRECACHE_SOUND("gonome/gonome_eat.wav");
+	PrecacheSound("gonome/gonome_run.wav");
+	PrecacheSound("gonome/gonome_eat.wav");
 
-	PRECACHE_SOUND("bullchicken/bc_acid1.wav");
-	PRECACHE_SOUND("bullchicken/bc_spithit1.wav");
-	PRECACHE_SOUND("bullchicken/bc_spithit2.wav");
+	PrecacheSound("bullchicken/bc_acid1.wav");
+	PrecacheSound("bullchicken/bc_spithit1.wav");
+	PrecacheSound("bullchicken/bc_spithit2.wav");
 }
 
 //=========================================================
@@ -523,7 +541,7 @@ int COFGonome::IgnoreConditions()
 	{
 		iIgnore |= bits_COND_LIGHT_DAMAGE | bits_COND_HEAVY_DAMAGE | bits_COND_ENEMY_TOOFAR | bits_COND_ENEMY_OCCLUDED;
 	}
-	else if ((m_Activity == ACT_MELEE_ATTACK1) || (m_Activity == ACT_MELEE_ATTACK1))
+	else if (m_Activity == ACT_MELEE_ATTACK1)
 	{
 #if 0
 		if (pev->health < 20)
@@ -599,15 +617,14 @@ void COFGonome::Killed(entvars_t* pevAttacker, int iGib)
 		m_pGonomeGuts = nullptr;
 	}
 
-	if (m_fPlayerLocked)
+	auto player = m_PlayerLocked.Entity<CBasePlayer>();
+
+	if (player)
 	{
-		//TODO: not suited for multiplayer
-		auto pPlayer = static_cast<CBasePlayer*>(UTIL_FindEntityByClassname(nullptr, "player"));
+		if (player && player->IsAlive())
+			player->EnableControl(true);
 
-		if (pPlayer && pPlayer->IsAlive())
-			pPlayer->EnableControl(true);
-
-		m_fPlayerLocked = false;
+		m_PlayerLocked = nullptr;
 	}
 
 	CBaseMonster::Killed(pevAttacker, iGib);
@@ -633,7 +650,7 @@ void COFGonome::StartTask(Task_t* pTask)
 		}
 		else
 		{
-			ALERT(at_aiconsole, "GonomeGetPathToEnemyCorpse failed!!\n");
+			AILogger->debug("GonomeGetPathToEnemyCorpse failed!!");
 			TaskFail();
 		}
 	}
@@ -656,16 +673,16 @@ void COFGonome::SetActivity(Activity NewActivity)
 		m_pGonomeGuts = nullptr;
 	}
 
-	if (m_fPlayerLocked)
+	auto player = m_PlayerLocked.Entity<CBasePlayer>();
+
+	if (player)
 	{
 		if (NewActivity != ACT_MELEE_ATTACK1)
 		{
-			auto pPlayer = static_cast<CBasePlayer*>(UTIL_FindEntityByClassname(nullptr, "player"));
+			if (player && player->IsAlive())
+				player->EnableControl(true);
 
-			if (pPlayer && pPlayer->IsAlive())
-				pPlayer->EnableControl(true);
-
-			m_fPlayerLocked = false;
+			m_PlayerLocked = nullptr;
 		}
 	}
 
@@ -725,7 +742,7 @@ void COFGonome::SetActivity(Activity NewActivity)
 	else
 	{
 		// Not available try to get default anim
-		ALERT(at_console, "%s has no sequence for act:%d\n", STRING(pev->classname), NewActivity);
+		AILogger->debug("{} has no sequence for act:{}", STRING(pev->classname), NewActivity);
 		pev->sequence = 0; // Set to the reset anim (if it's there)
 	}
 
@@ -739,6 +756,7 @@ void COFGonome::SetActivity(Activity NewActivity)
 class CDeadGonome : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	int Classify() override { return CLASS_ALIEN_PASSIVE; }
 
@@ -749,6 +767,15 @@ public:
 };
 
 const char* CDeadGonome::m_szPoses[] = {"dead_on_stomach1", "dead_on_back", "dead_on_side"};
+
+void CDeadGonome::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	// Corpses have less health
+	pev->health = 8;
+	pev->model = MAKE_STRING("models/gonome.mdl");
+}
 
 bool CDeadGonome::KeyValue(KeyValueData* pkvd)
 {
@@ -768,8 +795,8 @@ LINK_ENTITY_TO_CLASS(monster_gonome_dead, CDeadGonome);
 //=========================================================
 void CDeadGonome::Spawn()
 {
-	PRECACHE_MODEL("models/gonome.mdl");
-	SET_MODEL(ENT(pev), "models/gonome.mdl");
+	PrecacheModel(STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	pev->effects = 0;
 	pev->sequence = 0;
@@ -779,11 +806,8 @@ void CDeadGonome::Spawn()
 
 	if (pev->sequence == -1)
 	{
-		ALERT(at_console, "Dead gonome with bad pose\n");
+		AILogger->debug("Dead gonome with bad pose");
 	}
-
-	// Corpses have less health
-	pev->health = 8;
 
 	MonsterInitDead();
 }

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== bmodels.cpp ========================================================
@@ -30,7 +30,7 @@
 // be spawned, and still remain fairly flexible
 const char* CBreakable::pSpawnObjects[] =
 	{
-		nullptr,				  // 0
+		nullptr,			  // 0
 		"item_battery",		  // 1
 		"item_healthkit",	  // 2
 		"weapon_9mmhandgun",  // 3
@@ -166,7 +166,7 @@ void CBreakable::Spawn()
 		pev->playerclass = 1;
 	}
 
-	SET_MODEL(ENT(pev), STRING(pev->model)); //set size and link into world.
+	SetModel(STRING(pev->model)); // set size and link into world.
 
 	SetTouch(&CBreakable::BreakTouch);
 	if (FBitSet(pev->spawnflags, SF_BREAK_TRIGGER_ONLY)) // Only break on trigger
@@ -260,7 +260,7 @@ const char** CBreakable::MaterialSoundList(Materials precacheMaterial, int& soun
 	return pSoundList;
 }
 
-void CBreakable::MaterialSoundPrecache(Materials precacheMaterial)
+void CBreakable::MaterialSoundPrecache(CBaseEntity* self, Materials precacheMaterial)
 {
 	const char** pSoundList;
 	int i, soundCount = 0;
@@ -269,7 +269,7 @@ void CBreakable::MaterialSoundPrecache(Materials precacheMaterial)
 
 	for (i = 0; i < soundCount; i++)
 	{
-		PRECACHE_SOUND(pSoundList[i]);
+		self->PrecacheSound(pSoundList[i]);
 	}
 }
 
@@ -291,64 +291,64 @@ void CBreakable::Precache()
 
 	switch (m_Material)
 	{
-	default: //Wood is default, needs to match constant used in KeyValue
+	default: // Wood is default, needs to match constant used in KeyValue
 	case matWood:
 		pGibName = "models/woodgibs.mdl";
 
-		PRECACHE_SOUND("debris/bustcrate1.wav");
-		PRECACHE_SOUND("debris/bustcrate2.wav");
+		PrecacheSound("debris/bustcrate1.wav");
+		PrecacheSound("debris/bustcrate2.wav");
 		break;
 	case matFlesh:
 		pGibName = "models/fleshgibs.mdl";
 
-		PRECACHE_SOUND("debris/bustflesh1.wav");
-		PRECACHE_SOUND("debris/bustflesh2.wav");
+		PrecacheSound("debris/bustflesh1.wav");
+		PrecacheSound("debris/bustflesh2.wav");
 		break;
 	case matComputer:
-		PRECACHE_SOUND("buttons/spark5.wav");
-		PRECACHE_SOUND("buttons/spark6.wav");
+		PrecacheSound("buttons/spark5.wav");
+		PrecacheSound("buttons/spark6.wav");
 		pGibName = "models/computergibs.mdl";
 
-		PRECACHE_SOUND("debris/bustmetal1.wav");
-		PRECACHE_SOUND("debris/bustmetal2.wav");
+		PrecacheSound("debris/bustmetal1.wav");
+		PrecacheSound("debris/bustmetal2.wav");
 		break;
 
 	case matUnbreakableGlass:
 	case matGlass:
 		pGibName = "models/glassgibs.mdl";
 
-		PRECACHE_SOUND("debris/bustglass1.wav");
-		PRECACHE_SOUND("debris/bustglass2.wav");
+		PrecacheSound("debris/bustglass1.wav");
+		PrecacheSound("debris/bustglass2.wav");
 		break;
 	case matMetal:
 		pGibName = "models/metalplategibs.mdl";
 
-		PRECACHE_SOUND("debris/bustmetal1.wav");
-		PRECACHE_SOUND("debris/bustmetal2.wav");
+		PrecacheSound("debris/bustmetal1.wav");
+		PrecacheSound("debris/bustmetal2.wav");
 		break;
 	case matCinderBlock:
 		pGibName = "models/cindergibs.mdl";
 
-		PRECACHE_SOUND("debris/bustconcrete1.wav");
-		PRECACHE_SOUND("debris/bustconcrete2.wav");
+		PrecacheSound("debris/bustconcrete1.wav");
+		PrecacheSound("debris/bustconcrete2.wav");
 		break;
 	case matRocks:
 		pGibName = "models/rockgibs.mdl";
 
-		PRECACHE_SOUND("debris/bustconcrete1.wav");
-		PRECACHE_SOUND("debris/bustconcrete2.wav");
+		PrecacheSound("debris/bustconcrete1.wav");
+		PrecacheSound("debris/bustconcrete2.wav");
 		break;
 	case matCeilingTile:
 		pGibName = "models/ceilinggibs.mdl";
 
-		PRECACHE_SOUND("debris/bustceiling.wav");
+		PrecacheSound("debris/bustceiling.wav");
 		break;
 	}
-	MaterialSoundPrecache(m_Material);
+	MaterialSoundPrecache(this, m_Material);
 	if (!FStringNull(m_iszGibModel))
 		pGibName = STRING(m_iszGibModel);
 
-	m_idShard = PRECACHE_MODEL(pGibName);
+	m_idShard = PrecacheModel(pGibName);
 
 	// Precache the spawn item's data
 	if (!FStringNull(m_iszSpawnObject))
@@ -391,7 +391,7 @@ void CBreakable::DamageSound()
 		i = 3;
 		break;
 
-	default: //Wood is default, needs to match constant used in KeyValue
+	default: // Wood is default, needs to match constant used in KeyValue
 	case matWood:
 		rgpsz[0] = "debris/wood1.wav";
 		rgpsz[1] = "debris/wood2.wav";
@@ -507,7 +507,7 @@ void CBreakable::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecD
 		{
 			UTIL_Sparks(ptr->vecEndPos);
 
-			float flVolume = RANDOM_FLOAT(0.7, 1.0); //random volume range
+			float flVolume = RANDOM_FLOAT(0.7, 1.0); // random volume range
 			switch (RANDOM_LONG(0, 1))
 			{
 			case 0:
@@ -717,7 +717,7 @@ void CBreakable::Die()
 	WRITE_BYTE(10);
 
 	// Model
-	WRITE_SHORT(m_idShard); //model id#
+	WRITE_SHORT(m_idShard); // model id#
 
 	// # of shards
 	WRITE_BYTE(0); // let client decide
@@ -755,7 +755,7 @@ void CBreakable::Die()
 	}
 
 	// Don't fire something that could fire myself
-	pev->targetname = 0;
+	pev->targetname = string_t::Null;
 
 	pev->solid = SOLID_NOT;
 	// Fire targets on break
@@ -844,7 +844,7 @@ void CPushable::Spawn()
 
 	pev->movetype = MOVETYPE_PUSHSTEP;
 	pev->solid = SOLID_BBOX;
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	if (pev->friction > 399)
 		pev->friction = 399;
@@ -865,7 +865,7 @@ void CPushable::Spawn()
 void CPushable::Precache()
 {
 	for (int i = 0; i < 3; i++)
-		PRECACHE_SOUND(m_soundNames[i]);
+		PrecacheSound(m_soundNames[i]);
 
 	if ((pev->spawnflags & SF_PUSH_BREAKABLE) != 0)
 		CBreakable::Precache();
@@ -943,7 +943,7 @@ void CPushable::Move(CBaseEntity* pOther, bool push)
 	if (FBitSet(pevToucher->flags, FL_ONGROUND) && pevToucher->groundentity && VARS(pevToucher->groundentity) == pev)
 	{
 		// Only push if floating
-		if (pev->waterlevel > 0)
+		if (pev->waterlevel > WaterLevel::Dry)
 			pev->velocity.z += pevToucher->velocity.z * 0.1;
 
 		return;
@@ -963,7 +963,7 @@ void CPushable::Move(CBaseEntity* pOther, bool push)
 	{
 		if ((pevToucher->flags & FL_ONGROUND) == 0) // Don't push away from jumping/falling players unless in water
 		{
-			if (pev->waterlevel < 1)
+			if (pev->waterlevel < WaterLevel::Feet)
 				return;
 			else
 				factor = 0.1;

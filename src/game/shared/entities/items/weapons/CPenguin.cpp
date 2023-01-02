@@ -1,23 +1,23 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 
 #include "CPenguin.h"
 
 #ifndef CLIENT_DLL
-//TODO: this isn't in vanilla Op4 so it won't save properly there
+// TODO: this isn't in vanilla Op4 so it won't save properly there
 TYPEDESCRIPTION CPenguin::m_SaveData[] =
 	{
 		DEFINE_FIELD(CPenguin, m_fJustThrown, FIELD_BOOLEAN),
@@ -28,13 +28,20 @@ IMPLEMENT_SAVERESTORE(CPenguin, CPenguin::BaseClass);
 
 LINK_ENTITY_TO_CLASS(weapon_penguin, CPenguin);
 
+void CPenguin::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_penguinnest.mdl");
+}
+
 void CPenguin::Precache()
 {
-	g_engfuncs.pfnPrecacheModel("models/w_penguinnest.mdl");
-	g_engfuncs.pfnPrecacheModel("models/v_penguin.mdl");
-	g_engfuncs.pfnPrecacheModel("models/p_penguin.mdl");
-	g_engfuncs.pfnPrecacheSound("squeek/sqk_hunt2.wav");
-	g_engfuncs.pfnPrecacheSound("squeek/sqk_hunt3.wav");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/v_penguin.mdl");
+	PrecacheModel("models/p_penguin.mdl");
+	PrecacheSound("squeek/sqk_hunt2.wav");
+	PrecacheSound("squeek/sqk_hunt3.wav");
 	UTIL_PrecacheOther("monster_penguin");
 	m_usPenguinFire = g_engfuncs.pfnPrecacheEvent(1, "events/penguinfire.sc");
 }
@@ -44,7 +51,7 @@ void CPenguin::Spawn()
 	Precache();
 
 	m_iId = WEAPON_PENGUIN;
-	g_engfuncs.pfnSetModel(edict(), "models/w_penguinnest.mdl");
+	SetModel(STRING(pev->model));
 	FallInit();
 
 	m_iDefaultAmmo = PENGUIN_MAX_CLIP;
@@ -161,7 +168,7 @@ void CPenguin::PrimaryAttack()
 			m_pPlayer->SetAnimation(PLAYER_ATTACK1);
 
 #ifndef CLIENT_DLL
-			auto penguin = CBaseEntity::Create("monster_penguin", tr.vecEndPos, pev->v_angle, m_pPlayer->edict());
+			auto penguin = CBaseEntity::Create("monster_penguin", tr.vecEndPos, m_pPlayer->pev->v_angle, m_pPlayer->edict());
 
 			penguin->pev->velocity = m_pPlayer->pev->velocity + (gpGlobals->v_forward * 200);
 #endif
@@ -183,7 +190,7 @@ void CPenguin::PrimaryAttack()
 
 void CPenguin::SecondaryAttack()
 {
-	//Nothing
+	// Nothing
 }
 
 int CPenguin::iItemSlot()

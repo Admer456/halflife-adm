@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 #include "cbase.h"
 
 class COFNuclearBombButton : public CBaseEntity
@@ -19,6 +19,7 @@ class COFNuclearBombButton : public CBaseEntity
 public:
 	int ObjectCaps() override { return FCAP_DONT_SAVE; }
 
+	void OnCreate() override;
 	void Precache() override;
 	void Spawn() override;
 
@@ -27,16 +28,23 @@ public:
 
 LINK_ENTITY_TO_CLASS(item_nuclearbombbutton, COFNuclearBombButton);
 
+void COFNuclearBombButton::OnCreate()
+{
+	CBaseEntity::OnCreate();
+
+	pev->model = MAKE_STRING("models/nuke_button.mdl");
+}
+
 void COFNuclearBombButton::Precache()
 {
-	PRECACHE_MODEL("models/nuke_button.mdl");
+	PrecacheModel(STRING(pev->model));
 }
 
 void COFNuclearBombButton::Spawn()
 {
 	Precache();
 
-	SET_MODEL(edict(), "models/nuke_button.mdl");
+	SetModel(STRING(pev->model));
 
 	pev->solid = SOLID_NOT;
 
@@ -48,7 +56,7 @@ void COFNuclearBombButton::Spawn()
 
 	if (DROP_TO_FLOOR(edict()) == 0)
 	{
-		ALERT(at_error, "Nuclear Bomb Button fell out of level at %f,%f,%f", pev->origin.x, pev->origin.y, pev->origin.z);
+		CBaseEntity::Logger->error("Nuclear Bomb Button fell out of level at {}", pev->origin);
 		UTIL_Remove(this);
 	}
 	else
@@ -67,6 +75,7 @@ class COFNuclearBombTimer : public CBaseEntity
 public:
 	int ObjectCaps() override { return FCAP_DONT_SAVE; }
 
+	void OnCreate() override;
 	void Precache() override;
 	void Spawn() override;
 
@@ -80,17 +89,24 @@ public:
 
 LINK_ENTITY_TO_CLASS(item_nuclearbombtimer, COFNuclearBombTimer);
 
+void COFNuclearBombTimer::OnCreate()
+{
+	CBaseEntity::OnCreate();
+
+	pev->model = MAKE_STRING("models/nuke_timer.mdl");
+}
+
 void COFNuclearBombTimer::Precache()
 {
-	PRECACHE_MODEL("models/nuke_timer.mdl");
-	PRECACHE_SOUND("common/nuke_ticking.wav");
+	PrecacheModel(STRING(pev->model));
+	PrecacheSound("common/nuke_ticking.wav");
 }
 
 void COFNuclearBombTimer::Spawn()
 {
 	Precache();
 
-	SET_MODEL(edict(), "models/nuke_timer.mdl");
+	SetModel(STRING(pev->model));
 
 	pev->solid = SOLID_NOT;
 
@@ -102,7 +118,7 @@ void COFNuclearBombTimer::Spawn()
 
 	if (DROP_TO_FLOOR(edict()) == 0)
 	{
-		ALERT(at_error, "Nuclear Bomb Timer fell out of level at %f,%f,%f", pev->origin.x, pev->origin.y, pev->origin.z);
+		CBaseEntity::Logger->error("Nuclear Bomb Timer fell out of level at {}", pev->origin);
 		UTIL_Remove(this);
 	}
 	else
@@ -162,6 +178,7 @@ public:
 	int ObjectCaps() override { return CBaseToggle::ObjectCaps() | FCAP_IMPULSE_USE; }
 
 	bool KeyValue(KeyValueData* pkvd) override;
+	void OnCreate() override;
 	void Precache() override;
 	void Spawn() override;
 
@@ -201,19 +218,24 @@ bool COFNuclearBomb::KeyValue(KeyValueData* pkvd)
 	return CBaseToggle::KeyValue(pkvd);
 }
 
+void COFNuclearBomb::OnCreate()
+{
+	CBaseToggle::OnCreate();
+
+	pev->model = MAKE_STRING("models/nuke_case.mdl");
+}
+
 void COFNuclearBomb::Precache()
 {
-	PRECACHE_MODEL("models/nuke_case.mdl");
+	PrecacheModel(STRING(pev->model));
 	UTIL_PrecacheOther("item_nuclearbombtimer");
 	UTIL_PrecacheOther("item_nuclearbombbutton");
-	PRECACHE_MODEL("models/nuke_timer.mdl");
-	PRECACHE_MODEL("models/nuke_button.mdl");
-	PRECACHE_SOUND("buttons/button4.wav");
-	PRECACHE_SOUND("buttons/button6.wav");
+	PrecacheSound("buttons/button4.wav");
+	PrecacheSound("buttons/button6.wav");
 
-	//The other entities are created here since a restore only calls Precache
-	//TODO: set the classname members for both entities
-	m_pTimer = GetClassPtr<COFNuclearBombTimer>(nullptr);
+	// The other entities are created here since a restore only calls Precache
+	// TODO: set the classname members for both entities
+	m_pTimer = g_EntityDictionary->Create<COFNuclearBombTimer>("item_nuclearbombtimer");
 
 	m_pTimer->pev->origin = pev->origin;
 	m_pTimer->pev->angles = pev->angles;
@@ -222,7 +244,7 @@ void COFNuclearBomb::Precache()
 
 	m_pTimer->SetNuclearBombTimer(m_fOn);
 
-	m_pButton = GetClassPtr<COFNuclearBombButton>(nullptr);
+	m_pButton = g_EntityDictionary->Create<COFNuclearBombButton>("item_nuclearbombbutton");
 
 	m_pButton->pev->origin = pev->origin;
 	m_pButton->pev->angles = pev->angles;
@@ -236,7 +258,7 @@ void COFNuclearBomb::Spawn()
 {
 	Precache();
 
-	SET_MODEL(edict(), "models/nuke_case.mdl");
+	SetModel(STRING(pev->model));
 
 	pev->solid = SOLID_BBOX;
 
@@ -252,7 +274,7 @@ void COFNuclearBomb::Spawn()
 	}
 	else
 	{
-		ALERT(at_error, "Nuclear Bomb fell out of level at %f,%f,%f", pev->origin.x, pev->origin.y, pev->origin.z);
+		CBaseEntity::Logger->error("Nuclear Bomb fell out of level at {}", pev->origin);
 		UTIL_Remove(this);
 	}
 }

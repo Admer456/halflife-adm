@@ -1,23 +1,30 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "UserMessages.h"
 
 LINK_ENTITY_TO_CLASS(weapon_python, CPython);
 LINK_ENTITY_TO_CLASS(weapon_357, CPython);
+
+void CPython::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_357.mdl");
+}
 
 bool CPython::GetItemInfo(ItemInfo* p)
 {
@@ -49,7 +56,7 @@ void CPython::Spawn()
 	pev->classname = MAKE_STRING("weapon_357"); // hack to allow for old names
 	Precache();
 	m_iId = WEAPON_PYTHON;
-	SET_MODEL(ENT(pev), "models/w_357.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = PYTHON_DEFAULT_GIVE;
 
@@ -59,17 +66,17 @@ void CPython::Spawn()
 
 void CPython::Precache()
 {
-	PRECACHE_MODEL("models/v_357.mdl");
-	PRECACHE_MODEL("models/w_357.mdl");
-	PRECACHE_MODEL("models/p_357.mdl");
+	PrecacheModel("models/v_357.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/p_357.mdl");
 
-	PRECACHE_MODEL("models/w_357ammobox.mdl");
-	PRECACHE_SOUND("items/9mmclip1.wav");
+	PrecacheModel("models/w_357ammobox.mdl");
+	PrecacheSound("items/9mmclip1.wav");
 
-	PRECACHE_SOUND("weapons/357_reload1.wav");
-	PRECACHE_SOUND("weapons/357_cock1.wav");
-	PRECACHE_SOUND("weapons/357_shot1.wav");
-	PRECACHE_SOUND("weapons/357_shot2.wav");
+	PrecacheSound("weapons/357_reload1.wav");
+	PrecacheSound("weapons/357_cock1.wav");
+	PrecacheSound("weapons/357_shot1.wav");
+	PrecacheSound("weapons/357_shot2.wav");
 
 	m_usFirePython = PRECACHE_EVENT(1, "events/python.sc");
 }
@@ -126,7 +133,7 @@ void CPython::SecondaryAttack()
 void CPython::PrimaryAttack()
 {
 	// don't fire underwater
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 		PlayEmptySound();
 		m_flNextPrimaryAttack = 0.15;
@@ -237,18 +244,20 @@ void CPython::WeaponIdle()
 
 class CPythonAmmo : public CBasePlayerAmmo
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_357ammobox.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_357ammobox.mdl");
 	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_357ammobox.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		if (pOther->GiveAmmo(AMMO_357BOX_GIVE, "357", _357_MAX_CARRY) != -1)
 		{

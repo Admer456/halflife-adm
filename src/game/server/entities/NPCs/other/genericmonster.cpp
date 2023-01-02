@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // Generic Monster - purely for scripted sequence work.
 //=========================================================
@@ -29,6 +29,7 @@ const int SF_GENERICMONSTER_CONTROLLER = 8;
 class CGenericMonster : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
@@ -55,7 +56,7 @@ LINK_ENTITY_TO_CLASS(monster_generic, CGenericMonster);
 
 TYPEDESCRIPTION CGenericMonster::m_SaveData[] =
 	{
-		//TODO: should be FIELD_TIME
+		// TODO: should be FIELD_TIME
 		DEFINE_FIELD(CGenericMonster, m_talkTime, FIELD_FLOAT),
 		DEFINE_FIELD(CGenericMonster, m_hTalkTarget, FIELD_EHANDLE),
 		DEFINE_FIELD(CGenericMonster, m_flIdealYaw, FIELD_FLOAT),
@@ -63,6 +64,13 @@ TYPEDESCRIPTION CGenericMonster::m_SaveData[] =
 };
 
 IMPLEMENT_SAVERESTORE(CGenericMonster, CBaseMonster);
+
+void CGenericMonster::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = 8;
+}
 
 //=========================================================
 // Classify - indicates this monster's place in the
@@ -121,7 +129,7 @@ void CGenericMonster::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	/*
 		if ( FStrEq( STRING(pev->model), "models/player.mdl" ) )
@@ -138,7 +146,6 @@ void CGenericMonster::Spawn()
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_RED;
-	pev->health = 8;
 	m_flFieldOfView = 0.5; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
@@ -164,7 +171,7 @@ void CGenericMonster::Spawn()
 //=========================================================
 void CGenericMonster::Precache()
 {
-	PRECACHE_MODEL(STRING(pev->model));
+	PrecacheModel(STRING(pev->model));
 }
 
 void CGenericMonster::PlayScriptedSentence(const char* pszSentence, float duration, float volume, float attenuation, bool bConcurrent, CBaseEntity* pListener)

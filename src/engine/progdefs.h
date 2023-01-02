@@ -1,21 +1,21 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
 
-typedef struct
+struct globalvars_t
 {
 	float time;
 	float frametime;
@@ -49,10 +49,12 @@ typedef struct
 
 	void* pSaveData;
 	Vector vecLandmarkOffset;
-} globalvars_t;
+};
 
+constexpr int NUM_ENT_CONTROLLERS = 4;
+constexpr int NUM_ENT_BLENDERS = 2;
 
-typedef struct entvars_s
+struct entvars_t
 {
 	string_t classname;
 	string_t globalname;
@@ -85,8 +87,8 @@ typedef struct entvars_s
 	int modelindex;
 	string_t model;
 
-	int viewmodel;	 // player's viewmodel
-	int weaponmodel; // what other players see
+	string_t viewmodel;	  // player's viewmodel
+	string_t weaponmodel; // what other players see
 
 	Vector absmin; // BB max translated to world coord
 	Vector absmax; // BB max translated to world coord
@@ -109,13 +111,13 @@ typedef struct entvars_s
 
 	int light_level;
 
-	int sequence;		// animation sequence
-	int gaitsequence;	// movement animation sequence for player (0 for none)
-	float frame;		// % playback position in animation sequences (0..255)
-	float animtime;		// world time when frame was set
-	float framerate;	// animation playback rate (-8x to 8x)
-	byte controller[4]; // bone controller setting (0..255)
-	byte blending[2];	// blending amount between sub-sequences (0..255)
+	int sequence;						  // animation sequence
+	int gaitsequence;					  // movement animation sequence for player (0 for none)
+	float frame;						  // % playback position in animation sequences (0..255)
+	float animtime;						  // world time when frame was set
+	float framerate;					  // animation playback rate (-8x to 8x)
+	byte controller[NUM_ENT_CONTROLLERS]; // bone controller setting (0..255)
+	byte blending[NUM_ENT_BLENDERS];	  // blending amount between sub-sequences (0..255)
 
 	float scale; // sprite rendering scale (0..255)
 
@@ -146,13 +148,13 @@ typedef struct entvars_s
 	int flags;
 
 	int colormap; // lowbyte topcolor, highbyte bottomcolor
-	int team;
+	string_t team;
 
 	float max_health;
 	float teleport_time;
 	float armortype;
 	float armorvalue;
-	int waterlevel;
+	WaterLevel waterlevel;
 	int watertype;
 
 	string_t target;
@@ -215,4 +217,4 @@ typedef struct entvars_s
 	edict_t* euser2;
 	edict_t* euser3;
 	edict_t* euser4;
-} entvars_t;
+};

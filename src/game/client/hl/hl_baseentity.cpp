@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 /*
 ==========================
@@ -26,7 +26,36 @@ This file contains "stubs" of class member implementations so that we can predic
 
 void EMIT_SOUND_DYN(edict_t* entity, int channel, const char* sample, float volume, float attenuation, int flags, int pitch) {}
 
+bool SkillSystem::Initialize() { return true; }
+void SkillSystem::Shutdown() {}
+float SkillSystem::GetValue(std::string_view) const { return 0; }
+
 // CBaseEntity Stubs
+int CBaseEntity::PrecacheModel(const char* s)
+{
+	return UTIL_PrecacheModel(s);
+}
+
+void CBaseEntity::SetModel(const char* s)
+{
+	// Nothing.
+}
+
+int CBaseEntity::PrecacheSound(const char* s)
+{
+	return UTIL_PrecacheSound(s);
+}
+
+void CBaseEntity::OnCreate()
+{
+	// Nothing.
+}
+
+void CBaseEntity::OnDestroy()
+{
+	// Nothing.
+}
+
 bool CBaseEntity::TakeHealth(float flHealth, int bitsDamageType) { return true; }
 bool CBaseEntity::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) { return true; }
 CBaseEntity* CBaseEntity::GetNextTarget() { return nullptr; }
@@ -43,7 +72,7 @@ CBaseEntity* CBaseEntity::Create(const char* szName, const Vector& vecOrigin, co
 void CBaseEntity::SUB_Remove() {}
 
 // CBaseDelay Stubs
-bool CBaseDelay::KeyValue(struct KeyValueData_s*) { return false; }
+bool CBaseDelay::KeyValue(KeyValueData*) { return false; }
 bool CBaseDelay::Restore(class CRestore&) { return true; }
 bool CBaseDelay::Save(class CSave&) { return true; }
 
@@ -53,7 +82,6 @@ bool CBaseAnimating::Save(class CSave&) { return true; }
 
 // DEBUG Stubs
 edict_t* DBG_EntOfVars(const entvars_t* pev) { return nullptr; }
-void DBG_AssertFunction(bool fExpr, const char* szExpr, const char* szFile, int szLine, const char* szMessage) {}
 
 // UTIL_* Stubs
 void UTIL_PrecacheOther(const char* szClassname) {}
@@ -63,20 +91,21 @@ void UTIL_GunshotDecalTrace(TraceResult* pTrace, int decalNumber) {}
 void UTIL_MakeVectors(const Vector& vecAngles) {}
 bool UTIL_IsValidEntity(edict_t* pent) { return true; }
 void UTIL_SetOrigin(entvars_t*, const Vector& org) {}
-void UTIL_LogPrintf(char*, ...) {}
 void UTIL_ClientPrintAll(int, char const*, char const*, char const*, char const*, char const*) {}
 void ClientPrint(entvars_t* client, int msg_dest, const char* msg_name, const char* param1, const char* param2, const char* param3, const char* param4) {}
 
 // CBaseToggle Stubs
 bool CBaseToggle::Restore(class CRestore&) { return true; }
 bool CBaseToggle::Save(class CSave&) { return true; }
-bool CBaseToggle::KeyValue(struct KeyValueData_s*) { return false; }
+bool CBaseToggle::KeyValue(KeyValueData*) { return false; }
 
 // CGrenade Stubs
 void CGrenade::BounceSound() {}
 void CGrenade::Explode(Vector, Vector) {}
 void CGrenade::Explode(TraceResult*, int) {}
 void CGrenade::Killed(entvars_t*, int) {}
+void CGrenade::OnCreate() { CBaseMonster::OnCreate(); }
+void CGrenade::Precache() {}
 void CGrenade::Spawn() {}
 CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity, float time) { return nullptr; }
 CGrenade* CGrenade::ShootContact(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity) { return nullptr; }
@@ -85,8 +114,9 @@ void CGrenade::DetonateUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TY
 void UTIL_Remove(CBaseEntity* pEntity) {}
 void UTIL_SetSize(entvars_t* pev, const Vector& vecMin, const Vector& vecMax) {}
 CBaseEntity* UTIL_FindEntityInSphere(CBaseEntity* pStartEntity, const Vector& vecCenter, float flRadius) { return nullptr; }
+CBaseEntity* UTIL_FindEntityByClassname(CBaseEntity* pStartEntity, const char* szName) { return nullptr; }
 
-Vector UTIL_VecToAngles(const Vector& vec) { return nullptr; }
+Vector UTIL_VecToAngles(const Vector& vec) { return vec3_origin; }
 CSprite* CSprite::SpriteCreate(const char* pSpriteName, const Vector& origin, bool animate) { return nullptr; }
 void CBeam::PointEntInit(const Vector& start, int endIndex) {}
 CBeam* CBeam::BeamCreate(const char* pSpriteName, int width) { return nullptr; }
@@ -190,7 +220,7 @@ bool CBaseMonster::FindLateralCover(const Vector& vecThreat, const Vector& vecVi
 Vector CBaseMonster::ShootAtEnemy(const Vector& shootOrigin) { return g_vecZero; }
 bool CBaseMonster::FacingIdeal() { return false; }
 bool CBaseMonster::FCanActiveIdle() { return false; }
-void CBaseMonster::PlaySentence(const char* pszSentence, float duration, float volume, float attenuation) {}
+void CBaseMonster::PlaySentenceCore(const char* pszSentence, float duration, float volume, float attenuation) {}
 void CBaseMonster::PlayScriptedSentence(const char* pszSentence, float duration, float volume, float attenuation, bool bConcurrent, CBaseEntity* pListener) {}
 void CBaseMonster::SentenceStop() {}
 void CBaseMonster::CorpseFallThink() {}
@@ -307,19 +337,20 @@ void CBasePlayerItem::CheckRespawn() {}
 CBaseEntity* CBasePlayerItem::Respawn() { return nullptr; }
 void CBasePlayerItem::DefaultTouch(CBaseEntity* pOther) {}
 void CBasePlayerItem::DestroyItem() {}
-bool CBasePlayerItem::AddToPlayer(CBasePlayer* pPlayer) { return true; }
+void CBasePlayerItem::AddToPlayer(CBasePlayer* pPlayer) {}
 void CBasePlayerItem::Drop() {}
 void CBasePlayerItem::Kill() {}
 void CBasePlayerItem::Holster() {}
 void CBasePlayerItem::AttachToPlayer(CBasePlayer* pPlayer) {}
 bool CBasePlayerWeapon::AddDuplicate(CBasePlayerItem* pOriginal) { return false; }
-bool CBasePlayerWeapon::AddToPlayer(CBasePlayer* pPlayer) { return false; }
+void CBasePlayerWeapon::AddToPlayer(CBasePlayer* pPlayer) {}
 bool CBasePlayerWeapon::UpdateClientData(CBasePlayer* pPlayer) { return false; }
 bool CBasePlayerWeapon::AddPrimaryAmmo(int iCount, const char* szName, int iMaxClip, int iMaxCarry) { return true; }
 bool CBasePlayerWeapon::AddSecondaryAmmo(int iCount, const char* szName, int iMax) { return true; }
 bool CBasePlayerWeapon::IsUseable() { return true; }
 int CBasePlayerWeapon::PrimaryAmmoIndex() { return m_iPrimaryAmmoType; }
 int CBasePlayerWeapon::SecondaryAmmoIndex() { return m_iSecondaryAmmoType; }
+void CBasePlayerAmmo::Precache() {}
 void CBasePlayerAmmo::Spawn() {}
 CBaseEntity* CBasePlayerAmmo::Respawn() { return this; }
 void CBasePlayerAmmo::Materialize() {}
@@ -327,5 +358,6 @@ void CBasePlayerAmmo::DefaultTouch(CBaseEntity* pOther) {}
 bool CBasePlayerWeapon::ExtractAmmo(CBasePlayerWeapon* pWeapon) { return false; }
 bool CBasePlayerWeapon::ExtractClipAmmo(CBasePlayerWeapon* pWeapon) { return false; }
 void CBasePlayerWeapon::RetireWeapon() {}
+void CBasePlayerWeapon::DoRetireWeapon() {}
 void CSoundEnt::InsertSound(int iType, const Vector& vecOrigin, int iVolume, float flDuration) {}
 void RadiusDamage(Vector vecSrc, entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, float flRadius, int iClassIgnore, int bitsDamageType) {}

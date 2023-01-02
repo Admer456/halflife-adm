@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 
 #include "CSpore.h"
@@ -29,15 +29,15 @@ LINK_ENTITY_TO_CLASS(spore, CSpore);
 
 void CSpore::Precache()
 {
-	PRECACHE_MODEL("models/spore.mdl");
-	PRECACHE_MODEL("sprites/glow01.spr");
+	PrecacheModel("models/spore.mdl");
+	PrecacheModel("sprites/glow01.spr");
 
-	m_iBlow = PRECACHE_MODEL("sprites/spore_exp_01.spr");
-	m_iBlowSmall = PRECACHE_MODEL("sprites/spore_exp_c_01.spr");
-	m_iSpitSprite = m_iTrail = PRECACHE_MODEL("sprites/tinyspit.spr");
+	m_iBlow = PrecacheModel("sprites/spore_exp_01.spr");
+	m_iBlowSmall = PrecacheModel("sprites/spore_exp_c_01.spr");
+	m_iSpitSprite = m_iTrail = PrecacheModel("sprites/tinyspit.spr");
 
-	PRECACHE_SOUND("weapons/splauncher_impact.wav");
-	PRECACHE_SOUND("weapons/splauncher_bounce.wav");
+	PrecacheSound("weapons/splauncher_impact.wav");
+	PrecacheSound("weapons/splauncher_bounce.wav");
 }
 
 void CSpore::Spawn()
@@ -51,7 +51,7 @@ void CSpore::Spawn()
 
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(edict(), "models/spore.mdl");
+	SetModel("models/spore.mdl");
 
 	UTIL_SetSize(pev, g_vecZero, g_vecZero);
 
@@ -90,7 +90,7 @@ void CSpore::Spawn()
 		pev->friction = 0.7;
 	}
 
-	pev->dmg = gSkillData.plrDmgSpore;
+	pev->dmg = GetSkillFloat("plr_spore"sv);
 
 	m_flIgniteTime = gpGlobals->time;
 
@@ -111,7 +111,7 @@ void CSpore::Spawn()
 
 void CSpore::BounceSound()
 {
-	//Nothing
+	// Nothing
 }
 
 void CSpore::IgniteThink()
@@ -211,14 +211,14 @@ void CSpore::FlyThink()
 
 void CSpore::GibThink()
 {
-	//Nothing
+	// Nothing
 }
 
 void CSpore::RocketTouch(CBaseEntity* pOther)
 {
 	if (pOther->pev->takedamage != DAMAGE_NO)
 	{
-		pOther->TakeDamage(pev, VARS(pev->owner), gSkillData.plrDmgSpore, DMG_GENERIC);
+		pOther->TakeDamage(pev, VARS(pev->owner), GetSkillFloat("plr_spore"sv), DMG_GENERIC);
 	}
 
 	IgniteThink();
@@ -249,7 +249,7 @@ void CSpore::MyBounceTouch(CBaseEntity* pOther)
 	}
 	else
 	{
-		pOther->TakeDamage(pev, VARS(pev->owner), gSkillData.plrDmgSpore, DMG_GENERIC);
+		pOther->TakeDamage(pev, VARS(pev->owner), GetSkillFloat("plr_spore"sv), DMG_GENERIC);
 
 		IgniteThink();
 	}
@@ -259,7 +259,7 @@ CSpore* CSpore::CreateSpore(
 	const Vector& vecOrigin, const Vector& vecAngles, CBaseEntity* pOwner,
 	SporeType sporeType, bool bIsAI, bool bPuked)
 {
-	auto pSpore = GetClassPtr<CSpore>(nullptr);
+	auto pSpore = g_EntityDictionary->Create<CSpore>("spore");
 
 	UTIL_SetOrigin(pSpore->pev, vecOrigin);
 
@@ -283,8 +283,6 @@ CSpore* CSpore::CreateSpore(
 	pSpore->Spawn();
 
 	pSpore->pev->owner = pOwner->edict();
-
-	pSpore->pev->classname = MAKE_STRING("spore");
 
 	return pSpore;
 }

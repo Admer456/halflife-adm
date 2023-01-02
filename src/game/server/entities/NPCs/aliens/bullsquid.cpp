@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // bullsquid - big, spotty tentacle-mouthed meanie.
 //=========================================================
@@ -76,13 +76,12 @@ IMPLEMENT_SAVERESTORE(CSquidSpit, CBaseEntity);
 void CSquidSpit::Spawn()
 {
 	pev->movetype = MOVETYPE_FLY;
-	pev->classname = MAKE_STRING("squidspit");
 
 	pev->solid = SOLID_BBOX;
 	pev->rendermode = kRenderTransAlpha;
 	pev->renderamt = 255;
 
-	SET_MODEL(ENT(pev), "sprites/bigspit.spr");
+	SetModel("sprites/bigspit.spr");
 	pev->frame = 0;
 	pev->scale = 0.5;
 
@@ -106,7 +105,7 @@ void CSquidSpit::Animate()
 
 void CSquidSpit::Shoot(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity)
 {
-	CSquidSpit* pSpit = GetClassPtr((CSquidSpit*)nullptr);
+	CSquidSpit* pSpit = g_EntityDictionary->Create<CSquidSpit>("squidspit");
 	pSpit->Spawn();
 
 	UTIL_SetOrigin(pSpit->pev, vecStart);
@@ -161,7 +160,7 @@ void CSquidSpit::Touch(CBaseEntity* pOther)
 	}
 	else
 	{
-		pOther->TakeDamage(pev, pev, gSkillData.bullsquidDmgSpit, DMG_GENERIC);
+		pOther->TakeDamage(pev, pev, GetSkillFloat("bullsquid_dmg_spit"sv), DMG_GENERIC);
 	}
 
 	SetThink(&CSquidSpit::SUB_Remove);
@@ -181,6 +180,7 @@ void CSquidSpit::Touch(CBaseEntity* pOther)
 class CBullsquid : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
@@ -227,6 +227,14 @@ TYPEDESCRIPTION CBullsquid::m_SaveData[] =
 };
 
 IMPLEMENT_SAVERESTORE(CBullsquid, CBaseMonster);
+
+void CBullsquid::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = GetSkillFloat("bullsquid_health"sv);
+	pev->model = MAKE_STRING("models/bullsquid.mdl");
+}
 
 //=========================================================
 // IgnoreConditions
@@ -350,7 +358,7 @@ bool CBullsquid::CheckRangeAttack1(float flDot, float flDist)
 //=========================================================
 bool CBullsquid::CheckMeleeAttack1(float flDot, float flDist)
 {
-	if (m_hEnemy->pev->health <= gSkillData.bullsquidDmgWhip && flDist <= 85 && flDot >= 0.7)
+	if (m_hEnemy->pev->health <= GetSkillFloat("bullsquid_dmg_whip"sv) && flDist <= 85 && flDot >= 0.7)
 	{
 		return true;
 	}
@@ -390,7 +398,7 @@ bool CBullsquid::FValidateHintType(short sHint)
 		}
 	}
 
-	ALERT(at_aiconsole, "Couldn't validate hint type");
+	Logger->debug("Couldn't validate hint type");
 	return false;
 }
 
@@ -572,12 +580,12 @@ void CBullsquid::HandleAnimEvent(MonsterEvent_t* pEvent)
 	case BSQUID_AE_BITE:
 	{
 		// SOUND HERE!
-		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.bullsquidDmgBite, DMG_SLASH);
+		CBaseEntity* pHurt = CheckTraceHullAttack(70, GetSkillFloat("bullsquid_dmg_bite"sv), DMG_SLASH);
 
 		if (pHurt)
 		{
-			//pHurt->pev->punchangle.z = -15;
-			//pHurt->pev->punchangle.x = -45;
+			// pHurt->pev->punchangle.z = -15;
+			// pHurt->pev->punchangle.x = -45;
 			pHurt->pev->velocity = pHurt->pev->velocity - gpGlobals->v_forward * 100;
 			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_up * 100;
 		}
@@ -586,7 +594,7 @@ void CBullsquid::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case BSQUID_AE_TAILWHIP:
 	{
-		CBaseEntity* pHurt = CheckTraceHullAttack(70, gSkillData.bullsquidDmgWhip, DMG_CLUB | DMG_ALWAYSGIB);
+		CBaseEntity* pHurt = CheckTraceHullAttack(70, GetSkillFloat("bullsquid_dmg_whip"sv), DMG_CLUB | DMG_ALWAYSGIB);
 		if (pHurt)
 		{
 			pHurt->pev->punchangle.z = -20;
@@ -643,9 +651,9 @@ void CBullsquid::HandleAnimEvent(MonsterEvent_t* pEvent)
 			}
 
 
-			//pHurt->pev->punchangle.x = RANDOM_LONG(0,34) - 5;
-			//pHurt->pev->punchangle.z = RANDOM_LONG(0,49) - 25;
-			//pHurt->pev->punchangle.y = RANDOM_LONG(0,89) - 45;
+			// pHurt->pev->punchangle.x = RANDOM_LONG(0,34) - 5;
+			// pHurt->pev->punchangle.z = RANDOM_LONG(0,49) - 25;
+			// pHurt->pev->punchangle.y = RANDOM_LONG(0,89) - 45;
 
 			// screeshake transforms the viewmodel as well as the viewangle. No problems with seeing the ends of the viewmodels.
 			UTIL_ScreenShake(pHurt->pev->origin, 25.0, 1.5, 0.7, 2);
@@ -671,14 +679,13 @@ void CBullsquid::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/bullsquid.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-32, -32, 0), Vector(32, 32, 64));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_GREEN;
 	pev->effects = 0;
-	pev->health = gSkillData.bullsquidHealth;
 	m_flFieldOfView = 0.2; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
@@ -693,43 +700,43 @@ void CBullsquid::Spawn()
 //=========================================================
 void CBullsquid::Precache()
 {
-	PRECACHE_MODEL("models/bullsquid.mdl");
+	PrecacheModel(STRING(pev->model));
 
-	PRECACHE_MODEL("sprites/bigspit.spr"); // spit projectile.
+	PrecacheModel("sprites/bigspit.spr"); // spit projectile.
 
-	iSquidSpitSprite = PRECACHE_MODEL("sprites/tinyspit.spr"); // client side spittle.
+	iSquidSpitSprite = PrecacheModel("sprites/tinyspit.spr"); // client side spittle.
 
-	PRECACHE_SOUND("zombie/claw_miss2.wav"); // because we use the basemonster SWIPE animation event
+	PrecacheSound("zombie/claw_miss2.wav"); // because we use the basemonster SWIPE animation event
 
-	PRECACHE_SOUND("bullchicken/bc_attack2.wav");
-	PRECACHE_SOUND("bullchicken/bc_attack3.wav");
+	PrecacheSound("bullchicken/bc_attack2.wav");
+	PrecacheSound("bullchicken/bc_attack3.wav");
 
-	PRECACHE_SOUND("bullchicken/bc_die1.wav");
-	PRECACHE_SOUND("bullchicken/bc_die2.wav");
-	PRECACHE_SOUND("bullchicken/bc_die3.wav");
+	PrecacheSound("bullchicken/bc_die1.wav");
+	PrecacheSound("bullchicken/bc_die2.wav");
+	PrecacheSound("bullchicken/bc_die3.wav");
 
-	PRECACHE_SOUND("bullchicken/bc_idle1.wav");
-	PRECACHE_SOUND("bullchicken/bc_idle2.wav");
-	PRECACHE_SOUND("bullchicken/bc_idle3.wav");
-	PRECACHE_SOUND("bullchicken/bc_idle4.wav");
-	PRECACHE_SOUND("bullchicken/bc_idle5.wav");
+	PrecacheSound("bullchicken/bc_idle1.wav");
+	PrecacheSound("bullchicken/bc_idle2.wav");
+	PrecacheSound("bullchicken/bc_idle3.wav");
+	PrecacheSound("bullchicken/bc_idle4.wav");
+	PrecacheSound("bullchicken/bc_idle5.wav");
 
-	PRECACHE_SOUND("bullchicken/bc_pain1.wav");
-	PRECACHE_SOUND("bullchicken/bc_pain2.wav");
-	PRECACHE_SOUND("bullchicken/bc_pain3.wav");
-	PRECACHE_SOUND("bullchicken/bc_pain4.wav");
+	PrecacheSound("bullchicken/bc_pain1.wav");
+	PrecacheSound("bullchicken/bc_pain2.wav");
+	PrecacheSound("bullchicken/bc_pain3.wav");
+	PrecacheSound("bullchicken/bc_pain4.wav");
 
-	PRECACHE_SOUND("bullchicken/bc_attackgrowl.wav");
-	PRECACHE_SOUND("bullchicken/bc_attackgrowl2.wav");
-	PRECACHE_SOUND("bullchicken/bc_attackgrowl3.wav");
+	PrecacheSound("bullchicken/bc_attackgrowl.wav");
+	PrecacheSound("bullchicken/bc_attackgrowl2.wav");
+	PrecacheSound("bullchicken/bc_attackgrowl3.wav");
 
-	PRECACHE_SOUND("bullchicken/bc_acid1.wav");
+	PrecacheSound("bullchicken/bc_acid1.wav");
 
-	PRECACHE_SOUND("bullchicken/bc_bite2.wav");
-	PRECACHE_SOUND("bullchicken/bc_bite3.wav");
+	PrecacheSound("bullchicken/bc_bite2.wav");
+	PrecacheSound("bullchicken/bc_bite3.wav");
 
-	PRECACHE_SOUND("bullchicken/bc_spithit1.wav");
-	PRECACHE_SOUND("bullchicken/bc_spithit2.wav");
+	PrecacheSound("bullchicken/bc_spithit1.wav");
+	PrecacheSound("bullchicken/bc_spithit2.wav");
 }
 
 //=========================================================
@@ -1177,7 +1184,7 @@ void CBullsquid::StartTask(Task_t* pTask)
 		}
 		else
 		{
-			ALERT(at_aiconsole, "GetPathToEnemy failed!!\n");
+			AILogger->debug("GetPathToEnemy failed!!");
 			TaskFail();
 		}
 		break;

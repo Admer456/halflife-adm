@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //
 // hud.cpp
 //
@@ -25,9 +25,6 @@
 #include "demo.h"
 #include "demo_api.h"
 #include "vgui_ScorePanel.h"
-
-hud_player_info_t g_PlayerInfoList[MAX_PLAYERS_HUD + 1];	// player info from the engine
-extra_player_info_t g_PlayerExtraInfo[MAX_PLAYERS_HUD + 1]; // additional player info sent directly to the client dll
 
 class CHLVoiceStatusHelper : public IVoiceStatusHelper
 {
@@ -89,13 +86,13 @@ int __MsgFunc_HudColor(const char* pszName, int iSize, void* pbuf)
 	return static_cast<int>(gHUD.MsgFunc_HudColor(pszName, iSize, pbuf));
 }
 
-//DECLARE_MESSAGE(m_Logo, Logo)
+// DECLARE_MESSAGE(m_Logo, Logo)
 int __MsgFunc_Logo(const char* pszName, int iSize, void* pbuf)
 {
 	return static_cast<int>(gHUD.MsgFunc_Logo(pszName, iSize, pbuf));
 }
 
-//DECLARE_MESSAGE(m_Logo, Logo)
+// DECLARE_MESSAGE(m_Logo, Logo)
 int __MsgFunc_ResetHUD(const char* pszName, int iSize, void* pbuf)
 {
 	return static_cast<int>(gHUD.MsgFunc_ResetHUD(pszName, iSize, pbuf));
@@ -409,11 +406,18 @@ void CHud::Init()
 	m_StatusIcons.Init();
 	m_FlagIcons.Init();
 	m_PlayerBrowse.Init();
+	m_ProjectInfo.Init();
+	m_EntityInfo.Init();
 	GetClientVoiceMgr()->Init(&g_VoiceStatusHelper, (vgui::Panel**)&gViewPort);
 
 	m_Menu.Init();
 
 	MsgFunc_ResetHUD(nullptr, 0, nullptr);
+}
+
+void CHud::Shutdown()
+{
+	GetClientVoiceMgr()->Shutdown();
 }
 
 // CHud destructor
@@ -465,11 +469,6 @@ void CHud::VidInit()
 
 	m_hsprLogo = 0;
 	m_hsprCursor = 0;
-
-	if (ScreenWidth < 640)
-		m_iRes = 320;
-	else
-		m_iRes = 640;
 
 	// Only load this once
 	if (!m_pSpriteList)
@@ -539,7 +538,7 @@ void CHud::VidInit()
 
 	m_iFontHeight = m_rgrcRects[m_HUD_number_0].bottom - m_rgrcRects[m_HUD_number_0].top;
 
-	//Reset to default on new map load
+	// Reset to default on new map load
 	m_HudColor = RGB_HUD_COLOR;
 	m_HudItemColor = RGB_HUD_COLOR;
 
@@ -560,6 +559,8 @@ void CHud::VidInit()
 	m_StatusIcons.VidInit();
 	m_FlagIcons.VidInit();
 	m_PlayerBrowse.VidInit();
+	m_ProjectInfo.VidInit();
+	m_EntityInfo.VidInit();
 	GetClientVoiceMgr()->VidInit();
 }
 
@@ -571,7 +572,7 @@ bool CHud::MsgFunc_HudColor(const char* pszName, int iSize, void* pbuf)
 	m_HudColor.Green = READ_BYTE();
 	m_HudColor.Blue = READ_BYTE();
 
-	//Sync item color up if we're not in NVG mode
+	// Sync item color up if we're not in NVG mode
 	if (!m_NightVisionState)
 	{
 		m_HudItemColor = m_HudColor;
@@ -691,8 +692,8 @@ bool CHud::MsgFunc_SetFOV(const char* pszName, int iSize, void* pbuf)
 	int newfov = READ_BYTE();
 	int def_fov = CVAR_GET_FLOAT("default_fov");
 
-	//Weapon prediction already takes care of changing the fog. ( g_lastFOV ).
-	//But it doesn't restore correctly so this still needs to be used
+	// Weapon prediction already takes care of changing the fog. ( g_lastFOV ).
+	// But it doesn't restore correctly so this still needs to be used
 	/*
 	if ( cl_lw && cl_lw->value )
 		return 1;
@@ -731,7 +732,7 @@ void CHud::AddHudElem(CHudBase* phudelem)
 {
 	HUDLIST *pdl, *ptemp;
 
-	//phudelem->Think();
+	// phudelem->Think();
 
 	if (!phudelem)
 		return;

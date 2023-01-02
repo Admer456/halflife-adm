@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== world.cpp ========================================================
@@ -26,12 +26,13 @@
 #include "teamplay_gamerules.h"
 #include "ctfplay_gamerules.h"
 #include "world.h"
-#include "CServerLibrary.h"
+#include "ServerLibrary.h"
 #include "ctf/CItemCTF.h"
+#include "sound/MaterialSystem.h"
 
 CGlobalState gGlobalState;
 
-extern void W_Precache();
+void W_Precache();
 
 //
 // This must match the list in util.h
@@ -187,7 +188,7 @@ bool CDecal::KeyValue(KeyValueData* pkvd)
 
 		if (pev->skin < 0)
 		{
-			ALERT(at_console, "Can't find decal %s\n", pkvd->szValue);
+			Logger->debug("Can't find decal {}", pkvd->szValue);
 		}
 
 		return true;
@@ -207,15 +208,15 @@ LINK_ENTITY_TO_CLASS(bodyque, CCorpse);
 
 static void InitBodyQue()
 {
-	string_t istrClassname = MAKE_STRING("bodyque");
+	const std::string_view className{"bodyque"sv};
 
-	g_pBodyQueueHead = CREATE_NAMED_ENTITY(istrClassname);
+	g_pBodyQueueHead = g_EntityDictionary->Create(className)->edict();
 	entvars_t* pev = VARS(g_pBodyQueueHead);
 
 	// Reserve 3 more slots for dead bodies
 	for (int i = 0; i < 3; i++)
 	{
-		pev->owner = CREATE_NAMED_ENTITY(istrClassname);
+		pev->owner = g_EntityDictionary->Create(className)->edict();
 		pev = VARS(pev->owner);
 	}
 
@@ -248,9 +249,9 @@ void CopyToBodyQue(entvars_t* pev)
 	pevHead->renderamt = ENTINDEX(ENT(pev));
 
 	pevHead->effects = pev->effects | EF_NOINTERP;
-	//pevHead->goalstarttime = pev->goalstarttime;
-	//pevHead->goalframe	= pev->goalframe;
-	//pevHead->goalendtime = pev->goalendtime ;
+	// pevHead->goalstarttime = pev->goalstarttime;
+	// pevHead->goalframe	= pev->goalframe;
+	// pevHead->goalendtime = pev->goalendtime ;
 
 	pevHead->sequence = pev->sequence;
 	pevHead->animtime = pev->animtime;
@@ -295,21 +296,21 @@ globalentity_t* CGlobalState::Find(string_t globalname)
 
 
 // This is available all the time now on impulse 104, remove later
-//#ifdef _DEBUG
+// #ifdef _DEBUG
 void CGlobalState::DumpGlobals()
 {
 	static const char* estates[] = {"Off", "On", "Dead"};
 	globalentity_t* pTest;
 
-	ALERT(at_console, "-- Globals --\n");
+	CBaseEntity::Logger->debug("-- Globals --");
 	pTest = m_pList;
 	while (pTest)
 	{
-		ALERT(at_console, "%s: %s (%s)\n", pTest->name, pTest->levelName, estates[pTest->state]);
+		CBaseEntity::Logger->debug("{}: {} ({})", pTest->name, pTest->levelName, estates[pTest->state]);
 		pTest = pTest->pNext;
 	}
 }
-//#endif
+// #endif
 
 
 void CGlobalState::EntityAdd(string_t globalname, string_t mapName, GLOBALESTATE state)
@@ -472,9 +473,34 @@ void ResetGlobalState()
 
 LINK_ENTITY_TO_CLASS(worldspawn, CWorld);
 
+CWorld::CWorld()
+{
+	if (World)
+	{
+		Logger->error("Do not create multiple instances of worldspawn");
+		return;
+	}
+
+	g_GameLogger->trace("worldspawn created");
+
+	World = this;
+
+	// Clear previous map's title if it wasn't cleared already.
+	g_DisplayTitleName.clear();
+}
+
 CWorld::~CWorld()
 {
+	if (World != this)
+	{
+		return;
+	}
+
 	g_Server.MapIsEnding();
+
+	World = nullptr;
+
+	g_GameLogger->trace("worldspawn destroyed");
 }
 
 void CWorld::Spawn()
@@ -491,6 +517,15 @@ void CWorld::Spawn()
 
 void CWorld::Precache()
 {
+	// Flag this entity for removal if it's not the actual world entity.
+	if (World != this)
+	{
+		UTIL_Remove(this);
+		return;
+	}
+
+	g_GameLogger->trace("Initializing world");
+
 	g_pLastSpawn = nullptr;
 
 #if 1
@@ -511,25 +546,20 @@ void CWorld::Precache()
 	//!!!UNDONE why is there so much Spawn code in the Precache function? I'll just keep it here
 
 	///!!!LATER - do we want a sound ent in deathmatch? (sjb)
-	//pSoundEnt = CBaseEntity::Create( "soundent", g_vecZero, g_vecZero, edict() );
-	pSoundEnt = GetClassPtr((CSoundEnt*)nullptr);
+	// pSoundEnt = CBaseEntity::Create( "soundent", g_vecZero, g_vecZero, edict() );
+	pSoundEnt = g_EntityDictionary->Create<CSoundEnt>("soundent");
 	pSoundEnt->Spawn();
 
 	if (!pSoundEnt)
 	{
-		ALERT(at_console, "**COULD NOT CREATE SOUNDENT**\n");
+		Logger->debug("**COULD NOT CREATE SOUNDENT**");
 	}
 
 	InitBodyQue();
 
-	// init sentence group playback stuff from sentences.txt.
-	// ok to call this multiple times, calls after first are ignored.
-
-	SENTENCEG_Init();
-
 	// init texture type array from materials.txt
 
-	TEXTURETYPE_Init();
+	PM_InitTextureTypes();
 
 
 	// the area based ambient sounds MUST be the first precache_sounds
@@ -539,31 +569,33 @@ void CWorld::Precache()
 
 	ClientPrecache();
 
+	g_GameLogger->trace("Precaching common assets");
+
 	// sounds used from C physics code
-	PRECACHE_SOUND("common/null.wav"); // clears sound channels
+	PrecacheSound("common/null.wav"); // clears sound channels
 
-	PRECACHE_SOUND("items/suitchargeok1.wav"); //!!! temporary sound for respawning weapons.
-	PRECACHE_SOUND("items/gunpickup2.wav");	   // player picks up a gun.
+	PrecacheSound("items/suitchargeok1.wav"); //!!! temporary sound for respawning weapons.
+	PrecacheSound("items/gunpickup2.wav");	  // player picks up a gun.
 
-	PRECACHE_SOUND("common/bodydrop3.wav"); // dead bodies hitting the ground (animation events)
-	PRECACHE_SOUND("common/bodydrop4.wav");
+	PrecacheSound("common/bodydrop3.wav"); // dead bodies hitting the ground (animation events)
+	PrecacheSound("common/bodydrop4.wav");
 
 	g_Language = (int)CVAR_GET_FLOAT("sv_language");
 	if (g_Language == LANGUAGE_GERMAN)
 	{
-		PRECACHE_MODEL("models/germangibs.mdl");
+		PrecacheModel("models/germangibs.mdl");
 	}
 	else
 	{
-		PRECACHE_MODEL("models/hgibs.mdl");
-		PRECACHE_MODEL("models/agibs.mdl");
+		PrecacheModel("models/hgibs.mdl");
+		PrecacheModel("models/agibs.mdl");
 	}
 
-	PRECACHE_SOUND("weapons/ric1.wav");
-	PRECACHE_SOUND("weapons/ric2.wav");
-	PRECACHE_SOUND("weapons/ric3.wav");
-	PRECACHE_SOUND("weapons/ric4.wav");
-	PRECACHE_SOUND("weapons/ric5.wav");
+	PrecacheSound("weapons/ric1.wav");
+	PrecacheSound("weapons/ric2.wav");
+	PrecacheSound("weapons/ric3.wav");
+	PrecacheSound("weapons/ric4.wav");
+	PrecacheSound("weapons/ric5.wav");
 	//
 	// Setup light animation tables. 'a' is total darkness, 'z' is maxbright.
 	//
@@ -617,6 +649,8 @@ void CWorld::Precache()
 	for (std::size_t i = 0; i < std::size(gDecals); i++)
 		gDecals[i].index = DECAL_INDEX(gDecals[i].name);
 
+	g_GameLogger->trace("Setting up node graph");
+
 	// init the WorldGraph.
 	WorldGraph.InitGraph();
 
@@ -629,12 +663,12 @@ void CWorld::Precache()
 	{ // Load the node graph for this level
 		if (!WorldGraph.FLoadGraph(STRING(gpGlobals->mapname)))
 		{ // couldn't load, so alloc and prepare to build a graph.
-			ALERT(at_console, "*Error opening .NOD file\n");
+			CGraph::Logger->debug("*Error opening .NOD file");
 			WorldGraph.AllocNodes();
 		}
 		else
 		{
-			ALERT(at_console, "\n*Graph Loaded!\n");
+			CGraph::Logger->debug("\n*Graph Loaded!");
 		}
 	}
 
@@ -645,13 +679,13 @@ void CWorld::Precache()
 
 	if (!FStringNull(pev->netname))
 	{
-		ALERT(at_aiconsole, "Chapter title: %s\n", STRING(pev->netname));
+		Logger->debug("Chapter title: {}", GetNetname());
 		CBaseEntity* pEntity = CBaseEntity::Create("env_message", g_vecZero, g_vecZero, nullptr);
 		if (pEntity)
 		{
 			pEntity->SetThink(&CBaseEntity::SUB_CallUseToggle);
 			pEntity->pev->message = pev->netname;
-			pev->netname = 0;
+			pev->netname = string_t::Null;
 			pEntity->pev->nextthink = gpGlobals->time + 0.3;
 			pEntity->pev->spawnflags = SF_MESSAGE_ONCE;
 		}
@@ -661,9 +695,6 @@ void CWorld::Precache()
 		CVAR_SET_FLOAT("v_dark", 1.0);
 	else
 		CVAR_SET_FLOAT("v_dark", 0.0);
-
-	// display the game title if this key is set
-	gDisplayTitle = (pev->spawnflags & SF_WORLD_TITLE) != 0;
 
 	if ((pev->spawnflags & SF_WORLD_FORCETEAM) != 0)
 	{
@@ -682,6 +713,8 @@ void CWorld::Precache()
 	{
 		CVAR_SET_FLOAT("mp_defaultcoop", 0);
 	}
+
+	CVAR_SET_FLOAT("sv_wateramp", pev->scale);
 }
 
 
@@ -696,16 +729,10 @@ bool CWorld::KeyValue(KeyValueData* pkvd)
 		CVAR_SET_STRING("sv_skyname", pkvd->szValue);
 		return true;
 	}
-	else if (FStrEq(pkvd->szKeyName, "sounds"))
-	{
-		gpGlobals->cdAudioTrack = atoi(pkvd->szValue);
-		return true;
-	}
 	else if (FStrEq(pkvd->szKeyName, "WaveHeight"))
 	{
 		// Sent over net now.
 		pev->scale = atof(pkvd->szValue) * (1.0 / 8.0);
-		CVAR_SET_FLOAT("sv_wateramp", pev->scale);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "MaxRange"))
@@ -736,9 +763,8 @@ bool CWorld::KeyValue(KeyValueData* pkvd)
 	}
 	else if (FStrEq(pkvd->szKeyName, "gametitle"))
 	{
-		if (0 != atoi(pkvd->szValue))
-			pev->spawnflags |= SF_WORLD_TITLE;
-
+		// No need to save, only displayed on startup. Bugged in vanilla, loading a save game shows it again.
+		g_DisplayTitleName = pkvd->szValue;
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "mapteams"))

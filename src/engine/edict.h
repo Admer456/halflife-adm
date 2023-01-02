@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -11,7 +11,7 @@
 
 #include "progdefs.h"
 
-struct edict_s
+struct edict_t
 {
 	qboolean free;
 	int serialnumber;

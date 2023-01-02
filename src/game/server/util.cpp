@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== util.cpp ========================================================
@@ -19,6 +19,9 @@
   Utility code.  Really not optional after all.
 
 */
+
+#include <bit>
+#include <limits>
 
 #include "cbase.h"
 #include "shake.h"
@@ -45,102 +48,6 @@ CBaseEntity* UTIL_FindEntityForward(CBaseEntity* pMe)
 		return pHit;
 	}
 	return nullptr;
-}
-
-static unsigned int glSeed = 0;
-
-unsigned int seed_table[256] =
-	{
-		28985, 27138, 26457, 9451, 17764, 10909, 28790, 8716, 6361, 4853, 17798, 21977, 19643, 20662, 10834, 20103,
-		27067, 28634, 18623, 25849, 8576, 26234, 23887, 18228, 32587, 4836, 3306, 1811, 3035, 24559, 18399, 315,
-		26766, 907, 24102, 12370, 9674, 2972, 10472, 16492, 22683, 11529, 27968, 30406, 13213, 2319, 23620, 16823,
-		10013, 23772, 21567, 1251, 19579, 20313, 18241, 30130, 8402, 20807, 27354, 7169, 21211, 17293, 5410, 19223,
-		10255, 22480, 27388, 9946, 15628, 24389, 17308, 2370, 9530, 31683, 25927, 23567, 11694, 26397, 32602, 15031,
-		18255, 17582, 1422, 28835, 23607, 12597, 20602, 10138, 5212, 1252, 10074, 23166, 19823, 31667, 5902, 24630,
-		18948, 14330, 14950, 8939, 23540, 21311, 22428, 22391, 3583, 29004, 30498, 18714, 4278, 2437, 22430, 3439,
-		28313, 23161, 25396, 13471, 19324, 15287, 2563, 18901, 13103, 16867, 9714, 14322, 15197, 26889, 19372, 26241,
-		31925, 14640, 11497, 8941, 10056, 6451, 28656, 10737, 13874, 17356, 8281, 25937, 1661, 4850, 7448, 12744,
-		21826, 5477, 10167, 16705, 26897, 8839, 30947, 27978, 27283, 24685, 32298, 3525, 12398, 28726, 9475, 10208,
-		617, 13467, 22287, 2376, 6097, 26312, 2974, 9114, 21787, 28010, 4725, 15387, 3274, 10762, 31695, 17320,
-		18324, 12441, 16801, 27376, 22464, 7500, 5666, 18144, 15314, 31914, 31627, 6495, 5226, 31203, 2331, 4668,
-		12650, 18275, 351, 7268, 31319, 30119, 7600, 2905, 13826, 11343, 13053, 15583, 30055, 31093, 5067, 761,
-		9685, 11070, 21369, 27155, 3663, 26542, 20169, 12161, 15411, 30401, 7580, 31784, 8985, 29367, 20989, 14203,
-		29694, 21167, 10337, 1706, 28578, 887, 3373, 19477, 14382, 675, 7033, 15111, 26138, 12252, 30996, 21409,
-		25678, 18555, 13256, 23316, 22407, 16727, 991, 9236, 5373, 29402, 6117, 15241, 27715, 19291, 19888, 19847};
-
-unsigned int U_Random()
-{
-	glSeed *= 69069;
-	glSeed += seed_table[glSeed & 0xff];
-
-	return (++glSeed & 0x0fffffff);
-}
-
-void U_Srand(unsigned int seed)
-{
-	glSeed = seed_table[seed & 0xff];
-}
-
-/*
-=====================
-UTIL_SharedRandomLong
-=====================
-*/
-int UTIL_SharedRandomLong(unsigned int seed, int low, int high)
-{
-	unsigned int range;
-
-	U_Srand((int)seed + low + high);
-
-	range = high - low + 1;
-	if (0 == (range - 1))
-	{
-		return low;
-	}
-	else
-	{
-		int offset;
-		int rnum;
-
-		rnum = U_Random();
-
-		offset = rnum % range;
-
-		return (low + offset);
-	}
-}
-
-/*
-=====================
-UTIL_SharedRandomFloat
-=====================
-*/
-float UTIL_SharedRandomFloat(unsigned int seed, float low, float high)
-{
-	//
-	unsigned int range;
-
-	U_Srand((int)seed + *(int*)&low + *(int*)&high);
-
-	U_Random();
-	U_Random();
-
-	range = high - low;
-	if (0 == range)
-	{
-		return low;
-	}
-	else
-	{
-		int tensixrand;
-		float offset;
-
-		tensixrand = U_Random() & 65535;
-
-		offset = (float)tensixrand / 65536.0;
-
-		return (low + offset * range);
-	}
 }
 
 void UTIL_ParametricRocket(entvars_t* pev, Vector vecOrigin, Vector vecAngles, edict_t* owner)
@@ -252,8 +159,8 @@ TYPEDESCRIPTION gEntvarsDescription[] =
 		DEFINE_ENTITY_FIELD(sequence, FIELD_INTEGER),
 		DEFINE_ENTITY_FIELD(animtime, FIELD_TIME),
 		DEFINE_ENTITY_FIELD(framerate, FIELD_FLOAT),
-		DEFINE_ENTITY_FIELD(controller, FIELD_INTEGER),
-		DEFINE_ENTITY_FIELD(blending, FIELD_INTEGER),
+		DEFINE_ENTITY_ARRAY(controller, FIELD_CHARACTER, NUM_ENT_CONTROLLERS),
+		DEFINE_ENTITY_ARRAY(blending, FIELD_CHARACTER, NUM_ENT_BLENDERS),
 
 		DEFINE_ENTITY_FIELD(rendermode, FIELD_INTEGER),
 		DEFINE_ENTITY_FIELD(renderamt, FIELD_FLOAT),
@@ -311,40 +218,27 @@ TYPEDESCRIPTION gEntvarsDescription[] =
 		DEFINE_ENTITY_FIELD(radsuit_finished, FIELD_TIME),
 };
 
-#define ENTVARS_COUNT (sizeof(gEntvarsDescription) / sizeof(gEntvarsDescription[0]))
+edict_t* UTIL_GetEntityList()
+{
+	return g_engfuncs.pfnPEntityOfEntOffset(0);
+}
 
+CBasePlayer* UTIL_GetLocalPlayer()
+{
+	return static_cast<CBasePlayer*>(UTIL_PlayerByIndex(1));
+}
 
 #ifdef DEBUG
 edict_t* DBG_EntOfVars(const entvars_t* pev)
 {
 	if (pev->pContainingEntity != nullptr)
 		return pev->pContainingEntity;
-	ALERT(at_console, "entvars_t pContainingEntity is nullptr, calling into engine");
+	CBaseEntity::Logger->debug("entvars_t pContainingEntity is nullptr, calling into engine");
 	edict_t* pent = (*g_engfuncs.pfnFindEntityByVars)((entvars_t*)pev);
 	if (pent == nullptr)
-		ALERT(at_console, "DAMN!  Even the engine couldn't FindEntityByVars!");
+		CBaseEntity::Logger->debug("DAMN!  Even the engine couldn't FindEntityByVars!");
 	((entvars_t*)pev)->pContainingEntity = pent;
 	return pent;
-}
-#endif //DEBUG
-
-
-#ifdef DEBUG
-void DBG_AssertFunction(
-	bool fExpr,
-	const char* szExpr,
-	const char* szFile,
-	int szLine,
-	const char* szMessage)
-{
-	if (fExpr)
-		return;
-	char szOut[512];
-	if (szMessage != nullptr)
-		sprintf(szOut, "ASSERT FAILED:\n %s \n(%s@%d)\n%s", szExpr, szFile, szLine, szMessage);
-	else
-		sprintf(szOut, "ASSERT FAILED:\n %s \n(%s@%d)", szExpr, szFile, szLine);
-	ALERT(at_console, szOut);
 }
 #endif // DEBUG
 
@@ -383,24 +277,21 @@ float UTIL_AngleDiff(float destAngle, float srcAngle)
 
 Vector UTIL_VecToAngles(const Vector& vec)
 {
-	float rgflVecOut[3];
-	VEC_TO_ANGLES(vec, rgflVecOut);
-	return Vector(rgflVecOut);
+	Vector out;
+	VEC_TO_ANGLES(vec, out);
+	return out;
 }
 
 //	float UTIL_MoveToOrigin( edict_t *pent, const Vector vecGoal, float flDist, int iMoveType )
 void UTIL_MoveToOrigin(edict_t* pent, const Vector& vecGoal, float flDist, int iMoveType)
 {
-	float rgfl[3];
-	vecGoal.CopyToArray(rgfl);
-	//		return MOVE_TO_ORIGIN ( pent, rgfl, flDist, iMoveType );
-	MOVE_TO_ORIGIN(pent, rgfl, flDist, iMoveType);
+	MOVE_TO_ORIGIN(pent, vecGoal, flDist, iMoveType);
 }
 
 
 int UTIL_EntitiesInBox(CBaseEntity** pList, int listMax, const Vector& mins, const Vector& maxs, int flagMask)
 {
-	edict_t* pEdict = g_engfuncs.pfnPEntityOfEntIndex(1);
+	edict_t* pEdict = UTIL_GetEntityList();
 	CBaseEntity* pEntity;
 	int count;
 
@@ -408,6 +299,9 @@ int UTIL_EntitiesInBox(CBaseEntity** pList, int listMax, const Vector& mins, con
 
 	if (!pEdict)
 		return count;
+
+	// Ignore world.
+	++pEdict;
 
 	for (int i = 1; i < gpGlobals->maxEntities; i++, pEdict++)
 	{
@@ -442,7 +336,7 @@ int UTIL_EntitiesInBox(CBaseEntity** pList, int listMax, const Vector& mins, con
 
 int UTIL_MonstersInSphere(CBaseEntity** pList, int listMax, const Vector& center, float radius)
 {
-	edict_t* pEdict = g_engfuncs.pfnPEntityOfEntIndex(1);
+	edict_t* pEdict = UTIL_GetEntityList();
 	CBaseEntity* pEntity;
 	int count;
 	float distance, delta;
@@ -452,6 +346,9 @@ int UTIL_MonstersInSphere(CBaseEntity** pList, int listMax, const Vector& center
 
 	if (!pEdict)
 		return count;
+
+	// Ignore world.
+	++pEdict;
 
 	for (int i = 1; i < gpGlobals->maxEntities; i++, pEdict++)
 	{
@@ -501,7 +398,6 @@ int UTIL_MonstersInSphere(CBaseEntity** pList, int listMax, const Vector& center
 	return count;
 }
 
-
 CBaseEntity* UTIL_FindEntityInSphere(CBaseEntity* pStartEntity, const Vector& vecCenter, float flRadius)
 {
 	edict_t* pentEntity;
@@ -528,7 +424,7 @@ CBaseEntity* UTIL_FindEntityByString(CBaseEntity* pStartEntity, const char* szKe
 	else
 		pentEntity = nullptr;
 
-	pentEntity = FIND_ENTITY_BY_STRING(pentEntity, szKeyword, szValue);
+	pentEntity = g_engfuncs.pfnFindEntityByString(pentEntity, szKeyword, szValue);
 
 	if (!FNullEnt(pentEntity))
 		return CBaseEntity::Instance(pentEntity);
@@ -545,6 +441,10 @@ CBaseEntity* UTIL_FindEntityByTargetname(CBaseEntity* pStartEntity, const char* 
 	return UTIL_FindEntityByString(pStartEntity, "targetname", szName);
 }
 
+CBaseEntity* UTIL_FindEntityByTarget(CBaseEntity* pStartEntity, const char* szName)
+{
+	return UTIL_FindEntityByString(pStartEntity, "target", szName);
+}
 
 CBaseEntity* UTIL_FindEntityGeneric(const char* szWhatever, Vector& vecSrc, float flRadius)
 {
@@ -569,26 +469,45 @@ CBaseEntity* UTIL_FindEntityGeneric(const char* szWhatever, Vector& vecSrc, floa
 	return pEntity;
 }
 
-
 // returns a CBaseEntity pointer to a player by index.  Only returns if the player is spawned and connected
 // otherwise returns nullptr
 // Index is 1 based
-CBaseEntity* UTIL_PlayerByIndex(int playerIndex)
+CBasePlayer* UTIL_PlayerByIndex(int playerIndex)
 {
-	CBaseEntity* pPlayer = nullptr;
+	CBasePlayer* pPlayer = nullptr;
 
 	if (playerIndex > 0 && playerIndex <= gpGlobals->maxClients)
 	{
 		edict_t* pPlayerEdict = INDEXENT(playerIndex);
 		if (pPlayerEdict && 0 == pPlayerEdict->free)
 		{
-			pPlayer = CBaseEntity::Instance(pPlayerEdict);
+			pPlayer = static_cast<CBasePlayer*>(CBaseEntity::Instance(pPlayerEdict));
 		}
 	}
 
 	return pPlayer;
 }
 
+CBasePlayer* UTIL_FindNearestPlayer(const Vector& origin)
+{
+	CBasePlayer* player = nullptr;
+
+	float flMaxDist2 = std::numeric_limits<float>::max();
+
+	for (auto search : UTIL_FindPlayers())
+	{
+		float flDist2 = (search->pev->origin - origin).Length();
+		flDist2 = flDist2 * flDist2;
+
+		if (flDist2 < flMaxDist2)
+		{
+			player = search;
+			flMaxDist2 = flDist2;
+		}
+	}
+
+	return player;
+}
 
 void UTIL_MakeVectors(const Vector& vecAngles)
 {
@@ -598,41 +517,20 @@ void UTIL_MakeVectors(const Vector& vecAngles)
 
 void UTIL_MakeAimVectors(const Vector& vecAngles)
 {
-	float rgflVec[3];
-	vecAngles.CopyToArray(rgflVec);
+	Vector rgflVec = vecAngles;
 	rgflVec[0] = -rgflVec[0];
 	MAKE_VECTORS(rgflVec);
 }
-
-
-#define SWAP(a, b, temp) ((temp) = (a), (a) = (b), (b) = (temp))
 
 void UTIL_MakeInvVectors(const Vector& vec, globalvars_t* pgv)
 {
 	MAKE_VECTORS(vec);
 
-	float tmp;
 	pgv->v_right = pgv->v_right * -1;
 
-	SWAP(pgv->v_forward.y, pgv->v_right.x, tmp);
-	SWAP(pgv->v_forward.z, pgv->v_up.x, tmp);
-	SWAP(pgv->v_right.z, pgv->v_up.y, tmp);
-}
-
-
-void UTIL_EmitAmbientSound(edict_t* entity, const Vector& vecOrigin, const char* samp, float vol, float attenuation, int fFlags, int pitch)
-{
-	float rgfl[3];
-	vecOrigin.CopyToArray(rgfl);
-
-	if (samp && *samp == '!')
-	{
-		char name[32];
-		if (SENTENCEG_Lookup(samp, name) >= 0)
-			EMIT_AMBIENT_SOUND(entity, rgfl, name, vol, attenuation, fFlags, pitch);
-	}
-	else
-		EMIT_AMBIENT_SOUND(entity, rgfl, samp, vol, attenuation, fFlags, pitch);
+	std::swap(pgv->v_forward.y, pgv->v_right.x);
+	std::swap(pgv->v_forward.z, pgv->v_up.x);
+	std::swap(pgv->v_right.z, pgv->v_up.y);
 }
 
 static unsigned short FixedUnsigned16(float value, float scale)
@@ -695,7 +593,7 @@ void UTIL_ScreenShake(const Vector& center, float amplitude, float frequency, fl
 
 			// Had to get rid of this falloff - it didn't work well
 			if (distance < radius)
-				localAmplitude = amplitude; //radius - distance;
+				localAmplitude = amplitude; // radius - distance;
 		}
 		if (0 != localAmplitude)
 		{
@@ -888,35 +786,6 @@ void UTIL_SayTextAll(const char* pText, CBaseEntity* pEntity)
 	MESSAGE_END();
 }
 
-
-char* UTIL_dtos1(int d)
-{
-	static char buf[8];
-	sprintf(buf, "%d", d);
-	return buf;
-}
-
-char* UTIL_dtos2(int d)
-{
-	static char buf[8];
-	sprintf(buf, "%d", d);
-	return buf;
-}
-
-char* UTIL_dtos3(int d)
-{
-	static char buf[8];
-	sprintf(buf, "%d", d);
-	return buf;
-}
-
-char* UTIL_dtos4(int d)
-{
-	static char buf[8];
-	sprintf(buf, "%d", d);
-	return buf;
-}
-
 void UTIL_ShowMessage(const char* pString, CBaseEntity* pEntity)
 {
 	if (!pEntity || !pEntity->IsNetClient())
@@ -945,7 +814,7 @@ void UTIL_ShowMessageAll(const char* pString)
 // Overloaded to add IGNORE_GLASS
 void UTIL_TraceLine(const Vector& vecStart, const Vector& vecEnd, IGNORE_MONSTERS igmon, IGNORE_GLASS ignoreGlass, edict_t* pentIgnore, TraceResult* ptr)
 {
-	//TODO: define constants
+	// TODO: define constants
 	TRACE_LINE(vecStart, vecEnd, (igmon == ignore_monsters ? 1 : 0) | (ignore_glass == ignoreGlass ? 0x100 : 0), pentIgnore, ptr);
 }
 
@@ -1098,16 +967,15 @@ bool UTIL_IsMasterTriggered(string_t sMaster, CBaseEntity* pActivator)
 {
 	if (!FStringNull(sMaster))
 	{
-		edict_t* pentTarget = FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(sMaster));
+		auto master = UTIL_FindEntityByTargetname(nullptr, STRING(sMaster));
 
-		if (!FNullEnt(pentTarget))
+		if (!FNullEnt(master))
 		{
-			CBaseEntity* pMaster = CBaseEntity::Instance(pentTarget);
-			if (pMaster && (pMaster->ObjectCaps() & FCAP_MASTER) != 0)
-				return pMaster->IsTriggered(pActivator);
+			if ((master->ObjectCaps() & FCAP_MASTER) != 0)
+				return master->IsTriggered(pActivator);
 		}
 
-		ALERT(at_console, "Master was null or not a master!\n");
+		CBaseEntity::IOLogger->debug("Master was null or not a master!");
 	}
 
 	// if this isn't a master entity, just say yes.
@@ -1374,38 +1242,6 @@ bool UTIL_TeamsMatch(const char* pTeamName1, const char* pTeamName2)
 	return false;
 }
 
-
-void UTIL_StringToVector(float* pVector, const char* pString)
-{
-	char *pstr, *pfront, tempString[128];
-	int j;
-
-	strcpy(tempString, pString);
-	pstr = pfront = tempString;
-
-	for (j = 0; j < 3; j++) // lifted from pr_edict.c
-	{
-		pVector[j] = atof(pfront);
-
-		while ('\0' != *pstr && *pstr != ' ')
-			pstr++;
-		if ('\0' == *pstr)
-			break;
-		pstr++;
-		pfront = pstr;
-	}
-	if (j < 2)
-	{
-		/*
-		ALERT( at_error, "Bad field in entity!! %s:%s == \"%s\"\n",
-			pkvd->szClassName, pkvd->szKeyName, pkvd->szValue );
-		*/
-		for (j = j + 1; j < 3; j++)
-			pVector[j] = 0;
-	}
-}
-
-
 void UTIL_StringToIntArray(int* pVector, int count, const char* pString)
 {
 	char *pstr, *pfront, tempString[128];
@@ -1555,7 +1391,7 @@ void UTIL_Remove(CBaseEntity* pEntity)
 
 	pEntity->UpdateOnRemove();
 	pEntity->pev->flags |= FL_KILLME;
-	pEntity->pev->targetname = 0;
+	pEntity->pev->targetname = string_t::Null;
 }
 
 
@@ -1569,36 +1405,16 @@ bool UTIL_IsValidEntity(edict_t* pent)
 
 void UTIL_PrecacheOther(const char* szClassname)
 {
-	edict_t* pent;
-
-	pent = CREATE_NAMED_ENTITY(MAKE_STRING(szClassname));
-	if (FNullEnt(pent))
+	auto entity = g_EntityDictionary->Create(szClassname);
+	if (FNullEnt(entity))
 	{
-		ALERT(at_console, "nullptr Ent in UTIL_PrecacheOther\n");
+		CBaseEntity::Logger->debug("nullptr Ent in UTIL_PrecacheOther");
 		return;
 	}
 
-	CBaseEntity* pEntity = CBaseEntity::Instance(VARS(pent));
-	if (pEntity)
-		pEntity->Precache();
-	REMOVE_ENTITY(pent);
-}
+	entity->Precache();
 
-//=========================================================
-// UTIL_LogPrintf - Prints a logged message to console.
-// Preceded by LOG: ( timestamp ) < message >
-//=========================================================
-void UTIL_LogPrintf(const char* fmt, ...)
-{
-	va_list argptr;
-	static char string[1024];
-
-	va_start(argptr, fmt);
-	vsprintf(string, fmt, argptr);
-	va_end(argptr);
-
-	// Print to server console
-	ALERT(at_logged, "%s", string);
+	REMOVE_ENTITY(entity->edict());
 }
 
 //=========================================================
@@ -1655,13 +1471,13 @@ static int gSizes[FIELD_TYPECOUNT] =
 #else
 		sizeof(int*), // FIELD_FUNCTION
 #endif
-		sizeof(byte),  // FIELD_BOOLEAN
-		sizeof(short), // FIELD_SHORT
-		sizeof(char),  // FIELD_CHARACTER
-		sizeof(float), // FIELD_TIME
-		sizeof(int),   // FIELD_MODELNAME
-		sizeof(int),   // FIELD_SOUNDNAME
-		sizeof(std::uint64_t), //FIELD_INT64
+		sizeof(byte),		   // FIELD_BOOLEAN
+		sizeof(short),		   // FIELD_SHORT
+		sizeof(char),		   // FIELD_CHARACTER
+		sizeof(float),		   // FIELD_TIME
+		sizeof(int),		   // FIELD_MODELNAME
+		sizeof(int),		   // FIELD_SOUNDNAME
+		sizeof(std::uint64_t), // FIELD_INT64
 };
 
 
@@ -1752,35 +1568,12 @@ void CSaveRestoreBuffer::BufferRewind(int size)
 	m_data.size -= size;
 }
 
-#ifndef WIN32
-extern "C" {
-unsigned _rotr(unsigned val, int shift)
-{
-	register unsigned lobit;	 /* non-zero means lo bit set */
-	register unsigned num = val; /* number to rotate */
-
-	shift &= 0x1f; /* modulo 32 -- this will also make
-										   negative shifts work */
-
-	while (shift--)
-	{
-		lobit = num & 1; /* get high bit */
-		num >>= 1;		 /* shift right one bit */
-		if (lobit)
-			num |= 0x80000000; /* set hi bit if lo bit was set */
-	}
-
-	return num;
-}
-}
-#endif
-
 unsigned int CSaveRestoreBuffer::HashString(const char* pszToken)
 {
 	unsigned int hash = 0;
 
 	while ('\0' != *pszToken)
-		hash = _rotr(hash, 4) ^ *pszToken++;
+		hash = std::rotr(hash, 4) ^ *pszToken++;
 
 	return hash;
 }
@@ -1793,8 +1586,8 @@ unsigned short CSaveRestoreBuffer::TokenHash(const char* pszToken)
 #endif
 	if (0 == m_data.tokenCount || nullptr == m_data.pTokens)
 	{
-		//if we're here it means trigger_changelevel is trying to actually save something when it's not supposed to.
-		ALERT(at_error, "No token table array in TokenHash()!\n");
+		// if we're here it means trigger_changelevel is trying to actually save something when it's not supposed to.
+		Logger->error("No token table array in TokenHash()!");
 		return 0;
 	}
 
@@ -1807,7 +1600,7 @@ unsigned short CSaveRestoreBuffer::TokenHash(const char* pszToken)
 		if (i > 50 && !beentheredonethat)
 		{
 			beentheredonethat = true;
-			ALERT(at_error, "CSaveRestoreBuffer :: TokenHash() is getting too full!\n");
+			Logger->error("CSaveRestoreBuffer :: TokenHash() is getting too full!");
 		}
 #endif
 
@@ -1824,7 +1617,7 @@ unsigned short CSaveRestoreBuffer::TokenHash(const char* pszToken)
 
 	// Token hash table full!!!
 	// [Consider doing overflow table(s) after the main table & limiting linear hash table search]
-	ALERT(at_error, "CSaveRestoreBuffer :: TokenHash() is COMPLETELY FULL!\n");
+	Logger->error("CSaveRestoreBuffer :: TokenHash() is COMPLETELY FULL!");
 	return 0;
 }
 
@@ -1883,7 +1676,7 @@ void CSave::WriteString(const char* pname, const char* pdata)
 }
 
 
-void CSave::WriteString(const char* pname, const int* stringId, int count)
+void CSave::WriteString(const char* pname, const string_t* stringId, int count)
 {
 	int i, size;
 
@@ -1893,7 +1686,7 @@ void CSave::WriteString(const char* pname, const int* stringId, int count)
 #else
 #if 0
 	if (count != 1)
-		ALERT(at_error, "No string arrays!\n");
+		Logger->error("No string arrays!");
 	WriteString(pname, STRING(*stringId));
 #endif
 
@@ -1964,16 +1757,15 @@ void CSave::WriteFunction(const char* pname, void** data, int count)
 	if (functionName)
 		BufferField(pname, strlen(functionName) + 1, functionName);
 	else
-		ALERT(at_error, "Invalid function pointer in entity!\n");
+		Logger->error("Invalid function pointer in entity!");
 }
 
 
 void EntvarsKeyvalue(entvars_t* pev, KeyValueData* pkvd)
 {
-	int i;
 	TYPEDESCRIPTION* pField;
 
-	for (i = 0; i < ENTVARS_COUNT; i++)
+	for (std::size_t i = 0; i < std::size(gEntvarsDescription); ++i)
 	{
 		pField = &gEntvarsDescription[i];
 
@@ -1984,7 +1776,7 @@ void EntvarsKeyvalue(entvars_t* pev, KeyValueData* pkvd)
 			case FIELD_MODELNAME:
 			case FIELD_SOUNDNAME:
 			case FIELD_STRING:
-				(*(int*)((char*)pev + pField->fieldOffset)) = ALLOC_STRING(pkvd->szValue);
+				(*(string_t*)((char*)pev + pField->fieldOffset)) = ALLOC_STRING(pkvd->szValue);
 				break;
 
 			case FIELD_TIME:
@@ -2007,7 +1799,7 @@ void EntvarsKeyvalue(entvars_t* pev, KeyValueData* pkvd)
 			case FIELD_EDICT:
 			case FIELD_ENTITY:
 			case FIELD_POINTER:
-				ALERT(at_error, "Bad field in entity!!\n");
+				CBaseEntity::Logger->error("Bad field in entity!!");
 				break;
 			}
 			pkvd->fHandled = 1;
@@ -2020,7 +1812,7 @@ void EntvarsKeyvalue(entvars_t* pev, KeyValueData* pkvd)
 
 bool CSave::WriteEntVars(const char* pname, entvars_t* pev)
 {
-	return WriteFields(pname, pev, gEntvarsDescription, ENTVARS_COUNT);
+	return WriteFields(pname, pev, gEntvarsDescription, std::size(gEntvarsDescription));
 }
 
 
@@ -2067,7 +1859,7 @@ bool CSave::WriteFields(const char* pname, void* pBaseData, TYPEDESCRIPTION* pFi
 		case FIELD_MODELNAME:
 		case FIELD_SOUNDNAME:
 		case FIELD_STRING:
-			WriteString(pTest->fieldName, (int*)pOutputData, pTest->fieldSize);
+			WriteString(pTest->fieldName, (string_t*)pOutputData, pTest->fieldSize);
 			break;
 		case FIELD_CLASSPTR:
 		case FIELD_EVARS:
@@ -2075,7 +1867,7 @@ bool CSave::WriteFields(const char* pname, void* pBaseData, TYPEDESCRIPTION* pFi
 		case FIELD_ENTITY:
 		case FIELD_EHANDLE:
 			if (pTest->fieldSize > MAX_ENTITYARRAY)
-				ALERT(at_error, "Can't save more than %d entities in an array!!!\n", MAX_ENTITYARRAY);
+				Logger->error("Can't save more than {} entities in an array!!!", MAX_ENTITYARRAY);
 			for (j = 0; j < pTest->fieldSize; j++)
 			{
 				switch (pTest->fieldType)
@@ -2108,8 +1900,8 @@ bool CSave::WriteFields(const char* pname, void* pBaseData, TYPEDESCRIPTION* pFi
 
 		case FIELD_BOOLEAN:
 		{
-			//TODO: need to refactor save game stuff to make this cleaner and reusable
-			//Convert booleans to bytes
+			// TODO: need to refactor save game stuff to make this cleaner and reusable
+			// Convert booleans to bytes
 			for (j = 0; j < pTest->fieldSize; j++)
 			{
 				boolArray[j] = ((bool*)pOutputData)[j] ? 1 : 0;
@@ -2144,7 +1936,7 @@ bool CSave::WriteFields(const char* pname, void* pBaseData, TYPEDESCRIPTION* pFi
 			WriteFunction(pTest->fieldName, (void**)pOutputData, pTest->fieldSize);
 			break;
 		default:
-			ALERT(at_error, "Bad field type\n");
+			Logger->error("Bad field type");
 		}
 	}
 
@@ -2183,7 +1975,7 @@ void CSave::BufferHeader(const char* pname, int size)
 {
 	short hashvalue = TokenHash(pname);
 	if (size > 1 << (sizeof(short) * 8))
-		ALERT(at_error, "CSave :: BufferHeader() size parameter exceeds 'short'!\n");
+		Logger->error("CSave :: BufferHeader() size parameter exceeds 'short'!");
 	BufferData((const char*)&size, sizeof(short));
 	BufferData((const char*)&hashvalue, sizeof(short));
 }
@@ -2193,7 +1985,7 @@ void CSave::BufferData(const char* pdata, int size)
 {
 	if (m_data.size + size > m_data.bufferSize)
 	{
-		ALERT(at_error, "Save/Restore overflow!\n");
+		Logger->error("Save/Restore overflow!");
 		m_data.size = m_data.bufferSize;
 		return;
 	}
@@ -2265,18 +2057,17 @@ int CRestore::ReadField(void* pBaseData, TYPEDESCRIPTION* pFields, int fieldCoun
 							*((int*)pOutputData) = 0;
 						else
 						{
-							int string;
+							string_t string = ALLOC_STRING((char*)pInputData);
 
-							string = ALLOC_STRING((char*)pInputData);
-
-							*((int*)pOutputData) = string;
+							*((string_t*)pOutputData) = string;
 
 							if (!FStringNull(string) && m_precache)
 							{
+								// Don't use UTIL_PrecacheModel/Sound here because we're restoring an already-replaced name.
 								if (pTest->fieldType == FIELD_MODELNAME)
-									PRECACHE_MODEL(STRING(string));
+									UTIL_PrecacheModelDirect(STRING(string));
 								else if (pTest->fieldType == FIELD_SOUNDNAME)
-									PRECACHE_SOUND(STRING(string));
+									UTIL_PrecacheSoundDirect(STRING(string));
 							}
 						}
 						break;
@@ -2367,14 +2158,14 @@ int CRestore::ReadField(void* pBaseData, TYPEDESCRIPTION* pFields, int fieldCoun
 						break;
 
 					default:
-						ALERT(at_error, "Bad field type\n");
+						Logger->error("Bad field type");
 					}
 				}
 			}
 #if 0
 			else
 			{
-				ALERT(at_console, "Skipping global field %s\n", pName);
+				Logger->debug( "Skipping global field {}", pName);
 			}
 #endif
 			return fieldNumber;
@@ -2387,7 +2178,7 @@ int CRestore::ReadField(void* pBaseData, TYPEDESCRIPTION* pFields, int fieldCoun
 
 bool CRestore::ReadEntVars(const char* pname, entvars_t* pev)
 {
-	return ReadFields(pname, pev, gEntvarsDescription, ENTVARS_COUNT);
+	return ReadFields(pname, pev, gEntvarsDescription, std::size(gEntvarsDescription));
 }
 
 
@@ -2405,7 +2196,7 @@ bool CRestore::ReadFields(const char* pname, void* pBaseData, TYPEDESCRIPTION* p
 	// Check the struct name
 	if (token != TokenHash(pname)) // Field Set marker
 	{
-		//		ALERT( at_error, "Expected %s found %s!\n", pname, BufferPointer() );
+		//		Logger->error("Expected {} found {}!", pname, BufferPointer() );
 		BufferRewind(2 * sizeof(short));
 		return false;
 	}
@@ -2495,7 +2286,7 @@ void CRestore::BufferReadBytes(char* pOutput, int size)
 
 	if ((m_data.size + size) > m_data.bufferSize)
 	{
-		ALERT(at_error, "Restore overflow!\n");
+		Logger->error("Restore overflow!");
 		m_data.size = m_data.bufferSize;
 		return;
 	}

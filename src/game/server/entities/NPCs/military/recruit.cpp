@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #include "cbase.h"
 #include "talkmonster.h"
@@ -20,8 +20,8 @@
 #include "blackmesa/barney.h"
 
 /**
-*	@brief A copy of Barney that speaks military
-*/
+ *	@brief A copy of Barney that speaks military
+ */
 class CRecruit : public CBarney
 {
 public:
@@ -29,13 +29,11 @@ public:
 
 	void DeclineFollowing() override;
 
-	void Spawn() override;
+	void OnCreate() override;
 
 	void AlertSound() override;
 
 	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
-
-	void Precache() override;
 
 	void TalkInit();
 
@@ -49,6 +47,14 @@ protected:
 
 LINK_ENTITY_TO_CLASS(monster_recruit, CRecruit);
 
+void CRecruit::OnCreate()
+{
+	CBarney::OnCreate();
+
+	pev->health = GetSkillFloat("barney_health"sv);
+	pev->model = MAKE_STRING("models/recruit.mdl");
+}
+
 void CRecruit::DeclineFollowing()
 {
 	PlaySentence("RC_POK", 2, VOL_NORM, ATTN_NORM);
@@ -61,12 +67,7 @@ void CRecruit::SpeakKilledEnemy()
 
 void CRecruit::DropWeapon()
 {
-	//Nothing to drop
-}
-
-void CRecruit::Spawn()
-{
-	SpawnCore("models/recruit.mdl", gSkillData.barneyHealth);
+	// Nothing to drop
 }
 
 void CRecruit::AlertSound()
@@ -118,11 +119,6 @@ bool CRecruit::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float
 	return ret;
 }
 
-void CRecruit::Precache()
-{
-	PrecacheCore("models/recruit.mdl");
-}
-
 void CRecruit::TalkInit()
 {
 	CTalkMonster::TalkInit();
@@ -144,8 +140,8 @@ void CRecruit::TalkInit()
 	m_szGrp[TLK_PLHURT2] = "!RC_CUREB";
 	m_szGrp[TLK_PLHURT3] = "!RC_CUREC";
 
-	m_szGrp[TLK_PHELLO] = nullptr;			  //"BA_PHELLO";		// UNDONE
-	m_szGrp[TLK_PIDLE] = nullptr;			  //"BA_PIDLE";			// UNDONE
+	m_szGrp[TLK_PHELLO] = nullptr;		  //"BA_PHELLO";		// UNDONE
+	m_szGrp[TLK_PIDLE] = nullptr;		  //"BA_PIDLE";			// UNDONE
 	m_szGrp[TLK_PQUESTION] = "RC_PQUEST"; // UNDONE
 
 	m_szGrp[TLK_SMELL] = "RC_SMELL";

@@ -1,26 +1,25 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
 
 #include <memory>
-#include <sstream>
 #include <string>
 #include <string_view>
 
-#include <spdlog/fmt/fmt.h>
+#include <fmt/format.h>
 
 #include <angelscript.h>
 
@@ -53,8 +52,8 @@ struct ScriptModuleDeleter
 using ModulePtr = std::unique_ptr<asIScriptModule, ScriptModuleDeleter>;
 
 /**
-*	@brief Custom deleter for Angelscript objects stored in \c std::unique_ptr
-*/
+ *	@brief Custom deleter for Angelscript objects stored in \c std::unique_ptr
+ */
 template <typename T>
 struct ObjectDeleter
 {
@@ -72,29 +71,31 @@ using UniquePtr = std::unique_ptr<T, ObjectDeleter<T>>;
 
 inline std::string FormatFunctionName(const asIScriptFunction& function)
 {
-	std::ostringstream stream;
+	std::string buffer;
 
 	if (const auto ns = function.GetNamespace(); ns && ns[0])
 	{
-		stream << ns << "::";
+		buffer += ns;
+		buffer += "::";
 	}
 
 	if (const auto clazz = function.GetObjectName(); clazz)
 	{
-		stream << clazz << "::";
+		buffer += clazz;
+		buffer += "::";
 	}
 
-	stream << function.GetName();
+	buffer += function.GetName();
 
-	return stream.str();
+	return buffer;
 }
 
 std::string_view ReturnCodeToString(int code);
 std::string_view ContextStateToString(int code);
 
 /**
-*	@brief Gets a printable string for the function's module
-*/
+ *	@brief Gets a printable string for the function's module
+ */
 inline const char* GetModuleName(const asIScriptFunction& function)
 {
 	if (const auto moduleName = function.GetModuleName(); moduleName)
@@ -143,7 +144,7 @@ inline std::string GetSectionName(const asIScriptFunction* function)
 {
 	if (!function)
 	{
-		//Should never happen
+		// Should never happen
 		return "No function to get section";
 	}
 

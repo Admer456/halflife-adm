@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // hgrunt
 //=========================================================
@@ -35,17 +35,17 @@ namespace TorchAllyBodygroup
 enum TorchAllyBodygroup
 {
 	Head = 1,
-	Weapons = 2
+	Weapons = 3,
+	Torch = 4,
 };
 }
 
-namespace TorchAllyWeapon
+namespace TorchTorchState
 {
-enum TorchAllyWeapon
+enum TorchTorchState
 {
-	DesertEagle = 0,
-	Torch,
-	None
+	Blank = 0,
+	Drawn
 };
 }
 
@@ -71,6 +71,8 @@ enum TorchAllyWeaponFlag
 class COFTorchAlly : public CBaseHGruntAlly
 {
 public:
+	void OnCreate() override;
+
 	void Spawn() override;
 	void Precache() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
@@ -97,7 +99,7 @@ public:
 protected:
 	void DropWeapon(bool applyVelocity) override;
 
-	bool CanRangeAttack() const override { return GetBodygroup(TorchAllyBodygroup::Weapons) == TorchAllyWeapon::DesertEagle; }
+	bool CanRangeAttack() const override { return GetBodygroup(TorchAllyBodygroup::Weapons) == NPCWeaponState::Drawn; }
 
 	std::tuple<int, Activity> GetSequenceForActivity(Activity NewActivity) override;
 
@@ -116,9 +118,20 @@ TYPEDESCRIPTION COFTorchAlly::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE(COFTorchAlly, CBaseHGruntAlly);
 
+void COFTorchAlly::OnCreate()
+{
+	CBaseHGruntAlly::OnCreate();
+
+	pev->health = GetSkillFloat("torch_ally_health"sv);
+	pev->model = MAKE_STRING("models/hgrunt_torch.mdl");
+
+	// get voice pitch
+	m_voicePitch = 95;
+}
+
 void COFTorchAlly::DropWeapon(bool applyVelocity)
 {
-	if (GetBodygroup(TorchAllyBodygroup::Weapons) == TorchAllyWeapon::DesertEagle)
+	if (GetBodygroup(TorchAllyBodygroup::Weapons) != NPCWeaponState::Blank)
 	{ // throw a gun if the grunt has one
 		Vector vecGunPos, vecGunAngles;
 		GetAttachment(0, vecGunPos, vecGunAngles);
@@ -131,7 +144,7 @@ void COFTorchAlly::DropWeapon(bool applyVelocity)
 			pGun->pev->avelocity = Vector(0, RANDOM_FLOAT(200, 400), 0);
 		}
 
-		SetBodygroup(TorchAllyBodygroup::Weapons, TorchAllyWeapon::None);
+		SetBodygroup(TorchAllyBodygroup::Weapons, NPCWeaponState::Blank);
 	}
 }
 
@@ -158,7 +171,7 @@ void COFTorchAlly::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector ve
 	// check for Torch fuel tank hit
 	if (ptr->iHitgroup == 8)
 	{
-		//Make sure it kills this grunt
+		// Make sure it kills this grunt
 		bitsDamageType = DMG_ALWAYSGIB | DMG_BLAST;
 		flDamage = pev->health;
 		ExplosionCreate(ptr->vecEndPos, pev->angles, edict(), 100, true);
@@ -172,7 +185,7 @@ void COFTorchAlly::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector ve
 //=========================================================
 void COFTorchAlly::Shoot()
 {
-	//Limit fire rate
+	// Limit fire rate
 	if (m_hEnemy == nullptr || gpGlobals->time - m_flLastShot <= 0.11)
 	{
 		return;
@@ -222,19 +235,22 @@ void COFTorchAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case TORCH_AE_HOLSTER_TORCH:
 	{
-		SetBodygroup(TorchAllyBodygroup::Weapons, TorchAllyWeapon::DesertEagle);
+		SetBodygroup(TorchAllyBodygroup::Weapons, NPCWeaponState::Drawn);
+		SetBodygroup(TorchAllyBodygroup::Torch, TorchTorchState::Blank);
 		break;
 	}
 
 	case TORCH_AE_HOLSTER_GUN:
 	{
-		SetBodygroup(TorchAllyBodygroup::Weapons, TorchAllyWeapon::Torch);
+		SetBodygroup(TorchAllyBodygroup::Weapons, NPCWeaponState::Holstered);
+		SetBodygroup(TorchAllyBodygroup::Torch, TorchTorchState::Drawn);
 		break;
 	}
 
 	case TORCH_AE_HOLSTER_BOTH:
 	{
-		SetBodygroup(TorchAllyBodygroup::Weapons, TorchAllyWeapon::None);
+		SetBodygroup(TorchAllyBodygroup::Weapons, NPCWeaponState::Holstered);
+		SetBodygroup(TorchAllyBodygroup::Torch, TorchTorchState::Blank);
 		break;
 	}
 
@@ -287,7 +303,7 @@ void COFTorchAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 //=========================================================
 void COFTorchAlly::Spawn()
 {
-	SpawnCore("models/hgrunt_torch.mdl", gSkillData.torchAllyHealth);
+	SpawnCore();
 
 	m_fTorchActive = false;
 
@@ -296,20 +312,17 @@ void COFTorchAlly::Spawn()
 		pev->weapons |= TorchAllyWeaponFlag::DesertEagle;
 	}
 
-	int weaponIndex = TorchAllyWeapon::None;
-
 	if ((pev->weapons & TorchAllyWeaponFlag::DesertEagle) != 0)
 	{
-		weaponIndex = TorchAllyWeapon::DesertEagle;
+		SetBodygroup(TorchAllyBodygroup::Weapons, NPCWeaponState::Drawn);
 		m_cClipSize = TORCH_DEAGLE_CLIP_SIZE;
 	}
 	else
 	{
-		weaponIndex = TorchAllyWeapon::Torch;
+		SetBodygroup(TorchAllyBodygroup::Weapons, NPCWeaponState::Holstered);
+		SetBodygroup(TorchAllyBodygroup::Torch, TorchTorchState::Drawn);
 		m_cClipSize = 0;
 	}
-
-	SetBodygroup(TorchAllyBodygroup::Weapons, weaponIndex);
 
 	m_cAmmoLoaded = m_cClipSize;
 
@@ -322,22 +335,15 @@ void COFTorchAlly::Spawn()
 //=========================================================
 void COFTorchAlly::Precache()
 {
-	PRECACHE_MODEL("models/hgrunt_torch.mdl");
-	PRECACHE_MODEL(TORCH_BEAM_SPRITE);
+	PrecacheModel(TORCH_BEAM_SPRITE);
 
-	PRECACHE_SOUND("weapons/desert_eagle_fire.wav");
-	PRECACHE_SOUND("weapons/desert_eagle_reload.wav");
+	PrecacheSound("weapons/desert_eagle_fire.wav");
+	PrecacheSound("weapons/desert_eagle_reload.wav");
 
-	PRECACHE_SOUND("fgrunt/torch_light.wav");
-	PRECACHE_SOUND("fgrunt/torch_cut_loop.wav");
+	PrecacheSound("fgrunt/torch_light.wav");
+	PrecacheSound("fgrunt/torch_cut_loop.wav");
 
 	CBaseHGruntAlly::Precache();
-
-	// get voice pitch
-	if (!UTIL_IsRestoring())
-	{
-		m_voicePitch = 95;
-	}
 }
 
 std::tuple<int, Activity> COFTorchAlly::GetSequenceForActivity(Activity NewActivity)
@@ -368,7 +374,7 @@ std::tuple<int, Activity> COFTorchAlly::GetSequenceForActivity(Activity NewActiv
 
 Schedule_t* COFTorchAlly::GetTorchSchedule()
 {
-	if (GetBodygroup(TorchAllyBodygroup::Weapons) == TorchAllyWeapon::Torch)
+	if (GetBodygroup(TorchAllyBodygroup::Torch) == TorchTorchState::Drawn)
 	{
 		return COFSquadTalkMonster::GetSchedule();
 	}
@@ -378,7 +384,7 @@ Schedule_t* COFTorchAlly::GetTorchSchedule()
 
 void COFTorchAlly::Killed(entvars_t* pevAttacker, int iGib)
 {
-	//TODO: is this even correct? Torch grunts have no medic capabilities
+	// TODO: is this even correct? Torch grunts have no medic capabilities
 	if (m_hTargetEnt != nullptr)
 	{
 		m_hTargetEnt.Entity<COFSquadTalkMonster>()->m_hWaitMedic = nullptr;
@@ -412,7 +418,7 @@ void COFTorchAlly::MonsterThink()
 		if (tr.flFraction != 1.0)
 		{
 			m_pTorchBeam->pev->spawnflags &= ~SF_BEAM_SPARKSTART;
-			//TODO: looks like a bug to me, shouldn't be bitwise inverting
+			// TODO: looks like a bug to me, shouldn't be bitwise inverting
 			m_pTorchBeam->pev->spawnflags |= ~SF_BEAM_SPARKEND;
 
 			UTIL_DecalTrace(&tr, RANDOM_LONG(0, 4));
@@ -426,8 +432,8 @@ void COFTorchAlly::MonsterThink()
 }
 
 /**
-*	@brief when triggered, spawns a monster_human_torch_ally repelling down a line.
-*/
+ *	@brief when triggered, spawns a monster_human_torch_ally repelling down a line.
+ */
 class COFTorchAllyRepel : public CBaseHGruntAllyRepel
 {
 protected:

@@ -1,29 +1,36 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 
 LINK_ENTITY_TO_CLASS(weapon_glock, CGlock);
 LINK_ENTITY_TO_CLASS(weapon_9mmhandgun, CGlock);
 
+void CGlock::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_9mmhandgun.mdl");
+}
+
 void CGlock::Spawn()
 {
 	pev->classname = MAKE_STRING("weapon_9mmhandgun"); // hack to allow for old names
 	Precache();
 	m_iId = WEAPON_GLOCK;
-	SET_MODEL(ENT(pev), "models/w_9mmhandgun.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = GLOCK_DEFAULT_GIVE;
 
@@ -33,18 +40,18 @@ void CGlock::Spawn()
 
 void CGlock::Precache()
 {
-	PRECACHE_MODEL("models/v_9mmhandgun.mdl");
-	PRECACHE_MODEL("models/w_9mmhandgun.mdl");
-	PRECACHE_MODEL("models/p_9mmhandgun.mdl");
+	PrecacheModel("models/v_9mmhandgun.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/p_9mmhandgun.mdl");
 
-	m_iShell = PRECACHE_MODEL("models/shell.mdl"); // brass shell
+	m_iShell = PrecacheModel("models/shell.mdl"); // brass shell
 
-	PRECACHE_SOUND("items/9mmclip1.wav");
-	PRECACHE_SOUND("items/9mmclip2.wav");
+	PrecacheSound("items/9mmclip1.wav");
+	PrecacheSound("items/9mmclip2.wav");
 
-	PRECACHE_SOUND("weapons/pl_gun1.wav"); //silenced handgun
-	PRECACHE_SOUND("weapons/pl_gun2.wav"); //silenced handgun
-	PRECACHE_SOUND("weapons/pl_gun3.wav"); //handgun
+	PrecacheSound("weapons/pl_gun1.wav"); // silenced handgun
+	PrecacheSound("weapons/pl_gun2.wav"); // silenced handgun
+	PrecacheSound("weapons/pl_gun3.wav"); // handgun
 
 	m_usFireGlock1 = PRECACHE_EVENT(1, "events/glock1.sc");
 	m_usFireGlock2 = PRECACHE_EVENT(1, "events/glock2.sc");
@@ -222,18 +229,20 @@ void CGlock::WeaponIdle()
 
 class CGlockAmmo : public CBasePlayerAmmo
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_9mmclip.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_9mmclip.mdl");
 	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_9mmclip.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		if (pOther->GiveAmmo(AMMO_GLOCKCLIP_GIVE, "9mm", _9MM_MAX_CARRY) != -1)
 		{

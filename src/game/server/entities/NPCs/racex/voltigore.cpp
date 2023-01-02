@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // Voltigore - Tank like alien
 //=========================================================
@@ -73,9 +73,9 @@ IMPLEMENT_SAVERESTORE(COFChargedBolt, CBaseEntity);
 
 void COFChargedBolt::Precache()
 {
-	PRECACHE_MODEL("sprites/blueflare2.spr");
-	PRECACHE_MODEL("sprites/lgtning.spr");
-	m_iShowerSparks = PRECACHE_MODEL("sprites/spark1.spr");
+	PrecacheModel("sprites/blueflare2.spr");
+	PrecacheModel("sprites/lgtning.spr");
+	m_iShowerSparks = PrecacheModel("sprites/spark1.spr");
 }
 
 void COFChargedBolt::Spawn()
@@ -87,7 +87,7 @@ void COFChargedBolt::Spawn()
 
 	pev->gravity = 0.5;
 
-	SET_MODEL(edict(), "sprites/blueflare2.spr");
+	SetModel("sprites/blueflare2.spr");
 
 	UTIL_SetOrigin(pev, pev->origin);
 
@@ -132,9 +132,7 @@ void COFChargedBolt::ShutdownChargedBolt()
 
 COFChargedBolt* COFChargedBolt::ChargedBoltCreate()
 {
-	auto pBolt = GetClassPtr<COFChargedBolt>(nullptr);
-
-	pBolt->pev->classname = MAKE_STRING("charged_bolt");
+	auto pBolt = g_EntityDictionary->Create<COFChargedBolt>("charged_bolt");
 
 	pBolt->Spawn();
 
@@ -182,7 +180,7 @@ void COFChargedBolt::ArmBeam(int side)
 	float flDist = 1.0;
 
 	if (m_iBeams >= VOLTIGORE_BEAM_COUNT)
-		return;
+		m_iBeams = 0;
 
 	UTIL_MakeAimVectors(pev->angles);
 	Vector vecSrc = pev->origin + gpGlobals->v_up * 36 + gpGlobals->v_right * side * 16 + gpGlobals->v_forward * 32;
@@ -203,8 +201,12 @@ void COFChargedBolt::ArmBeam(int side)
 	if (flDist == 1.0)
 		return;
 
-	CBeam* pBeam = CBeam::BeamCreate("sprites/lgtning.spr", 30);
-	m_pBeam[m_iBeams] = pBeam;
+	auto pBeam = m_pBeam[m_iBeams].Entity<CBeam>();
+
+	if (!pBeam)
+	{
+		m_pBeam[m_iBeams] = pBeam = CBeam::BeamCreate("sprites/lgtning.spr", 30);
+	}
 
 	if (!pBeam)
 		return;
@@ -264,19 +266,19 @@ void COFChargedBolt::ChargedBoltTouch(CBaseEntity* pOther)
 	else
 	{
 		ClearMultiDamage();
-		pOther->TakeDamage(pev, pev, gSkillData.voltigoreDmgBeam, DMG_ALWAYSGIB | DMG_SHOCK);
+		pOther->TakeDamage(pev, pev, GetSkillFloat("voltigore_dmg_beam"sv), DMG_ALWAYSGIB | DMG_SHOCK);
 	}
 
 	pev->velocity = g_vecZero;
 
 	auto pevOwner = VARS(pev->owner);
 
-	//Null out the owner to avoid issues with radius damage
+	// Null out the owner to avoid issues with radius damage
 	pev->owner = nullptr;
 
 	ClearMultiDamage();
 
-	RadiusDamage(pev->origin, pev, pevOwner, gSkillData.voltigoreDmgBeam, 128.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_SHOCK);
+	RadiusDamage(pev->origin, pev, pevOwner, GetSkillFloat("voltigore_dmg_beam"sv), 128.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_SHOCK);
 
 	SetThink(&COFChargedBolt::ShutdownChargedBolt);
 	pev->nextthink = gpGlobals->time + 0.5;
@@ -297,6 +299,14 @@ TYPEDESCRIPTION COFVoltigore::m_SaveData[] =
 };
 
 IMPLEMENT_SAVERESTORE(COFVoltigore, CSquadMonster);
+
+void COFVoltigore::OnCreate()
+{
+	CSquadMonster::OnCreate();
+
+	pev->health = GetSkillFloat("voltigore_health"sv);
+	pev->model = MAKE_STRING("models/voltigore.mdl");
+}
 
 //=========================================================
 // IRelationship - overridden because Human Grunts are
@@ -328,8 +338,8 @@ int COFVoltigore::ISoundMask()
 //=========================================================
 void COFVoltigore::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
-	//Ignore shock damage since we have a shock based attack
-	//TODO: use a filter based on attacker to identify self harm
+	// Ignore shock damage since we have a shock based attack
+	// TODO: use a filter based on attacker to identify self harm
 	if ((bitsDamageType & DMG_SHOCK) == 0)
 	{
 		SpawnBlood(ptr->vecEndPos, BloodColor(), flDamage); // a little surface blood.
@@ -461,7 +471,7 @@ void COFVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 			bolt->LaunchChargedBolt(direction, edict(), 1000, 10);
 
-			//We no longer have to manage the bolt now
+			// We no longer have to manage the bolt now
 			m_pChargedBolt = nullptr;
 
 			ClearBeams();
@@ -471,7 +481,7 @@ void COFVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case VOLTIGORE_AE_LEFT_PUNCH:
 	{
-		CBaseEntity* pHurt = CheckTraceHullAttack(VOLTIGORE_MELEE_DIST, gSkillData.voltigoreDmgPunch, DMG_CLUB);
+		CBaseEntity* pHurt = CheckTraceHullAttack(GetMeleeDistance(), GetSkillFloat("voltigore_dmg_punch"sv), DMG_CLUB);
 
 		if (pHurt)
 		{
@@ -501,7 +511,7 @@ void COFVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case VOLTIGORE_AE_RIGHT_PUNCH:
 	{
-		CBaseEntity* pHurt = CheckTraceHullAttack(VOLTIGORE_MELEE_DIST, gSkillData.voltigoreDmgPunch, DMG_CLUB);
+		CBaseEntity* pHurt = CheckTraceHullAttack(GetMeleeDistance(), GetSkillFloat("voltigore_dmg_punch"sv), DMG_CLUB);
 
 		if (pHurt)
 		{
@@ -535,18 +545,17 @@ void COFVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-void COFVoltigore::SpawnCore(const char* model, const Vector& mins, const Vector& maxs, float health)
+void COFVoltigore::SpawnCore(const Vector& mins, const Vector& maxs)
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), model);
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, mins, maxs);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_GREEN;
 	pev->effects = 0;
-	pev->health = health;
 	m_flFieldOfView = 0.2; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 	m_afCapability = 0;
@@ -568,12 +577,12 @@ void COFVoltigore::SpawnCore(const char* model, const Vector& mins, const Vector
 //=========================================================
 void COFVoltigore::Spawn()
 {
-	SpawnCore("models/voltigore.mdl", {-80, -80, 0}, {80, 80, 90}, gSkillData.voltigoreHealth);
+	SpawnCore({-80, -80, 0}, {80, 80, 90});
 }
 
-void COFVoltigore::PrecacheCore(const char* model)
+void COFVoltigore::Precache()
 {
-	PRECACHE_MODEL(model);
+	PrecacheModel(STRING(pev->model));
 
 	PRECACHE_SOUND_ARRAY(pAttackHitSounds);
 	PRECACHE_SOUND_ARRAY(pAttackMissSounds);
@@ -581,38 +590,32 @@ void COFVoltigore::PrecacheCore(const char* model)
 	PRECACHE_SOUND_ARRAY(pAlertSounds);
 	PRECACHE_SOUND_ARRAY(pAttackSounds);
 
-	PRECACHE_SOUND("voltigore/voltigore_attack_shock.wav");
+	PrecacheSound("voltigore/voltigore_attack_shock.wav");
 
-	PRECACHE_SOUND("voltigore/voltigore_communicate1.wav");
-	PRECACHE_SOUND("voltigore/voltigore_communicate2.wav");
-	PRECACHE_SOUND("voltigore/voltigore_communicate3.wav");
+	PrecacheSound("voltigore/voltigore_communicate1.wav");
+	PrecacheSound("voltigore/voltigore_communicate2.wav");
+	PrecacheSound("voltigore/voltigore_communicate3.wav");
 
-	PRECACHE_SOUND("voltigore/voltigore_die1.wav");
-	PRECACHE_SOUND("voltigore/voltigore_die2.wav");
-	PRECACHE_SOUND("voltigore/voltigore_die3.wav");
+	PrecacheSound("voltigore/voltigore_die1.wav");
+	PrecacheSound("voltigore/voltigore_die2.wav");
+	PrecacheSound("voltigore/voltigore_die3.wav");
 
-	PRECACHE_SOUND("voltigore/voltigore_footstep1.wav");
-	PRECACHE_SOUND("voltigore/voltigore_footstep2.wav");
-	PRECACHE_SOUND("voltigore/voltigore_footstep3.wav");
+	PrecacheSound("voltigore/voltigore_footstep1.wav");
+	PrecacheSound("voltigore/voltigore_footstep2.wav");
+	PrecacheSound("voltigore/voltigore_footstep3.wav");
 
-	PRECACHE_SOUND("voltigore/voltigore_run_grunt1.wav");
-	PRECACHE_SOUND("voltigore/voltigore_run_grunt2.wav");
+	PrecacheSound("voltigore/voltigore_run_grunt1.wav");
+	PrecacheSound("voltigore/voltigore_run_grunt2.wav");
 
-	PRECACHE_SOUND("hassault/hw_shoot1.wav");
+	PrecacheSound("voltigore/voltigore_eat.wav");
 
-	PRECACHE_SOUND("debris/beamstart2.wav");
+	PrecacheSound("hassault/hw_shoot1.wav");
+
+	PrecacheSound("debris/beamstart2.wav");
 
 	UTIL_PrecacheOther("charged_bolt");
 
-	m_iVoltigoreGibs = PRECACHE_MODEL("models/vgibs.mdl");
-}
-
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
-void COFVoltigore::Precache()
-{
-	PrecacheCore("models/voltigore.mdl");
+	m_iVoltigoreGibs = PrecacheModel("models/vgibs.mdl");
 }
 
 //=========================================================
@@ -829,7 +832,7 @@ bool COFVoltigore::FCanCheckAttacks()
 //=========================================================
 bool COFVoltigore::CheckMeleeAttack1(float flDot, float flDist)
 {
-	if (HasConditions(bits_COND_SEE_ENEMY) && flDist <= VOLTIGORE_MELEE_DIST && flDot >= 0.6 && m_hEnemy != nullptr)
+	if (HasConditions(bits_COND_SEE_ENEMY) && flDist <= GetMeleeDistance() && flDot >= 0.6 && m_hEnemy != nullptr)
 	{
 		return true;
 	}
@@ -850,7 +853,7 @@ bool COFVoltigore::CheckRangeAttack1(float flDot, float flDist)
 		return false;
 	}
 
-	if (flDist >= VOLTIGORE_MELEE_DIST && flDist <= 1024 && flDot >= 0.5 && gpGlobals->time >= m_flNextBeamAttackCheck)
+	if (flDist >= GetMeleeDistance() && flDist <= 1024 && flDot >= 0.5 && gpGlobals->time >= m_flNextBeamAttackCheck)
 	{
 		TraceResult tr;
 		Vector vecArmPos, vecArmDir;
@@ -892,7 +895,7 @@ void COFVoltigore::StartTask(Task_t* pTask)
 		}
 		else
 		{
-			ALERT(at_aiconsole, "VoltigoreGetPathToEnemyCorpse failed!!\n");
+			AILogger->debug("VoltigoreGetPathToEnemyCorpse failed!!");
 			TaskFail();
 		}
 	}
@@ -968,7 +971,7 @@ void COFVoltigore::RunTask(Task_t* pTask)
 
 				pev->framerate = 0;
 
-				//Flatten the bounding box so players can step on it
+				// Flatten the bounding box so players can step on it
 				if (BBoxFlat())
 				{
 					const auto maxs = Vector(pev->maxs.x, pev->maxs.y, pev->mins.z + 1);
@@ -1077,7 +1080,7 @@ Schedule_t* COFVoltigore::GetScheduleOfType(int Type)
 	case SCHED_RANGE_ATTACK1:
 		if (HasConditions(bits_COND_SEE_ENEMY))
 		{
-			//normal attack
+			// normal attack
 			return &slVoltigoreRangeAttack1[0];
 		}
 		else
@@ -1174,7 +1177,7 @@ void COFVoltigore::DeathGibThink()
 
 			float closest = 1;
 
-			//Do 3 ray traces and use the closest one to make a beam
+			// Do 3 ray traces and use the closest one to make a beam
 			for (auto ray = 0; ray < 3; ++ray)
 			{
 				TraceResult tr1;
@@ -1187,7 +1190,7 @@ void COFVoltigore::DeathGibThink()
 				}
 			}
 
-			//No nearby objects found
+			// No nearby objects found
 			if (closest == 1)
 			{
 				return;
@@ -1223,7 +1226,7 @@ void COFVoltigore::DeathGibThink()
 
 		ClearMultiDamage();
 
-		::RadiusDamage(pev->origin, pev, pev, gSkillData.voltigoreDmgBeam, 160.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_SHOCK);
+		::RadiusDamage(pev->origin, pev, pev, GetSkillFloat("voltigore_dmg_beam"sv), 160.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_SHOCK);
 	}
 }
 
@@ -1257,10 +1260,10 @@ void COFVoltigore::GibMonster()
 	SetThink(&CBaseMonster::SUB_Remove);
 	pev->nextthink = gpGlobals->time + 0.15;
 
-	//Note: the original didn't have the violence check
+	// Note: the original didn't have the violence check
 	if (CVAR_GET_FLOAT("violence_agibs") != 0) // Should never get here, but someone might call it directly
 	{
-		//Gib spawning has been rewritten so the logic for limiting gib submodels is generalized
+		// Gib spawning has been rewritten so the logic for limiting gib submodels is generalized
 		CGib::SpawnRandomGibs(pev, 12, VoltigoreGibs); // Throw alien gibs
 	}
 }

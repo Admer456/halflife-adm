@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 
 
@@ -60,6 +60,7 @@ void CActAnimating::SetActivity(Activity act)
 class CXenPLight : public CActAnimating
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void Touch(CBaseEntity* pOther) override;
@@ -85,11 +86,18 @@ TYPEDESCRIPTION CXenPLight::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE(CXenPLight, CActAnimating);
 
+void CXenPLight::OnCreate()
+{
+	CActAnimating::OnCreate();
+
+	pev->model = MAKE_STRING("models/light.mdl");
+}
+
 void CXenPLight::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/light.mdl");
+	SetModel(STRING(pev->model));
 	pev->movetype = MOVETYPE_NONE;
 	pev->solid = SOLID_TRIGGER;
 
@@ -106,8 +114,8 @@ void CXenPLight::Spawn()
 
 void CXenPLight::Precache()
 {
-	PRECACHE_MODEL("models/light.mdl");
-	PRECACHE_MODEL(XEN_PLANT_GLOW_SPRITE);
+	PrecacheModel(STRING(pev->model));
+	PrecacheModel(XEN_PLANT_GLOW_SPRITE);
 }
 
 
@@ -179,6 +187,7 @@ void CXenPLight::LightOff()
 class CXenHair : public CActAnimating
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void Think() override;
@@ -188,10 +197,17 @@ LINK_ENTITY_TO_CLASS(xen_hair, CXenHair);
 
 #define SF_HAIR_SYNC 0x0001
 
+void CXenHair::OnCreate()
+{
+	CActAnimating::OnCreate();
+
+	pev->model = MAKE_STRING("models/hair.mdl");
+}
+
 void CXenHair::Spawn()
 {
 	Precache();
-	SET_MODEL(edict(), "models/hair.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-4, -4, 0), Vector(4, 4, 32));
 	pev->sequence = 0;
 
@@ -217,7 +233,7 @@ void CXenHair::Think()
 
 void CXenHair::Precache()
 {
-	PRECACHE_MODEL("models/hair.mdl");
+	PrecacheModel(STRING(pev->model));
 }
 
 
@@ -231,9 +247,8 @@ LINK_ENTITY_TO_CLASS(xen_ttrigger, CXenTreeTrigger);
 
 CXenTreeTrigger* CXenTreeTrigger::TriggerCreate(edict_t* pOwner, const Vector& position)
 {
-	CXenTreeTrigger* pTrigger = GetClassPtr((CXenTreeTrigger*)nullptr);
+	CXenTreeTrigger* pTrigger = g_EntityDictionary->Create<CXenTreeTrigger>("xen_ttrigger");
 	pTrigger->pev->origin = position;
-	pTrigger->pev->classname = MAKE_STRING("xen_ttrigger");
 	pTrigger->pev->solid = SOLID_TRIGGER;
 	pTrigger->pev->movetype = MOVETYPE_NONE;
 	pTrigger->pev->owner = pOwner;
@@ -257,6 +272,7 @@ void CXenTreeTrigger::Touch(CBaseEntity* pOther)
 class CXenTree : public CActAnimating
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void Touch(CBaseEntity* pOther) override;
@@ -290,11 +306,18 @@ TYPEDESCRIPTION CXenTree::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE(CXenTree, CActAnimating);
 
+void CXenTree::OnCreate()
+{
+	CActAnimating::OnCreate();
+
+	pev->model = MAKE_STRING("models/tree.mdl");
+}
+
 void CXenTree::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/tree.mdl");
+	SetModel(STRING(pev->model));
 	pev->movetype = MOVETYPE_NONE;
 	pev->solid = SOLID_BBOX;
 
@@ -329,8 +352,8 @@ const char* CXenTree::pAttackMissSounds[] =
 
 void CXenTree::Precache()
 {
-	PRECACHE_MODEL("models/tree.mdl");
-	PRECACHE_MODEL(XEN_PLANT_GLOW_SPRITE);
+	PrecacheModel(STRING(pev->model));
+	PrecacheModel(XEN_PLANT_GLOW_SPRITE);
 	PRECACHE_SOUND_ARRAY(pAttackHitSounds);
 	PRECACHE_SOUND_ARRAY(pAttackMissSounds);
 }
@@ -469,12 +492,11 @@ public:
 
 CXenHull* CXenHull::CreateHull(CBaseEntity* source, const Vector& mins, const Vector& maxs, const Vector& offset)
 {
-	CXenHull* pHull = GetClassPtr((CXenHull*)nullptr);
+	CXenHull* pHull = g_EntityDictionary->Create<CXenHull>("xen_hull");
 
 	UTIL_SetOrigin(pHull->pev, source->pev->origin + offset);
-	SET_MODEL(pHull->edict(), STRING(source->pev->model));
+	pHull->SetModel(STRING(source->pev->model));
 	pHull->pev->solid = SOLID_BBOX;
-	pHull->pev->classname = MAKE_STRING("xen_hull");
 	pHull->pev->movetype = MOVETYPE_NONE;
 	pHull->pev->owner = source->edict();
 	UTIL_SetSize(pHull->pev, mins, maxs);
@@ -533,8 +555,15 @@ void CXenSporeLarge::Spawn()
 void CXenSpore::Spawn()
 {
 	Precache();
+	if (FStringNull(pev->model))
+	{
+		SetModel(pModelNames[pev->skin]);
+	}
+	else
+	{
+		SetModel(STRING(pev->model));
+	}
 
-	SET_MODEL(ENT(pev), pModelNames[pev->skin]);
 	pev->movetype = MOVETYPE_NONE;
 	pev->solid = SOLID_BBOX;
 	pev->takedamage = DAMAGE_YES;
@@ -557,10 +586,16 @@ const char* CXenSpore::pModelNames[] =
 
 void CXenSpore::Precache()
 {
-	//TODO: bound check
-	PRECACHE_MODEL(pModelNames[pev->skin]);
+	if (FStringNull(pev->model))
+	{
+		// TODO: bound check
+		PrecacheModel(pModelNames[pev->skin]);
+	}
+	else
+	{
+		PrecacheModel(STRING(pev->model));
+	}
 }
-
 
 void CXenSpore::Touch(CBaseEntity* pOther)
 {

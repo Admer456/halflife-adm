@@ -1,38 +1,45 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 #include "UserMessages.h"
 #include "CItemAcceleratorCTF.h"
 
 LINK_ENTITY_TO_CLASS(item_ctfaccelerator, CItemAcceleratorCTF);
 
+void CItemAcceleratorCTF::OnCreate()
+{
+	CItemCTF::OnCreate();
+
+	pev->model = MAKE_STRING("models/w_accelerator.mdl");
+}
+
 void CItemAcceleratorCTF::Precache()
 {
 	CItemCTF::Precache();
 
-	PRECACHE_MODEL("models/w_accelerator.mdl");
-	PRECACHE_SOUND("turret/tu_ping.wav");
+	PrecacheModel(STRING(pev->model));
+	PrecacheSound("turret/tu_ping.wav");
 }
 
 void CItemAcceleratorCTF::Spawn()
 {
 	Precache();
 
-	SET_MODEL(edict(), "models/w_accelerator.mdl");
+	SetModel(STRING(pev->model));
 
-	//TODO: is this actually used?
+	// TODO: is this actually used?
 	pev->spawnflags |= SF_NORESPAWN;
 
 	pev->oldorigin = pev->origin;

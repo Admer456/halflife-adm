@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -7,6 +7,12 @@
 
 #pragma once
 
+#include <memory>
+#include <optional>
+
+#include <spdlog/logger.h>
+
+#include "ClientCommandRegistry.h"
 #include "voice_common.h"
 
 
@@ -29,12 +35,16 @@ public:
 class CVoiceGameMgr
 {
 public:
+	static inline std::shared_ptr<spdlog::logger> Logger;
+
 	CVoiceGameMgr();
 	virtual ~CVoiceGameMgr();
 
 	bool Init(
 		IVoiceGameMgrHelper* m_pHelper,
 		int maxClients);
+
+	void Shutdown();
 
 	void SetHelper(IVoiceGameMgrHelper* pHelper);
 
@@ -45,11 +55,7 @@ public:
 	void Update(double frametime);
 
 	// Called when a new client connects (unsquelches its entity for everyone).
-	void ClientConnected(struct edict_s* pEdict);
-
-	// Called on ClientCommand. Checks for the squelch and unsquelch commands.
-	// Returns true if it handled the command.
-	bool ClientCommand(CBasePlayer* pPlayer, const char* cmd);
+	void ClientConnected(edict_t* pEdict);
 
 	// Called to determine if the Receiver has muted (blocked) the Sender
 	// Returns true if the receiver has blocked the sender
@@ -60,6 +66,7 @@ private:
 	// Force it to update the client masks.
 	void UpdateMasks();
 
+	std::optional<int> GetAndValidatePlayerIndex(CBasePlayer* player, const char* cmd);
 
 private:
 	int m_msgPlayerVoiceMask;
@@ -68,4 +75,7 @@ private:
 	IVoiceGameMgrHelper* m_pHelper;
 	int m_nMaxPlayers;
 	double m_UpdateInterval; // How long since the last update.
+
+	ScopedClientCommand m_VBanCommand;
+	ScopedClientCommand m_VModEnableCommand;
 };

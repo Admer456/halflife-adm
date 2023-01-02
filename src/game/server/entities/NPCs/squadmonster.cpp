@@ -1,23 +1,24 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // Squadmonster  functions
 //=========================================================
 #include "cbase.h"
 #include "squadmonster.h"
 #include "plane.h"
+#include "military/hgrunt.h"
 
 //=========================================================
 // Save/Restore
@@ -83,7 +84,7 @@ bool CSquadMonster::OccupySlot(int iDesiredSlots)
 				// No, use this bit
 				pSquadLeader->m_afSquadSlots |= iMask;
 				m_iMySlot = iMask;
-				//				ALERT ( at_aiconsole, "Took slot %d - %d\n", i, m_hSquadLeader->m_afSquadSlots );
+				//				AILogger->debug("Took slot {} - {}", i, m_hSquadLeader->m_afSquadSlots);
 				return true;
 			}
 		}
@@ -99,7 +100,7 @@ void CSquadMonster::VacateSlot()
 {
 	if (m_iMySlot != bits_NO_SLOT && InSquad())
 	{
-		//		ALERT ( at_aiconsole, "Vacated Slot %d - %d\n", m_iMySlot, m_hSquadLeader->m_afSquadSlots );
+		//		AILogger->debug("Vacated Slot {} - {}", m_iMySlot, m_hSquadLeader->m_afSquadSlots);
 		MySquadLeader()->m_afSquadSlots &= ~m_iMySlot;
 		m_iMySlot = bits_NO_SLOT;
 	}
@@ -242,7 +243,7 @@ void CSquadMonster::SquadMakeEnemy(CBaseEntity* pEnemy)
 
 	if (!pEnemy)
 	{
-		ALERT(at_console, "ERROR: SquadMakeEnemy() - pEnemy is nullptr!\n");
+		AILogger->debug("ERROR: SquadMakeEnemy() - pEnemy is nullptr!");
 		return;
 	}
 
@@ -426,12 +427,12 @@ void CSquadMonster::StartMonster()
 
 		if (0 != iSquadSize)
 		{
-			ALERT(at_aiconsole, "Squad of %d %s formed\n", iSquadSize, STRING(pev->classname));
+			AILogger->debug("Squad of {} {} formed", iSquadSize, STRING(pev->classname));
 		}
 
 		if (IsLeader() && FClassnameIs(pev, "monster_human_grunt"))
 		{
-			SetBodygroup(1, 1); // UNDONE: truly ugly hack
+			SetBodygroup(HGruntBodyGroup::Head, HGruntHead::Commander); // UNDONE: truly ugly hack
 			pev->skin = 0;
 		}
 	}
@@ -470,7 +471,7 @@ bool CSquadMonster::NoFriendlyFire()
 		return false;
 	}
 
-	//UTIL_MakeVectors ( pev->angles );
+	// UTIL_MakeVectors ( pev->angles );
 
 	vecLeftSide = pev->origin - (gpGlobals->v_right * (pev->size.x * 1.5));
 	vecRightSide = pev->origin + (gpGlobals->v_right * (pev->size.x * 1.5));
@@ -481,9 +482,9 @@ bool CSquadMonster::NoFriendlyFire()
 	backPlane.InitializePlane(gpGlobals->v_forward, pev->origin);
 
 	/*
-		ALERT ( at_console, "LeftPlane: %f %f %f : %f\n", leftPlane.m_vecNormal.x, leftPlane.m_vecNormal.y, leftPlane.m_vecNormal.z, leftPlane.m_flDist );
-		ALERT ( at_console, "RightPlane: %f %f %f : %f\n", rightPlane.m_vecNormal.x, rightPlane.m_vecNormal.y, rightPlane.m_vecNormal.z, rightPlane.m_flDist );
-		ALERT ( at_console, "BackPlane: %f %f %f : %f\n", backPlane.m_vecNormal.x, backPlane.m_vecNormal.y, backPlane.m_vecNormal.z, backPlane.m_flDist );
+		AILogger->debug("LeftPlane: {} : {}", leftPlane.m_vecNormal, leftPlane.m_flDist);
+		AILogger->debug("RightPlane: {} : {}", rightPlane.m_vecNormal, rightPlane.m_flDist);
+		AILogger->debug("BackPlane: {} : {}", backPlane.m_vecNormal, backPlane.m_flDist);
 	*/
 
 	CSquadMonster* pSquadLeader = MySquadLeader();

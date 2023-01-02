@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 /*
 
 ===== turret.cpp ========================================================
@@ -26,17 +26,17 @@
 
 #include "cbase.h"
 
-extern Vector VecBModelOrigin(entvars_t* pevBModel);
+Vector VecBModelOrigin(entvars_t* pevBModel);
 
 #define TURRET_SHOTS 2
 #define TURRET_RANGE (100 * 12)
 #define TURRET_SPREAD Vector(0, 0, 0)
-#define TURRET_TURNRATE 30 //angles per 0.1 second
+#define TURRET_TURNRATE 30 // angles per 0.1 second
 #define TURRET_MAXWAIT 15  // seconds turret will stay active w/o a target
 #define TURRET_MAXSPIN 5   // seconds turret barrel will spin w/o a target
 #define TURRET_MACHINE_VOLUME 0.5
 
-typedef enum
+enum TURRET_ANIM
 {
 	TURRET_ANIM_NONE = 0,
 	TURRET_ANIM_FIRE,
@@ -44,7 +44,7 @@ typedef enum
 	TURRET_ANIM_DEPLOY,
 	TURRET_ANIM_RETIRE,
 	TURRET_ANIM_DIE,
-} TURRET_ANIM;
+};
 
 class CBaseTurret : public CBaseMonster
 {
@@ -167,6 +167,7 @@ IMPLEMENT_SAVERESTORE(CBaseTurret, CBaseMonster);
 class CTurret : public CBaseTurret
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	// Think functions
@@ -195,6 +196,7 @@ IMPLEMENT_SAVERESTORE(CTurret, CBaseTurret);
 class CMiniTurret : public CBaseTurret
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	// other functions
@@ -266,27 +268,35 @@ void CBaseTurret::Spawn()
 
 void CBaseTurret::Precache()
 {
-	PRECACHE_SOUND("turret/tu_fire1.wav");
-	PRECACHE_SOUND("turret/tu_ping.wav");
-	PRECACHE_SOUND("turret/tu_active2.wav");
-	PRECACHE_SOUND("turret/tu_die.wav");
-	PRECACHE_SOUND("turret/tu_die2.wav");
-	PRECACHE_SOUND("turret/tu_die3.wav");
-	// PRECACHE_SOUND ("turret/tu_retract.wav"); // just use deploy sound to save memory
-	PRECACHE_SOUND("turret/tu_deploy.wav");
-	PRECACHE_SOUND("turret/tu_spinup.wav");
-	PRECACHE_SOUND("turret/tu_spindown.wav");
-	PRECACHE_SOUND("turret/tu_search.wav");
-	PRECACHE_SOUND("turret/tu_alert.wav");
+	PrecacheModel(STRING(pev->model));
+	PrecacheSound("turret/tu_fire1.wav");
+	PrecacheSound("turret/tu_ping.wav");
+	PrecacheSound("turret/tu_active2.wav");
+	PrecacheSound("turret/tu_die.wav");
+	PrecacheSound("turret/tu_die2.wav");
+	PrecacheSound("turret/tu_die3.wav");
+	// PrecacheSound ("turret/tu_retract.wav"); // just use deploy sound to save memory
+	PrecacheSound("turret/tu_deploy.wav");
+	PrecacheSound("turret/tu_spinup.wav");
+	PrecacheSound("turret/tu_spindown.wav");
+	PrecacheSound("turret/tu_search.wav");
+	PrecacheSound("turret/tu_alert.wav");
 }
 
 #define TURRET_GLOW_SPRITE "sprites/flare3.spr"
 
+void CTurret::OnCreate()
+{
+	CBaseTurret::OnCreate();
+
+	pev->health = GetSkillFloat("turret_health"sv);
+	pev->model = MAKE_STRING("models/turret.mdl");
+}
+
 void CTurret::Spawn()
 {
 	Precache();
-	SET_MODEL(ENT(pev), "models/turret.mdl");
-	pev->health = gSkillData.turretHealth;
+	SetModel(STRING(pev->model));
 	m_HackedGunPos = Vector(0, 0, 12.75);
 	m_flMaxSpin = TURRET_MAXSPIN;
 	pev->view_ofs.z = 12.75;
@@ -311,15 +321,21 @@ void CTurret::Spawn()
 void CTurret::Precache()
 {
 	CBaseTurret::Precache();
-	PRECACHE_MODEL("models/turret.mdl");
-	PRECACHE_MODEL(TURRET_GLOW_SPRITE);
+	PrecacheModel(TURRET_GLOW_SPRITE);
+}
+
+void CMiniTurret::OnCreate()
+{
+	CBaseTurret::OnCreate();
+
+	pev->health = GetSkillFloat("miniturret_health"sv);
+	pev->model = MAKE_STRING("models/miniturret.mdl");
 }
 
 void CMiniTurret::Spawn()
 {
 	Precache();
-	SET_MODEL(ENT(pev), "models/miniturret.mdl");
-	pev->health = gSkillData.miniturretHealth;
+	SetModel(STRING(pev->model));
 	m_HackedGunPos = Vector(0, 0, 12.75);
 	m_flMaxSpin = 0;
 	pev->view_ofs.z = 12.75;
@@ -338,10 +354,9 @@ void CMiniTurret::Spawn()
 void CMiniTurret::Precache()
 {
 	CBaseTurret::Precache();
-	PRECACHE_MODEL("models/miniturret.mdl");
-	PRECACHE_SOUND("weapons/hks1.wav");
-	PRECACHE_SOUND("weapons/hks2.wav");
-	PRECACHE_SOUND("weapons/hks3.wav");
+	PrecacheSound("weapons/hks1.wav");
+	PrecacheSound("weapons/hks2.wav");
+	PrecacheSound("weapons/hks3.wav");
 }
 
 void CBaseTurret::Initialize()
@@ -526,13 +541,9 @@ void CBaseTurret::ActiveThink()
 
 	UTIL_MakeAimVectors(m_vecCurAngles);
 
-	/*
-	ALERT( at_console, "%.0f %.0f : %.2f %.2f %.2f\n",
-		m_vecCurAngles.x, m_vecCurAngles.y,
-		gpGlobals->v_forward.x, gpGlobals->v_forward.y, gpGlobals->v_forward.z );
-	*/
+	// AILogger->debug("{:.0f} {:.0f} : {:.2f}", m_vecCurAngles.x, m_vecCurAngles.y, gpGlobals->v_forward);
 
-	Vector vecLOS = vecDirToEnemy; //vecMid - m_vecLastSight;
+	Vector vecLOS = vecDirToEnemy; // vecMid - m_vecLastSight;
 	vecLOS = vecLOS.Normalize();
 
 	// Is the Gun looking at the target
@@ -554,7 +565,7 @@ void CBaseTurret::ActiveThink()
 		SetTurretAnim(TURRET_ANIM_SPIN);
 	}
 
-	//move the gun
+	// move the gun
 	if (m_fBeserk)
 	{
 		if (RANDOM_LONG(0, 9) == 0)
@@ -573,7 +584,7 @@ void CBaseTurret::ActiveThink()
 		if (vec.y < 0)
 			vec.y += 360;
 
-		//ALERT(at_console, "[%.2f]", vec.x);
+		// const float previousPitch = vec.x;
 
 		if (vec.x < -180)
 			vec.x += 360;
@@ -599,7 +610,7 @@ void CBaseTurret::ActiveThink()
 				vec.x = -m_iMinPitch;
 		}
 
-		// ALERT(at_console, "->[%.2f]\n", vec.x);
+		// AILogger->debug("[{:.2f}]->[{:.2f}]", previousPitch, vec.x);
 
 		m_vecGoalAngles.y = vec.y;
 		m_vecGoalAngles.x = vec.x;
@@ -814,7 +825,7 @@ void CBaseTurret::SetTurretAnim(TURRET_ANIM anim)
 			pev->framerate = 1.0;
 			break;
 		}
-		//ALERT(at_console, "Turret anim #%d\n", anim);
+		// AILogger->debug("Turret anim #{}", anim);
 	}
 }
 
@@ -865,7 +876,7 @@ void CBaseTurret::SearchThink()
 		// Are we out of time, do we need to retract?
 		if (gpGlobals->time > m_flLastSight)
 		{
-			//Before we retrace, make sure that we are spun down.
+			// Before we retrace, make sure that we are spun down.
 			m_flLastSight = 0;
 			m_flSpinUpTime = 0;
 			SetThink(&CBaseTurret::Retire);
@@ -1114,7 +1125,7 @@ bool CBaseTurret::MoveTurret()
 		if (flDist < (0.05 * m_iBaseTurnRate))
 			m_vecCurAngles.y = m_vecGoalAngles.y;
 
-		//ALERT(at_console, "%.2f -> %.2f\n", m_vecCurAngles.y, y);
+		// AILogger->debug("{:.2f} -> {:.2f}", m_vecCurAngles.y, y);
 		if (m_iOrientation == 0)
 			SetBoneController(0, m_vecCurAngles.y - pev->angles.y);
 		else
@@ -1125,7 +1136,7 @@ bool CBaseTurret::MoveTurret()
 	if (!state)
 		m_fTurnRate = m_iBaseTurnRate;
 
-	//ALERT(at_console, "(%.2f, %.2f)->(%.2f, %.2f)\n", m_vecCurAngles.x,
+	// AILogger->debug("({:.2f}, {:.2f})->({:.2f}, {:.2f})", m_vecCurAngles.x,
 	//	m_vecCurAngles.y, m_vecGoalAngles.x, m_vecGoalAngles.y);
 	return state;
 }
@@ -1149,8 +1160,8 @@ int CBaseTurret::Classify()
 class CSentry : public CBaseTurret
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
-	void Precache() override;
 	// other functions
 	void Shoot(Vector& vecSrc, Vector& vecDirToEnemy) override;
 	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
@@ -1160,17 +1171,18 @@ public:
 
 LINK_ENTITY_TO_CLASS(monster_sentry, CSentry);
 
-void CSentry::Precache()
+void CSentry::OnCreate()
 {
-	CBaseTurret::Precache();
-	PRECACHE_MODEL("models/sentry.mdl");
+	CBaseTurret::OnCreate();
+
+	pev->health = GetSkillFloat("sentry_health"sv);
+	pev->model = MAKE_STRING("models/sentry.mdl");
 }
 
 void CSentry::Spawn()
 {
 	Precache();
-	SET_MODEL(ENT(pev), "models/sentry.mdl");
-	pev->health = gSkillData.sentryHealth;
+	SetModel(STRING(pev->model));
 	m_HackedGunPos = Vector(0, 0, 48);
 	pev->view_ofs.z = 48;
 	m_flMaxWait = 1E6;

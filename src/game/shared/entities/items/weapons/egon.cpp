@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "customentity.h"
@@ -22,11 +22,18 @@
 
 LINK_ENTITY_TO_CLASS(weapon_egon, CEgon);
 
+void CEgon::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_egon.mdl");
+}
+
 void CEgon::Spawn()
 {
 	Precache();
 	m_iId = WEAPON_EGON;
-	SET_MODEL(ENT(pev), "models/w_egon.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = EGON_DEFAULT_GIVE;
 
@@ -36,21 +43,21 @@ void CEgon::Spawn()
 
 void CEgon::Precache()
 {
-	PRECACHE_MODEL("models/w_egon.mdl");
-	PRECACHE_MODEL("models/v_egon.mdl");
-	PRECACHE_MODEL("models/p_egon.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/v_egon.mdl");
+	PrecacheModel("models/p_egon.mdl");
 
-	PRECACHE_MODEL("models/w_9mmclip.mdl");
-	PRECACHE_SOUND("items/9mmclip1.wav");
+	PrecacheModel("models/w_9mmclip.mdl");
+	PrecacheSound("items/9mmclip1.wav");
 
-	PRECACHE_SOUND(EGON_SOUND_OFF);
-	PRECACHE_SOUND(EGON_SOUND_RUN);
-	PRECACHE_SOUND(EGON_SOUND_STARTUP);
+	PrecacheSound(EGON_SOUND_OFF);
+	PrecacheSound(EGON_SOUND_RUN);
+	PrecacheSound(EGON_SOUND_STARTUP);
 
-	PRECACHE_MODEL(EGON_BEAM_SPRITE);
-	PRECACHE_MODEL(EGON_FLARE_SPRITE);
+	PrecacheModel(EGON_BEAM_SPRITE);
+	PrecacheModel(EGON_FLARE_SPRITE);
 
-	PRECACHE_SOUND("weapons/357_cock1.wav");
+	PrecacheSound("weapons/357_cock1.wav");
 
 	m_usEgonFire = PRECACHE_EVENT(1, "events/egon_fire.sc");
 	m_usEgonStop = PRECACHE_EVENT(1, "events/egon_stop.sc");
@@ -129,7 +136,7 @@ void CEgon::UseAmmo(int count)
 void CEgon::Attack()
 {
 	// don't fire underwater
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 
 		if (m_fireState != FIRE_OFF || m_pBeam)
@@ -216,7 +223,7 @@ void CEgon::Fire(const Vector& vecOrigSrc, const Vector& vecDir)
 	pentIgnore = m_pPlayer->edict();
 	Vector tmpSrc = vecOrigSrc + gpGlobals->v_up * -8 + gpGlobals->v_right * 3;
 
-	// ALERT( at_console, "." );
+	// WeaponsLogger->debug(".");
 
 	UTIL_TraceLine(vecOrigSrc, vecDest, dont_ignore_monsters, pentIgnore, &tr);
 
@@ -257,7 +264,7 @@ void CEgon::Fire(const Vector& vecOrigSrc, const Vector& vecDir)
 			ClearMultiDamage();
 			if (0 != pEntity->pev->takedamage)
 			{
-				pEntity->TraceAttack(m_pPlayer->pev, gSkillData.plrDmgEgonNarrow, vecDir, &tr, DMG_ENERGYBEAM);
+				pEntity->TraceAttack(m_pPlayer->pev, GetSkillFloat("plr_egon_narrow"sv), vecDir, &tr, DMG_ENERGYBEAM);
 			}
 			ApplyMultiDamage(m_pPlayer->pev, m_pPlayer->pev);
 
@@ -294,14 +301,14 @@ void CEgon::Fire(const Vector& vecOrigSrc, const Vector& vecDir)
 			ClearMultiDamage();
 			if (0 != pEntity->pev->takedamage)
 			{
-				pEntity->TraceAttack(m_pPlayer->pev, gSkillData.plrDmgEgonWide, vecDir, &tr, DMG_ENERGYBEAM | DMG_ALWAYSGIB);
+				pEntity->TraceAttack(m_pPlayer->pev, GetSkillFloat("plr_egon_wide"sv), vecDir, &tr, DMG_ENERGYBEAM | DMG_ALWAYSGIB);
 			}
 			ApplyMultiDamage(m_pPlayer->pev, m_pPlayer->pev);
 
 			if (g_pGameRules->IsMultiplayer())
 			{
 				// radius damage a little more potent in multiplayer.
-				::RadiusDamage(tr.vecEndPos, pev, m_pPlayer->pev, gSkillData.plrDmgEgonWide / 4, 128, CLASS_NONE, DMG_ENERGYBEAM | DMG_BLAST | DMG_ALWAYSGIB);
+				::RadiusDamage(tr.vecEndPos, pev, m_pPlayer->pev, GetSkillFloat("plr_egon_wide"sv) / 4, 128, CLASS_NONE, DMG_ENERGYBEAM | DMG_BLAST | DMG_ALWAYSGIB);
 			}
 
 			if (!m_pPlayer->IsAlive())
@@ -309,7 +316,7 @@ void CEgon::Fire(const Vector& vecOrigSrc, const Vector& vecDir)
 
 			if (g_pGameRules->IsMultiplayer())
 			{
-				//multiplayer uses 5 ammo/second
+				// multiplayer uses 5 ammo/second
 				if (gpGlobals->time >= m_flAmmoUseTime)
 				{
 					UseAmmo(1);
@@ -491,7 +498,7 @@ void CEgon::EndAttack()
 {
 	bool bMakeNoise = false;
 
-	if (m_fireState != FIRE_OFF) //Checking the button just in case!.
+	if (m_fireState != FIRE_OFF) // Checking the button just in case!.
 		bMakeNoise = true;
 
 	PLAYBACK_EVENT_FULL(FEV_GLOBAL | FEV_RELIABLE, m_pPlayer->edict(), m_usEgonStop, 0, m_pPlayer->pev->origin, m_pPlayer->pev->angles, 0.0, 0.0,
@@ -509,18 +516,20 @@ void CEgon::EndAttack()
 
 class CEgonAmmo : public CBasePlayerAmmo
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_chainammo.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_chainammo.mdl");
 	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_chainammo.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		if (pOther->GiveAmmo(AMMO_URANIUMBOX_GIVE, "uranium", URANIUM_MAX_CARRY) != -1)
 		{

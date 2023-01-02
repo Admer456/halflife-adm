@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1999, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1999, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //
 //  hud.h
 //
@@ -21,6 +21,8 @@
 //
 
 #pragma once
+
+#include <EASTL/fixed_string.h>
 
 #include "common_types.h"
 #include "cl_dll.h"
@@ -36,20 +38,19 @@
 
 #define HUDELEM_ACTIVE 1
 
-typedef struct
+struct POSITION
 {
 	int x, y;
-} POSITION;
+};
 
 #include "global_consts.h"
 
-typedef struct
+struct RGBA
 {
 	unsigned char r, g, b, a;
-} RGBA;
+};
 
-typedef struct cvar_s cvar_t;
-
+struct cvar_t;
 
 #define HUD_ACTIVE 1
 #define HUD_INTERMISSION 2
@@ -228,7 +229,7 @@ protected:
 	bool m_bReparseString; // set to true whenever the m_szStatusBar needs to be recalculated
 
 	// an array of colors...one color for each line
-	float* m_pflNameColors[MAX_STATUSBAR_LINES];
+	Vector* m_pflNameColors[MAX_STATUSBAR_LINES];
 };
 
 struct extra_player_info_t
@@ -313,9 +314,9 @@ public:
 	friend class CHudSpectator;
 
 private:
-	struct cvar_s* m_HUD_saytext;
-	struct cvar_s* m_HUD_saytext_time;
-	struct cvar_s* m_con_color;
+	cvar_t* m_HUD_saytext;
+	cvar_t* m_HUD_saytext_time;
+	cvar_t* m_con_color;
 };
 
 //
@@ -440,7 +441,6 @@ public:
 	bool VidInit() override;
 	bool Draw(float flTime) override;
 	bool MsgFunc_HudText(const char* pszName, int iSize, void* pbuf);
-	bool MsgFunc_HudTextPro(const char* pszName, int iSize, void* pbuf);
 	bool MsgFunc_GameTitle(const char* pszName, int iSize, void* pbuf);
 
 	float FadeBlend(float fadein, float fadeout, float hold, float localTime);
@@ -461,8 +461,17 @@ private:
 	float m_gameTitleTime;
 	client_textmessage_t* m_pGameTitle;
 
-	int m_HUD_title_life;
-	int m_HUD_title_half;
+	struct GameTitle
+	{
+		int Left = 0;
+		int Right = 0;
+	};
+
+	GameTitle m_HUD_title_halflife;
+	GameTitle m_HUD_title_opposingforce;
+	GameTitle m_HUD_title_blueshift;
+
+	GameTitle* m_TitleToDisplay = nullptr;
 };
 
 //
@@ -488,8 +497,8 @@ public:
 	};
 
 
-	//had to make these public so CHud could access them (to enable concussion icon)
-	//could use a friend declaration instead...
+	// had to make these public so CHud could access them (to enable concussion icon)
+	// could use a friend declaration instead...
 	void EnableIcon(const char* pszIconName, const RGB24& color);
 	void DisableIcon(const char* pszIconName);
 
@@ -497,14 +506,14 @@ public:
 	void DisableCustomIcon(int nIndex);
 
 private:
-	typedef struct
+	struct icon_sprite_t
 	{
 		char szSpriteName[MAX_ICONSPRITENAME_LENGTH];
 		HSPRITE spr;
 		Rect rc;
 		RGB24 color;
-		int teamnumber; //Not actually used
-	} icon_sprite_t;
+		int teamnumber; // Not actually used
+	};
 
 	icon_sprite_t m_IconList[MAX_ICONSPRITES];
 	icon_sprite_t m_CustomList[MAX_CUSTOMSPRITES];
@@ -623,9 +632,68 @@ public:
 	int m_iPlayerNum;
 	bool m_iShowscoresHeld;
 
-	struct cvar_s* cl_showpacketloss;
+	cvar_t* cl_showpacketloss;
 
 	void GetAllPlayersInfo();
+};
+
+/**
+ *	@brief Displays info about this project on the HUD.
+ */
+class CHudProjectInfo : public CHudBase
+{
+public:
+	bool Init() override;
+	bool VidInit() override;
+	bool Draw(float flTime) override;
+
+	bool MsgFunc_ProjectInfo(const char* pszName, int iSize, void* pbuf);
+
+private:
+	struct LibraryInfo
+	{
+		int MajorVersion = -1;
+		int MinorVersion = -1;
+		int PatchVersion = -1;
+
+		std::string BranchName;
+		std::string TagName;
+		std::string CommitHash;
+	};
+
+	cvar_t* m_ShowProjectInfo = nullptr;
+
+	bool m_IsAlphaBuild = false;
+
+	LibraryInfo m_ClientInfo;
+	LibraryInfo m_ServerInfo;
+};
+
+/**
+ *	@brief Displays info about a single entity on the HUD.
+ */
+class CHudEntityInfo : public CHudBase
+{
+public:
+	bool Init() override;
+	bool VidInit() override;
+	bool Draw(float flTime) override;
+
+	bool MsgFunc_EntityInfo(const char* pszName, int iSize, void* pbuf);
+
+private:
+	static constexpr int MaxClassnameLengthCount = 64;
+
+	struct EntityInfo
+	{
+		eastl::fixed_string<char, MaxClassnameLengthCount + 1> Classname;
+		int Health = -1;
+		RGB24 Color{RGB_WHITE};
+	};
+
+	EntityInfo m_EntityInfo;
+
+	float m_DrawEndTime{0};
 };
 
 class CHud
@@ -653,7 +721,7 @@ public:
 	int m_iHideHUDDisplay;
 	int m_iFOV;
 	int m_Teamplay;
-	int m_iRes;
+	static constexpr int m_iRes = 640;
 	cvar_t* m_pCvarStealMouse;
 	cvar_t* m_pCvarDraw;
 	cvar_t* m_pCvarCrosshair;
@@ -661,8 +729,8 @@ public:
 	RGB24 m_HudColor = RGB_HUD_COLOR;
 
 	/**
-	*	@brief The color to use for Hud items
-	*/
+	 *	@brief The color to use for Hud items
+	 */
 	RGB24 m_HudItemColor = RGB_HUD_COLOR;
 
 	int m_iFontHeight;
@@ -687,7 +755,7 @@ public:
 
 	bool HasAnyWeapons() const
 	{
-		return (m_iWeaponBits & ~static_cast<std::uint64_t>(WEAPON_SUIT)) != 0;
+		return (m_iWeaponBits & ~(1ULL << WEAPON_SUIT)) != 0;
 	}
 
 private:
@@ -697,7 +765,7 @@ private:
 	Rect* m_rgrcRects;							  /*[HUD_SPRITE_COUNT]*/
 	char* m_rgszSpriteNames;					  /*[HUD_SPRITE_COUNT][MAX_SPRITE_NAME_LENGTH]*/
 
-	struct cvar_s* default_fov;
+	cvar_t* default_fov;
 
 public:
 	HSPRITE GetSprite(int index)
@@ -732,7 +800,11 @@ public:
 	CHudFlagIcons m_FlagIcons;
 	CHudPlayerBrowse m_PlayerBrowse;
 
+	CHudProjectInfo m_ProjectInfo;
+	CHudEntityInfo m_EntityInfo;
+
 	void Init();
+	void Shutdown();
 	void VidInit();
 	void Think();
 	bool Redraw(float flTime, bool intermission);
@@ -785,7 +857,7 @@ public:
 	}
 };
 
-extern CHud gHUD;
+inline CHud gHUD;
 
 extern int g_iPlayerClass;
 extern int g_iTeamNumber;

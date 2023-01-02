@@ -1,4 +1,4 @@
-//========= Copyright © 1996-2002, Valve LLC, All rights reserved. ============
+//========= Copyright Â© 1996-2002, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -15,11 +15,11 @@ public:
 	~CVoiceBanMgr();
 
 	// Init loads the list of squelched players from disk.
-	bool Init(char const* pGameDir);
+	bool Init();
 	void Term();
 
 	// Saves the state into voice_squelch.dt.
-	void SaveState(char const* pGameDir);
+	void SaveState();
 
 	bool GetPlayerBan(char const playerID[16]);
 	void SetPlayerBan(char const playerID[16], bool bSquelch);

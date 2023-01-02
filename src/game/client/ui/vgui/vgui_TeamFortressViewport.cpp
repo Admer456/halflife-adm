@@ -76,8 +76,8 @@ int g_iUser3 = 0;
 #define SBOARD_INDENT_Y_400 20
 
 void IN_ResetMouse();
-extern CMenuPanel* CMessageWindowPanel_Create(const char* szMOTD, const char* szTitle, bool iShadeFullscreen, bool iRemoveMe, int x, int y, int wide, int tall);
-extern float* GetClientColor(int clientIndex);
+CMenuPanel* CMessageWindowPanel_Create(const char* szMOTD, const char* szTitle, bool iShadeFullscreen, bool iRemoveMe, int x, int y, int wide, int tall);
+Vector* GetClientColor(int clientIndex);
 
 using namespace vgui;
 
@@ -162,16 +162,11 @@ const char* sCTFStatsSelection[StatsTeamsCount] =
 // Get the name of TGA file, based on GameDir
 char* GetVGUITGAName(const char* pszName)
 {
-	int i;
 	char sz[256];
 	static char gd[256];
 	const char* gamedir;
 
-	if (ScreenWidth < 640)
-		i = 320;
-	else
-		i = 640;
-	sprintf(sz, pszName, i);
+	sprintf(sz, pszName, CHud::m_iRes);
 
 	gamedir = gEngfuncs.pfnGetGameDirectory();
 	sprintf(gd, "%s/gfx/vgui/%s.tga", gamedir, sz);
@@ -595,8 +590,8 @@ TeamFortressViewport::TeamFortressViewport(int x, int y, int wide, int tall) : P
 	CreateClassMenu();
 	CreateSpectatorMenu();
 	CreateStatsMenu();
-	//CreateScoreBoard();
-	// Init command menus
+	// CreateScoreBoard();
+	//  Init command menus
 	m_iNumMenus = 0;
 	m_iCurrentTeamNumber = m_iUser1 = m_iUser2 = m_iUser3 = 0;
 
@@ -694,14 +689,17 @@ int TeamFortressViewport::CreateCommandMenu(const char* menuFile, bool direction
 	m_iNumMenus++;
 
 	// Read Command Menu from the txt file
-	char token[1024];
-	char* pfile = (char*)gEngfuncs.COM_LoadFile(menuFile, 5, nullptr);
-	if (!pfile)
+	const auto fileContents = FileSystem_LoadFileIntoBuffer(menuFile, FileContentFormat::Text);
+
+	if (fileContents.empty())
 	{
-		gEngfuncs.Con_DPrintf("Unable to open %s\n", menuFile);
 		SetCurrentCommandMenu(nullptr);
 		return newIndex;
 	}
+
+	const char* pfile = reinterpret_cast<const char*>(fileContents.data());
+
+	char token[1024];
 
 	// First, read in the localisation strings
 
@@ -864,7 +862,7 @@ int TeamFortressViewport::CreateCommandMenu(const char* menuFile, bool direction
 				{
 					gEngfuncs.Con_Printf("Too many menus in %s past '%s'\n", menuFile, szLastButtonText);
 				}
-				else
+				else if (pButton)
 				{
 					// Create the menu
 					m_pCommandMenus[m_iNumMenus] = CreateSubMenu(pButton, m_pCurrentCommandMenu, iButtonY);
@@ -898,7 +896,6 @@ int TeamFortressViewport::CreateCommandMenu(const char* menuFile, bool direction
 
 	SetCurrentMenu(nullptr);
 	SetCurrentCommandMenu(nullptr);
-	gEngfuncs.COM_FreeFile(pfile);
 
 	m_iInitialized = true;
 	return newIndex;
@@ -917,7 +914,7 @@ CCommandMenu* TeamFortressViewport::CreateDisguiseSubmenu(CommandButton* pButton
 	m_iNumMenus++;
 
 	// create the class choice buttons
-	//#ifdef _TFC
+	// #ifdef _TFC
 	for (int i = PC_FIRSTCLASS; i <= PC_LASTCLASS; i++)
 	{
 		CommandButton* pDisguiseButton = new CommandButton(
@@ -930,7 +927,7 @@ CCommandMenu* TeamFortressViewport::CreateDisguiseSubmenu(CommandButton* pButton
 
 		pMenu->AddButton(pDisguiseButton);
 	}
-	//#endif
+	// #endif
 
 	return pMenu;
 }
@@ -988,7 +985,7 @@ CommandButton* TeamFortressViewport::CreateCustomButton(char* pButtonText, char*
 		m_pCommandMenus[m_iNumMenus] = pMenu;
 		m_iNumMenus++;
 
-		//#ifdef _TFC
+		// #ifdef _TFC
 		for (int i = PC_FIRSTCLASS; i <= PC_LASTCLASS; i++)
 		{
 			char sz[256];
@@ -1001,7 +998,7 @@ CommandButton* TeamFortressViewport::CreateCustomButton(char* pButtonText, char*
 			pClassButton->addActionSignal(new CMenuHandler_StringCommandClassSelect(sz));
 			pMenu->AddButton(pClassButton);
 		}
-		//#endif
+		// #endif
 	}
 
 	return pButton;
@@ -1074,7 +1071,7 @@ void TeamFortressViewport::ShowCommandMenu(int menuIndex)
 	if (!m_iInitialized)
 		return;
 
-	//Already have a menu open.
+	// Already have a menu open.
 	if (m_pCurrentMenu)
 		return;
 
@@ -1258,7 +1255,7 @@ void TeamFortressViewport::UpdatePlayerMenu(int menuIndex)
 
 	for (int i = 1; i < MAX_PLAYERS_HUD; i++)
 	{
-		//if ( g_PlayerInfoList[i].name == nullptr )
+		// if ( g_PlayerInfoList[i].name == nullptr )
 		//	continue; // empty player slot, skip
 
 		pEnt = gEngfuncs.GetEntityByIndex(i);
@@ -1266,7 +1263,7 @@ void TeamFortressViewport::UpdatePlayerMenu(int menuIndex)
 		if (!gHUD.m_Spectator.IsActivePlayer(pEnt))
 			continue;
 
-		//if ( g_PlayerExtraInfo[i].teamname[0] == 0 )
+		// if ( g_PlayerExtraInfo[i].teamname[0] == 0 )
 		//	continue; // skip over players who are not in a team
 
 		SpectButton* pButton = new SpectButton(1, g_PlayerInfoList[pEnt->index].name,
@@ -1352,19 +1349,29 @@ void TeamFortressViewport::UpdateSpectatorPanel()
 			pBottomText = CHudTextMessage::BufferedLocaliseTextString(bottomText);
 		}
 
+		bool useTeamColor = false;
+
 		// in first person mode colorize player names
 		if ((g_iUser1 == OBS_IN_EYE) && 0 != player)
 		{
-			float* color = GetClientColor(player);
-			int r = color[0] * 255;
-			int g = color[1] * 255;
-			int b = color[2] * 255;
+			Vector* color = GetClientColor(player);
 
-			// set team color, a bit transparent
-			m_pSpectatorPanel->m_BottomMainLabel->setFgColor(r, g, b, 0);
-			m_pSpectatorPanel->m_BottomMainButton->setFgColor(r, g, b, 0);
+			// Color is null in CTF.
+			if (color)
+			{
+				int r = color->x * 255;
+				int g = color->y * 255;
+				int b = color->z * 255;
+
+				// set team color, a bit transparent
+				m_pSpectatorPanel->m_BottomMainLabel->setFgColor(r, g, b, 0);
+				m_pSpectatorPanel->m_BottomMainButton->setFgColor(r, g, b, 0);
+
+				useTeamColor = true;
+			}
 		}
-		else
+
+		if (!useTeamColor)
 		{ // restore GUI color
 			m_pSpectatorPanel->m_BottomMainLabel->setFgColor(143, 143, 54, 0);
 			m_pSpectatorPanel->m_BottomMainButton->setFgColor(143, 143, 54, 0);
@@ -1483,9 +1490,10 @@ CMenuPanel* TeamFortressViewport::CreateTextWindow(int iTextToShow)
 {
 	char sz[256];
 	const char* cText = "";
-	char* pfile = nullptr;
 	static const int MAX_TITLE_LENGTH = 64;
 	char cTitle[MAX_TITLE_LENGTH];
+
+	std::vector<std::byte> fileContents;
 
 	if (iTextToShow == SHOW_MOTD)
 	{
@@ -1532,12 +1540,12 @@ CMenuPanel* TeamFortressViewport::CreateTextWindow(int iTextToShow)
 			}
 		}
 
-		pfile = (char*)gEngfuncs.COM_LoadFile(sz, 5, nullptr);
+		fileContents = FileSystem_LoadFileIntoBuffer(sz, FileContentFormat::Text);
 
-		if (!pfile)
+		if (fileContents.empty())
 			return nullptr;
 
-		cText = pfile;
+		cText = reinterpret_cast<const char*>(fileContents.data());
 
 		strncpy(cTitle, m_sMapName, MAX_TITLE_LENGTH);
 		cTitle[MAX_TITLE_LENGTH - 1] = 0;
@@ -1547,19 +1555,12 @@ CMenuPanel* TeamFortressViewport::CreateTextWindow(int iTextToShow)
 		CHudTextMessage::LocaliseTextString("#Spec_Help_Title", cTitle, MAX_TITLE_LENGTH);
 		cTitle[MAX_TITLE_LENGTH - 1] = 0;
 
-		char* pfile = CHudTextMessage::BufferedLocaliseTextString("#Spec_Help_Text");
-		if (pfile)
-		{
-			cText = pfile;
-		}
+		cText = CHudTextMessage::BufferedLocaliseTextString("#Spec_Help_Text");
 	}
 
 	// if we're in the game (ie. have selected a class), flag the menu to be only grayed in the dialog box, instead of full screen
 	CMenuPanel* pMOTDPanel = CMessageWindowPanel_Create(cText, cTitle, g_iPlayerClass == PC_UNDEFINED, false, 0, 0, ScreenWidth, ScreenHeight);
 	pMOTDPanel->setParent(this);
-
-	if (pfile)
-		gEngfuncs.COM_FreeFile(pfile);
 
 	return pMOTDPanel;
 }
@@ -1574,12 +1575,14 @@ void TeamFortressViewport::ShowVGUIMenu(int iMenu)
 	if (0 != gEngfuncs.pDemoAPI->IsPlayingback())
 		return;
 
+	/*
 	// Don't open any menus except the MOTD or stats menu during intermission
 	// MOTD needs to be accepted because it's sent down to the client
 	// after map change, before intermission's turned off
 	// Stats menu is displayed during intermission.
 	if (gHUD.m_iIntermission && (iMenu != MENU_INTRO && iMenu != MENU_STATSMENU))
 		return;
+	*/
 
 	// Don't create one if it's already in the list
 	if (m_pCurrentMenu)
@@ -2169,7 +2172,7 @@ bool TeamFortressViewport::MsgFunc_ScoreInfo(const char* pszName, int iSize, voi
 	short cl = READ_BYTE();
 	short frags = READ_SHORT();
 	short deaths = READ_SHORT();
-	//TODO: not written by Op4
+	// TODO: not written by Op4
 	short playerclass = READ_SHORT();
 	short teamnumber = READ_SHORT();
 
@@ -2180,7 +2183,7 @@ bool TeamFortressViewport::MsgFunc_ScoreInfo(const char* pszName, int iSize, voi
 		g_PlayerExtraInfo[cl].playerclass = playerclass;
 		g_PlayerExtraInfo[cl].teamnumber = teamnumber;
 
-		//Dont go bellow 0!
+		// Dont go bellow 0!
 		if (g_PlayerExtraInfo[cl].teamnumber < 0)
 			g_PlayerExtraInfo[cl].teamnumber = 0;
 

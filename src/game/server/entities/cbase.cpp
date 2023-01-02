@@ -1,103 +1,101 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 #include "client.h"
-#include "CServerLibrary.h"
+#include "ServerLibrary.h"
+#include "pm_shared.h"
+#include "world.h"
 
 void EntvarsKeyvalue(entvars_t* pev, KeyValueData* pkvd);
 
-void PM_Move(struct playermove_s* ppmove, int server);
-void PM_Init(struct playermove_s* ppmove);
-char PM_FindTextureType(char* name);
-
-void OnFreeEntPrivateData(edict_s* pEdict);
+void OnFreeEntPrivateData(edict_t* pEdict);
 
 void DummySpectatorFunction(edict_t*)
 {
-	//Nothing
+	// Nothing
 }
 
-extern Vector VecBModelOrigin(entvars_t* pevBModel);
+Vector VecBModelOrigin(entvars_t* pevBModel);
 
 static DLL_FUNCTIONS gFunctionTable =
 	{
-		GameDLLInit,			   //pfnGameInit
-		DispatchSpawn,			   //pfnSpawn
-		DispatchThink,			   //pfnThink
-		DispatchUse,			   //pfnUse
-		DispatchTouch,			   //pfnTouch
-		DispatchBlocked,		   //pfnBlocked
-		DispatchKeyValue,		   //pfnKeyValue
-		DispatchSave,			   //pfnSave
-		DispatchRestore,		   //pfnRestore
-		DispatchObjectCollsionBox, //pfnAbsBox
+		GameDLLInit,			   // pfnGameInit
+		DispatchSpawn,			   // pfnSpawn
+		DispatchThink,			   // pfnThink
+		DispatchUse,			   // pfnUse
+		DispatchTouch,			   // pfnTouch
+		DispatchBlocked,		   // pfnBlocked
+		DispatchKeyValue,		   // pfnKeyValue
+		DispatchSave,			   // pfnSave
+		DispatchRestore,		   // pfnRestore
+		DispatchObjectCollsionBox, // pfnAbsBox
 
-		SaveWriteFields, //pfnSaveWriteFields
-		SaveReadFields,	 //pfnSaveReadFields
+		SaveWriteFields, // pfnSaveWriteFields
+		SaveReadFields,	 // pfnSaveReadFields
 
-		SaveGlobalState,	//pfnSaveGlobalState
-		RestoreGlobalState, //pfnRestoreGlobalState
-		ResetGlobalState,	//pfnResetGlobalState
+		SaveGlobalState,	// pfnSaveGlobalState
+		RestoreGlobalState, // pfnRestoreGlobalState
+		ResetGlobalState,	// pfnResetGlobalState
 
-		ClientConnect,		   //pfnClientConnect
-		ClientDisconnect,	   //pfnClientDisconnect
-		ClientKill,			   //pfnClientKill
-		ClientPutInServer,	   //pfnClientPutInServer
-		ClientCommand,		   //pfnClientCommand
-		ClientUserInfoChanged, //pfnClientUserInfoChanged
-		ServerActivate,		   //pfnServerActivate
-		ServerDeactivate,	   //pfnServerDeactivate
+		ClientConnect,		   // pfnClientConnect
+		ClientDisconnect,	   // pfnClientDisconnect
+		ClientKill,			   // pfnClientKill
+		ClientPutInServer,	   // pfnClientPutInServer
+		ExecuteClientCommand,  // pfnClientCommand
+		ClientUserInfoChanged, // pfnClientUserInfoChanged
+		ServerActivate,		   // pfnServerActivate
+		ServerDeactivate,	   // pfnServerDeactivate
 
-		PlayerPreThink,	 //pfnPlayerPreThink
-		PlayerPostThink, //pfnPlayerPostThink
+		PlayerPreThink,	 // pfnPlayerPreThink
+		PlayerPostThink, // pfnPlayerPostThink
 
-		StartFrame,		  //pfnStartFrame
-		ParmsNewLevel,	  //pfnParmsNewLevel
-		ParmsChangeLevel, //pfnParmsChangeLevel
+		StartFrame,		  // pfnStartFrame
+		ParmsNewLevel,	  // pfnParmsNewLevel
+		ParmsChangeLevel, // pfnParmsChangeLevel
 
-		GetGameDescription,	 //pfnGetGameDescription    Returns string describing current .dll game.
-		PlayerCustomization, //pfnPlayerCustomization   Notifies .dll of new customization for player.
+		GetGameDescription,	 // pfnGetGameDescription    Returns string describing current .dll game.
+		PlayerCustomization, // pfnPlayerCustomization   Notifies .dll of new customization for player.
 
-		DummySpectatorFunction, //pfnSpectatorConnect      Called when spectator joins server
-		DummySpectatorFunction, //pfnSpectatorDisconnect   Called when spectator leaves the server
-		DummySpectatorFunction, //pfnSpectatorThink        Called when spectator sends a command packet (usercmd_t)
+		DummySpectatorFunction, // pfnSpectatorConnect      Called when spectator joins server
+		DummySpectatorFunction, // pfnSpectatorDisconnect   Called when spectator leaves the server
+		DummySpectatorFunction, // pfnSpectatorThink        Called when spectator sends a command packet (usercmd_t)
 
-		Sys_Error, //pfnSys_Error				Called when engine has encountered an error
+		Sys_Error, // pfnSys_Error				Called when engine has encountered an error
 
-		PM_Move,			//pfnPM_Move
-		PM_Init,			//pfnPM_Init				Server version of player movement initialization
-		PM_FindTextureType, //pfnPM_FindTextureType
+		PM_Move,			// pfnPM_Move
+		PM_Init,			// pfnPM_Init				Server version of player movement initialization
+		PM_FindTextureType, // pfnPM_FindTextureType
 
-		SetupVisibility,		  //pfnSetupVisibility        Set up PVS and PAS for networking for this client
-		UpdateClientData,		  //pfnUpdateClientData       Set up data sent only to specific client
-		AddToFullPack,			  //pfnAddToFullPack
-		CreateBaseline,			  //pfnCreateBaseline			Tweak entity baseline for network encoding, allows setup of player baselines, too.
-		RegisterEncoders,		  //pfnRegisterEncoders		Callbacks for network encoding
-		GetWeaponData,			  //pfnGetWeaponData
-		CmdStart,				  //pfnCmdStart
-		CmdEnd,					  //pfnCmdEnd
-		ConnectionlessPacket,	  //pfnConnectionlessPacket
-		GetHullBounds,			  //pfnGetHullBounds
-		CreateInstancedBaselines, //pfnCreateInstancedBaselines
-		InconsistentFile,		  //pfnInconsistentFile
-		AllowLagCompensation,	  //pfnAllowLagCompensation
+		SetupVisibility,		  // pfnSetupVisibility        Set up PVS and PAS for networking for this client
+		UpdateClientData,		  // pfnUpdateClientData       Set up data sent only to specific client
+		AddToFullPack,			  // pfnAddToFullPack
+		CreateBaseline,			  // pfnCreateBaseline			Tweak entity baseline for network encoding, allows setup of player baselines, too.
+		RegisterEncoders,		  // pfnRegisterEncoders		Callbacks for network encoding
+		GetWeaponData,			  // pfnGetWeaponData
+		CmdStart,				  // pfnCmdStart
+		CmdEnd,					  // pfnCmdEnd
+		ConnectionlessPacket,	  // pfnConnectionlessPacket
+		GetHullBounds,			  // pfnGetHullBounds
+		CreateInstancedBaselines, // pfnCreateInstancedBaselines
+		InconsistentFile,		  // pfnInconsistentFile
+		AllowLagCompensation,	  // pfnAllowLagCompensation
 };
 
 NEW_DLL_FUNCTIONS gNewDLLFunctions =
 	{
-		OnFreeEntPrivateData, //pfnOnFreeEntPrivateData
+		OnFreeEntPrivateData, // pfnOnFreeEntPrivateData
 		GameDLLShutdown,
 };
 
@@ -186,7 +184,7 @@ int DispatchSpawn(edict_t* pent)
 			{
 				// Spawned entities default to 'On'
 				gGlobalState.EntityAdd(pEntity->pev->globalname, gpGlobals->mapname, GLOBAL_ON);
-				//				ALERT( at_console, "Added global entity %s (%s)\n", STRING(pEntity->pev->classname), STRING(pEntity->pev->globalname) );
+				// CBaseEntity::Logger->trace("Added global entity {} ({})", STRING(pEntity->pev->classname), STRING(pEntity->pev->globalname));
 			}
 		}
 	}
@@ -245,7 +243,7 @@ void DispatchThink(edict_t* pent)
 	if (pEntity)
 	{
 		if (FBitSet(pEntity->pev->flags, FL_DORMANT))
-			ALERT(at_error, "Dormant entity %s is thinking!!\n", STRING(pEntity->pev->classname));
+			CBaseEntity::Logger->error("Dormant entity {} is thinking!!", STRING(pEntity->pev->classname));
 
 		pEntity->Think();
 	}
@@ -271,7 +269,7 @@ void DispatchSave(edict_t* pent, SAVERESTOREDATA* pSaveData)
 		ENTITYTABLE* pTable = &pSaveData->pTable[pSaveData->currentIndex];
 
 		if (pTable->pent != pent)
-			ALERT(at_error, "ENTITY TABLE OR INDEX IS WRONG!!!!\n");
+			CBaseEntity::Logger->error("ENTITY TABLE OR INDEX IS WRONG!!!!");
 
 		if ((pEntity->ObjectCaps() & FCAP_DONT_SAVE) != 0)
 			return;
@@ -294,15 +292,17 @@ void DispatchSave(edict_t* pent, SAVERESTOREDATA* pSaveData)
 	}
 }
 
-void OnFreeEntPrivateData(edict_s* pEdict)
+void OnFreeEntPrivateData(edict_t* pEdict)
 {
 	if (pEdict && pEdict->pvPrivateData)
 	{
 		auto entity = reinterpret_cast<CBaseEntity*>(pEdict->pvPrivateData);
 
+		entity->OnDestroy();
+
 		delete entity;
 
-		//Zero this out so the engine doesn't try to free it again.
+		// Zero this out so the engine doesn't try to free it again.
 		pEdict->pvPrivateData = nullptr;
 	}
 }
@@ -311,13 +311,13 @@ void OnFreeEntPrivateData(edict_s* pEdict)
 // different classes with the same global name
 CBaseEntity* FindGlobalEntity(string_t classname, string_t globalname)
 {
-	edict_t* pent = FIND_ENTITY_BY_STRING(nullptr, "globalname", STRING(globalname));
-	CBaseEntity* pReturn = CBaseEntity::Instance(pent);
+	auto pReturn = UTIL_FindEntityByString(nullptr, "globalname", STRING(globalname));
+
 	if (pReturn)
 	{
 		if (!FClassnameIs(pReturn->pev, STRING(classname)))
 		{
-			ALERT(at_console, "Global entity found %s, wrong class %s\n", STRING(globalname), STRING(pReturn->pev->classname));
+			CBaseEntity::Logger->debug("Global entity found {}, wrong class {}", STRING(globalname), STRING(pReturn->pev->classname));
 			pReturn = nullptr;
 		}
 	}
@@ -325,25 +325,8 @@ CBaseEntity* FindGlobalEntity(string_t classname, string_t globalname)
 	return pReturn;
 }
 
-static bool g_IsRestoring = false;
-
-bool UTIL_IsRestoring()
-{
-	return g_IsRestoring;
-}
-
 int DispatchRestore(edict_t* pent, SAVERESTOREDATA* pSaveData, int globalEntity)
 {
-	g_IsRestoring = true;
-
-	struct DisableRestoreFlag
-	{
-		~DisableRestoreFlag()
-		{
-			g_IsRestoring = false;
-		}
-	} cleanup;
-
 	gpGlobals->time = pSaveData->time;
 
 	CBaseEntity* pEntity = (CBaseEntity*)GET_PRIVATE(pent);
@@ -380,8 +363,8 @@ int DispatchRestore(edict_t* pent, SAVERESTOREDATA* pSaveData, int globalEntity)
 			CBaseEntity* pNewEntity = FindGlobalEntity(tmpVars.classname, tmpVars.globalname);
 			if (pNewEntity)
 			{
-				//				ALERT( at_console, "Overlay %s with %s\n", STRING(pNewEntity->pev->classname), STRING(tmpVars.classname) );
-				// Tell the restore code we're overlaying a global entity from another level
+				// CBaseEntity::Logger->debug("Overlay {} with {}", STRING(pNewEntity->pev->classname), STRING(tmpVars.classname));
+				//  Tell the restore code we're overlaying a global entity from another level
 				restoreHelper.SetGlobalMode(true); // Don't overwrite global fields
 				pSaveData->vecLandmarkOffset = (pSaveData->vecLandmarkOffset - pNewEntity->pev->mins) + tmpVars.mins;
 				pEntity = pNewEntity; // we're going to restore this data OVER the old entity
@@ -414,14 +397,14 @@ int DispatchRestore(edict_t* pent, SAVERESTOREDATA* pSaveData, int globalEntity)
 #if 0
 		if (pEntity && pEntity->pev->globalname && globalEntity)
 		{
-			ALERT(at_console, "Global %s is %s\n", STRING(pEntity->pev->globalname), STRING(pEntity->pev->model));
+			CBaseEntity::Logger->debug("Global {} is {}", STRING(pEntity->pev->globalname), STRING(pEntity->pev->model));
 		}
 #endif
 
 		// Is this an overriding global entity (coming over the transition), or one restoring in a level
 		if (0 != globalEntity)
 		{
-			//			ALERT( at_console, "After: %f %f %f %s\n", pEntity->pev->origin.x, pEntity->pev->origin.y, pEntity->pev->origin.z, STRING(pEntity->pev->model) );
+			// CBaseEntity::Logger->debug("After: {} {}", pEntity->pev->origin, STRING(pEntity->pev->model));
 			pSaveData->vecLandmarkOffset = oldOffset;
 			if (pEntity)
 			{
@@ -445,7 +428,8 @@ int DispatchRestore(edict_t* pent, SAVERESTOREDATA* pSaveData, int globalEntity)
 			}
 			else
 			{
-				ALERT(at_error, "Global Entity %s (%s) not in table!!!\n", STRING(pEntity->pev->globalname), STRING(pEntity->pev->classname));
+				CBaseEntity::Logger->error("Global Entity {} ({}) not in table!!!\n",
+					STRING(pEntity->pev->globalname), STRING(pEntity->pev->classname));
 				// Spawned entities default to 'On'
 				gGlobalState.EntityAdd(pEntity->pev->globalname, gpGlobals->mapname, GLOBAL_ON);
 			}
@@ -486,15 +470,45 @@ void SaveReadFields(SAVERESTOREDATA* pSaveData, const char* pname, void* pBaseDa
 		return;
 	}
 
-	//Will happen here if we're loading a saved game
-	//ETABLE is the first chunk of data read after the engine has set up some global variables that we need
+	// Will happen here if we're loading a saved game
+	// ETABLE is the first chunk of data read after the engine has set up some global variables that we need
 	if (0 == strcmp(pname, "ETABLE"))
 	{
 		g_Server.CheckForNewMapStart(true);
 	}
 
+	// Always check if the player is stuck when loading a save game.
+	g_CheckForPlayerStuck = true;
+
 	CRestore restoreHelper(*pSaveData);
 	restoreHelper.ReadFields(pname, pBaseData, pFields, fieldCount);
+}
+
+int CBaseEntity::PrecacheModel(const char* s)
+{
+	return UTIL_PrecacheModel(s);
+}
+
+void CBaseEntity::SetModel(const char* s)
+{
+	s = UTIL_CheckForGlobalModelReplacement(s);
+
+	g_engfuncs.pfnSetModel(edict(), s);
+}
+
+int CBaseEntity::PrecacheSound(const char* s)
+{
+	return UTIL_PrecacheSound(s);
+}
+
+void CBaseEntity::OnCreate()
+{
+	// Nothing.
+}
+
+void CBaseEntity::OnDestroy()
+{
+	// Nothing.
 }
 
 // give health
@@ -580,17 +594,14 @@ CBaseEntity* CBaseEntity::GetNextTarget()
 {
 	if (FStringNull(pev->target))
 		return nullptr;
-	edict_t* pTarget = FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(pev->target));
-	if (FNullEnt(pTarget))
-		return nullptr;
-
-	return Instance(pTarget);
+	return UTIL_FindEntityByTargetname(nullptr, STRING(pev->target));
 }
 
 // Global Savedata for Delay
 TYPEDESCRIPTION CBaseEntity::m_SaveData[] =
 	{
 		DEFINE_FIELD(CBaseEntity, m_pGoalEnt, FIELD_CLASSPTR),
+		DEFINE_FIELD(CBaseEntity, m_EFlags, FIELD_CHARACTER),
 
 		DEFINE_FIELD(CBaseEntity, m_pfnThink, FIELD_FUNCTION), // UNDONE: Build table of these!!!
 		DEFINE_FIELD(CBaseEntity, m_pfnTouch, FIELD_FUNCTION),
@@ -621,9 +632,9 @@ bool CBaseEntity::Restore(CRestore& restore)
 		mins = pev->mins; // Set model is about to destroy these
 		maxs = pev->maxs;
 
-
-		PRECACHE_MODEL(STRING(pev->model));
-		SET_MODEL(ENT(pev), STRING(pev->model));
+		// Don't use UTIL_PrecacheModel here because we're restoring an already-replaced name.
+		UTIL_PrecacheModelDirect(STRING(pev->model));
+		SetModel(STRING(pev->model));
 		UTIL_SetSize(pev, mins, maxs); // Reset them
 	}
 
@@ -763,25 +774,18 @@ int CBaseEntity::DamageDecal(int bitsDamageType)
 	return DECAL_GUNSHOT1 + RANDOM_LONG(0, 4);
 }
 
-
-
-// NOTE: szName must be a pointer to constant memory, e.g. "monster_class" because the entity
-// will keep a pointer to it after this call.
 CBaseEntity* CBaseEntity::Create(const char* szName, const Vector& vecOrigin, const Vector& vecAngles, edict_t* pentOwner)
 {
-	edict_t* pent;
-	CBaseEntity* pEntity;
+	auto entity = g_EntityDictionary->Create(szName);
 
-	pent = CREATE_NAMED_ENTITY(MAKE_STRING(szName));
-	if (FNullEnt(pent))
+	if (FNullEnt(entity))
 	{
-		ALERT(at_console, "nullptr Ent in Create!\n");
+		CBaseEntity::Logger->debug("NULL Ent in Create!");
 		return nullptr;
 	}
-	pEntity = Instance(pent);
-	pEntity->pev->owner = pentOwner;
-	pEntity->pev->origin = vecOrigin;
-	pEntity->pev->angles = vecAngles;
-	DispatchSpawn(pEntity->edict());
-	return pEntity;
+	entity->pev->owner = pentOwner;
+	entity->pev->origin = vecOrigin;
+	entity->pev->angles = vecAngles;
+	DispatchSpawn(entity->edict());
+	return entity;
 }

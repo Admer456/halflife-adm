@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // Scheduling
 //=========================================================
@@ -28,7 +28,7 @@
 //=========================================================
 // These are the schedule types
 //=========================================================
-typedef enum
+enum SCHEDULE_TYPE
 {
 	SCHED_NONE = 0,
 	SCHED_IDLE_STAND,
@@ -74,12 +74,12 @@ typedef enum
 	SCHED_FAIL,
 
 	LAST_COMMON_SCHEDULE // Leave this at the bottom
-} SCHEDULE_TYPE;
+};
 
 //=========================================================
 // These are the shared tasks
 //=========================================================
-typedef enum
+enum SHARED_TASKS
 {
 	TASK_INVALID = 0,
 	TASK_WAIT,
@@ -174,7 +174,7 @@ typedef enum
 	TASK_WAIT_FOR_MOVEMENT, // wait until MovementIsComplete()
 	TASK_WAIT_FOR_JUMP,
 	LAST_COMMON_TASK, // LEAVE THIS AT THE BOTTOM!! (sjb)
-} SHARED_TASKS;
+};
 
 
 // These go in the flData member of the TASK_WALK_TO_TARGET, TASK_RUN_TO_TARGET

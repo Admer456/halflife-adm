@@ -1,21 +1,41 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #pragma once
 
+#include "CBaseToggle.h"
 #include "monsters.h"
+
+/**
+ *	@brief Enum namespace
+ */
+namespace NPCWeaponState
+{
+/**
+ *	@brief Values for NPC weapon equip state.
+ */
+enum NPCWeaponState
+{
+	Blank = 0, //!< Not visible at all.
+	Holstered, //!< In holster.
+	Drawn	   //!< In hand.
+};
+}
+
+#define ROUTE_SIZE 8	  // how many waypoints a monster can store at one time
+#define MAX_OLD_ENEMIES 4 // how many old enemies to remember
 
 //
 // generic Monster
@@ -26,14 +46,16 @@ private:
 	int m_afConditions;
 
 public:
-	typedef enum
+	static inline std::shared_ptr<spdlog::logger> AILogger;
+
+	enum SCRIPTSTATE
 	{
 		SCRIPT_PLAYING = 0, // Playing the sequence
 		SCRIPT_WAIT,		// Waiting on everyone in the script to be ready
 		SCRIPT_CLEANUP,		// Cancelling the script / cleaning up
 		SCRIPT_WALK_TO_MARK,
 		SCRIPT_RUN_TO_MARK,
-	} SCRIPTSTATE;
+	};
 
 
 
@@ -111,6 +133,8 @@ public:
 
 	float m_flLastYawTime;
 
+	bool m_AllowItemDropping = true;
+
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
 
@@ -120,7 +144,6 @@ public:
 
 	// monster use function
 	void EXPORT MonsterUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
-	void EXPORT CorpseUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 
 	// overrideable Monster member functions
 
@@ -193,8 +216,13 @@ public:
 	virtual void ScheduleChange() {}
 	// virtual bool CanPlaySequence() { return ((m_pCine == nullptr) && (m_MonsterState == MONSTERSTATE_NONE || m_MonsterState == MONSTERSTATE_IDLE || m_IdealMonsterState == MONSTERSTATE_IDLE)); }
 	virtual bool CanPlaySequence(bool fDisregardState, int interruptLevel);
-	virtual bool CanPlaySentence(bool fDisregardState) { return IsAlive(); }
-	virtual void PlaySentence(const char* pszSentence, float duration, float volume, float attenuation);
+	virtual bool CanPlaySentence(bool fDisregardState) { return IsAlive() && (m_MonsterState == MONSTERSTATE_SCRIPT || pev->deadflag == DEAD_NO); }
+	void PlaySentence(const char* pszSentence, float duration, float volume, float attenuation);
+
+protected:
+	virtual void PlaySentenceCore(const char* pszSentence, float duration, float volume, float attenuation);
+
+public:
 	virtual void PlayScriptedSentence(const char* pszSentence, float duration, float volume, float attenuation, bool bConcurrent, CBaseEntity* pListener);
 
 	virtual void SentenceStop();
@@ -294,7 +322,6 @@ public:
 	bool FacingIdeal();
 
 	bool FCheckAITrigger(); // checks and, if necessary, fires the monster's trigger target.
-	bool NoFriendlyFire();
 
 	bool BBoxFlat();
 
@@ -306,7 +333,6 @@ public:
 	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 
 	// combat functions
-	float UpdateTarget(entvars_t* pevTarget);
 	virtual Activity GetDeathActivity();
 	Activity GetSmallFlinchActivity();
 	void Killed(entvars_t* pevAttacker, int iGib) override;
@@ -358,11 +384,15 @@ public:
 	bool ExitScriptedSequence();
 	bool CineCleanup();
 
-	CBaseEntity* DropItem(const char* pszItemName, const Vector& vecPos, const Vector& vecAng); // drop an item.
+	/**
+	 *	@brief Drop an item.
+	 *	Will return @c nullptr if item dropping is disabled for this NPC.
+	 */
+	CBaseEntity* DropItem(const char* pszItemName, const Vector& vecPos, const Vector& vecAng);
 
 	bool JumpToTarget(Activity movementAct, float waitTime);
 
-	//Shock rifle shock effect
+	// Shock rifle shock effect
 	float m_flShockDuration = 0;
 	float m_flShockTime = 0;
 	int m_iOldRenderMode = 0;

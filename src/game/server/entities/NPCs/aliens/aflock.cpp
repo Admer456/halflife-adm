@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 //=========================================================
 
@@ -31,6 +31,7 @@
 class CFlockingFlyerFlock : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	bool KeyValue(KeyValueData* pkvd) override;
@@ -41,7 +42,7 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	// Sounds are shared by the flock
-	static void PrecacheFlockSounds();
+	static void PrecacheFlockSounds(CBaseEntity* self);
 
 	int m_cFlockSize;
 	float m_flFlockRadius;
@@ -60,6 +61,7 @@ IMPLEMENT_SAVERESTORE(CFlockingFlyerFlock, CBaseMonster);
 class CFlockingFlyer : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SpawnCommonCode();
@@ -71,13 +73,11 @@ public:
 	void EXPORT FlockFollowerThink();
 	void EXPORT FallHack();
 	void MakeSound();
-	void AlertFlock();
 	void SpreadFlock();
 	void SpreadFlock2();
 	void Killed(entvars_t* pevAttacker, int iGib) override;
-	void Poop();
 	bool FPathBlocked();
-	//void KeyValue( KeyValueData *pkvd ) override;
+	// void KeyValue( KeyValueData *pkvd ) override;
 
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
@@ -125,6 +125,22 @@ TYPEDESCRIPTION CFlockingFlyer::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE(CFlockingFlyer, CBaseMonster);
 
+void CFlockingFlyer::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = 10;
+	// pev->model = MAKE_STRING("models/aflock.mdl");
+	pev->model = MAKE_STRING("models/boid.mdl");
+}
+
+void CFlockingFlyerFlock::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->model = MAKE_STRING("models/boid.mdl");
+}
+
 //=========================================================
 //=========================================================
 bool CFlockingFlyerFlock::KeyValue(KeyValueData* pkvd)
@@ -157,20 +173,19 @@ void CFlockingFlyerFlock::Spawn()
 //=========================================================
 void CFlockingFlyerFlock::Precache()
 {
-	//PRECACHE_MODEL("models/aflock.mdl");
-	PRECACHE_MODEL("models/boid.mdl");
+	PrecacheModel(STRING(pev->model));
 
-	PrecacheFlockSounds();
+	PrecacheFlockSounds(this);
 }
 
 
-void CFlockingFlyerFlock::PrecacheFlockSounds()
+void CFlockingFlyerFlock::PrecacheFlockSounds(CBaseEntity* self)
 {
-	PRECACHE_SOUND("boid/boid_alert1.wav");
-	PRECACHE_SOUND("boid/boid_alert2.wav");
+	self->PrecacheSound("boid/boid_alert1.wav");
+	self->PrecacheSound("boid/boid_alert2.wav");
 
-	PRECACHE_SOUND("boid/boid_idle1.wav");
-	PRECACHE_SOUND("boid/boid_idle2.wav");
+	self->PrecacheSound("boid/boid_idle1.wav");
+	self->PrecacheSound("boid/boid_idle2.wav");
 }
 
 //=========================================================
@@ -186,7 +201,7 @@ void CFlockingFlyerFlock::SpawnFlock()
 
 	for (iCount = 0; iCount < m_cFlockSize; iCount++)
 	{
-		pBoid = GetClassPtr((CFlockingFlyer*)nullptr);
+		pBoid = g_EntityDictionary->Create<CFlockingFlyer>("monster_flyer");
 
 		if (!pLeader)
 		{
@@ -202,6 +217,7 @@ void CFlockingFlyerFlock::SpawnFlock()
 		vecSpot.z = RANDOM_FLOAT(0, 16);
 		vecSpot = pev->origin + vecSpot;
 
+		pBoid->pev->model = pev->model;
 		UTIL_SetOrigin(pBoid->pev, vecSpot);
 		pBoid->pev->movetype = MOVETYPE_FLY;
 		pBoid->SpawnCommonCode();
@@ -236,9 +252,9 @@ void CFlockingFlyer::Spawn()
 //=========================================================
 void CFlockingFlyer::Precache()
 {
-	//PRECACHE_MODEL("models/aflock.mdl");
-	PRECACHE_MODEL("models/boid.mdl");
-	CFlockingFlyerFlock::PrecacheFlockSounds();
+	// PrecacheModel("models/aflock.mdl");
+	PrecacheModel(STRING(pev->model));
+	CFlockingFlyerFlock::PrecacheFlockSounds(this);
 }
 
 //=========================================================
@@ -328,17 +344,16 @@ void CFlockingFlyer::FallHack()
 void CFlockingFlyer::SpawnCommonCode()
 {
 	pev->deadflag = DEAD_NO;
-	pev->classname = MAKE_STRING("monster_flyer");
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_FLY;
-	pev->takedamage = DAMAGE_NO;
-	pev->health = 1;
+	pev->takedamage = DAMAGE_YES;
+
+	m_bloodColor = BLOOD_COLOR_GREEN;
 
 	m_fPathBlocked = false; // obstacles will be detected
 	m_flFieldOfView = 0.2;
 
-	//SET_MODEL(ENT(pev), "models/aflock.mdl");
-	SET_MODEL(ENT(pev), "models/boid.mdl");
+	SetModel(STRING(pev->model));
 
 	//	UTIL_SetSize(pev, Vector(0,0,0), Vector(0,0,0));
 	UTIL_SetSize(pev, Vector(-5, -5, 0), Vector(5, 5, 2));
@@ -525,7 +540,7 @@ bool CFlockingFlyer::FPathBlocked()
 	}
 
 	// use VELOCITY, not angles, not all boids point the direction they are flying
-	//vecDir = UTIL_VecToAngles( pevBoid->velocity );
+	// vecDir = UTIL_VecToAngles( pevBoid->velocity );
 	UTIL_MakeVectors(pev->angles);
 
 	fBlocked = false; // assume the way ahead is clear

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 //=========================================================
 // icthyosaur - evin, satan fish monster
@@ -41,6 +41,7 @@
 class CIchthyosaur : public CFlyingMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
@@ -69,6 +70,7 @@ public:
 
 	float ChangeYaw(int speed) override;
 	Activity GetStoppedActivity() override;
+	void SetActivity(Activity NewActivity) override;
 
 	void Move(float flInterval) override;
 	void MoveExecute(CBaseEntity* pTargetEnt, const Vector& vecDir, float flInterval) override;
@@ -170,6 +172,14 @@ const char* CIchthyosaur::pDieSounds[] =
 		"ichy/ichy_die2.wav",
 		"ichy/ichy_die4.wav",
 };
+
+void CIchthyosaur::OnCreate()
+{
+	CFlyingMonster::OnCreate();
+
+	pev->health = GetSkillFloat("ichthyosaur_health"sv);
+	pev->model = MAKE_STRING("models/icky.mdl");
+}
 
 #define EMIT_ICKY_SOUND(chan, array) \
 	EMIT_SOUND_DYN(ENT(pev), chan, array[RANDOM_LONG(0, std::size(array) - 1)], 1.0, 0.6, 0, RANDOM_LONG(95, 105));
@@ -281,7 +291,6 @@ Task_t tlTwitchDie[] =
 		{TASK_STOP_MOVING, 0},
 		{TASK_SOUND_DIE, (float)0},
 		{TASK_DIE, (float)0},
-		{TASK_ICHTHYOSAUR_FLOAT, (float)0},
 };
 
 Schedule_t slTwitchDie[] =
@@ -293,12 +302,26 @@ Schedule_t slTwitchDie[] =
 			"Die"},
 };
 
+Task_t tlFloat[] =
+	{
+		{TASK_ICHTHYOSAUR_FLOAT, (float)0},
+};
+
+Schedule_t slFloat[] =
+	{
+		{tlFloat,
+			std::size(tlFloat),
+			0,
+			0,
+			"Float"},
+};
 
 DEFINE_CUSTOM_SCHEDULES(CIchthyosaur){
 	slSwimAround,
 	slSwimAgitated,
 	slCircleEnemy,
 	slTwitchDie,
+	slFloat,
 };
 IMPLEMENT_CUSTOM_SCHEDULES(CIchthyosaur, CFlyingMonster);
 
@@ -424,7 +447,7 @@ void CIchthyosaur::HandleAnimEvent(MonsterEvent_t* pEvent)
 					pHurt->pev->angles.z = 0;
 					pHurt->pev->fixangle = 1;
 				}
-				pHurt->TakeDamage(pev, pev, gSkillData.ichthyosaurDmgShake, DMG_SLASH);
+				pHurt->TakeDamage(pev, pev, GetSkillFloat("ichthyosaur_shake"sv), DMG_SLASH);
 			}
 		}
 		BiteSound();
@@ -451,13 +474,12 @@ void CIchthyosaur::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/icky.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-32, -32, -32), Vector(32, 32, 32));
 
 	pev->solid = SOLID_BBOX;
 	pev->movetype = MOVETYPE_FLY;
 	m_bloodColor = BLOOD_COLOR_GREEN;
-	pev->health = gSkillData.ichthyosaurHealth;
 	pev->view_ofs = Vector(0, 0, 16);
 	m_flFieldOfView = VIEW_FIELD_WIDE;
 	m_MonsterState = MONSTERSTATE_NONE;
@@ -488,7 +510,7 @@ void CIchthyosaur::Spawn()
 //=========================================================
 void CIchthyosaur::Precache()
 {
-	PRECACHE_MODEL("models/icky.mdl");
+	PrecacheModel(STRING(pev->model));
 
 	PRECACHE_SOUND_ARRAY(pIdleSounds);
 	PRECACHE_SOUND_ARRAY(pAlertSounds);
@@ -503,7 +525,7 @@ void CIchthyosaur::Precache()
 //=========================================================
 Schedule_t* CIchthyosaur::GetSchedule()
 {
-	// ALERT( at_console, "GetSchedule( )\n" );
+	// AILogger->debug("GetSchedule()");
 	switch (m_MonsterState)
 	{
 	case MONSTERSTATE_IDLE:
@@ -546,7 +568,7 @@ Schedule_t* CIchthyosaur::GetSchedule()
 //=========================================================
 Schedule_t* CIchthyosaur::GetScheduleOfType(int Type)
 {
-	// ALERT( at_console, "GetScheduleOfType( %d ) %d\n", Type, m_bOnAttack );
+	// AILogger->debug("GetScheduleOfType({}) {}", Type, m_bOnAttack);
 	switch (Type)
 	{
 	case SCHED_IDLE_WALK:
@@ -556,6 +578,12 @@ Schedule_t* CIchthyosaur::GetScheduleOfType(int Type)
 	case SCHED_FAIL:
 		return slSwimAgitated;
 	case SCHED_DIE:
+		if (pev->deadflag == DEAD_DEAD)
+		{
+			// Already dead, immediately switch to float.
+			return slFloat;
+		}
+
 		return slTwitchDie;
 	case SCHED_CHASE_ENEMY:
 		AttackSound();
@@ -593,9 +621,17 @@ void CIchthyosaur::StartTask(Task_t* pTask)
 		break;
 
 	case TASK_ICHTHYOSAUR_FLOAT:
-		pev->skin = EYE_BASE;
-		SetSequenceByName("bellyup");
+	{
+		const int sequenceIndex = LookupSequence("bellyup");
+
+		// Don't restart the animation if we're restoring.
+		if (pev->sequence != sequenceIndex)
+		{
+			pev->skin = EYE_BASE;
+			SetSequenceByName("bellyup");
+		}
 		break;
+	}
 
 	default:
 		CFlyingMonster::StartTask(pTask);
@@ -624,7 +660,7 @@ void CIchthyosaur::RunTask(Task_t* pTask)
 
 			Vector vecPos = vecFrom + vecDelta * m_idealDist + vecSwim * 32;
 
-			// ALERT( at_console, "vecPos %.0f %.0f %.0f\n", vecPos.x, vecPos.y, vecPos.z );
+			// AILogger->debug("vecPos {:.0f}", vecPos);
 
 			TraceResult tr;
 
@@ -635,7 +671,7 @@ void CIchthyosaur::RunTask(Task_t* pTask)
 
 			m_SaveVelocity = m_SaveVelocity * 0.8 + 0.2 * (vecPos - pev->origin).Normalize() * m_flightSpeed;
 
-			// ALERT( at_console, "m_SaveVelocity %.2f %.2f %.2f\n", m_SaveVelocity.x, m_SaveVelocity.y, m_SaveVelocity.z );
+			// AILogger->debug("m_SaveVelocity {:.2f}", m_SaveVelocity);
 
 			if (HasConditions(bits_COND_ENEMY_FACING_ME) && m_hEnemy->FVisible(this))
 			{
@@ -671,7 +707,7 @@ void CIchthyosaur::RunTask(Task_t* pTask)
 					m_flightSpeed += 4;
 				}
 			}
-			// ALERT( at_console, "%.0f\n", m_idealDist );
+			// AILogger->debug("{:.0f}", m_idealDist);
 		}
 		else
 		{
@@ -680,7 +716,7 @@ void CIchthyosaur::RunTask(Task_t* pTask)
 
 		if (m_flNextAlert < gpGlobals->time)
 		{
-			// ALERT( at_console, "AlertSound()\n");
+			// AILogger->debug("AlertSound()");
 			AlertSound();
 			m_flNextAlert = gpGlobals->time + RANDOM_FLOAT(3, 5);
 		}
@@ -704,7 +740,7 @@ void CIchthyosaur::RunTask(Task_t* pTask)
 	case TASK_ICHTHYOSAUR_FLOAT:
 		pev->angles.x = UTIL_ApproachAngle(0, pev->angles.x, 20);
 		pev->velocity = pev->velocity * 0.8;
-		if (pev->waterlevel > 1 && pev->velocity.z < 64)
+		if (pev->waterlevel > WaterLevel::Feet && pev->velocity.z < 64)
 		{
 			pev->velocity.z += 8;
 		}
@@ -712,7 +748,7 @@ void CIchthyosaur::RunTask(Task_t* pTask)
 		{
 			pev->velocity.z -= 8;
 		}
-		// ALERT( at_console, "%f\n", pev->velocity.z );
+		// AILogger->debug("{}", pev->velocity.z);
 		break;
 
 	default:
@@ -730,7 +766,7 @@ float CIchthyosaur::VectorToPitch(const Vector& vec)
 		pitch = 0;
 	else
 	{
-		pitch = (int)(atan2(vec.z, sqrt(vec.x * vec.x + vec.y * vec.y)) * 180 / M_PI);
+		pitch = (int)(atan2(vec.z, sqrt(vec.x * vec.x + vec.y * vec.y)) * 180 / PI);
 		if (pitch < 0)
 			pitch += 360;
 	}
@@ -845,6 +881,20 @@ Activity CIchthyosaur::GetStoppedActivity()
 	return ACT_WALK;
 }
 
+void CIchthyosaur::SetActivity(Activity NewActivity)
+{
+	const float frame = pev->frame;
+
+	CFlyingMonster::SetActivity(NewActivity);
+
+	// Restore belly up state.
+	if (pev->deadflag == DEAD_DEAD)
+	{
+		SetSequenceByName("bellyup");
+		pev->frame = frame;
+	}
+}
+
 void CIchthyosaur::MoveExecute(CBaseEntity* pTargetEnt, const Vector& vecDir, float flInterval)
 {
 	m_SaveVelocity = vecDir * m_flightSpeed;
@@ -917,7 +967,7 @@ void CIchthyosaur::Swim()
 			SetActivity(ACT_WALK);
 		if (m_IdealActivity == ACT_WALK)
 			pev->framerate = m_flightSpeed / 150.0;
-		// ALERT( at_console, "walk %.2f\n", pev->framerate );
+		// AILogger->debug("walk {:.2f}", pev->framerate);
 	}
 	else
 	{
@@ -925,7 +975,7 @@ void CIchthyosaur::Swim()
 			SetActivity(ACT_RUN);
 		if (m_IdealActivity == ACT_RUN)
 			pev->framerate = m_flightSpeed / 150.0;
-		// ALERT( at_console, "run  %.2f\n", pev->framerate );
+		// AILogger->debug("run  {:.2f}", pev->framerate);
 	}
 
 	/*
@@ -955,7 +1005,7 @@ void CIchthyosaur::Swim()
 
 	Angles = Vector(-pev->angles.x, pev->angles.y, pev->angles.z);
 	UTIL_MakeVectorsPrivate(Angles, Forward, Right, Up);
-	// ALERT( at_console, "%f : %f\n", Angles.x, Forward.z );
+	// AILogger->debug("{} : {}", Angles.x, Forward.z);
 
 	float flDot = DotProduct(Forward, m_SaveVelocity);
 	if (flDot > 0.5)
@@ -965,17 +1015,17 @@ void CIchthyosaur::Swim()
 	else
 		pev->velocity = m_SaveVelocity = m_SaveVelocity * 80;
 
-	// ALERT( at_console, "%.0f %.0f\n", m_flightSpeed, pev->velocity.Length() );
+	// AILogger->debug("{:.0f} {:.0f}", m_flightSpeed, pev->velocity.Length());
 
 
-	// ALERT( at_console, "Steer %f %f %f\n", SteeringVector.x, SteeringVector.y, SteeringVector.z );
+	// AILogger->debug("Steer {}", SteeringVector);
 
 	/*
 	m_pBeam->SetStartPos( pev->origin + pev->velocity );
 	m_pBeam->RelinkBeam( );
 */
 
-	// ALERT( at_console, "speed %f\n", m_flightSpeed );
+	// AILogger->debug("speed {}", m_flightSpeed);
 
 	Angles = UTIL_VecToAngles(m_SaveVelocity);
 
@@ -992,7 +1042,7 @@ void CIchthyosaur::Swim()
 	// Smooth Yaw and generate Roll
 	//
 	float turn = 360;
-	// ALERT( at_console, "Y %.0f %.0f\n", Angles.y, pev->angles.y );
+	// AILogger->debug("Y {:.0f} {:.0f}", Angles.y, pev->angles.y);
 
 	if (fabs(Angles.y - pev->angles.y) < fabs(turn))
 	{
@@ -1009,7 +1059,7 @@ void CIchthyosaur::Swim()
 
 	float speed = m_flightSpeed * 0.1;
 
-	// ALERT( at_console, "speed %.0f %f\n", turn, speed );
+	// AILogger->debug("speed {:.0f} {%f}", turn, speed);
 	if (fabs(turn) > speed)
 	{
 		if (turn < 0.0)
@@ -1029,7 +1079,7 @@ void CIchthyosaur::Swim()
 
 	yaw_adj = yaw_adj * 0.8 + turn;
 
-	// ALERT( at_console, "yaw %f : %f\n", turn, yaw_adj );
+	// AILogger->debug("yaw {} : {}", turn, yaw_adj);
 
 	SetBoneController(0, -yaw_adj / 4.0);
 

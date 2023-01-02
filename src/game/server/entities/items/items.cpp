@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== items.cpp ========================================================
@@ -67,7 +67,7 @@ void CWorldItem::Spawn()
 
 	if (!pEntity)
 	{
-		ALERT(at_console, "unable to create world_item %d\n", m_iType);
+		CBaseEntity::Logger->debug("unable to create world_item {}", m_iType);
 	}
 	else
 	{
@@ -79,9 +79,23 @@ void CWorldItem::Spawn()
 	REMOVE_ENTITY(edict());
 }
 
+void CItem::Precache()
+{
+	if (!FStringNull(pev->model))
+	{
+		PrecacheModel(STRING(pev->model));
+	}
+}
 
 void CItem::Spawn()
 {
+	Precache();
+
+	if (!FStringNull(pev->model))
+	{
+		SetModel(STRING(pev->model));
+	}
+
 	pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_TRIGGER;
 	UTIL_SetOrigin(pev, pev->origin);
@@ -90,7 +104,7 @@ void CItem::Spawn()
 
 	if (DROP_TO_FLOOR(ENT(pev)) == 0)
 	{
-		ALERT(at_error, "Item %s fell out of level at %f,%f,%f", STRING(pev->classname), pev->origin.x, pev->origin.y, pev->origin.z);
+		CBaseEntity::Logger->error("Item {} fell out of level at {}", STRING(pev->classname), pev->origin);
 		UTIL_Remove(this);
 		return;
 	}
@@ -164,15 +178,12 @@ void CItem::Materialize()
 
 class CItemSuit : public CItem
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_suit.mdl");
-		CItem::Spawn();
-	}
-	void Precache() override
-	{
-		PRECACHE_MODEL("models/w_suit.mdl");
+		CItem::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_suit.mdl");
 	}
 	bool MyTouch(CBasePlayer* pPlayer) override
 	{
@@ -191,21 +202,22 @@ class CItemSuit : public CItem
 
 LINK_ENTITY_TO_CLASS(item_suit, CItemSuit);
 
-//Unused alias of the suit
+// Unused alias of the suit
 LINK_ENTITY_TO_CLASS(item_vest, CItemSuit);
 
 class CItemBattery : public CItem
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_battery.mdl");
-		CItem::Spawn();
+		CItem::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_battery.mdl");
 	}
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_battery.mdl");
-		PRECACHE_SOUND("items/gunpickup2.wav");
+		CItem::Precache();
+		PrecacheSound("items/gunpickup2.wav");
 	}
 	bool MyTouch(CBasePlayer* pPlayer) override
 	{
@@ -220,7 +232,7 @@ class CItemBattery : public CItem
 			int pct;
 			char szcharge[64];
 
-			pPlayer->pev->armorvalue += gSkillData.batteryCapacity;
+			pPlayer->pev->armorvalue += GetSkillFloat("battery"sv);
 			pPlayer->pev->armorvalue = V_min(pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY);
 
 			EMIT_SOUND(pPlayer->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
@@ -239,7 +251,7 @@ class CItemBattery : public CItem
 
 			sprintf(szcharge, "!HEV_%1dP", pct);
 
-			//EMIT_SOUND_SUIT(ENT(pev), szcharge);
+			// EMIT_SOUND_SUIT(ENT(pev), szcharge);
 			pPlayer->SetSuitUpdate(szcharge, false, SUIT_NEXT_IN_30SEC);
 			return true;
 		}
@@ -252,15 +264,12 @@ LINK_ENTITY_TO_CLASS(item_battery, CItemBattery);
 
 class CItemAntidote : public CItem
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_antidote.mdl");
-		CItem::Spawn();
-	}
-	void Precache() override
-	{
-		PRECACHE_MODEL("models/w_antidote.mdl");
+		CItem::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_antidote.mdl");
 	}
 	bool MyTouch(CBasePlayer* pPlayer) override
 	{
@@ -276,15 +285,12 @@ LINK_ENTITY_TO_CLASS(item_antidote, CItemAntidote);
 
 class CItemSecurity : public CItem
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_security.mdl");
-		CItem::Spawn();
-	}
-	void Precache() override
-	{
-		PRECACHE_MODEL("models/w_security.mdl");
+		CItem::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_security.mdl");
 	}
 	bool MyTouch(CBasePlayer* pPlayer) override
 	{
@@ -297,15 +303,12 @@ LINK_ENTITY_TO_CLASS(item_security, CItemSecurity);
 
 class CItemLongJump : public CItem
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_longjump.mdl");
-		CItem::Spawn();
-	}
-	void Precache() override
-	{
-		PRECACHE_MODEL("models/w_longjump.mdl");
+		CItem::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_longjump.mdl");
 	}
 	bool MyTouch(CBasePlayer* pPlayer) override
 	{
@@ -335,16 +338,17 @@ LINK_ENTITY_TO_CLASS(item_longjump, CItemLongJump);
 
 class CItemHelmet : public CItem
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/Barney_Helmet.mdl");
-		CItem::Spawn();
+		CItem::OnCreate();
+
+		pev->model = MAKE_STRING("models/Barney_Helmet.mdl");
 	}
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/Barney_Helmet.mdl");
-		PRECACHE_SOUND("items/gunpickup2.wav");
+		CItem::Precache();
+		PrecacheSound("items/gunpickup2.wav");
 	}
 	bool MyTouch(CBasePlayer* pPlayer) override
 	{
@@ -372,7 +376,7 @@ class CItemHelmet : public CItem
 
 			sprintf(szcharge, "!HEV_%1dP", pct);
 
-			//EMIT_SOUND_SUIT(ENT(pev), szcharge);
+			// EMIT_SOUND_SUIT(ENT(pev), szcharge);
 			pPlayer->SetSuitUpdate(szcharge, false, SUIT_NEXT_IN_30SEC);
 			return true;
 		}
@@ -385,16 +389,17 @@ LINK_ENTITY_TO_CLASS(item_helmet, CItemHelmet);
 
 class CItemArmorVest : public CItem
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/Barney_Vest.mdl");
-		CItem::Spawn();
+		CItem::OnCreate();
+
+		pev->model = MAKE_STRING("models/Barney_Vest.mdl");
 	}
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/Barney_Vest.mdl");
-		PRECACHE_SOUND("items/gunpickup2.wav");
+		CItem::Precache();
+		PrecacheSound("items/gunpickup2.wav");
 	}
 	bool MyTouch(CBasePlayer* pPlayer) override
 	{
@@ -422,7 +427,7 @@ class CItemArmorVest : public CItem
 
 			sprintf(szcharge, "!HEV_%1dP", pct);
 
-			//EMIT_SOUND_SUIT(ENT(pev), szcharge);
+			// EMIT_SOUND_SUIT(ENT(pev), szcharge);
 			pPlayer->SetSuitUpdate(szcharge, false, SUIT_NEXT_IN_30SEC);
 			return true;
 		}

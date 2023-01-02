@@ -1,25 +1,28 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
 
-typedef struct ref_params_s
+struct movevars_t;
+struct usercmd_t;
+
+struct ref_params_t
 {
 	// Output
-	float vieworg[3];
-	float viewangles[3];
+	Vector vieworg;
+	Vector viewangles;
 
 	Vector forward;
 	Vector right;
@@ -35,21 +38,21 @@ typedef struct ref_params_s
 	int paused;
 	int spectator;
 	int onground;
-	int waterlevel;
+	WaterLevel waterlevel;
 
-	float simvel[3];
-	float simorg[3];
+	Vector simvel;
+	Vector simorg;
 
-	float viewheight[3];
+	Vector viewheight;
 	float idealpitch;
 
-	float cl_viewangles[3];
+	Vector cl_viewangles;
 
 	int health;
-	float crosshairangle[3];
+	Vector crosshairangle;
 	float viewsize;
 
-	float punchangle[3];
+	Vector punchangle;
 	int maxclients;
 	int viewentity;
 	int playernum;
@@ -60,14 +63,14 @@ typedef struct ref_params_s
 	int smoothing;
 
 	// Last issued usercmd
-	struct usercmd_s* cmd;
+	usercmd_t* cmd;
 
 	// Movevars
-	struct movevars_s* movevars;
+	movevars_t* movevars;
 
 	int viewport[4]; // the viewport coordinates x ,y , width, height
 
 	int nextView;		// the renderer calls ClientDLL_CalcRefdef() and Renderview
 						// so long in cycles until this value is 0 (multiple views)
 	int onlyClientDraw; // if !=0 nothing is drawn by the engine except clientDraw functions
-} ref_params_t;
+};

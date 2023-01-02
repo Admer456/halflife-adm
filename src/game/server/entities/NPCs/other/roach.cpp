@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // cockroach
 //=========================================================
@@ -31,6 +31,7 @@
 class CRoach : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
@@ -52,6 +53,14 @@ public:
 	// -----------------------------
 };
 LINK_ENTITY_TO_CLASS(monster_cockroach, CRoach);
+
+void CRoach::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = 1;
+	pev->model = MAKE_STRING("models/roach.mdl");
+}
 
 //=========================================================
 // ISoundMask - returns a bit mask indicating which types
@@ -85,7 +94,7 @@ void CRoach::Touch(CBaseEntity* pOther)
 		return;
 	}
 
-	vecSpot = pev->origin + Vector(0, 0, 8); //move up a bit, and trace down.
+	vecSpot = pev->origin + Vector(0, 0, 8); // move up a bit, and trace down.
 	UTIL_TraceLine(vecSpot, vecSpot + Vector(0, 0, -24), ignore_monsters, ENT(pev), &tr);
 
 	// This isn't really blood.  So you don't have to screen it out based on violence levels (UTIL_ShouldShowBlood())
@@ -114,14 +123,13 @@ void CRoach::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/roach.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-1, -1, 0), Vector(1, 1, 2));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_YELLOW;
 	pev->effects = 0;
-	pev->health = 1;
 	m_flFieldOfView = 0.5; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
@@ -141,11 +149,11 @@ void CRoach::Spawn()
 //=========================================================
 void CRoach::Precache()
 {
-	PRECACHE_MODEL("models/roach.mdl");
+	PrecacheModel(STRING(pev->model));
 
-	PRECACHE_SOUND("roach/rch_die.wav");
-	PRECACHE_SOUND("roach/rch_walk.wav");
-	PRECACHE_SOUND("roach/rch_smash.wav");
+	PrecacheSound("roach/rch_die.wav");
+	PrecacheSound("roach/rch_walk.wav");
+	PrecacheSound("roach/rch_smash.wav");
 }
 
 
@@ -158,7 +166,7 @@ void CRoach::Killed(entvars_t* pevAttacker, int iGib)
 
 	ClearShockEffect();
 
-	//random sound
+	// random sound
 	if (RANDOM_LONG(0, 4) == 1)
 	{
 		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "roach/rch_die.wav", 0.8, ATTN_NORM, 0, 80 + RANDOM_LONG(0, 39));
@@ -218,7 +226,7 @@ void CRoach::MonsterThink()
 			if (HasConditions(bits_COND_SEE_FEAR))
 			{
 				// if see something scary
-				//ALERT ( at_aiconsole, "Scared\n" );
+				// AILogger->debug("Scared");
 				Eat(30 + (RANDOM_LONG(0, 14))); // roach will ignore food for 30 to 45 seconds
 				PickNewDest(ROACH_SCARED_BY_ENT);
 				SetActivity(ACT_WALK);
@@ -226,7 +234,7 @@ void CRoach::MonsterThink()
 			else if (RANDOM_LONG(0, 149) == 1)
 			{
 				// if roach doesn't see anything, there's still a chance that it will move. (boredom)
-				//ALERT ( at_aiconsole, "Bored\n" );
+				// AILogger->debug("Bored");
 				PickNewDest(ROACH_BORED);
 				SetActivity(ACT_WALK);
 
@@ -249,7 +257,7 @@ void CRoach::MonsterThink()
 			if (GETENTITYILLUM(ENT(pev)) > m_flLastLightLevel)
 			{
 				// someone turned on lights!
-				//ALERT ( at_console, "Lights!\n" );
+				// AILogger->debug("Lights!");
 				PickNewDest(ROACH_SCARED_BY_LIGHT);
 				SetActivity(ACT_WALK);
 			}
@@ -401,7 +409,7 @@ void CRoach::Move(float flInterval)
 void CRoach::Look(int iDistance)
 {
 	CBaseEntity* pSightEnt = nullptr; // the current visible entity that we're dealing with
-	CBaseEntity* pPreviousEnt;	   // the last entity added to the link list
+	CBaseEntity* pPreviousEnt;		  // the last entity added to the link list
 	int iSighted = 0;
 
 	// DON'T let visibility information from last frame sit around!
@@ -443,7 +451,7 @@ void CRoach::Look(int iDistance)
 				case R_NO:
 					break;
 				default:
-					ALERT(at_console, "%s can't asses %s\n", STRING(pev->classname), STRING(pSightEnt->pev->classname));
+					AILogger->debug("{} can't asses {}", STRING(pev->classname), STRING(pSightEnt->pev->classname));
 					break;
 				}
 			}

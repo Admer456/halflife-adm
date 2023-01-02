@@ -13,37 +13,84 @@ on:
 
 env:
   BUILD_TYPE: Release
+  GAME_NAME: Half-Life
+  MOD_NAME: hlu
+  VCPKG_ROOT: ${{github.workspace}}/vcpkg
 
 jobs:
   linux:
     name: Linux-x86
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout 
-        uses: actions/checkout@v2.4.0
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           submodules: recursive
+          
       - name: Install G++ Multilib & 32 bit OpenGL library
-        run: >
+        run: |
           sudo dpkg --add-architecture i386
-          && sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-          && sudo apt update
-          && sudo apt install -y g++-11-multilib libgl1-mesa-dev:i386
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+          sudo apt update
+          sudo apt install -y g++-11-multilib libgl1-mesa-dev:i386
+         
+      - uses: lukka/get-cmake@latest
+      
+      - name: Restore artifacts, setup vcpkg
+        uses: lukka/run-vcpkg@v10
+        with:
+          vcpkgDirectory: '${{env.VCPKG_ROOT}}'
+          runVcpkgInstall: false
+          vcpkgJsonIgnores: "['**/vcpkg/**', '**/vcpkg_config/**']"
+         
       - name: Configure
-        run: CC=gcc-11 CXX=g++-11 cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_COLOR_MAKEFILE=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF
+        run: >
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.GAME_NAME}}/${{env.MOD_NAME}}
+          -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/cmake/LinuxToolchain.cmake
+        
       - name: Build
-        env:
-          MAKEFLAGS: "-j2"
-        run: CC=gcc-11 CXX=g++-11 cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j2
+        
+      - name: Install
+        run: cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+        
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: Linux-x86
+          path: ${{env.GAME_NAME}}
+        
   win32:
     name: Win32
     runs-on: windows-latest
     steps:
-      - name: Checkout 
-        uses: actions/checkout@v2.4.0
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           submodules: recursive
+      
+      - uses: lukka/get-cmake@latest
+      
+      - name: Restore artifacts, setup vcpkg
+        uses: lukka/run-vcpkg@v10
+        with:
+          vcpkgDirectory: '${{env.VCPKG_ROOT}}'
+          runVcpkgInstall: false
+          vcpkgJsonIgnores: "['**/vcpkg/**', '**/vcpkg_config/**']"
+        
       - name: Configure
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -AWin32 -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF
+        run: >
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=${{env.GAME_NAME}}/${{env.MOD_NAME}}
+          -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/cmake/WindowsToolchain.cmake -A Win32
+        
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j2
+        
+      - name: Install
+        run: cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+        
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: Win32
+          path: ${{env.GAME_NAME}}

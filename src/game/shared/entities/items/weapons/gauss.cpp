@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "shake.h"
@@ -33,11 +33,18 @@ float CGauss::GetFullChargeTime()
 extern bool g_irunninggausspred;
 #endif
 
+void CGauss::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_gauss.mdl");
+}
+
 void CGauss::Spawn()
 {
 	Precache();
 	m_iId = WEAPON_GAUSS;
-	SET_MODEL(ENT(pev), "models/w_gauss.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = GAUSS_DEFAULT_GIVE;
 
@@ -47,21 +54,21 @@ void CGauss::Spawn()
 
 void CGauss::Precache()
 {
-	PRECACHE_MODEL("models/w_gauss.mdl");
-	PRECACHE_MODEL("models/v_gauss.mdl");
-	PRECACHE_MODEL("models/p_gauss.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/v_gauss.mdl");
+	PrecacheModel("models/p_gauss.mdl");
 
-	PRECACHE_SOUND("items/9mmclip1.wav");
+	PrecacheSound("items/9mmclip1.wav");
 
-	PRECACHE_SOUND("weapons/gauss2.wav");
-	PRECACHE_SOUND("weapons/electro4.wav");
-	PRECACHE_SOUND("weapons/electro5.wav");
-	PRECACHE_SOUND("weapons/electro6.wav");
-	PRECACHE_SOUND("ambience/pulsemachine.wav");
+	PrecacheSound("weapons/gauss2.wav");
+	PrecacheSound("weapons/electro4.wav");
+	PrecacheSound("weapons/electro5.wav");
+	PrecacheSound("weapons/electro6.wav");
+	PrecacheSound("ambience/pulsemachine.wav");
 
-	m_iGlow = PRECACHE_MODEL("sprites/hotglow.spr");
-	m_iBalls = PRECACHE_MODEL("sprites/hotglow.spr");
-	m_iBeam = PRECACHE_MODEL("sprites/smoke.spr");
+	m_iGlow = PrecacheModel("sprites/hotglow.spr");
+	m_iBalls = PrecacheModel("sprites/hotglow.spr");
+	m_iBeam = PrecacheModel("sprites/smoke.spr");
 
 	m_usGaussFire = PRECACHE_EVENT(1, "events/gauss.sc");
 	m_usGaussSpin = PRECACHE_EVENT(1, "events/gaussspin.sc");
@@ -112,7 +119,7 @@ void CGauss::Holster()
 void CGauss::PrimaryAttack()
 {
 	// don't fire underwater
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 		PlayEmptySound();
 		m_flNextSecondaryAttack = m_flNextPrimaryAttack = GetNextAttackDelay(0.15);
@@ -140,12 +147,12 @@ void CGauss::PrimaryAttack()
 void CGauss::SecondaryAttack()
 {
 	// don't fire underwater
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 		if (m_fInAttack != 0)
 		{
 			EMIT_SOUND_DYN(ENT(m_pPlayer->pev), CHAN_WEAPON, "weapons/electro4.wav", 1.0, ATTN_NORM, 0, 80 + RANDOM_LONG(0, 0x3f));
-			//Have to send to the host as well because the client will predict the frame with m_fInAttack == 0
+			// Have to send to the host as well because the client will predict the frame with m_fInAttack == 0
 			SendStopEvent(true);
 			SendWeaponAnim(GAUSS_IDLE);
 			m_fInAttack = 0;
@@ -231,10 +238,10 @@ void CGauss::SecondaryAttack()
 		if (pitch > 250)
 			pitch = 250;
 
-		// ALERT( at_console, "%d %d %d\n", m_fInAttack, m_iSoundState, pitch );
+		// WeaponsLogger->debug("{} {} {}", m_fInAttack, m_iSoundState, pitch);
 
 		if (m_iSoundState == 0)
-			ALERT(at_console, "sound state %d\n", m_iSoundState);
+			WeaponsLogger->debug("sound state {}", m_iSoundState);
 
 		PLAYBACK_EVENT_FULL(FEV_NOTHOST, m_pPlayer->edict(), m_usGaussSpin, 0.0, g_vecZero, g_vecZero, 0.0, 0.0, pitch, 0, (m_iSoundState == SND_CHANGE_PITCH) ? 1 : 0, 0);
 
@@ -256,7 +263,7 @@ void CGauss::SecondaryAttack()
 			SendStopEvent(false);
 
 #ifndef CLIENT_DLL
-			m_pPlayer->TakeDamage(VARS(eoNullEntity), VARS(eoNullEntity), 50, DMG_SHOCK);
+			m_pPlayer->TakeDamage(World->pev, World->pev, 50, DMG_SHOCK);
 			UTIL_ScreenFade(m_pPlayer, Vector(255, 128, 0), 2, 0.5, 128, FFADE_IN);
 #endif
 			SendWeaponAnim(GAUSS_IDLE);
@@ -296,13 +303,13 @@ void CGauss::StartFire()
 #ifdef CLIENT_DLL
 		flDamage = 20;
 #else
-		flDamage = gSkillData.plrDmgGauss;
+		flDamage = GetSkillFloat("plr_gauss"sv);
 #endif
 	}
 
 	if (m_fInAttack != 3)
 	{
-		//ALERT ( at_console, "Time:%f Damage:%f\n", gpGlobals->time - m_pPlayer->m_flStartCharge, flDamage );
+		// WeaponsLogger->debug("Time:{} Damage:{}", gpGlobals->time - m_pPlayer->m_flStartCharge, flDamage);
 
 #ifndef CLIENT_DLL
 		float flZVel = m_pPlayer->pev->velocity.z;
@@ -355,20 +362,15 @@ void CGauss::Fire(Vector vecOrigSrc, Vector vecDir, float flDamage)
 
 	SendStopEvent(false);
 
-
-	/*ALERT( at_console, "%f %f %f\n%f %f %f\n",
-		vecSrc.x, vecSrc.y, vecSrc.z,
-		vecDest.x, vecDest.y, vecDest.z );*/
-
-
-	//	ALERT( at_console, "%f %f\n", tr.flFraction, flMaxFrac );
+	// WeaponsLogger->debug("{}\n{}", vecSrc, vecDest);
+	// WeaponsLogger->debug("{} {}", tr.flFraction, flMaxFrac);
 
 #ifndef CLIENT_DLL
 	while (flDamage > 10 && nMaxHits > 0)
 	{
 		nMaxHits--;
 
-		// ALERT( at_console, "." );
+		// WeaponsLogger->debug(".");
 		UTIL_TraceLine(vecSrc, vecDest, dont_ignore_monsters, pentIgnore, &tr);
 
 		if (0 != tr.fAllSolid)
@@ -404,7 +406,7 @@ void CGauss::Fire(Vector vecOrigSrc, Vector vecDir, float flDamage)
 
 			if (n < 0.5) // 60 degrees
 			{
-				// ALERT( at_console, "reflect %f\n", n );
+				// WeaponsLogger->debug("reflect {}", n);
 				// reflect
 				Vector r;
 
@@ -450,11 +452,11 @@ void CGauss::Fire(Vector vecOrigSrc, Vector vecDir, float flDamage)
 								n = 1;
 							flDamage -= n;
 
-							// ALERT( at_console, "punch %f\n", n );
+							// WeaponsLogger->debug("punch {}", n);
 							nTotal += 21;
 
 							// exit blast damage
-							//m_pPlayer->RadiusDamage( beam_tr.vecEndPos + vecDir * 8, pev, m_pPlayer->pev, flDamage, CLASS_NONE, DMG_BLAST );
+							// m_pPlayer->RadiusDamage( beam_tr.vecEndPos + vecDir * 8, pev, m_pPlayer->pev, flDamage, CLASS_NONE, DMG_BLAST );
 							float damage_radius;
 
 
@@ -478,13 +480,13 @@ void CGauss::Fire(Vector vecOrigSrc, Vector vecDir, float flDamage)
 					}
 					else
 					{
-						//ALERT( at_console, "blocked %f\n", n );
+						// WeaponsLogger->debug("blocked {}", n);
 						flDamage = 0;
 					}
 				}
 				else
 				{
-					//ALERT( at_console, "blocked solid\n" );
+					// WeaponsLogger->debug("blocked solid");
 
 					flDamage = 0;
 				}
@@ -497,7 +499,7 @@ void CGauss::Fire(Vector vecOrigSrc, Vector vecDir, float flDamage)
 		}
 	}
 #endif
-	// ALERT( at_console, "%d bytes\n", nTotal );
+	// WeaponsLogger->debug("{} bytes", nTotal);
 }
 
 
@@ -581,18 +583,20 @@ void CGauss::SendStopEvent(bool sendToHost)
 
 class CGaussAmmo : public CBasePlayerAmmo
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_gaussammo.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_gaussammo.mdl");
 	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_gaussammo.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		if (pOther->GiveAmmo(AMMO_URANIUMBOX_GIVE, "uranium", URANIUM_MAX_CARRY) != -1)
 		{

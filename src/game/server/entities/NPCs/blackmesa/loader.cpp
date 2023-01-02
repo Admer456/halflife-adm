@@ -1,23 +1,23 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 #include "cbase.h"
 #include "basemonster.h"
 
 /**
-*	@brief Opposing Force loader
-*/
+ *	@brief Opposing Force loader
+ */
 class COFLoader : public CBaseMonster
 {
 public:
@@ -25,6 +25,7 @@ public:
 
 	int ISoundMask() override { return bits_SOUND_NONE; }
 
+	void OnCreate() override;
 	void Precache() override;
 
 	void Spawn() override;
@@ -44,18 +45,26 @@ public:
 
 LINK_ENTITY_TO_CLASS(monster_op4loader, COFLoader);
 
+void COFLoader::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = 8;
+	pev->model = MAKE_STRING("models/loader.mdl");
+}
+
 void COFLoader::Precache()
 {
-	PRECACHE_MODEL("models/loader.mdl");
-	PRECACHE_SOUND("ambience/loader_step1.wav");
-	PRECACHE_SOUND("ambience/loader_hydra1.wav");
+	PrecacheModel(STRING(pev->model));
+	PrecacheSound("ambience/loader_step1.wav");
+	PrecacheSound("ambience/loader_hydra1.wav");
 }
 
 void COFLoader::Spawn()
 {
 	Precache();
 
-	SET_MODEL(edict(), "models/loader.mdl");
+	SetModel(STRING(pev->model));
 
 	if (FStrEq(STRING(pev->model), "models/player.mdl") || FStrEq(STRING(pev->model), "models/holo.mdl"))
 	{
@@ -69,7 +78,6 @@ void COFLoader::Spawn()
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = DONT_BLEED;
-	pev->health = 8;
 	m_MonsterState = MONSTERSTATE_NONE;
 	m_flFieldOfView = 0.5f;
 	pev->takedamage = DAMAGE_NO;
@@ -84,7 +92,7 @@ void COFLoader::SetYawSpeed()
 
 bool COFLoader::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
 {
-	//Don't take damage
+	// Don't take damage
 	return true;
 }
 

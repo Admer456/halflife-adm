@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #include "cbase.h"
 
@@ -61,6 +61,8 @@ public:
 	bool Restore(CRestore& restore) override;
 	static TYPEDESCRIPTION m_SaveData[];
 
+	void OnCreate() override;
+
 	void Precache() override;
 
 	void Spawn() override;
@@ -71,7 +73,7 @@ public:
 
 	int ObjectCaps() override { return 0; }
 
-	//Don't gib ever
+	// Don't gib ever
 	void GibMonster() override {}
 
 	void SetObjectCollisionBox() override
@@ -275,10 +277,18 @@ const char* COFPitWormUp::pIdleSounds[] =
 		"pitworm/pit_worm_idle2.wav",
 		"pitworm/pit_worm_idle3.wav"};
 
+void COFPitWormUp::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = GetSkillFloat("pitworm_health"sv);
+	pev->model = MAKE_STRING("models/pit_worm_up.mdl");
+}
+
 void COFPitWormUp::Precache()
 {
-	PRECACHE_MODEL("models/pit_worm_up.mdl");
-	PRECACHE_MODEL("sprites/tele1.spr");
+	PrecacheModel(STRING(pev->model));
+	PrecacheModel("sprites/tele1.spr");
 
 	PRECACHE_SOUND_ARRAY(pAttackSounds);
 	PRECACHE_SOUND_ARRAY(pAttackVoiceSounds);
@@ -287,27 +297,27 @@ void COFPitWormUp::Precache()
 	PRECACHE_SOUND_ARRAY(pHitGroundSounds);
 	PRECACHE_SOUND_ARRAY(pIdleSounds);
 
-	PRECACHE_SOUND("debris/beamstart7.wav");
+	PrecacheSound("debris/beamstart7.wav");
 
-	PRECACHE_SOUND("pitworm/clang1.wav");
-	PRECACHE_SOUND("pitworm/clang2.wav");
-	PRECACHE_SOUND("pitworm/clang3.wav");
+	PrecacheSound("pitworm/clang1.wav");
+	PrecacheSound("pitworm/clang2.wav");
+	PrecacheSound("pitworm/clang3.wav");
 
-	PRECACHE_SOUND("pitworm/pit_worm_alert.wav");
+	PrecacheSound("pitworm/pit_worm_alert.wav");
 
-	PRECACHE_SOUND("pitworm/pit_worm_attack_eyeblast.wav");
-	PRECACHE_SOUND("pitworm/pit_worm_attack_eyeblast_impact.wav");
+	PrecacheSound("pitworm/pit_worm_attack_eyeblast.wav");
+	PrecacheSound("pitworm/pit_worm_attack_eyeblast_impact.wav");
 
-	PRECACHE_SOUND("pitworm/pit_worm_attack_swipe1.wav");
-	PRECACHE_SOUND("pitworm/pit_worm_attack_swipe2.wav");
-	PRECACHE_SOUND("pitworm/pit_worm_attack_swipe3.wav");
+	PrecacheSound("pitworm/pit_worm_attack_swipe1.wav");
+	PrecacheSound("pitworm/pit_worm_attack_swipe2.wav");
+	PrecacheSound("pitworm/pit_worm_attack_swipe3.wav");
 
-	PRECACHE_SOUND("pitworm/pit_worm_death.wav");
+	PrecacheSound("pitworm/pit_worm_death.wav");
 
-	PRECACHE_SOUND("pitworm/pit_worm_flinch1.wav");
-	PRECACHE_SOUND("pitworm/pit_worm_flinch2.wav");
+	PrecacheSound("pitworm/pit_worm_flinch1.wav");
+	PrecacheSound("pitworm/pit_worm_flinch2.wav");
 
-	PRECACHE_MODEL("models/pit_worm_gibs.mdl");
+	PrecacheModel("models/pit_worm_gibs.mdl");
 
 	UTIL_PrecacheOther("pitworm_gib");
 }
@@ -319,7 +329,7 @@ void COFPitWormUp::Spawn()
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(edict(), "models/pit_worm_up.mdl");
+	SetModel(STRING(pev->model));
 
 	UTIL_SetSize(pev, {-32, -32, 0}, {32, 32, 64});
 
@@ -328,7 +338,7 @@ void COFPitWormUp::Spawn()
 	pev->flags |= FL_MONSTER;
 	pev->takedamage = DAMAGE_AIM;
 
-	pev->max_health = pev->health = gSkillData.pitWormHealth;
+	pev->max_health = pev->health;
 
 	pev->view_ofs = {0, 0, PITWORM_UP_EYE_HEIGHT};
 
@@ -397,7 +407,7 @@ void COFPitWormUp::StartupThink()
 
 		if (pTarget)
 		{
-			ALERT(at_console, "level %d node set\n", i);
+			AILogger->debug("level {} node set", i);
 			m_flTargetLevels[i] = pTarget->pev->origin.z;
 			m_flLevels[i] = pTarget->pev->origin.z - PITWORM_UP_LEVELS[i];
 		}
@@ -650,7 +660,7 @@ void COFPitWormUp::HitTouch(CBaseEntity* pOther)
 
 		pOther->pev->punchangle.z = 15;
 
-		//TODO: maybe determine direction of velocity to apply?
+		// TODO: maybe determine direction of velocity to apply?
 		pOther->pev->velocity = pOther->pev->velocity + Vector{0, 0, 200};
 
 		pOther->pev->flags &= ~FL_ONGROUND;
@@ -795,8 +805,8 @@ void COFPitWormUp::ShootBeam()
 			if (pHit && pHit->pev->takedamage != DAMAGE_NO)
 			{
 				ClearMultiDamage();
-				pHit->TraceAttack(pev, gSkillData.pitWormDmgBeam, m_vecBeam, &tr, 1024);
-				pHit->TakeDamage(pev, pev, gSkillData.pitWormDmgBeam, 1024);
+				pHit->TraceAttack(pev, GetSkillFloat("pitworm_dmg_beam"sv), m_vecBeam, &tr, 1024);
+				pHit->TakeDamage(pev, pev, GetSkillFloat("pitworm_dmg_beam"sv), 1024);
 			}
 			else if (tr.flFraction != 1.0)
 			{
@@ -877,12 +887,12 @@ void COFPitWormUp::StrafeBeam()
 	{
 		ClearMultiDamage();
 
-		pHit->TraceAttack(pev, gSkillData.pitWormDmgBeam, m_vecBeam, &tr, DMG_ENERGYBEAM);
-		pHit->TakeDamage(pev, pev, gSkillData.pitWormDmgBeam, DMG_ENERGYBEAM);
+		pHit->TraceAttack(pev, GetSkillFloat("pitworm_dmg_beam"sv), m_vecBeam, &tr, DMG_ENERGYBEAM);
+		pHit->TakeDamage(pev, pev, GetSkillFloat("pitworm_dmg_beam"sv), DMG_ENERGYBEAM);
 
-		//TODO: missing an ApplyMultiDamage call here
-		//Should probably replace the TakeDamage call
-		//ApplyMultiDamage( pev, pev );
+		// TODO: missing an ApplyMultiDamage call here
+		// Should probably replace the TakeDamage call
+		// ApplyMultiDamage( pev, pev );
 	}
 	else if (tr.flFraction != 1.0)
 	{
@@ -960,7 +970,7 @@ void COFPitWormUp::NextActivity()
 {
 	UTIL_MakeAimVectors(pev->angles);
 
-	//TODO: never used?
+	// TODO: never used?
 	const auto moveDistance = m_posDesired - pev->origin;
 
 	if (m_hEnemy)
@@ -1277,7 +1287,7 @@ bool COFPitWormUp::FVisible(CBaseEntity* pEntity)
 {
 	if ((pEntity->pev->flags & FL_NOTARGET) == 0)
 	{
-		if ((pev->waterlevel != 3 && pEntity->pev->waterlevel != 3) || 0 != pEntity->pev->waterlevel)
+		if ((pev->waterlevel != WaterLevel::Head && pEntity->pev->waterlevel != WaterLevel::Head) || WaterLevel::Dry != pEntity->pev->waterlevel)
 		{
 			return FVisible(pEntity->EyePosition());
 		}
@@ -1379,9 +1389,9 @@ void COFPitWormSteamTrigger::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, 
 }
 
 /**
-*	@brief Part of the unfinished monster_pitworm entity
-*	Used for navigation and sequence playback
-*/
+ *	@brief Part of the unfinished monster_pitworm entity
+ *	Used for navigation and sequence playback
+ */
 class COFInfoPW : public CPointEntity
 {
 public:
@@ -1395,7 +1405,7 @@ public:
 
 	void EXPORT StartNode();
 
-	int m_preSequence;
+	string_t m_preSequence;
 };
 
 TYPEDESCRIPTION COFInfoPW::m_SaveData[] =
@@ -1463,7 +1473,7 @@ LINK_ENTITY_TO_CLASS(pitworm_gib, COFPitWormGib);
 
 void COFPitWormGib::Precache()
 {
-	PRECACHE_MODEL("models/pit_worm_gibs.mdl");
+	PrecacheModel("models/pit_worm_gibs.mdl");
 }
 
 void COFPitWormGib::Spawn()
@@ -1479,9 +1489,7 @@ void COFPitWormGib::Spawn()
 	pev->renderfx = kRenderFxNone;
 	pev->solid = SOLID_NOT;
 
-	pev->classname = MAKE_STRING("pitworm_gib");
-
-	SET_MODEL(edict(), "models/pit_worm_gibs.mdl");
+	SetModel("models/pit_worm_gibs.mdl");
 
 	UTIL_SetSize(pev, {-8, -8, -4}, {8, 8, 16});
 
@@ -1491,7 +1499,7 @@ void COFPitWormGib::Spawn()
 
 void COFPitWormGib::GibFloat()
 {
-	if (pev->waterlevel == 3)
+	if (pev->waterlevel == WaterLevel::Head)
 	{
 		pev->movetype = MOVETYPE_FLY;
 
@@ -1499,7 +1507,7 @@ void COFPitWormGib::GibFloat()
 		pev->avelocity = pev->avelocity * 0.9;
 		pev->velocity.z += 8.0;
 	}
-	else if (pev->waterlevel != 0)
+	else if (pev->waterlevel != WaterLevel::Dry)
 	{
 		pev->velocity.z -= 8.0;
 	}
@@ -1550,7 +1558,7 @@ LINK_ENTITY_TO_CLASS(pitworm_gibshooter, COFPitWormGibShooter);
 
 void COFPitWormGibShooter::Precache()
 {
-	m_iGibModelIndex = PRECACHE_MODEL("models/pit_worm_gibs.mdl");
+	m_iGibModelIndex = PrecacheModel("models/pit_worm_gibs.mdl");
 }
 
 bool COFPitWormGibShooter::KeyValue(KeyValueData* pkvd)
@@ -1607,12 +1615,12 @@ COFPitWormGib* COFPitWormGibShooter::CreateGib()
 	if (CVAR_GET_FLOAT("violence_hgibs") == 0)
 		return nullptr;
 
-	COFPitWormGib* pGib = GetClassPtr((COFPitWormGib*)nullptr);
+	COFPitWormGib* pGib = g_EntityDictionary->Create<COFPitWormGib>("pitworm_gib");
 	pGib->Spawn();
 
 	if (pev->body <= 1)
 	{
-		ALERT(at_aiconsole, "GibShooter Body is <= 1!\n");
+		CBaseMonster::AILogger->error("GibShooter Body is <= 1!");
 	}
 
 	pGib->pev->body = RANDOM_LONG(1, pev->body - 1); // avoid throwing random amounts of the 0th gib. (skull).
@@ -1656,14 +1664,16 @@ void COFPitWormGibShooter::ShootThink()
 int gSpikeSprite, gSpikeDebrisSprite;
 
 /**
-*	@brief Unfinished, never used Pitworm NPC
-*/
+ *	@brief Unfinished, never used Pitworm NPC
+ */
 class COFPitWorm : public CBaseMonster
 {
 public:
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
 	static TYPEDESCRIPTION m_SaveData[];
+
+	void OnCreate() override;
 
 	int Classify() override
 	{
@@ -1862,6 +1872,14 @@ const char* COFPitWorm::pFootSounds[] =
 
 LINK_ENTITY_TO_CLASS(monster_pitworm, COFPitWorm);
 
+void COFPitWorm::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = 150 * GetSkillFloat("bigmomma_health_factor"sv);
+	pev->model = MAKE_STRING("models/pit_worm.mdl");
+}
+
 bool COFPitWorm::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
 {
 	// Don't take any acid damage -- BigMomma's mortar is acid
@@ -1874,7 +1892,7 @@ bool COFPitWorm::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, flo
 		{
 			pev->health = flDamage + 1;
 			Remember(bits_MEMORY_ADVANCE_NODE | bits_MEMORY_COMPLETED_NODE);
-			ALERT(at_aiconsole, "BM: Finished node health!!!\n");
+			AILogger->debug("BM: Finished node health!!!");
 		}
 	}
 
@@ -1883,7 +1901,7 @@ bool COFPitWorm::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, flo
 
 void COFPitWorm::Precache()
 {
-	g_engfuncs.pfnPrecacheModel("models/pit_worm.mdl");
+	PrecacheModel(STRING(pev->model));
 	PRECACHE_SOUND_ARRAY(pChildDieSounds);
 	PRECACHE_SOUND_ARRAY(pSackSounds);
 	PRECACHE_SOUND_ARRAY(pDeathSounds);
@@ -1894,12 +1912,12 @@ void COFPitWorm::Precache()
 	PRECACHE_SOUND_ARRAY(pPainSounds);
 	PRECACHE_SOUND_ARRAY(pFootSounds);
 
-	g_engfuncs.pfnPrecacheModel("sprites/xspark1.spr");
-	gSpikeSprite = g_engfuncs.pfnPrecacheModel("sprites/mommaspout.spr");
-	gSpikeDebrisSprite = g_engfuncs.pfnPrecacheModel("sprites/mommablob.spr");
-	g_engfuncs.pfnPrecacheSound("bullchicken/bc_acid1.wav");
-	g_engfuncs.pfnPrecacheSound("bullchicken/bc_spithit1.wav");
-	g_engfuncs.pfnPrecacheSound("bullchicken/bc_spithit2.wav");
+	PrecacheModel("sprites/xspark1.spr");
+	gSpikeSprite = PrecacheModel("sprites/mommaspout.spr");
+	gSpikeDebrisSprite = PrecacheModel("sprites/mommablob.spr");
+	PrecacheSound("bullchicken/bc_acid1.wav");
+	PrecacheSound("bullchicken/bc_spithit1.wav");
+	PrecacheSound("bullchicken/bc_spithit2.wav");
 }
 
 void COFPitWorm::StartMonster()
@@ -1930,7 +1948,7 @@ void COFPitWorm::StartMonster()
 		// Try to move the monster to make sure it's not stuck in a brush.
 		if (!WALK_MOVE(ENT(pev), 0, 0, WALKMOVE_NORMAL))
 		{
-			ALERT(at_error, "Monster %s stuck in wall--level design error", STRING(pev->classname));
+			Logger->error("Monster {} stuck in wall--level design error", STRING(pev->classname));
 			pev->effects = EF_BRIGHTFIELD;
 		}
 	}
@@ -1942,11 +1960,17 @@ void COFPitWorm::StartMonster()
 	if (!FStringNull(pev->target)) // this monster has a target
 	{
 		// Find the monster's initial target entity, stash it
-		m_pGoalEnt = CBaseEntity::Instance(FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(pev->target)));
+		m_pGoalEnt = UTIL_FindEntityByTargetname(nullptr, STRING(pev->target));
+
+		// TODO: this was probably unintended.
+		if (!m_pGoalEnt)
+		{
+			m_pGoalEnt = World;
+		}
 
 		if (!m_pGoalEnt)
 		{
-			ALERT(at_error, "ReadyMonster()--%s couldn't find target %s", STRING(pev->classname), STRING(pev->target));
+			Logger->error("ReadyMonster()--{} couldn't find target {}", STRING(pev->classname), STRING(pev->target));
 		}
 		else
 		{
@@ -1958,7 +1982,7 @@ void COFPitWorm::StartMonster()
 			// At this point, we expect only a path_corner as initial goal
 			if (!FClassnameIs(m_pGoalEnt->pev, "path_corner"))
 			{
-				ALERT(at_warning, "ReadyMonster--monster's initial goal '%s' is not a path_corner", STRING(pev->target));
+				Logger->warning("ReadyMonster--monster's initial goal '{}' is not a path_corner", STRING(pev->target));
 			}
 #endif
 
@@ -1970,10 +1994,10 @@ void COFPitWorm::StartMonster()
 
 			if (!FRefreshRoute())
 			{
-				ALERT(at_aiconsole, "Can't Create Route!\n");
+				AILogger->debug("Can't Create Route!");
 			}
 			SetState(MONSTERSTATE_IDLE);
-			//ChangeSchedule(GetScheduleOfType(SCHED_IDLE_WALK));
+			// ChangeSchedule(GetScheduleOfType(SCHED_IDLE_WALK));
 		}
 	}
 
@@ -1982,8 +2006,8 @@ void COFPitWorm::StartMonster()
 
 	pev->view_ofs = vecEyePos - pev->origin;
 
-	//SetState ( m_IdealMonsterState );
-	//SetActivity ( m_IdealActivity );
+	// SetState ( m_IdealMonsterState );
+	// SetActivity ( m_IdealActivity );
 
 	// Delay drop to floor to make sure each door in the level has had its chance to spawn
 	// Spread think times so that they don't all happen at the same time (Carmack)
@@ -1995,13 +2019,12 @@ void COFPitWorm::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/pit_worm.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-32, -32, 0), Vector(32, 32, 64));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_GREEN;
-	pev->health = 150 * gSkillData.bigmommaHealthFactor;
 	pev->view_ofs = Vector(0, 0, 128); // position of the eyes relative to monster's origin.
 	m_flFieldOfView = 0.3;			   // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
@@ -2077,7 +2100,7 @@ void COFPitWorm::Move(float flInterval)
 		// so refresh it.
 		if (m_movementGoal == MOVEGOAL_NONE || !FRefreshRoute())
 		{
-			ALERT(at_aiconsole, "Tried to move with no route!\n");
+			AILogger->debug("Tried to move with no route!");
 			TaskFail();
 			return;
 		}
@@ -2196,7 +2219,7 @@ void COFPitWorm::Move(float flInterval)
 	if (flCheckDist < m_flGroundSpeed * flInterval)
 	{
 		flInterval = flCheckDist / m_flGroundSpeed;
-		// ALERT( at_console, "%.02f\n", flInterval );
+		// AILogger->debug("{:.02f}", flInterval);
 	}
 	MoveExecute(pTargetEnt, vecDir, flInterval);
 
@@ -2235,7 +2258,7 @@ void COFPitWorm::ShootBeam()
 		m_pBeam = CBeam::BeamCreate("sprites/laserbeam.spr", 80);
 		if (m_pBeam)
 		{
-			//EHANDLE::operator CBaseEntity* (&this->baseclass_0.m_hEnemy);
+			// EHANDLE::operator CBaseEntity* (&this->baseclass_0.m_hEnemy);
 			m_pBeam->PointEntInit(tr.vecEndPos, entindex());
 
 			m_pBeam->SetEndAttachment(1);
@@ -2298,7 +2321,7 @@ void COFPitWorm::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 		if (pHurt)
 		{
-			pHurt->TakeDamage(pev, pev, gSkillData.bigmommaDmgSlash, DMG_CRUSH | DMG_SLASH);
+			pHurt->TakeDamage(pev, pev, GetSkillFloat("bigmomma_dmg_slash"sv), DMG_CRUSH | DMG_SLASH);
 			pHurt->pev->punchangle.x = 15;
 
 			pHurt->pev->velocity = pHurt->pev->velocity + (forward * 220) + Vector(0, 0, 200);
@@ -2510,7 +2533,7 @@ void COFPitWorm::RunAI()
 
 			if (!FRefreshRoute())
 			{
-				ALERT(at_aiconsole, "Can't Create Route!\n");
+				AILogger->debug("Can't Create Route!");
 			}
 		}
 	}

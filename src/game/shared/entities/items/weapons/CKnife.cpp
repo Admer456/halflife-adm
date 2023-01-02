@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 
 #include "CKnife.h"
@@ -21,19 +21,26 @@
 
 LINK_ENTITY_TO_CLASS(weapon_knife, CKnife);
 
+void CKnife::OnCreate()
+{
+	BaseClass::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_knife.mdl");
+}
+
 void CKnife::Precache()
 {
-	PRECACHE_MODEL("models/v_knife.mdl");
-	PRECACHE_MODEL("models/w_knife.mdl");
-	PRECACHE_MODEL("models/p_knife.mdl");
+	PrecacheModel("models/v_knife.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/p_knife.mdl");
 
-	PRECACHE_SOUND("weapons/knife1.wav");
-	PRECACHE_SOUND("weapons/knife2.wav");
-	PRECACHE_SOUND("weapons/knife3.wav");
-	PRECACHE_SOUND("weapons/knife_hit_flesh1.wav");
-	PRECACHE_SOUND("weapons/knife_hit_flesh2.wav");
-	PRECACHE_SOUND("weapons/knife_hit_wall1.wav");
-	PRECACHE_SOUND("weapons/knife_hit_wall2.wav");
+	PrecacheSound("weapons/knife1.wav");
+	PrecacheSound("weapons/knife2.wav");
+	PrecacheSound("weapons/knife3.wav");
+	PrecacheSound("weapons/knife_hit_flesh1.wav");
+	PrecacheSound("weapons/knife_hit_flesh2.wav");
+	PrecacheSound("weapons/knife_hit_wall1.wav");
+	PrecacheSound("weapons/knife_hit_wall2.wav");
 
 	m_usKnife = PRECACHE_EVENT(1, "events/knife.sc");
 }
@@ -44,7 +51,7 @@ void CKnife::Spawn()
 
 	m_iId = WEAPON_KNIFE;
 
-	SET_MODEL(edict(), "models/w_knife.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iClip = WEAPON_NOCLIP;
 
@@ -151,13 +158,13 @@ bool CKnife::Swing(const bool bFirst)
 		{
 			ClearMultiDamage();
 
-			float damage = gSkillData.plrDmgKnife;
+			float damage = GetSkillFloat("plr_knife"sv);
 
 			int damageTypes = DMG_CLUB;
 
 			if (g_pGameRules->IsMultiplayer())
 			{
-				//TODO: This code assumes the target is a player and not some NPC. Rework it to support NPC backstabbing.
+				// TODO: This code assumes the target is a player and not some NPC. Rework it to support NPC backstabbing.
 				UTIL_MakeVectors(pEntity->pev->v_angle);
 
 				const Vector targetRightDirection = gpGlobals->v_right;
@@ -166,7 +173,7 @@ bool CKnife::Swing(const bool bFirst)
 
 				const Vector ownerForwardDirection = gpGlobals->v_forward;
 
-				//In multiplayer the knife can backstab targets.
+				// In multiplayer the knife can backstab targets.
 				const bool isBehindTarget = CrossProduct(targetRightDirection, ownerForwardDirection).z > 0;
 
 				if (isBehindTarget)

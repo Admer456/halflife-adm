@@ -1,4 +1,4 @@
-//========= Copyright � 1996-2001, Valve LLC, All rights reserved. ============
+//========= Copyright ï¿½ 1996-2001, Valve LLC, All rights reserved. ============
 //
 // Purpose:
 //
@@ -31,11 +31,6 @@ extern bool cam_thirdperson;
 #define VOICE_MODEL_INTERVAL 0.3
 #define SCOREBOARD_BLINK_FREQUENCY 0.3 // How often to blink the scoreboard icons.
 #define SQUELCHOSCILLATE_PER_SECOND 2.0f
-
-
-extern BitmapTGA* LoadTGA(const char* pImageName);
-
-
 
 // ---------------------------------------------------------------------- //
 // The voice manager for the client.
@@ -126,8 +121,6 @@ CVoiceStatus::CVoiceStatus()
 	m_pParentPanel = nullptr;
 
 	m_bServerModEnable = -1;
-
-	m_pchGameDir.clear();
 }
 
 
@@ -151,14 +144,6 @@ CVoiceStatus::~CVoiceStatus()
 	m_pLocalLabel = nullptr;
 
 	FreeBitmaps();
-
-	if (!m_pchGameDir.empty())
-	{
-		if (m_bBanMgrInitialized)
-		{
-			m_BanMgr.SaveState(m_pchGameDir.c_str());
-		}
-	}
 }
 
 
@@ -173,11 +158,8 @@ int CVoiceStatus::Init(
 
 	gEngfuncs.pfnAddCommand("voice_showbanned", ShowBannedCallback);
 
-	if (gEngfuncs.pfnGetGameDirectory())
-	{
-		m_BanMgr.Init(gEngfuncs.pfnGetGameDirectory());
-		m_bBanMgrInitialized = true;
-	}
+	m_BanMgr.Init();
+	m_bBanMgrInitialized = true;
 
 	assert(!g_pInternalVoiceStatus);
 	g_pInternalVoiceStatus = this;
@@ -221,12 +203,17 @@ int CVoiceStatus::Init(
 	HOOK_MESSAGE(VoiceMask);
 	HOOK_MESSAGE(ReqState);
 
-	// Cache the game directory for use when we shut down
-	m_pchGameDir = gEngfuncs.pfnGetGameDirectory();
-
 	return 1;
 }
 
+void CVoiceStatus::Shutdown()
+{
+	if (m_bBanMgrInitialized)
+	{
+		m_BanMgr.SaveState();
+		m_bBanMgrInitialized = false;
+	}
+}
 
 bool CVoiceStatus::VidInit()
 {
@@ -247,19 +234,19 @@ bool CVoiceStatus::VidInit()
 	m_pLocalLabel->setVisible(false);
 
 
-	if (m_pSpeakerLabelIcon = vgui_LoadTGANoInvertAlpha("gfx/vgui/speaker4.tga"))
+	if (m_pSpeakerLabelIcon = vgui_LoadTGA("gfx/vgui/speaker4.tga", false))
 		m_pSpeakerLabelIcon->setColor(Color(255, 255, 255, 1)); // Give just a tiny bit of translucency so software draws correctly.
 
-	if (m_pScoreboardNeverSpoken = vgui_LoadTGANoInvertAlpha("gfx/vgui/640_speaker1.tga"))
+	if (m_pScoreboardNeverSpoken = vgui_LoadTGA("gfx/vgui/640_speaker1.tga", false))
 		m_pScoreboardNeverSpoken->setColor(Color(255, 255, 255, 1)); // Give just a tiny bit of translucency so software draws correctly.
 
-	if (m_pScoreboardNotSpeaking = vgui_LoadTGANoInvertAlpha("gfx/vgui/640_speaker2.tga"))
+	if (m_pScoreboardNotSpeaking = vgui_LoadTGA("gfx/vgui/640_speaker2.tga", false))
 		m_pScoreboardNotSpeaking->setColor(Color(255, 255, 255, 1)); // Give just a tiny bit of translucency so software draws correctly.
 
-	if (m_pScoreboardSpeaking = vgui_LoadTGANoInvertAlpha("gfx/vgui/640_speaker3.tga"))
+	if (m_pScoreboardSpeaking = vgui_LoadTGA("gfx/vgui/640_speaker3.tga", false))
 		m_pScoreboardSpeaking->setColor(Color(255, 255, 255, 1)); // Give just a tiny bit of translucency so software draws correctly.
 
-	if (m_pScoreboardSpeaking2 = vgui_LoadTGANoInvertAlpha("gfx/vgui/640_speaker4.tga"))
+	if (m_pScoreboardSpeaking2 = vgui_LoadTGA("gfx/vgui/640_speaker4.tga", false))
 		m_pScoreboardSpeaking2->setColor(Color(255, 255, 255, 1)); // Give just a tiny bit of translucency so software draws correctly.
 
 	if (m_pScoreboardSquelch = vgui_LoadTGA("gfx/vgui/icntlk_squelch.tga"))
@@ -270,17 +257,16 @@ bool CVoiceStatus::VidInit()
 
 	// Figure out the voice head model height.
 	m_VoiceHeadModelHeight = 45;
-	char* pFile = (char*)gEngfuncs.COM_LoadFile("scripts/voicemodel.txt", 5, nullptr);
-	if (pFile)
+	const auto fileContents = FileSystem_LoadFileIntoBuffer("scripts/voicemodel.txt", FileContentFormat::Text);
+	if (!fileContents.empty())
 	{
+		// TODO: token can potentially be larger than buffer.
 		char token[4096];
-		gEngfuncs.COM_ParseFile(pFile, token);
+		gEngfuncs.COM_ParseFile(reinterpret_cast<const char*>(fileContents.data()), token);
 		if (token[0] >= '0' && token[0] <= '9')
 		{
 			m_VoiceHeadModelHeight = (float)atof(token);
 		}
-
-		gEngfuncs.COM_FreeFile(pFile);
 	}
 
 	m_VoiceHeadModel = gEngfuncs.pfnSPR_Load("sprites/voiceicon.spr");
@@ -328,7 +314,7 @@ void CVoiceStatus::CreateEntities()
 		if (!m_VoicePlayers[i])
 			continue;
 
-		cl_entity_s* pClient = gEngfuncs.GetEntityByIndex(i + 1);
+		cl_entity_t* pClient = gEngfuncs.GetEntityByIndex(i + 1);
 
 		// Don't show an icon if the player is not in our PVS.
 		if (!pClient || pClient->curstate.messagenum < localPlayer->curstate.messagenum)
@@ -342,7 +328,7 @@ void CVoiceStatus::CreateEntities()
 		if (pClient == localPlayer && !cam_thirdperson)
 			continue;
 
-		cl_entity_s* pEnt = &m_VoiceHeadModels[iOutModel];
+		cl_entity_t* pEnt = &m_VoiceHeadModels[iOutModel];
 		++iOutModel;
 
 		memset(pEnt, 0, sizeof(*pEnt));
@@ -353,7 +339,7 @@ void CVoiceStatus::CreateEntities()
 		pEnt->curstate.renderfx = kRenderFxNoDissipation;
 		pEnt->curstate.framerate = 1;
 		pEnt->curstate.frame = 0;
-		pEnt->model = (struct model_s*)gEngfuncs.GetSpritePointer(m_VoiceHeadModel);
+		pEnt->model = (model_t*)gEngfuncs.GetSpritePointer(m_VoiceHeadModel);
 		pEnt->angles[0] = pEnt->angles[1] = pEnt->angles[2] = 0;
 		pEnt->curstate.scale = 0.5f;
 
@@ -496,7 +482,7 @@ void CVoiceStatus::UpdateServerState(bool bForce)
 		m_bServerModEnable = bCVarModEnable;
 
 		char str[256];
-		snprintf(str, sizeof(str), "VModEnable %d", m_bServerModEnable);
+		snprintf(str, sizeof(str), "vmodenable %d", m_bServerModEnable);
 		ServerCmd(str);
 
 		if (0 != gEngfuncs.pfnGetCvarFloat("voice_clientdebug"))
@@ -513,8 +499,8 @@ void CVoiceStatus::UpdateServerState(bool bForce)
 
 	for (unsigned long dw = 0; dw < VOICE_MAX_PLAYERS_DW; dw++)
 	{
-		//The ban mask is a 32 bit int, so make sure this doesn't silently break.
-		//Note that the server will also need updating.
+		// The ban mask is a 32 bit int, so make sure this doesn't silently break.
+		// Note that the server will also need updating.
 		static_assert(MAX_PLAYERS <= 32, "The voice ban bit vector only supports up to 32 players");
 
 		unsigned long serverBanMask = 0;
@@ -577,7 +563,7 @@ void CVoiceStatus::UpdateBanButton(int iClient)
 		return;
 
 	char playerID[16];
-	extern bool HACK_GetPlayerUniqueID(int iPlayer, char playerID[16]);
+	bool HACK_GetPlayerUniqueID(int iPlayer, char playerID[16]);
 	if (!HACK_GetPlayerUniqueID(iClient + 1, playerID))
 		return;
 

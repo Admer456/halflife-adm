@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== h_battery.cpp ========================================================
@@ -86,23 +86,23 @@ void CRecharge::Spawn()
 
 	UTIL_SetOrigin(pev, pev->origin); // set size and link into world
 	UTIL_SetSize(pev, pev->mins, pev->maxs);
-	SET_MODEL(ENT(pev), STRING(pev->model));
-	m_iJuice = gSkillData.suitchargerCapacity;
+	SetModel(STRING(pev->model));
+	m_iJuice = GetSkillFloat("suitcharger"sv);
 	pev->frame = 0;
 }
 
 void CRecharge::Precache()
 {
-	PRECACHE_SOUND("items/suitcharge1.wav");
-	PRECACHE_SOUND("items/suitchargeno1.wav");
-	PRECACHE_SOUND("items/suitchargeok1.wav");
+	PrecacheSound("items/suitcharge1.wav");
+	PrecacheSound("items/suitchargeno1.wav");
+	PrecacheSound("items/suitchargeok1.wav");
 }
 
 
 void CRecharge::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
 	// if it's not a player, ignore
-	if (!FClassnameIs(pActivator->pev, "player"))
+	if (!pActivator->IsPlayer())
 		return;
 
 	auto player = static_cast<CBasePlayer*>(pActivator);
@@ -134,15 +134,15 @@ void CRecharge::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useT
 		return;
 
 	// Make sure that we have a caller
-	//TODO: useless, it's accessed earlier on.
+	// TODO: useless, it's accessed earlier on.
 	if (!pActivator)
 		return;
 
 	m_hActivator = pActivator;
 
-	//only recharge the player
+	// only recharge the player
 
-	//TODO: put this check at the top.
+	// TODO: put this check at the top.
 	if (!m_hActivator->IsPlayer())
 		return;
 
@@ -176,7 +176,7 @@ void CRecharge::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useT
 
 void CRecharge::Recharge()
 {
-	m_iJuice = gSkillData.suitchargerCapacity;
+	m_iJuice = GetSkillFloat("suitcharger"sv);
 	pev->frame = 0;
 	SetThink(&CRecharge::SUB_DoNothing);
 }

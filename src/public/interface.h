@@ -14,9 +14,9 @@
 //    for legacy code). In this case, you need to make a new version name for your new interface, and make a wrapper interface and
 //    expose it for the old interface.
 
-//#if _MSC_VER >= 1300  // VC7
-//#include "tier1/interface.h"
-//#else
+// #if _MSC_VER >= 1300  // VC7
+// #include "tier1/interface.h"
+// #else
 
 #pragma once
 
@@ -69,13 +69,19 @@ public:
 #define EXPOSE_INTERFACE_FN(functionName, interfaceName, versionName) \
 	static InterfaceReg __g_Create##className##_reg(functionName, versionName);
 
-#define EXPOSE_INTERFACE(className, interfaceName, versionName)                                        \
-	static IBaseInterface* __Create##className##_interface() { return (interfaceName*)new className; } \
+#define EXPOSE_INTERFACE(className, interfaceName, versionName) \
+	static IBaseInterface* __Create##className##_interface()    \
+	{                                                           \
+		return (interfaceName*)new className;                   \
+	}                                                           \
 	static InterfaceReg __g_Create##className##_reg(__Create##className##_interface, versionName);
 
 // Use this to expose a singleton interface with a global variable you've created.
-#define EXPOSE_SINGLE_INTERFACE_GLOBALVAR(className, interfaceName, versionName, globalVarName)                         \
-	static IBaseInterface* __Create##className##interfaceName##_interface() { return (IBaseInterface*)&globalVarName; } \
+#define EXPOSE_SINGLE_INTERFACE_GLOBALVAR(className, interfaceName, versionName, globalVarName) \
+	static IBaseInterface* __Create##className##interfaceName##_interface()                     \
+	{                                                                                           \
+		return (IBaseInterface*)&globalVarName;                                                 \
+	}                                                                                           \
 	static InterfaceReg __g_Create##className##interfaceName##_reg(__Create##className##interfaceName##_interface, versionName);
 
 // Use this to expose a singleton interface. This creates the global variable for you automatically.
@@ -98,7 +104,7 @@ DLLEXPORT IBaseInterface* CreateInterface(const char* pName, int* pReturnCode);
 };
 
 
-extern CreateInterfaceFn Sys_GetFactoryThis(void);
+CreateInterfaceFn Sys_GetFactoryThis();
 
 // load/unload components
 class CSysModule;
@@ -108,9 +114,9 @@ class CSysModule;
 // The factory for that module should be passed on to dependent components for
 // proper versioning.
 //-----------------------------------------------------------------------------
-extern CSysModule* Sys_LoadModule(const char* pModuleName);
-extern void Sys_UnloadModule(CSysModule* pModule);
+CSysModule* Sys_LoadModule(const char* pModuleName);
+void Sys_UnloadModule(CSysModule* pModule);
 
-extern CreateInterfaceFn Sys_GetFactory(CSysModule* pModule);
+CreateInterfaceFn Sys_GetFactory(CSysModule* pModule);
 
-//#endif // MSVC 6.0
+// #endif // MSVC 6.0

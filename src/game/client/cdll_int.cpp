@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1999, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1999, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //
 //  cdll_int.c
 //
@@ -23,8 +23,8 @@
 #include "netadr.h"
 #include "interface.h"
 #include "com_weapons.h"
-#include "CClientLibrary.h"
-//#include "vgui_schememanager.h"
+#include "ClientLibrary.h"
+// #include "vgui_schememanager.h"
 
 #include "pm_shared.h"
 
@@ -36,13 +36,8 @@
 #include "tri.h"
 #include "vgui_TeamFortressViewport.h"
 
-cl_enginefunc_t gEngfuncs;
-CHud gHUD;
-TeamFortressViewport* gViewPort = nullptr;
-
 
 #include "particleman.h"
-IParticleMan* g_pParticleMan = nullptr;
 
 void CL_LoadParticleMan();
 void CL_UnloadParticleMan();
@@ -71,7 +66,7 @@ HUD_ConnectionlessPacket
   size of the response_buffer, so you must zero it out if you choose not to respond.
 ================================
 */
-int DLLEXPORT HUD_ConnectionlessPacket(const struct netadr_s* net_from, const char* args, char* response_buffer, int* response_buffer_size)
+int DLLEXPORT HUD_ConnectionlessPacket(const netadr_t* net_from, const char* args, char* response_buffer, int* response_buffer_size)
 {
 	//	RecClConnectionlessPacket(net_from, args, response_buffer, response_buffer_size);
 
@@ -87,7 +82,7 @@ int DLLEXPORT HUD_ConnectionlessPacket(const struct netadr_s* net_from, const ch
 	return 0;
 }
 
-void DLLEXPORT HUD_PlayerMoveInit(struct playermove_s* ppmove)
+void DLLEXPORT HUD_PlayerMoveInit(playermove_t* ppmove)
 {
 	//	RecClClientMoveInit(ppmove);
 
@@ -101,7 +96,7 @@ char DLLEXPORT HUD_PlayerMoveTexture(char* name)
 	return PM_FindTextureType(name);
 }
 
-void DLLEXPORT HUD_PlayerMove(struct playermove_s* ppmove, int server)
+void DLLEXPORT HUD_PlayerMove(playermove_t* ppmove, int server)
 {
 	//	RecClClientMove(ppmove, server);
 
@@ -167,6 +162,7 @@ the hud variables.
 void DLLEXPORT HUD_Init()
 {
 	//	RecClHudInit();
+	g_Client.HudInit();
 	InitInput();
 	gHUD.Init();
 	Scheme_Init();
@@ -242,6 +238,8 @@ void DLLEXPORT HUD_Frame(double time)
 	//	RecClHudFrame(time);
 
 	GetClientVoiceMgr()->Frame(time);
+
+	g_Client.RunFrame();
 }
 
 
@@ -282,7 +280,7 @@ void CL_UnloadParticleMan()
 
 void CL_LoadParticleMan()
 {
-	//Now implemented in the client library.
+	// Now implemented in the client library.
 	auto particleManFactory = Sys_GetFactoryThis();
 
 	g_pParticleMan = (IParticleMan*)particleManFactory(PARTICLEMAN_INTERFACE, nullptr);

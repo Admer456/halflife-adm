@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #pragma once
 
@@ -33,7 +33,7 @@
 #define bit_saidHeard (1 << 6)
 #define bit_saidSmelled (1 << 7)
 
-typedef enum
+enum TALKGROUPNAMES
 {
 	TLK_ANSWER = 0,
 	TLK_QUESTION,
@@ -55,7 +55,7 @@ typedef enum
 	TLK_MORTAL,
 
 	TLK_CGROUPS, // MUST be last entry
-} TALKGROUPNAMES;
+};
 
 
 enum
@@ -98,15 +98,23 @@ public:
 	void StopTalking() { SentenceStop(); }
 
 	// Base Monster functions
+	void OnCreate() override;
+
 	void Precache() override;
 	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
 	void Touch(CBaseEntity* pOther) override;
 	void Killed(entvars_t* pevAttacker, int iGib) override;
 	int IRelationship(CBaseEntity* pTarget) override;
 	bool CanPlaySentence(bool fDisregardState) override;
-	void PlaySentence(const char* pszSentence, float duration, float volume, float attenuation) override;
+
+protected:
+	void PlaySentenceCore(const char* pszSentence, float duration, float volume, float attenuation) override;
+
+public:
 	void PlayScriptedSentence(const char* pszSentence, float duration, float volume, float attenuation, bool bConcurrent, CBaseEntity* pListener) override;
 	bool KeyValue(KeyValueData* pkvd) override;
+
+	CTalkMonster* MyTalkMonsterPointer() override { return this; }
 
 	// AI functions
 	Schedule_t* GetScheduleOfType(int Type) override;
@@ -131,9 +139,9 @@ public:
 	void Talk(float flDuration);
 
 	/**
-	*	@brief Invokes @c callback on each friend
-	*	@details Return false to stop iteration
-	*/
+	 *	@brief Invokes @c callback on each friend
+	 *	@details Return false to stop iteration
+	 */
 	template <typename Callback>
 	void ForEachFriend(Callback callback);
 
@@ -164,13 +172,12 @@ public:
 	int m_voicePitch;				  // pitch of voice for this head
 	const char* m_szGrp[TLK_CGROUPS]; // sentence group names
 	float m_useTime;				  // Don't allow +USE until this time
-	int m_iszUse;					  // Custom +USE sentence group (follow)
-	int m_iszUnUse;					  // Custom +USE sentence group (stop following)
+	string_t m_iszUse;				  // Custom +USE sentence group (follow)
+	string_t m_iszUnUse;			  // Custom +USE sentence group (stop following)
 
 	float m_flLastSaidSmelled; // last time we talked about something that stinks
 	float m_flStopTalkTime;	   // when in the future that I'll be done saying this sentence.
 
-	//TODO: needs save/restore
 	bool m_fStartSuspicious;
 
 	EHANDLE m_hTalkTarget; // who to look at while talking
@@ -180,64 +187,74 @@ public:
 template <typename Callback>
 void CTalkMonster::ForEachFriend(Callback callback)
 {
-	//First pass: check for other NPCs of our own type
-	const auto classname = STRING(pev->classname);
-
-	for (auto friendEntity : UTIL_FindEntitiesByClassname(classname))
-	{
-		callback(friendEntity);
-	}
-
-	//Second pass: check for other NPCs of the same class
+	// First pass: check for other NPCs of the same classification.
+	// This typically includes NPCs with the same entity class, but a modder may implement custom classifications.
 	const auto myClass = Classify();
 
 	for (auto friendEntity : UTIL_FindEntities())
 	{
 		if (friendEntity->IsPlayer())
 		{
-			//No players
+			// No players
 			continue;
 		}
 
-		if (myClass != friendEntity->Classify())
+		auto talkMonster = friendEntity->MyTalkMonsterPointer();
+
+		if (!talkMonster)
+		{
+			// Not a talk monster, can't be a friend.
+			continue;
+		}
+
+		if (myClass != talkMonster->Classify())
 		{
 			continue;
 		}
 
-		callback(friendEntity);
+		callback(talkMonster);
 	}
 
-	//Third pass: check for other NPCs that are friendly to us
+	// Second pass: check for other NPCs that are friendly to us
 	for (auto friendEntity : UTIL_FindEntities())
 	{
 		if (friendEntity->IsPlayer())
 		{
-			//No players
+			// No players
 			continue;
 		}
 
-		if (myClass == friendEntity->Classify())
+		auto talkMonster = friendEntity->MyTalkMonsterPointer();
+
+		if (!talkMonster)
 		{
-			//Already checked these. Includes other NPCs of my type
+			// Not a talk monster, can't be a friend.
 			continue;
 		}
 
-		const auto relationship = IRelationship(friendEntity);
+		if (myClass == talkMonster->Classify())
+		{
+			// Already checked these. Includes other NPCs of my type
+			continue;
+		}
+
+		const auto relationship = IRelationship(talkMonster);
 
 		if (relationship != R_AL && relationship != R_NO)
 		{
-			//Not a friend
+			// Not a friend
 			continue;
 		}
 
-		callback(friendEntity);
+		callback(talkMonster);
 	}
 }
 
 template <typename Callback>
 void CTalkMonster::EnumFriends(Callback callback, bool trace)
 {
-	auto wrapper = [&](CBaseEntity* pFriend) {
+	auto wrapper = [&](CTalkMonster* pFriend)
+	{
 		if (pFriend == this || !pFriend->IsAlive() || !(pFriend->pev->flags & FL_MONSTER))
 		{
 			// don't talk to self or dead people or non-monster entities

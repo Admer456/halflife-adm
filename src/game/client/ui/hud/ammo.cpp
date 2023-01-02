@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //
 // Ammo.cpp
 //
@@ -26,10 +26,8 @@
 
 #include "ammohistory.h"
 #include "vgui_TeamFortressViewport.h"
+#include "view.h"
 
-extern Vector v_origin;
-extern Vector v_angles;
-extern Vector v_crosshairangle;
 extern engine_studio_api_t IEngineStudio;
 
 WEAPON* gpActiveSel; // nullptr means off, 1 means just the menu bar, otherwise
@@ -37,8 +35,6 @@ WEAPON* gpActiveSel; // nullptr means off, 1 means just the menu bar, otherwise
 WEAPON* gpLastSel;	 // Last weapon menu selection
 
 client_sprite_t* GetSpriteList(client_sprite_t* pList, const char* psz, int iRes, int iCount);
-
-WeaponsResource gWR;
 
 int g_weaponselect = 0;
 
@@ -74,12 +70,7 @@ bool WeaponsResource::HasAmmo(WEAPON* p)
 
 void WeaponsResource::LoadWeaponSprites(WEAPON* pWeapon)
 {
-	int i, iRes;
-
-	if (ScreenWidth < 640)
-		iRes = 320;
-	else
-		iRes = 640;
+	int i;
 
 	char sz[256];
 
@@ -103,7 +94,7 @@ void WeaponsResource::LoadWeaponSprites(WEAPON* pWeapon)
 
 	client_sprite_t* p;
 
-	p = GetSpriteList(pList, "crosshair", iRes, i);
+	p = GetSpriteList(pList, "crosshair", CHud::m_iRes, i);
 	if (p)
 	{
 		sprintf(sz, "sprites/%s.spr", p->szSprite);
@@ -113,7 +104,7 @@ void WeaponsResource::LoadWeaponSprites(WEAPON* pWeapon)
 	else
 		pWeapon->hCrosshair = 0;
 
-	p = GetSpriteList(pList, "autoaim", iRes, i);
+	p = GetSpriteList(pList, "autoaim", CHud::m_iRes, i);
 	if (p)
 	{
 		sprintf(sz, "sprites/%s.spr", p->szSprite);
@@ -123,7 +114,7 @@ void WeaponsResource::LoadWeaponSprites(WEAPON* pWeapon)
 	else
 		pWeapon->hAutoaim = 0;
 
-	p = GetSpriteList(pList, "zoom", iRes, i);
+	p = GetSpriteList(pList, "zoom", CHud::m_iRes, i);
 	if (p)
 	{
 		sprintf(sz, "sprites/%s.spr", p->szSprite);
@@ -132,11 +123,11 @@ void WeaponsResource::LoadWeaponSprites(WEAPON* pWeapon)
 	}
 	else
 	{
-		pWeapon->hZoomedCrosshair = pWeapon->hCrosshair; //default to non-zoomed crosshair
+		pWeapon->hZoomedCrosshair = pWeapon->hCrosshair; // default to non-zoomed crosshair
 		pWeapon->rcZoomedCrosshair = pWeapon->rcCrosshair;
 	}
 
-	p = GetSpriteList(pList, "zoom_autoaim", iRes, i);
+	p = GetSpriteList(pList, "zoom_autoaim", CHud::m_iRes, i);
 	if (p)
 	{
 		sprintf(sz, "sprites/%s.spr", p->szSprite);
@@ -145,11 +136,11 @@ void WeaponsResource::LoadWeaponSprites(WEAPON* pWeapon)
 	}
 	else
 	{
-		pWeapon->hZoomedAutoaim = pWeapon->hZoomedCrosshair; //default to zoomed crosshair
+		pWeapon->hZoomedAutoaim = pWeapon->hZoomedCrosshair; // default to zoomed crosshair
 		pWeapon->rcZoomedAutoaim = pWeapon->rcZoomedCrosshair;
 	}
 
-	p = GetSpriteList(pList, "weapon", iRes, i);
+	p = GetSpriteList(pList, "weapon", CHud::m_iRes, i);
 	if (p)
 	{
 		sprintf(sz, "sprites/%s.spr", p->szSprite);
@@ -161,7 +152,7 @@ void WeaponsResource::LoadWeaponSprites(WEAPON* pWeapon)
 	else
 		pWeapon->hInactive = 0;
 
-	p = GetSpriteList(pList, "weapon_s", iRes, i);
+	p = GetSpriteList(pList, "weapon_s", CHud::m_iRes, i);
 	if (p)
 	{
 		sprintf(sz, "sprites/%s.spr", p->szSprite);
@@ -171,7 +162,7 @@ void WeaponsResource::LoadWeaponSprites(WEAPON* pWeapon)
 	else
 		pWeapon->hActive = 0;
 
-	p = GetSpriteList(pList, "ammo", iRes, i);
+	p = GetSpriteList(pList, "ammo", CHud::m_iRes, i);
 	if (p)
 	{
 		sprintf(sz, "sprites/%s.spr", p->szSprite);
@@ -183,7 +174,7 @@ void WeaponsResource::LoadWeaponSprites(WEAPON* pWeapon)
 	else
 		pWeapon->hAmmo = 0;
 
-	p = GetSpriteList(pList, "ammo2", iRes, i);
+	p = GetSpriteList(pList, "ammo2", CHud::m_iRes, i);
 	if (p)
 	{
 		sprintf(sz, "sprites/%s.spr", p->szSprite);
@@ -228,7 +219,11 @@ WEAPON* WeaponsResource::GetNextActivePos(int iSlot, int iSlotPos)
 }
 
 
-int giBucketHeight, giBucketWidth, giABHeight, giABWidth; // Ammo Bar width and height
+int giBucketHeight, giBucketWidth;
+
+// Ammo Bar width and height
+const int giABHeight = 4;
+const int giABWidth = 20;
 
 HSPRITE ghsprBuckets; // Sprite for top row of weapons menu
 
@@ -259,6 +254,22 @@ DECLARE_COMMAND(m_Ammo, PrevWeapon);
 #define AMMO_LARGE_WIDTH 20
 
 #define HISTORY_DRAW_TIME "5"
+
+void SendWeaponSelectCommand(const char* weaponName)
+{
+	char command[512];
+
+	const int result = snprintf(command, sizeof(command), "selectweapon %s", weaponName);
+
+	if (result >= 0 && result < sizeof(command))
+	{
+		ServerCmd(command);
+	}
+	else
+	{
+		gEngfuncs.Con_Printf("Error formatting selectweapon command\n");
+	}
+}
 
 bool CHudAmmo::Init()
 {
@@ -298,7 +309,7 @@ bool CHudAmmo::Init()
 	gHR.Init();
 
 	return true;
-};
+}
 
 void CHudAmmo::Reset()
 {
@@ -326,17 +337,6 @@ bool CHudAmmo::VidInit()
 
 	// If we've already loaded weapons, let's get new sprites
 	gWR.LoadAllWeaponSprites();
-
-	if (ScreenWidth >= 640)
-	{
-		giABWidth = 20;
-		giABHeight = 4;
-	}
-	else
-	{
-		giABWidth = 10;
-		giABHeight = 2;
-	}
 
 	return true;
 }
@@ -376,7 +376,7 @@ void CHudAmmo::Think()
 	{
 		if (gpActiveSel != (WEAPON*)1)
 		{
-			ServerCmd(gpActiveSel->szName);
+			SendWeaponSelectCommand(gpActiveSel->szName);
 			g_weaponselect = gpActiveSel->iId;
 		}
 
@@ -449,7 +449,7 @@ void WeaponsResource::SelectSlot(int iSlot, bool fAdvance, int iDirection)
 			WEAPON* p2 = GetNextActivePos(p->iSlot, p->iSlotPos);
 			if (!p2)
 			{ // only one active item in bucket, so change directly to weapon
-				ServerCmd(p->szName);
+				SendWeaponSelectCommand(p->szName);
 				g_weaponselect = p->iId;
 				return;
 			}
@@ -884,12 +884,13 @@ void AdjustSubRect(const int iWidth, const int iHeight, float& left, float& righ
 
 void CHudAmmo::DrawCrosshair(int x, int y)
 {
-	auto renderer = [this](int x, int y, const Crosshair& crosshair, RGB24 color) {
+	auto renderer = [this](int x, int y, const Crosshair& crosshair, RGB24 color)
+	{
 		if (0 != crosshair.sprite)
 		{
 			if (0 == IEngineStudio.IsHardware())
 			{
-				//Fall back to the regular render path for software
+				// Fall back to the regular render path for software
 				x -= (crosshair.rect.right - crosshair.rect.left) / 2;
 				y -= (crosshair.rect.bottom - crosshair.rect.top) / 2;
 
@@ -905,7 +906,7 @@ void CHudAmmo::DrawCrosshair(int x, int y)
 
 			Rect rect;
 
-			//Trim a pixel border around it, since it blends. - Solokiller
+			// Trim a pixel border around it, since it blends. - Solokiller
 			rect.left = crosshair.rect.left * flScale + (flScale - 1);
 			rect.top = crosshair.rect.top * flScale + (flScale - 1);
 			rect.right = crosshair.rect.right * flScale - (flScale - 1);
@@ -980,7 +981,7 @@ bool CHudAmmo::Draw(float flTime)
 	// Draw ammo pickup history
 	gHR.DrawAmmoHistory(flTime);
 
-	//Draw crosshair here so original engine behavior is mimicked pretty closely
+	// Draw crosshair here so original engine behavior is mimicked pretty closely
 	{
 		if (0 != gHUD.m_pCvarCrosshair->value && m_DrawCrosshair)
 		{
@@ -992,7 +993,7 @@ bool CHudAmmo::Draw(float flTime)
 			Vector screen;
 			gEngfuncs.pTriAPI->WorldToScreen(point, screen);
 
-			//Round the value so the crosshair doesn't jitter
+			// Round the value so the crosshair doesn't jitter
 			screen = screen * 1000;
 
 			for (int i = 0; i < 3; ++i)

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //
 // coopplay_gamerules.cpp
 //
@@ -26,6 +26,16 @@ CHalfLifeCoopplay::CHalfLifeCoopplay()
 	m_DisableDeathMessages = false;
 	m_DisableDeathPenalty = false;
 	g_engfuncs.pfnCVarSetFloat("mp_allowmonsters", 1);
+
+	m_MenuSelectCommand = g_ClientCommands.CreateScoped("menuselect", [](CBasePlayer* player, const auto& args)
+		{
+			if (CMD_ARGC() < 2)
+				return;
+
+			int slot = atoi(CMD_ARGV(1));
+
+			// select the item from the current menu
+		});
 }
 
 void CHalfLifeCoopplay::UpdateGameMode(CBasePlayer* pPlayer)
@@ -47,11 +57,7 @@ void CHalfLifeCoopplay::MonsterKilled(CBaseMonster* pVictim, entvars_t* pKiller,
 
 		killerPlayer->pev->frags += points;
 
-		g_engfuncs.pfnMessageBegin(MSG_ALL, gmsgScoreInfo, nullptr, nullptr);
-		g_engfuncs.pfnWriteByte(killerPlayer->entindex());
-		g_engfuncs.pfnWriteShort(killerPlayer->pev->frags);
-		g_engfuncs.pfnWriteShort(killerPlayer->m_iDeaths);
-		g_engfuncs.pfnMessageEnd();
+		killerPlayer->SendScoreInfoAll();
 	}
 }
 
@@ -180,23 +186,6 @@ bool CHalfLifeCoopplay::FPlayerCanTakeDamage(CBasePlayer* pPlayer, CBaseEntity* 
 		return false;
 
 	return CHalfLifeMultiplay::FPlayerCanTakeDamage(pPlayer, pAttacker);
-}
-
-bool CHalfLifeCoopplay::ClientCommand(CBasePlayer* pPlayer, const char* pcmd)
-{
-	if (FStrEq(pcmd, "menuselect"))
-	{
-		if (CMD_ARGC() < 2)
-			return true;
-
-		int slot = atoi(CMD_ARGV(1));
-
-		// select the item from the current menu
-
-		return true;
-	}
-
-	return false;
 }
 
 float CHalfLifeCoopplay::FlWeaponTryRespawn(CBasePlayerItem* pWeapon)

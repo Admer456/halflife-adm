@@ -3,13 +3,11 @@ include(../shared/game_shared.cmake)
 if (UNIX)
 	# Copy libraries provided by the game to the build directory so we can point the compiler and linker to the files.
 	configure_file(../../../utils/vgui/lib/linux/vgui${CMAKE_SHARED_LIBRARY_SUFFIX} ${CMAKE_CURRENT_BINARY_DIR}/vgui${CMAKE_SHARED_LIBRARY_SUFFIX} COPYONLY)
-	
 	configure_file(../../../external/SDL2/lib/libSDL2-2.0${CMAKE_SHARED_LIBRARY_SUFFIX}.0 ${CMAKE_CURRENT_BINARY_DIR}/libSDL2-2.0${CMAKE_SHARED_LIBRARY_SUFFIX}.0 COPYONLY)
 endif()
 
 find_package(OpenGL REQUIRED)
 
-# Set up vgui library
 add_library(vgui SHARED IMPORTED)
 
 if (WIN32)
@@ -20,7 +18,6 @@ endif()
 
 target_include_directories(vgui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../../../utils/vgui/include)
 
-# Set up SDL2 library
 add_library(SDL2 SHARED IMPORTED)
 
 if (WIN32)
@@ -31,11 +28,9 @@ endif()
 
 target_include_directories(SDL2 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../../../external/SDL2/include)
 
-# Client library
 add_library(client SHARED)
 
 set_common_properties(client)
-add_json_dependencies(client)
 
 target_include_directories(client PRIVATE
 	../server
@@ -58,7 +53,8 @@ target_include_directories(client PRIVATE
 	../shared/player_movement
 	../shared/utils
 	../../engine
-	../../../utils/vgui/include)
+	../../../utils/vgui/include
+	${OPENGL_INCLUDE_DIR})
 	
 target_compile_definitions(client PRIVATE
 	CLIENT_DLL
@@ -66,28 +62,30 @@ target_compile_definitions(client PRIVATE
 	
 target_link_libraries(client PRIVATE
 	vgui
+	$<$<PLATFORM_ID:Windows>:delayimp>
 	$<$<PLATFORM_ID:Windows>:wsock32>
 	SDL2
-	OpenGL::GL)
-	
+	OpenAL::OpenAL
+	libnyquist)
+
 if (UNIX)
 	# Tell the linker to search for vgui.so and SDL2-2.0.so.0 in here
-	target_link_directories(client PRIVATE
-		${CMAKE_CURRENT_BINARY_DIR})
+	target_link_directories(client PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 target_link_options(client PRIVATE
-	$<$<PLATFORM_ID:Darwin>:
-		-framework Carbon>)
+	$<$<PLATFORM_ID:Windows>:/DELAYLOAD:OpenAL32.dll>
+	$<$<PLATFORM_ID:Darwin>:-framework Carbon>)
 
 target_sources(client PRIVATE
-	CClientLibrary.cpp
-	CClientLibrary.h
 	cdll_int.cpp
 	cl_dll.h
 	cl_util.h
+	ClientLibrary.cpp
+	ClientLibrary.h
 	com_weapons.cpp
 	com_weapons.h
+	$<$<PLATFORM_ID:Windows>:DelayLoad.cpp>
 	demo.cpp
 	demo.h
 	entity.cpp
@@ -136,6 +134,27 @@ target_sources(client PRIVATE
 	rendering/studio_util.h
 	rendering/tri.cpp
 	rendering/tri.h
+	
+	sound/ClientSoundReplacement.h
+	sound/DummySoundSystem.h
+	sound/GameSoundSystem.cpp
+	sound/GameSoundSystem.h
+	sound/HalfLifeSoundEffects.cpp
+	sound/HalfLifeSoundEffects.h
+	sound/IGameSoundSystem.h
+	sound/IMusicSystem.h
+	sound/ISoundSystem.h
+	sound/MusicSystem.cpp
+	sound/MusicSystem.h
+	sound/OpenALUtils.h
+	sound/RiffChunkReader.h
+	sound/SentencesSystem.cpp
+	sound/SentencesSystem.h
+	sound/SoundCache.cpp
+	sound/SoundCache.h
+	sound/SoundInternalDefs.h
+	sound/SoundSystem.cpp
+	sound/SoundSystem.h
 
 	ui/voice_banmgr.cpp
 	ui/voice_banmgr.h
@@ -154,9 +173,11 @@ target_sources(client PRIVATE
 	ui/hud/health.h
 	ui/hud/hud.cpp
 	ui/hud/hud.h
+	ui/hud/hud_entityinfo.cpp
 	ui/hud/hud_flagicons.cpp
 	ui/hud/hud_msg.cpp
 	ui/hud/hud_playerbrowse.cpp
+	ui/hud/hud_projectinfo.cpp
 	ui/hud/hud_redraw.cpp
 	ui/hud/hud_spectator.cpp
 	ui/hud/hud_spectator.h
@@ -214,15 +235,12 @@ target_sources(client PRIVATE
 	../../common/common_types.h
 	../../common/const.h
 	../../common/con_nprint.h
-	../../common/crc.h
 	../../common/cvardef.h
 	../../common/demo_api.h
 	../../common/director_cmds.h
 	../../common/dlight.h
-	../../common/dll_state.h
 	../../common/entity_state.h
 	../../common/entity_types.h
-	../../common/enums.h
 	../../common/event_api.h
 	../../common/event_args.h
 	../../common/event_flags.h
@@ -239,16 +257,16 @@ target_sources(client PRIVATE
 	../../common/Platform.h
 	../../common/PlatformHeaders.h
 	../../common/pmtrace.h
-	../../common/qfont.h
 	../../common/ref_params.h
 	../../common/r_efx.h
 	../../common/r_studioint.h
 	../../common/screenfade.h
 	../../common/Sequence.h
-	../../common/studio_event.h
 	../../common/triangleapi.h
 	../../common/usercmd.h
 	../../common/weaponinfo.h
+	../../common/winsani_in.h
+	../../common/winsani_out.h
 
 	../../engine/APIProxy.h
 	../../engine/cdll_int.h
@@ -256,6 +274,10 @@ target_sources(client PRIVATE
 	../../engine/customentity.h
 	../../engine/edict.h
 	../../engine/eiface.h
+	../../engine/progdefs.h
+	../../engine/progs.h
+	../../engine/shake.h
+	../../engine/studio.h
 
 	../../public/FileSystem.h
 	../../public/interface.cpp
@@ -267,10 +289,7 @@ target_sources(client PRIVATE
 
 add_game_shared_sources(client)
 
-target_precompile_headers(client
-	PRIVATE
-		ui/hud/hud.h)
+target_precompile_headers(client PRIVATE ui/hud/hud.h)
 
-# Create filters
 get_target_property(CLIENT_SOURCES client SOURCES)
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}../../../.. FILES ${CLIENT_SOURCES})

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "CItemCTF.h"
@@ -21,10 +21,17 @@
 
 LINK_ENTITY_TO_CLASS(item_ctfbackpack, CItemBackpackCTF);
 
+void CItemBackpackCTF::OnCreate()
+{
+	CItemCTF::OnCreate();
+
+	pev->model = MAKE_STRING("models/w_backpack.mdl");
+}
+
 void CItemBackpackCTF::Precache()
 {
-	g_engfuncs.pfnPrecacheModel("models/w_backpack.mdl");
-	g_engfuncs.pfnPrecacheSound("ctf/pow_backpack.wav");
+	PrecacheModel(STRING(pev->model));
+	PrecacheSound("ctf/pow_backpack.wav");
 }
 
 void CItemBackpackCTF::RemoveEffect(CBasePlayer* pPlayer)
@@ -75,17 +82,12 @@ bool CItemBackpackCTF::MyTouch(CBasePlayer* pPlayer)
 
 void CItemBackpackCTF::Spawn()
 {
-	//TODO: precache calls should be in Precache
-	if (!FStringNull(pev->model))
-		g_engfuncs.pfnPrecacheModel(STRING(pev->model));
-
-	g_engfuncs.pfnPrecacheSound("ctf/itemthrow.wav");
-	g_engfuncs.pfnPrecacheSound("items/ammopickup1.wav");
+	PrecacheSound("ctf/itemthrow.wav");
+	PrecacheSound("items/ammopickup1.wav");
 
 	Precache();
 
-	//TODO: shouldn't this be using pev->model?
-	g_engfuncs.pfnSetModel(edict(), "models/w_backpack.mdl");
+	SetModel(STRING(pev->model));
 
 	pev->spawnflags |= SF_NORESPAWN;
 	pev->oldorigin = pev->origin;

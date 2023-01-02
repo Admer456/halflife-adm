@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // barnacle - stationary ceiling mounted 'fishing' monster
 //=========================================================
@@ -30,6 +30,7 @@
 class CBarnacle : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	CBaseEntity* TongueTouchEnt(float* pflLength);
@@ -64,6 +65,13 @@ TYPEDESCRIPTION CBarnacle::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE(CBarnacle, CBaseMonster);
 
+void CBarnacle::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = 25;
+	pev->model = MAKE_STRING("models/barnacle.mdl");
+}
 
 //=========================================================
 // Classify - indicates this monster's place in the
@@ -100,7 +108,7 @@ void CBarnacle::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/barnacle.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-16, -16, -32), Vector(16, 16, 0));
 
 	pev->solid = SOLID_SLIDEBOX;
@@ -108,8 +116,7 @@ void CBarnacle::Spawn()
 	pev->takedamage = DAMAGE_AIM;
 	m_bloodColor = BLOOD_COLOR_RED;
 	pev->effects = EF_INVLIGHT; // take light from the ceiling
-	pev->health = 25;
-	m_flFieldOfView = 0.5; // indicates the width of this monster's forward view cone ( as a dotproduct result )
+	m_flFieldOfView = 0.5;		// indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 	m_flKillVictimTime = 0;
 	m_cGibs = 0;
@@ -176,8 +183,8 @@ void CBarnacle::BarnacleThink()
 			vecNewEnemyOrigin.y = pev->origin.y;
 
 			// guess as to where their neck is
-			vecNewEnemyOrigin.x -= 6 * cos(m_hEnemy->pev->angles.y * M_PI / 180.0);
-			vecNewEnemyOrigin.y -= 6 * sin(m_hEnemy->pev->angles.y * M_PI / 180.0);
+			vecNewEnemyOrigin.x -= 6 * cos(m_hEnemy->pev->angles.y * PI / 180.0);
+			vecNewEnemyOrigin.y -= 6 * sin(m_hEnemy->pev->angles.y * PI / 180.0);
 
 			m_flAltitude -= BARNACLE_PULL_SPEED;
 			vecNewEnemyOrigin.z += BARNACLE_PULL_SPEED;
@@ -317,7 +324,7 @@ void CBarnacle::BarnacleThink()
 		}
 	}
 
-	// ALERT( at_console, "tounge %f\n", m_flAltitude + m_flTongueAdj );
+	// AILogger->debug("tounge {}", m_flAltitude + m_flTongueAdj);
 	SetBoneController(0, -(m_flAltitude + m_flTongueAdj));
 	StudioFrameAdvance(0.1);
 }
@@ -332,7 +339,7 @@ void CBarnacle::Killed(entvars_t* pevAttacker, int iGib)
 	pev->solid = SOLID_NOT;
 	pev->takedamage = DAMAGE_NO;
 
-	//Added for Op4
+	// Added for Op4
 	pev->deadflag = DEAD_DYING;
 
 	ClearShockEffect();
@@ -390,15 +397,15 @@ void CBarnacle::WaitTillDead()
 //=========================================================
 void CBarnacle::Precache()
 {
-	PRECACHE_MODEL("models/barnacle.mdl");
+	PrecacheModel(STRING(pev->model));
 
-	PRECACHE_SOUND("barnacle/bcl_alert2.wav"); //happy, lifting food up
-	PRECACHE_SOUND("barnacle/bcl_bite3.wav");  //just got food to mouth
-	PRECACHE_SOUND("barnacle/bcl_chew1.wav");
-	PRECACHE_SOUND("barnacle/bcl_chew2.wav");
-	PRECACHE_SOUND("barnacle/bcl_chew3.wav");
-	PRECACHE_SOUND("barnacle/bcl_die1.wav");
-	PRECACHE_SOUND("barnacle/bcl_die3.wav");
+	PrecacheSound("barnacle/bcl_alert2.wav"); // happy, lifting food up
+	PrecacheSound("barnacle/bcl_bite3.wav");  // just got food to mouth
+	PrecacheSound("barnacle/bcl_chew1.wav");
+	PrecacheSound("barnacle/bcl_chew2.wav");
+	PrecacheSound("barnacle/bcl_chew3.wav");
+	PrecacheSound("barnacle/bcl_die1.wav");
+	PrecacheSound("barnacle/bcl_die3.wav");
 }
 
 //=========================================================

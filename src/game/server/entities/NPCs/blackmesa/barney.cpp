@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // monster template
 //=========================================================
@@ -118,8 +118,8 @@ Schedule_t slIdleBaStand[] =
 				bits_COND_PROVOKED,
 
 			bits_SOUND_COMBAT | // sound flags - change these, and you'll break the talking code.
-				//bits_SOUND_PLAYER		|
-				//bits_SOUND_WORLD		|
+								// bits_SOUND_PLAYER		|
+								// bits_SOUND_WORLD		|
 
 				bits_SOUND_DANGER |
 				bits_SOUND_MEAT | // scents
@@ -137,6 +137,14 @@ DEFINE_CUSTOM_SCHEDULES(CBarney){
 
 
 IMPLEMENT_CUSTOM_SCHEDULES(CBarney, CTalkMonster);
+
+void CBarney::OnCreate()
+{
+	CTalkMonster::OnCreate();
+
+	pev->health = GetSkillFloat("barney_health"sv);
+	pev->model = MAKE_STRING("models/barney.mdl");
+}
 
 void CBarney::StartTask(Task_t* pTask)
 {
@@ -307,17 +315,17 @@ void CBarney::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case BARNEY_AE_DRAW:
 		// guard's bodygroup switches here so he can pull gun from holster
-		if (GetBodygroup(GuardBodyGroup::Weapons) == GuardWeapon::None)
+		if (GetBodygroup(GuardBodyGroup::Weapons) == NPCWeaponState::Holstered)
 		{
-			SetBodygroup(GuardBodyGroup::Weapons, GuardWeapon::Gun);
+			SetBodygroup(GuardBodyGroup::Weapons, NPCWeaponState::Drawn);
 		}
 		break;
 
 	case BARNEY_AE_HOLSTER:
 		// change bodygroup to replace gun in holster
-		if (GetBodygroup(GuardBodyGroup::Weapons) == GuardWeapon::Gun)
+		if (GetBodygroup(GuardBodyGroup::Weapons) == NPCWeaponState::Drawn)
 		{
-			SetBodygroup(GuardBodyGroup::Weapons, GuardWeapon::None);
+			SetBodygroup(GuardBodyGroup::Weapons, NPCWeaponState::Holstered);
 		}
 		break;
 
@@ -326,77 +334,47 @@ void CBarney::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-void CBarney::SpawnCore(const char* model, float health)
+void CBarney::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), model);
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_RED;
-	pev->health = health;
 	pev->view_ofs = Vector(0, 0, 50);  // position of the eyes relative to monster's origin.
 	m_flFieldOfView = VIEW_FIELD_WIDE; // NOTE: we need a wide field of view so npc will notice player and say hello
 	m_MonsterState = MONSTERSTATE_NONE;
 
 	m_afCapability = bits_CAP_HEAR | bits_CAP_TURN_HEAD | bits_CAP_DOORS_GROUP;
 
-	if (m_iGuardHead == GuardHead::Random)
-	{
-		m_iGuardHead = RANDOM_LONG(0, 1);
-	}
-
-	if (m_iGuardBody == GuardWeapon::Random)
-	{
-		m_iGuardBody = GuardWeapon::None;
-	}
-
-	SetBodygroup(GuardBodyGroup::Weapons, m_iGuardBody);
-
-	//Only applicable if the model has a head bodygroup
-	SetBodygroup(GuardBodyGroup::Heads, m_iGuardHead);
+	SetBodygroup(GuardBodyGroup::Weapons, NPCWeaponState::Holstered + m_iGuardBody);
 
 	MonsterInit();
 	SetUse(&CBarney::FollowerUse);
 }
 
-//=========================================================
-// Spawn
-//=========================================================
-void CBarney::Spawn()
+void CBarney::Precache()
 {
-	SpawnCore("models/barney.mdl", gSkillData.barneyHealth);
-}
+	PrecacheModel(STRING(pev->model));
 
-void CBarney::PrecacheCore(const char* model)
-{
-	PRECACHE_MODEL(model);
+	PrecacheSound("barney/ba_attack1.wav");
+	PrecacheSound("barney/ba_attack2.wav");
 
-	PRECACHE_SOUND("barney/ba_attack1.wav");
-	PRECACHE_SOUND("barney/ba_attack2.wav");
+	PrecacheSound("barney/ba_pain1.wav");
+	PrecacheSound("barney/ba_pain2.wav");
+	PrecacheSound("barney/ba_pain3.wav");
 
-	PRECACHE_SOUND("barney/ba_pain1.wav");
-	PRECACHE_SOUND("barney/ba_pain2.wav");
-	PRECACHE_SOUND("barney/ba_pain3.wav");
-
-	PRECACHE_SOUND("barney/ba_die1.wav");
-	PRECACHE_SOUND("barney/ba_die2.wav");
-	PRECACHE_SOUND("barney/ba_die3.wav");
+	PrecacheSound("barney/ba_die1.wav");
+	PrecacheSound("barney/ba_die2.wav");
+	PrecacheSound("barney/ba_die3.wav");
 
 	// every new barney must call this, otherwise
 	// when a level is loaded, nobody will talk (time is reset to 0)
 	TalkInit();
 	CTalkMonster::Precache();
-}
-
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
-void CBarney::Precache()
-{
-	PrecacheCore("models/barney.mdl");
 }
 
 // Init talk data
@@ -421,8 +399,8 @@ void CBarney::TalkInit()
 	m_szGrp[TLK_PLHURT2] = "!BA_CUREB";
 	m_szGrp[TLK_PLHURT3] = "!BA_CUREC";
 
-	m_szGrp[TLK_PHELLO] = nullptr;			  //"BA_PHELLO";		// UNDONE
-	m_szGrp[TLK_PIDLE] = nullptr;			  //"BA_PIDLE";			// UNDONE
+	m_szGrp[TLK_PHELLO] = nullptr;		  //"BA_PHELLO";		// UNDONE
+	m_szGrp[TLK_PIDLE] = nullptr;		  //"BA_PIDLE";			// UNDONE
 	m_szGrp[TLK_PQUESTION] = "BA_PQUEST"; // UNDONE
 
 	m_szGrp[TLK_SMELL] = "BA_SMELL";
@@ -528,7 +506,7 @@ void CBarney::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir,
 			flDamage = flDamage / 2;
 		}
 		break;
-		//TODO: Otis doesn't have a helmet, probably don't want his dome being bulletproof
+		// TODO: Otis doesn't have a helmet, probably don't want his dome being bulletproof
 	case 10:
 		if ((bitsDamageType & (DMG_BULLET | DMG_SLASH | DMG_CLUB)) != 0)
 		{
@@ -556,9 +534,9 @@ void CBarney::DropWeapon()
 
 void CBarney::Killed(entvars_t* pevAttacker, int iGib)
 {
-	if (GetBodygroup(GuardBodyGroup::Weapons) == GuardWeapon::Gun)
+	if (GetBodygroup(GuardBodyGroup::Weapons) != NPCWeaponState::Blank)
 	{ // drop the gun!
-		SetBodygroup(GuardBodyGroup::Weapons, GuardWeapon::None);
+		SetBodygroup(GuardBodyGroup::Weapons, NPCWeaponState::Blank);
 		DropWeapon();
 	}
 
@@ -658,7 +636,7 @@ Schedule_t* CBarney::GetSchedule()
 			return GetScheduleOfType(SCHED_SMALL_FLINCH);
 
 		// wait for one schedule to draw gun
-		if (GetBodygroup(GuardBodyGroup::Weapons) != GuardWeapon::Gun)
+		if (GetBodygroup(GuardBodyGroup::Weapons) != NPCWeaponState::Drawn)
 			return GetScheduleOfType(SCHED_ARM_WEAPON);
 
 		if (HasConditions(bits_COND_HEAVY_DAMAGE))
@@ -717,12 +695,7 @@ void CBarney::DeclineFollowing()
 
 bool CBarney::KeyValue(KeyValueData* pkvd)
 {
-	if (FStrEq("head", pkvd->szKeyName))
-	{
-		m_iGuardHead = atoi(pkvd->szValue);
-		return true;
-	}
-	else if (FStrEq("bodystate", pkvd->szKeyName))
+	if (FStrEq("bodystate", pkvd->szKeyName))
 	{
 		m_iGuardBody = atoi(pkvd->szValue);
 		return true;
@@ -744,6 +717,7 @@ bool CBarney::KeyValue(KeyValueData* pkvd)
 class CDeadBarney : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	int Classify() override { return CLASS_PLAYER_ALLY; }
 
@@ -754,6 +728,15 @@ public:
 };
 
 const char* CDeadBarney::m_szPoses[] = {"lying_on_back", "lying_on_side", "lying_on_stomach"};
+
+void CDeadBarney::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	// Corpses have less health
+	pev->health = 8; // GetSkillFloat("barney_health"sv);
+	pev->model = MAKE_STRING("models/barney.mdl");
+}
 
 bool CDeadBarney::KeyValue(KeyValueData* pkvd)
 {
@@ -773,8 +756,8 @@ LINK_ENTITY_TO_CLASS(monster_barney_dead, CDeadBarney);
 //=========================================================
 void CDeadBarney::Spawn()
 {
-	PRECACHE_MODEL("models/barney.mdl");
-	SET_MODEL(ENT(pev), "models/barney.mdl");
+	PrecacheModel(STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	pev->effects = 0;
 	pev->yaw_speed = 8;
@@ -784,10 +767,8 @@ void CDeadBarney::Spawn()
 	pev->sequence = LookupSequence(m_szPoses[m_iPose]);
 	if (pev->sequence == -1)
 	{
-		ALERT(at_console, "Dead barney with bad pose\n");
+		AILogger->debug("Dead barney with bad pose");
 	}
-	// Corpses have less health
-	pev->health = 8; //gSkillData.barneyHealth;
 
 	MonsterInitDead();
 }

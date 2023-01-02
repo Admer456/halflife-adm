@@ -1,26 +1,32 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 // Implementation in UTIL.CPP
 
 #pragma once
+
+#include <memory>
+
+#include <spdlog/logger.h>
 
 class CBaseEntity;
 
 class CSaveRestoreBuffer
 {
 public:
+	static inline std::shared_ptr<spdlog::logger> Logger;
+
 	CSaveRestoreBuffer(SAVERESTOREDATA& data);
 	~CSaveRestoreBuffer();
 
@@ -36,7 +42,9 @@ public:
 
 	unsigned short TokenHash(const char* pszToken);
 
-	//Data is only valid if it's a valid pointer and if it has a token list
+	const SAVERESTOREDATA& GetData() const { return m_data; }
+
+	// Data is only valid if it's a valid pointer and if it has a token list
 	[[nodiscard]] static bool IsValidSaveRestoreData(SAVERESTOREDATA* data)
 	{
 		const bool isValid = nullptr != data && nullptr != data->pTokens && data->tokenCount > 0;
@@ -69,7 +77,7 @@ public:
 	void WriteTime(const char* pname, const float* value, int count);			// Save a float (timevalue)
 	void WriteData(const char* pname, int size, const char* pdata);				// Save a binary data block
 	void WriteString(const char* pname, const char* pstring);					// Save a null-terminated string
-	void WriteString(const char* pname, const int* stringId, int count);		// Save a null-terminated string (engine string)
+	void WriteString(const char* pname, const string_t* stringId, int count);	// Save a null-terminated string (engine string)
 	void WriteVector(const char* pname, const Vector& value);					// Save a vector
 	void WriteVector(const char* pname, const float* value, int count);			// Save a vector
 	void WritePositionVector(const char* pname, const Vector& value);			// Offset for landmark if necessary
@@ -86,12 +94,12 @@ private:
 	void BufferHeader(const char* pname, int size);
 };
 
-typedef struct
+struct HEADER
 {
 	unsigned short size;
 	unsigned short token;
 	char* pData;
-} HEADER;
+};
 
 class CRestore : public CSaveRestoreBuffer
 {
@@ -124,8 +132,6 @@ private:
 
 #define MAX_ENTITYARRAY 64
 
-//#define std::size(p)		(sizeof(p)/sizeof(p[0]))
-
 #define IMPLEMENT_SAVERESTORE(derivedClass, baseClass)                                     \
 	bool derivedClass::Save(CSave& save)                                                   \
 	{                                                                                      \
@@ -141,16 +147,14 @@ private:
 	}
 
 
-typedef enum
+enum GLOBALESTATE
 {
 	GLOBAL_OFF = 0,
 	GLOBAL_ON = 1,
 	GLOBAL_DEAD = 2
-} GLOBALESTATE;
+};
 
-typedef struct globalentity_s globalentity_t;
-
-struct globalentity_s
+struct globalentity_t
 {
 	char name[64];
 	char levelName[32];
@@ -174,9 +178,9 @@ public:
 	bool Restore(CRestore& restore);
 	static TYPEDESCRIPTION m_SaveData[];
 
-	//#ifdef _DEBUG
+	// #ifdef _DEBUG
 	void DumpGlobals();
-	//#endif
+	// #endif
 
 private:
 	globalentity_t* Find(string_t globalname);

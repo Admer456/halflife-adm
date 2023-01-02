@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // hgrunt
 //=========================================================
@@ -54,6 +54,14 @@ TYPEDESCRIPTION CBaseHGruntAlly::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE(CBaseHGruntAlly, COFSquadTalkMonster);
 
+void CBaseHGruntAlly::OnCreate()
+{
+	COFSquadTalkMonster::OnCreate();
+
+	// get voice pitch
+	m_voicePitch = 100;
+}
+
 //=========================================================
 // Speak Sentence - say your cued up sentence.
 //
@@ -76,7 +84,7 @@ void CBaseHGruntAlly::SpeakSentence()
 
 	if (FOkToSpeak())
 	{
-		SENTENCEG_PlayRndSz(ENT(pev), pGruntSentences[m_iSentence], HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+		sentences::g_Sentences.PlayRndSz(ENT(pev), pGruntSentences[m_iSentence], HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 		JustSpoke();
 	}
 }
@@ -239,23 +247,23 @@ bool CBaseHGruntAlly::CheckRangeAttack1(float flDot, float flDist)
 	{
 		const auto maxDistance = GetMaximumRangeAttackDistance();
 
-		//Friendly fire is allowed
+		// Friendly fire is allowed
 		if (!HasConditions(bits_COND_ENEMY_OCCLUDED) && flDist <= maxDistance && flDot >= 0.5 /*&& NoFriendlyFire()*/)
 		{
 			TraceResult tr;
 
 			auto pEnemy = m_hEnemy.Entity<CBaseEntity>();
 
-			//if (!pEnemy->IsPlayer() && flDist <= 64)
+			// if (!pEnemy->IsPlayer() && flDist <= 64)
 			//{
 			//	// kick nonclients, but don't shoot at them.
 			//	return false;
-			//}
+			// }
 
-			//TODO: kinda odd that this doesn't use GetGunPosition like the original
+			// TODO: kinda odd that this doesn't use GetGunPosition like the original
 			Vector vecSrc = pev->origin + Vector(0, 0, 55);
 
-			//Fire at last known position, adjusting for target origin being offset from entity origin
+			// Fire at last known position, adjusting for target origin being offset from entity origin
 			const auto targetOrigin = pEnemy->BodyTarget(vecSrc);
 
 			const auto targetPosition = targetOrigin - pEnemy->pev->origin + m_vecEnemyLKP;
@@ -296,7 +304,7 @@ bool CBaseHGruntAlly::CheckRangeAttack2(float flDot, float flDist)
 		return m_fThrowGrenade;
 	}
 
-	if (!FBitSet(m_hEnemy->pev->flags, FL_ONGROUND) && m_hEnemy->pev->waterlevel == 0 && m_vecEnemyLKP.z > pev->absmax.z)
+	if (!FBitSet(m_hEnemy->pev->flags, FL_ONGROUND) && m_hEnemy->pev->waterlevel == WaterLevel::Dry && m_vecEnemyLKP.z > pev->absmax.z)
 	{
 		//!!!BUGBUG - we should make this check movetype and make sure it isn't FLY? Players who jump a lot are unlikely to
 		// be grenaded.
@@ -331,7 +339,7 @@ bool CBaseHGruntAlly::CheckRangeAttack2(float flDot, float flDist)
 		vecTarget = m_vecEnemyLKP + (m_hEnemy->BodyTarget(pev->origin) - m_hEnemy->pev->origin);
 		// estimate position
 		if (HasConditions(bits_COND_SEE_ENEMY))
-			vecTarget = vecTarget + ((vecTarget - pev->origin).Length() / gSkillData.hgruntAllyGrenadeSpeed) * m_hEnemy->pev->velocity;
+			vecTarget = vecTarget + ((vecTarget - pev->origin).Length() / GetSkillFloat("hgrunt_ally_gspeed"sv)) * m_hEnemy->pev->velocity;
 	}
 
 	// are any of my squad members near the intended grenade impact area?
@@ -377,7 +385,7 @@ bool CBaseHGruntAlly::CheckRangeAttack2(float flDot, float flDist)
 	}
 	else
 	{
-		Vector vecToss = VecCheckThrow(pev, GetGunPosition(), vecTarget, gSkillData.hgruntAllyGrenadeSpeed, 0.5);
+		Vector vecToss = VecCheckThrow(pev, GetGunPosition(), vecTarget, GetSkillFloat("hgrunt_ally_gspeed"sv), 0.5);
 
 		if (vecToss != g_vecZero)
 		{
@@ -409,7 +417,7 @@ void CBaseHGruntAlly::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector
 	if (ptr->iHitgroup == 11)
 	{
 		// make sure we're wearing one
-		//TODO: disabled for ally
+		// TODO: disabled for ally
 		if (/*GetBodygroup( HGruntAllyBodygroup::Head ) == HGruntAllyHead::GasMask &&*/ (bitsDamageType & (DMG_BULLET | DMG_SLASH | DMG_CLUB)) != 0)
 		{
 			// absorb damage
@@ -423,7 +431,7 @@ void CBaseHGruntAlly::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector
 		// it's head shot anyways
 		ptr->iHitgroup = HITGROUP_HEAD;
 	}
-	//PCV absorbs some damage types
+	// PCV absorbs some damage types
 	else if ((ptr->iHitgroup == HITGROUP_CHEST || ptr->iHitgroup == HITGROUP_STOMACH) && (bitsDamageType & (DMG_BLAST | DMG_BULLET | DMG_SLASH)) != 0)
 	{
 		flDamage *= 0.5;
@@ -461,7 +469,7 @@ bool CBaseHGruntAlly::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker
 
 				Remember(bits_MEMORY_PROVOKED);
 				StopFollowing(true);
-				ALERT(at_console, "HGrunt Ally is now MAD!\n");
+				AILogger->debug("HGrunt Ally is now MAD!");
 			}
 			else
 			{
@@ -476,7 +484,7 @@ bool CBaseHGruntAlly::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker
 
 				m_flLastHitByPlayer = gpGlobals->time;
 
-				ALERT(at_console, "HGrunt Ally is now SUSPICIOUS!\n");
+				AILogger->debug("HGrunt Ally is now SUSPICIOUS!");
 			}
 		}
 		else if (!m_hEnemy->IsPlayer())
@@ -545,15 +553,15 @@ void CBaseHGruntAlly::IdleSound()
 			switch (RANDOM_LONG(0, 2))
 			{
 			case 0: // check in
-				SENTENCEG_PlayRndSz(ENT(pev), "FG_CHECK", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_CHECK", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				g_fGruntAllyQuestion = 1;
 				break;
 			case 1: // question
-				SENTENCEG_PlayRndSz(ENT(pev), "FG_QUEST", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_QUEST", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				g_fGruntAllyQuestion = 2;
 				break;
 			case 2: // statement
-				SENTENCEG_PlayRndSz(ENT(pev), "FG_IDLE", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_IDLE", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			}
 		}
@@ -562,10 +570,10 @@ void CBaseHGruntAlly::IdleSound()
 			switch (g_fGruntAllyQuestion)
 			{
 			case 1: // check in
-				SENTENCEG_PlayRndSz(ENT(pev), "FG_CLEAR", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_CLEAR", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			case 2: // question
-				SENTENCEG_PlayRndSz(ENT(pev), "FG_ANSWER", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_ANSWER", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			}
 			g_fGruntAllyQuestion = 0;
@@ -667,7 +675,7 @@ void CBaseHGruntAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/glauncher.wav", 0.8, ATTN_NORM);
 			CGrenade::ShootContact(pev, GetGunPosition(), m_vecTossVelocity);
 			m_fThrowGrenade = false;
-			if (g_iSkillLevel == SKILL_HARD)
+			if (g_Skill.GetSkillLevel() == SkillLevel::Hard)
 				m_flNextGrenadeCheck = gpGlobals->time + RANDOM_FLOAT(2, 5); // wait a random amount of time before shooting again
 			else
 				m_flNextGrenadeCheck = gpGlobals->time + 6; // wait six seconds before even looking again to see if a grenade can be thrown.
@@ -695,7 +703,7 @@ void CBaseHGruntAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 			UTIL_MakeVectors(pev->angles);
 			pHurt->pev->punchangle.x = 15;
 			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 100 + gpGlobals->v_up * 50;
-			pHurt->TakeDamage(pev, pev, gSkillData.hgruntAllyDmgKick, DMG_CLUB);
+			pHurt->TakeDamage(pev, pev, GetSkillFloat("hgrunt_ally_kick"sv), DMG_CLUB);
 		}
 	}
 	break;
@@ -704,7 +712,7 @@ void CBaseHGruntAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 	{
 		if (FOkToSpeak())
 		{
-			SENTENCEG_PlayRndSz(ENT(pev), "FG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+			sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 			JustSpoke();
 		}
 		break;
@@ -719,18 +727,17 @@ void CBaseHGruntAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 //=========================================================
 // Spawn
 //=========================================================
-void CBaseHGruntAlly::SpawnCore(const char* model, float health)
+void CBaseHGruntAlly::SpawnCore()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), model);
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_RED;
 	pev->effects = 0;
-	pev->health = health;
 	m_flFieldOfView = 0.2; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 	m_flNextGrenadeCheck = gpGlobals->time + 1;
@@ -763,32 +770,34 @@ void CBaseHGruntAlly::Precache()
 {
 	TalkInit();
 
-	PRECACHE_SOUND("hgrunt/gr_mgun1.wav");
-	PRECACHE_SOUND("hgrunt/gr_mgun2.wav");
+	PrecacheModel(STRING(pev->model));
 
-	PRECACHE_SOUND("fgrunt/death1.wav");
-	PRECACHE_SOUND("fgrunt/death2.wav");
-	PRECACHE_SOUND("fgrunt/death3.wav");
-	PRECACHE_SOUND("fgrunt/death4.wav");
-	PRECACHE_SOUND("fgrunt/death5.wav");
-	PRECACHE_SOUND("fgrunt/death6.wav");
+	PrecacheSound("hgrunt/gr_mgun1.wav");
+	PrecacheSound("hgrunt/gr_mgun2.wav");
 
-	PRECACHE_SOUND("fgrunt/pain1.wav");
-	PRECACHE_SOUND("fgrunt/pain2.wav");
-	PRECACHE_SOUND("fgrunt/pain3.wav");
-	PRECACHE_SOUND("fgrunt/pain4.wav");
-	PRECACHE_SOUND("fgrunt/pain5.wav");
-	PRECACHE_SOUND("fgrunt/pain6.wav");
+	PrecacheSound("fgrunt/death1.wav");
+	PrecacheSound("fgrunt/death2.wav");
+	PrecacheSound("fgrunt/death3.wav");
+	PrecacheSound("fgrunt/death4.wav");
+	PrecacheSound("fgrunt/death5.wav");
+	PrecacheSound("fgrunt/death6.wav");
 
-	PRECACHE_SOUND("hgrunt/gr_reload1.wav");
+	PrecacheSound("fgrunt/pain1.wav");
+	PrecacheSound("fgrunt/pain2.wav");
+	PrecacheSound("fgrunt/pain3.wav");
+	PrecacheSound("fgrunt/pain4.wav");
+	PrecacheSound("fgrunt/pain5.wav");
+	PrecacheSound("fgrunt/pain6.wav");
 
-	PRECACHE_SOUND("weapons/glauncher.wav");
+	PrecacheSound("hgrunt/gr_reload1.wav");
 
-	PRECACHE_SOUND("weapons/sbarrel1.wav");
+	PrecacheSound("weapons/glauncher.wav");
 
-	PRECACHE_SOUND("fgrunt/medic.wav");
+	PrecacheSound("weapons/sbarrel1.wav");
 
-	PRECACHE_SOUND("zombie/claw_miss2.wav"); // because we use the basemonster SWIPE animation event
+	PrecacheSound("fgrunt/medic.wav");
+
+	PrecacheSound("zombie/claw_miss2.wav"); // because we use the basemonster SWIPE animation event
 
 	COFSquadTalkMonster::Precache();
 }
@@ -884,7 +893,7 @@ void CBaseHGruntAlly::PainSound()
 			// pain sentences are rare
 			if (FOkToSpeak())
 			{
-				SENTENCEG_PlayRndSz(ENT(pev), "FG_PAIN", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, PITCH_NORM);
+				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_PAIN", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, PITCH_NORM);
 				JustSpoke();
 				return;
 			}
@@ -1577,8 +1586,8 @@ Schedule_t slGruntAllyIdleStand[] =
 				bits_COND_PROVOKED,
 
 			bits_SOUND_COMBAT | // sound flags - change these, and you'll break the talking code.
-				//bits_SOUND_PLAYER		|
-				//bits_SOUND_WORLD		|
+								// bits_SOUND_PLAYER		|
+								// bits_SOUND_WORLD		|
 
 				bits_SOUND_DANGER |
 				bits_SOUND_MEAT | // scents
@@ -1632,8 +1641,8 @@ std::tuple<int, Activity> CBaseHGruntAlly::GetSequenceForActivity(Activity NewAc
 		}
 		else
 		{
-			//TODO: maybe check if we can actually use the grenade launcher before doing this
-			// get launch anim
+			// TODO: maybe check if we can actually use the grenade launcher before doing this
+			//  get launch anim
 			iSequence = LookupSequence("launchgrenade");
 		}
 		break;
@@ -1698,7 +1707,7 @@ void CBaseHGruntAlly::SetActivity(Activity NewActivity)
 	else
 	{
 		// Not available try to get default anim
-		ALERT(at_console, "%s has no sequence for act:%d\n", STRING(pev->classname), activity);
+		AILogger->debug("{} has no sequence for act:{}", STRING(pev->classname), activity);
 		pev->sequence = 0; // Set to the reset anim (if it's there)
 	}
 }
@@ -1756,7 +1765,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 
 				if (FOkToSpeak())
 				{
-					SENTENCEG_PlayRndSz(ENT(pev), "FG_GREN", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_GREN", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_TAKE_COVER_FROM_BEST_SOUND);
@@ -1803,7 +1812,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 		}
 
 		// new enemy
-		//Do not fire until fired upon
+		// Do not fire until fired upon
 		if (HasAllConditions(bits_COND_NEW_ENEMY | bits_COND_LIGHT_DAMAGE))
 		{
 			if (InSquad())
@@ -1828,13 +1837,13 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 					{
 						if ((m_hEnemy != nullptr) && m_hEnemy->IsPlayer())
 							// player
-							SENTENCEG_PlayRndSz(ENT(pev), "FG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+							sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 						else if ((m_hEnemy != nullptr) &&
 								 (m_hEnemy->Classify() != CLASS_PLAYER_ALLY) &&
 								 (m_hEnemy->Classify() != CLASS_HUMAN_PASSIVE) &&
 								 (m_hEnemy->Classify() != CLASS_MACHINE))
 							// monster
-							SENTENCEG_PlayRndSz(ENT(pev), "FG_MONST", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+							sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_MONST", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 
 						JustSpoke();
 					}
@@ -1856,7 +1865,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 		else if (HasConditions(bits_COND_HEAVY_DAMAGE))
 			return GetScheduleOfType(SCHED_TAKE_COVER_FROM_ENEMY);
 		// no ammo
-		//Only if the grunt has a weapon
+		// Only if the grunt has a weapon
 		else if (CanTakeCoverAndReload() && HasConditions(bits_COND_NO_AMMO_LOADED))
 		{
 			//!!!KELLY - this individual just realized he's out of bullet ammo.
@@ -1880,9 +1889,9 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 				//!!!KELLY - this grunt was hit and is going to run to cover.
 				if (FOkToSpeak()) // && RANDOM_LONG(0,1))
 				{
-					//SENTENCEG_PlayRndSz( ENT(pev), "FG_COVER", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					// sentences::g_Sentences.PlayRndSz( ENT(pev), "FG_COVER", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					m_iSentence = HGRUNT_SENT_COVER;
-					//JustSpoke();
+					// JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_TAKE_COVER_FROM_ENEMY);
 			}
@@ -1942,7 +1951,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 				//!!!KELLY - this grunt is about to throw or fire a grenade at the player. Great place for "fire in the hole"  "frag out" etc
 				if (FOkToSpeak())
 				{
-					SENTENCEG_PlayRndSz(ENT(pev), "FG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_RANGE_ATTACK2);
@@ -1953,9 +1962,9 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 				// charge the enemy's position.
 				if (FOkToSpeak()) // && RANDOM_LONG(0,1))
 				{
-					//SENTENCEG_PlayRndSz( ENT(pev), "FG_CHARGE", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					// sentences::g_Sentences.PlayRndSz( ENT(pev), "FG_CHARGE", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					m_iSentence = HGRUNT_SENT_CHARGE;
-					//JustSpoke();
+					// JustSpoke();
 				}
 
 				return GetScheduleOfType(SCHED_GRUNT_ESTABLISH_LINE_OF_FIRE);
@@ -1967,14 +1976,14 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 				// grunt's covered position. Good place for a taunt, I guess?
 				if (FOkToSpeak() && RANDOM_LONG(0, 1))
 				{
-					SENTENCEG_PlayRndSz(ENT(pev), "FG_TAUNT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_TAUNT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_STANDOFF);
 			}
 		}
 
-		//Only if not following a player
+		// Only if not following a player
 		if (!m_hTargetEnt || !m_hTargetEnt->IsPlayer())
 		{
 			if (HasConditions(bits_COND_SEE_ENEMY) && !HasConditions(bits_COND_CAN_RANGE_ATTACK1))
@@ -1983,7 +1992,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 			}
 		}
 
-		//Don't fall through to idle schedules
+		// Don't fall through to idle schedules
 		break;
 	}
 
@@ -1995,7 +2004,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 			return GetScheduleOfType(SCHED_SMALL_FLINCH);
 		}
 
-		//if we're not waiting on a medic and we're hurt, call out for a medic
+		// if we're not waiting on a medic and we're hurt, call out for a medic
 		if (!m_hWaitMedic && gpGlobals->time > m_flMedicWaitTime && pev->health <= 20.0)
 		{
 			auto pMedic = MySquadMedic();
@@ -2009,11 +2018,11 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 			{
 				if (pMedic->pev->deadflag == DEAD_NO)
 				{
-					ALERT(at_aiconsole, "Injured Grunt found Medic\n");
+					AILogger->debug("Injured Grunt found Medic");
 
 					if (pMedic->HealMe(this))
 					{
-						ALERT(at_aiconsole, "Injured Grunt called for Medic\n");
+						AILogger->debug("Injured Grunt called for Medic");
 
 						EMIT_SOUND_DYN(edict(), CHAN_VOICE, "fgrunt/medic.wav", VOL_NORM, ATTN_NORM, 0, PITCH_NORM);
 
@@ -2066,11 +2075,11 @@ Schedule_t* CBaseHGruntAlly::GetScheduleOfType(int Type)
 	{
 		if (InSquad())
 		{
-			if (g_iSkillLevel == SKILL_HARD && HasConditions(bits_COND_CAN_RANGE_ATTACK2) && OccupySlot(bits_SLOTS_HGRUNT_GRENADE))
+			if (g_Skill.GetSkillLevel() == SkillLevel::Hard && HasConditions(bits_COND_CAN_RANGE_ATTACK2) && OccupySlot(bits_SLOTS_HGRUNT_GRENADE))
 			{
 				if (FOkToSpeak())
 				{
-					SENTENCEG_PlayRndSz(ENT(pev), "FG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return slGruntAllyTossGrenadeCover;
@@ -2082,11 +2091,11 @@ Schedule_t* CBaseHGruntAlly::GetScheduleOfType(int Type)
 		}
 		else
 		{
-			//if ( RANDOM_LONG(0,1) )
+			// if ( RANDOM_LONG(0,1) )
 			//{
 			return &slGruntAllyTakeCover[0];
 			//}
-			//else
+			// else
 			//{
 			//	return &slGruntAllyGrenadeCover[ 0 ];
 			//}
@@ -2272,20 +2281,14 @@ void CBaseHGruntAlly::TalkInit()
 	m_szGrp[TLK_PLHURT2] = "!FG_CUREB";
 	m_szGrp[TLK_PLHURT3] = "!FG_CUREC";
 
-	m_szGrp[TLK_PHELLO] = nullptr;			  //"BA_PHELLO";		// UNDONE
-	m_szGrp[TLK_PIDLE] = nullptr;			  //"BA_PIDLE";			// UNDONE
+	m_szGrp[TLK_PHELLO] = nullptr;		  //"BA_PHELLO";		// UNDONE
+	m_szGrp[TLK_PIDLE] = nullptr;		  //"BA_PIDLE";			// UNDONE
 	m_szGrp[TLK_PQUESTION] = "FG_PQUEST"; // UNDONE
 
 	m_szGrp[TLK_SMELL] = "FG_SMELL";
 
 	m_szGrp[TLK_WOUND] = "FG_WOUND";
 	m_szGrp[TLK_MORTAL] = "FG_MORTAL";
-
-	// get voice for head - just one barney voice for now
-	if (!UTIL_IsRestoring())
-	{
-		m_voicePitch = 100;
-	}
 }
 
 void CBaseHGruntAlly::AlertSound()
@@ -2369,7 +2372,7 @@ void CBaseHGruntAllyRepel::Spawn()
 void CBaseHGruntAllyRepel::Precache()
 {
 	UTIL_PrecacheOther(GetMonsterClassname());
-	m_iSpriteTexture = PRECACHE_MODEL("sprites/rope.spr");
+	m_iSpriteTexture = PrecacheModel("sprites/rope.spr");
 }
 
 void CBaseHGruntAllyRepel::RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
@@ -2389,14 +2392,14 @@ void CBaseHGruntAllyRepel::RepelUse(CBaseEntity* pActivator, CBaseEntity* pCalle
 		pGrunt->pev->weapons = pev->weapons;
 		pGrunt->pev->netname = pev->netname;
 
-		//Carry over these spawn flags
+		// Carry over these spawn flags
 		pGrunt->pev->spawnflags |= pev->spawnflags & (SF_MONSTER_WAIT_TILL_SEEN | SF_MONSTER_GAG | SF_MONSTER_HITMONSTERCLIP | SF_MONSTER_PRISONER | SF_SQUADMONSTER_LEADER | SF_MONSTER_PREDISASTER);
 
 		pGrunt->m_iGruntHead = m_iGruntHead;
 		pGrunt->m_iszUse = m_iszUse;
 		pGrunt->m_iszUnUse = m_iszUnUse;
 
-		//Run logic to set up body groups (Spawn was already called once by Create above)
+		// Run logic to set up body groups (Spawn was already called once by Create above)
 		pGrunt->Spawn();
 
 		pGrunt->pev->movetype = MOVETYPE_FLY;

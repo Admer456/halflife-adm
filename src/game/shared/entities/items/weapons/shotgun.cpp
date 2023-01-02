@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "UserMessages.h"
@@ -22,11 +22,18 @@
 
 LINK_ENTITY_TO_CLASS(weapon_shotgun, CShotgun);
 
+void CShotgun::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_shotgun.mdl");
+}
+
 void CShotgun::Spawn()
 {
 	Precache();
 	m_iId = WEAPON_SHOTGUN;
-	SET_MODEL(ENT(pev), "models/w_shotgun.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = SHOTGUN_DEFAULT_GIVE;
 
@@ -36,25 +43,25 @@ void CShotgun::Spawn()
 
 void CShotgun::Precache()
 {
-	PRECACHE_MODEL("models/v_shotgun.mdl");
-	PRECACHE_MODEL("models/w_shotgun.mdl");
-	PRECACHE_MODEL("models/p_shotgun.mdl");
+	PrecacheModel("models/v_shotgun.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/p_shotgun.mdl");
 
-	m_iShell = PRECACHE_MODEL("models/shotgunshell.mdl"); // shotgun shell
+	m_iShell = PrecacheModel("models/shotgunshell.mdl"); // shotgun shell
 
-	PRECACHE_SOUND("items/9mmclip1.wav");
+	PrecacheSound("items/9mmclip1.wav");
 
-	PRECACHE_SOUND("weapons/dbarrel1.wav"); //shotgun
-	PRECACHE_SOUND("weapons/sbarrel1.wav"); //shotgun
+	PrecacheSound("weapons/dbarrel1.wav"); // shotgun
+	PrecacheSound("weapons/sbarrel1.wav"); // shotgun
 
-	PRECACHE_SOUND("weapons/reload1.wav"); // shotgun reload
-	PRECACHE_SOUND("weapons/reload3.wav"); // shotgun reload
+	PrecacheSound("weapons/reload1.wav"); // shotgun reload
+	PrecacheSound("weapons/reload3.wav"); // shotgun reload
 
-	//	PRECACHE_SOUND ("weapons/sshell1.wav");	// shotgun reload - played on client
-	//	PRECACHE_SOUND ("weapons/sshell3.wav");	// shotgun reload - played on client
+	//	PrecacheSound ("weapons/sshell1.wav");	// shotgun reload - played on client
+	//	PrecacheSound ("weapons/sshell3.wav");	// shotgun reload - played on client
 
-	PRECACHE_SOUND("weapons/357_cock1.wav"); // gun empty sound
-	PRECACHE_SOUND("weapons/scock1.wav");	 // cock gun
+	PrecacheSound("weapons/357_cock1.wav"); // gun empty sound
+	PrecacheSound("weapons/scock1.wav");	// cock gun
 
 	m_usSingleFire = PRECACHE_EVENT(1, "events/shotgun1.sc");
 	m_usDoubleFire = PRECACHE_EVENT(1, "events/shotgun2.sc");
@@ -93,7 +100,7 @@ bool CShotgun::Deploy()
 void CShotgun::PrimaryAttack()
 {
 	// don't fire underwater
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 		PlayEmptySound();
 		m_flNextPrimaryAttack = GetNextAttackDelay(0.15);
@@ -145,7 +152,7 @@ void CShotgun::PrimaryAttack()
 		// HEV suit - indicate out of ammo condition
 		m_pPlayer->SetSuitUpdate("!HEV_AMO0", false, 0);
 
-	//if (m_iClip != 0)
+	// if (m_iClip != 0)
 	m_flPumpTime = gpGlobals->time + 0.5;
 
 	m_flNextPrimaryAttack = GetNextAttackDelay(0.75);
@@ -161,7 +168,7 @@ void CShotgun::PrimaryAttack()
 void CShotgun::SecondaryAttack()
 {
 	// don't fire underwater
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 		PlayEmptySound();
 		m_flNextPrimaryAttack = GetNextAttackDelay(0.15);
@@ -215,7 +222,7 @@ void CShotgun::SecondaryAttack()
 		// HEV suit - indicate out of ammo condition
 		m_pPlayer->SetSuitUpdate("!HEV_AMO0", false, 0);
 
-	//if (m_iClip != 0)
+	// if (m_iClip != 0)
 	m_flPumpTime = gpGlobals->time + 0.95;
 
 	m_flNextPrimaryAttack = GetNextAttackDelay(1.5);
@@ -289,7 +296,7 @@ void CShotgun::WeaponIdle()
 
 	m_pPlayer->GetAutoaimVector(AUTOAIM_5DEGREES);
 
-	//Moved to ItemPostFrame
+	// Moved to ItemPostFrame
 	/*
 	if ( m_flPumpTime && m_flPumpTime < gpGlobals->time )
 	{
@@ -368,18 +375,20 @@ void CShotgun::ItemPostFrame()
 
 class CShotgunAmmo : public CBasePlayerAmmo
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_shotbox.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_shotbox.mdl");
 	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_shotbox.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		if (pOther->GiveAmmo(AMMO_BUCKSHOTBOX_GIVE, "buckshot", BUCKSHOT_MAX_CARRY) != -1)
 		{

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #pragma once
 
@@ -22,10 +22,12 @@ class CBeam;
 
 class CApache : public CBaseMonster
 {
+public:
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
 	static TYPEDESCRIPTION m_SaveData[];
 
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int Classify() override { return CLASS_HUMAN_MILITARY; }
@@ -80,17 +82,4 @@ class CApache : public CBaseMonster
 
 	int m_iDoSmokePuff;
 	CBeam* m_pBeam;
-
-protected:
-	/**
-	*	@brief Spawns the Apache
-	*	@param model Name of the Apache model. Must be a string literal
-	*/
-	void SpawnCore(const char* model);
-
-	/**
-	*	@brief Precaches all Apache assets
-	*	@param model Name of the Apache model. Must be a string literal
-	*/
-	void PrecacheCore(const char* model);
 };

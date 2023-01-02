@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 //=========================================================
 // hassassin - Human assassin, fast and stealthy
@@ -54,6 +54,7 @@ enum
 class CHAssassin : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
@@ -115,6 +116,13 @@ TYPEDESCRIPTION CHAssassin::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE(CHAssassin, CBaseMonster);
 
+void CHAssassin::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = GetSkillFloat("hassassin_health"sv);
+	pev->model = MAKE_STRING("models/hassassin.mdl");
+}
 
 //=========================================================
 // DieSound
@@ -250,7 +258,7 @@ void CHAssassin::HandleAnimEvent(MonsterEvent_t* pEvent)
 	break;
 	case ASSASSIN_AE_JUMP:
 	{
-		// ALERT( at_console, "jumping");
+		// AILogger->debug("jumping");
 		UTIL_MakeAimVectors(pev->angles);
 		pev->movetype = MOVETYPE_TOSS;
 		pev->flags &= ~FL_ONGROUND;
@@ -271,14 +279,13 @@ void CHAssassin::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/hassassin.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_RED;
 	pev->effects = 0;
-	pev->health = gSkillData.hassassinHealth;
 	m_flFieldOfView = VIEW_FIELD_WIDE; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 	m_afCapability = bits_CAP_MELEE_ATTACK1 | bits_CAP_DOORS_GROUP;
@@ -298,14 +305,14 @@ void CHAssassin::Spawn()
 //=========================================================
 void CHAssassin::Precache()
 {
-	PRECACHE_MODEL("models/hassassin.mdl");
+	PrecacheModel(STRING(pev->model));
 
-	PRECACHE_SOUND("weapons/pl_gun1.wav");
-	PRECACHE_SOUND("weapons/pl_gun2.wav");
+	PrecacheSound("weapons/pl_gun1.wav");
+	PrecacheSound("weapons/pl_gun2.wav");
 
-	PRECACHE_SOUND("debris/beamstart1.wav");
+	PrecacheSound("debris/beamstart1.wav");
 
-	m_iShell = PRECACHE_MODEL("models/shell.mdl"); // brass shell
+	m_iShell = PrecacheModel("models/shell.mdl"); // brass shell
 }
 
 
@@ -687,7 +694,7 @@ void CHAssassin::RunAI()
 
 	// always visible if moving
 	// always visible is not on hard
-	if (g_iSkillLevel != SKILL_HARD || m_hEnemy == nullptr || pev->deadflag != DEAD_NO || m_Activity == ACT_RUN || m_Activity == ACT_WALK || (pev->flags & FL_ONGROUND) == 0)
+	if (g_Skill.GetSkillLevel() != SkillLevel::Hard || m_hEnemy == nullptr || pev->deadflag != DEAD_NO || m_Activity == ACT_RUN || m_Activity == ACT_WALK || (pev->flags & FL_ONGROUND) == 0)
 		m_iTargetRanderamt = 255;
 	else
 		m_iTargetRanderamt = 20;
@@ -794,7 +801,7 @@ void CHAssassin::RunTask(Task_t* pTask)
 		}
 		if ((pev->flags & FL_ONGROUND) != 0)
 		{
-			// ALERT( at_console, "on ground\n");
+			// AILogger->debug("on ground");
 			TaskComplete();
 		}
 		break;
@@ -849,14 +856,14 @@ Schedule_t* CHAssassin::GetSchedule()
 		{
 			if ((pev->flags & FL_ONGROUND) != 0)
 			{
-				// ALERT( at_console, "landed\n");
+				// AILogger->debug("landed");
 				// just landed
 				pev->movetype = MOVETYPE_STEP;
 				return GetScheduleOfType(SCHED_ASSASSIN_JUMP_LAND);
 			}
 			else
 			{
-				// ALERT( at_console, "jump\n");
+				// AILogger->debug("jump");
 				// jump or jump/shoot
 				if (m_MonsterState == MONSTERSTATE_COMBAT)
 					return GetScheduleOfType(SCHED_ASSASSIN_JUMP);
@@ -889,21 +896,21 @@ Schedule_t* CHAssassin::GetSchedule()
 		// jump player!
 		if (HasConditions(bits_COND_CAN_MELEE_ATTACK1))
 		{
-			// ALERT( at_console, "melee attack 1\n");
+			// AILogger->debug("melee attack 1");
 			return GetScheduleOfType(SCHED_MELEE_ATTACK1);
 		}
 
 		// throw grenade
 		if (HasConditions(bits_COND_CAN_RANGE_ATTACK2))
 		{
-			// ALERT( at_console, "range attack 2\n");
+			// AILogger->debug("range attack 2");
 			return GetScheduleOfType(SCHED_RANGE_ATTACK2);
 		}
 
 		// spotted
 		if (HasConditions(bits_COND_SEE_ENEMY) && HasConditions(bits_COND_ENEMY_FACING_ME))
 		{
-			// ALERT( at_console, "exposed\n");
+			// AILogger->debug("exposed");
 			m_iFrustration++;
 			return GetScheduleOfType(SCHED_ASSASSIN_EXPOSED);
 		}
@@ -911,25 +918,25 @@ Schedule_t* CHAssassin::GetSchedule()
 		// can attack
 		if (HasConditions(bits_COND_CAN_RANGE_ATTACK1))
 		{
-			// ALERT( at_console, "range attack 1\n");
+			// AILogger->debug("range attack 1");
 			m_iFrustration = 0;
 			return GetScheduleOfType(SCHED_RANGE_ATTACK1);
 		}
 
 		if (HasConditions(bits_COND_SEE_ENEMY))
 		{
-			// ALERT( at_console, "face\n");
+			// AILogger->debug("face");
 			return GetScheduleOfType(SCHED_COMBAT_FACE);
 		}
 
 		// new enemy
 		if (HasConditions(bits_COND_NEW_ENEMY))
 		{
-			// ALERT( at_console, "take cover\n");
+			// AILogger->debug("take cover");
 			return GetScheduleOfType(SCHED_TAKE_COVER_FROM_ENEMY);
 		}
 
-		// ALERT( at_console, "stand\n");
+		// AILogger->debug("stand");
 		return GetScheduleOfType(SCHED_ALERT_STAND);
 	}
 	break;
@@ -942,7 +949,7 @@ Schedule_t* CHAssassin::GetSchedule()
 //=========================================================
 Schedule_t* CHAssassin::GetScheduleOfType(int Type)
 {
-	// ALERT( at_console, "%d\n", m_iFrustration );
+	// AILogger->debug("{}", m_iFrustration);
 	switch (Type)
 	{
 	case SCHED_TAKE_COVER_FROM_ENEMY:

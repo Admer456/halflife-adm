@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 #include "UserMessages.h"
 
@@ -24,8 +24,8 @@
 #ifndef CLIENT_DLL
 TYPEDESCRIPTION CEagle::m_SaveData[] =
 	{
-		DEFINE_FIELD(CEagle, m_bSpotVisible, FIELD_INTEGER),
-		DEFINE_FIELD(CEagle, m_bLaserActive, FIELD_INTEGER),
+		DEFINE_FIELD(CEagle, m_bSpotVisible, FIELD_BOOLEAN),
+		DEFINE_FIELD(CEagle, m_bLaserActive, FIELD_BOOLEAN),
 };
 
 IMPLEMENT_SAVERESTORE(CEagle, CEagle::BaseClass);
@@ -33,16 +33,23 @@ IMPLEMENT_SAVERESTORE(CEagle, CEagle::BaseClass);
 
 LINK_ENTITY_TO_CLASS(weapon_eagle, CEagle);
 
+void CEagle::OnCreate()
+{
+	BaseClass::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_desert_eagle.mdl");
+}
+
 void CEagle::Precache()
 {
-	PRECACHE_MODEL("models/v_desert_eagle.mdl");
-	PRECACHE_MODEL("models/w_desert_eagle.mdl");
-	PRECACHE_MODEL("models/p_desert_eagle.mdl");
-	m_iShell = PRECACHE_MODEL("models/shell.mdl");
-	PRECACHE_SOUND("weapons/desert_eagle_fire.wav");
-	PRECACHE_SOUND("weapons/desert_eagle_reload.wav");
-	PRECACHE_SOUND("weapons/desert_eagle_sight.wav");
-	PRECACHE_SOUND("weapons/desert_eagle_sight2.wav");
+	PrecacheModel("models/v_desert_eagle.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/p_desert_eagle.mdl");
+	m_iShell = PrecacheModel("models/shell.mdl");
+	PrecacheSound("weapons/desert_eagle_fire.wav");
+	PrecacheSound("weapons/desert_eagle_reload.wav");
+	PrecacheSound("weapons/desert_eagle_sight.wav");
+	PrecacheSound("weapons/desert_eagle_sight2.wav");
 	m_usFireEagle = PRECACHE_EVENT(1, "events/eagle.sc");
 }
 
@@ -54,24 +61,11 @@ void CEagle::Spawn()
 
 	m_iId = WEAPON_EAGLE;
 
-	SET_MODEL(edict(), "models/w_desert_eagle.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = DEAGLE_DEFAULT_GIVE;
 
 	FallInit();
-}
-
-bool CEagle::AddToPlayer(CBasePlayer* pPlayer)
-{
-	if (BaseClass::AddToPlayer(pPlayer))
-	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->edict());
-		WRITE_BYTE(m_iId);
-		MESSAGE_END();
-		return true;
-	}
-
-	return false;
 }
 
 bool CEagle::Deploy()
@@ -112,7 +106,7 @@ void CEagle::WeaponIdle()
 
 	ResetEmptySound();
 
-	//Update autoaim
+	// Update autoaim
 	m_pPlayer->GetAutoaimVector(AUTOAIM_10DEGREES);
 
 	if (m_flTimeWeaponIdle <= UTIL_WeaponTimeBase() && 0 != m_iClip)
@@ -162,11 +156,11 @@ void CEagle::WeaponIdle()
 
 void CEagle::PrimaryAttack()
 {
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 		PlayEmptySound();
 
-		//Note: this is broken in original Op4 since it uses gpGlobals->time when using prediction
+		// Note: this is broken in original Op4 since it uses gpGlobals->time when using prediction
 		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.15;
 		return;
 	}
@@ -180,11 +174,11 @@ void CEagle::PrimaryAttack()
 				PlayEmptySound();
 				m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.2;
 			}
-			//Don't do this because it glitches the animation
-			//else
+			// Don't do this because it glitches the animation
+			// else
 			//{
 			//	Reload();
-			//}
+			// }
 		}
 
 		return;
@@ -279,7 +273,7 @@ void CEagle::Reload()
 		const bool bResult = DefaultReload(EAGLE_MAX_CLIP, 0 != m_iClip ? EAGLE_RELOAD : EAGLE_RELOAD_NOSHOT, 1.5, 1);
 
 #ifndef CLIENT_DLL
-		//Only turn it off if we're actually reloading
+		// Only turn it off if we're actually reloading
 		if (bResult && m_pLaser && m_bLaserActive)
 		{
 			m_pLaser->pev->effects |= EF_NODRAW;
@@ -369,21 +363,22 @@ void CEagle::SetWeaponData(const weapon_data_t& data)
 
 class CEagleAmmo : public CBasePlayerAmmo
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		//TODO: could probably use a better model
-		SET_MODEL(ENT(pev), "models/w_9mmclip.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		// TODO: could probably use a better model
+		pev->model = MAKE_STRING("models/w_9mmclip.mdl");
 	}
 
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_9mmclip.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
 
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		if (pOther->GiveAmmo(AMMO_EAGLE_GIVE, "357", _357_MAX_CARRY) != -1)
 		{

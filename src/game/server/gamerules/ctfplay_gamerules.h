@@ -1,19 +1,23 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
+
+#include <memory>
+
+#include "ClientCommandRegistry.h"
 
 #include "ctf/CTFDefs.h"
 
@@ -36,8 +40,8 @@ void DisplayTeamFlags(CBasePlayer* pPlayer);
 void ResetTeamScores();
 
 /**
-*	@brief Opposing Force CTF gamemode rules
-*/
+ *	@brief Opposing Force CTF gamemode rules
+ */
 class CHalfLifeCTFplay : public CHalfLifeMultiplay
 {
 private:
@@ -77,8 +81,6 @@ public:
 
 	void PlayerThink(CBasePlayer* pPlayer) override;
 
-	bool ClientCommand(CBasePlayer* pPlayer, const char* pcmd) override;
-
 	void ClientUserInfoChanged(CBasePlayer* pPlayer, char* infobuffer) override;
 
 	int IPointsForKill(CBasePlayer* pAttacker, CBasePlayer* pKilled) override;
@@ -113,6 +115,9 @@ public:
 
 	void GoToIntermission() override;
 
+protected:
+	void BecomeSpectator(CBasePlayer* player, const CommandArgs& args) override;
+
 private:
 	void SendTeamStatInfo(CTFTeam iTeamNum);
 	void SendPlayerStatInfo(CBasePlayer* pPlayer);
@@ -125,13 +130,19 @@ private:
 	bool m_fRefreshScores = false;
 	float m_flNextStatsSend;
 	StatsPhase m_iStatsPhase = StatsPhase::Nothing;
-	//Use a sane default to avoid lockups
+	// Use a sane default to avoid lockups
 	int m_iStatsPlayer = 1;
+
+	ScopedClientCommand m_CancelMenuCommand;
+	ScopedClientCommand m_EndMotdCommand;
+	ScopedClientCommand m_JoinTeamCommand;
+	ScopedClientCommand m_SelectCharCommand;
+	ScopedClientCommand m_ChangeTeamCommand;
+	ScopedClientCommand m_ChangeClassCommand;
+	ScopedClientCommand m_FlagInfoCommand;
 };
 
 extern char* pszPlayerIPs[MAX_PLAYERS * 2];
-
-const char* GetTeamName(edict_t* pEntity);
 
 void GetLosingTeam(int& iTeamNum, int& iScoreDiff);
 

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #pragma once
 
@@ -94,14 +94,10 @@ public:
 	}
 	bool InSquad() { return m_hSquadLeader != nullptr; }
 	bool IsLeader() { return m_hSquadLeader == this; }
-	int SquadJoin(int searchRadius);
 	int SquadRecruit(int searchRadius, int maxMembers);
 	int SquadCount();
 	void SquadRemove(CSquadMonster* pRemove);
-	void SquadUnlink();
 	bool SquadAdd(CSquadMonster* pAdd);
-	void SquadDisband();
-	void SquadAddConditions(int iConditions);
 	void SquadMakeEnemy(CBaseEntity* pEnemy);
 	void SquadPasteEnemyInfo();
 	void SquadCopyEnemyInfo();

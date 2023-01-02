@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // Zombie
 //=========================================================
@@ -22,6 +22,14 @@
 #include "zombie.h"
 
 LINK_ENTITY_TO_CLASS(monster_zombie, CZombie);
+
+void CZombie::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = GetSkillFloat("zombie_health"sv);
+	pev->model = MAKE_STRING("models/zombie.mdl");
+}
 
 //=========================================================
 // Classify - indicates this monster's place in the
@@ -101,18 +109,18 @@ void CZombie::AttackSound()
 
 float CZombie::GetOneSlashDamage()
 {
-	return gSkillData.zombieDmgOneSlash;
+	return GetSkillFloat("zombie_dmg_one_slash"sv);
 }
 
 float CZombie::GetBothSlashDamage()
 {
-	return gSkillData.zombieDmgBothSlash;
+	return GetSkillFloat("zombie_dmg_both_slash"sv);
 }
 
 void CZombie::ZombieSlashAttack(float damage, const Vector& punchAngle, const Vector& velocity, bool playAttackSound)
 {
 	// do stuff for this event.
-	//		ALERT( at_console, "Slash!\n" );
+	// AILogger->debug("Slash!");
 	CBaseEntity* pHurt = CheckTraceHullAttack(70, damage, DMG_SLASH);
 	if (pHurt)
 	{
@@ -157,17 +165,16 @@ void CZombie::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-void CZombie::SpawnCore(const char* model, float health)
+void CZombie::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), model);
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_GREEN;
-	pev->health = health;
 	pev->view_ofs = VEC_VIEW; // position of the eyes relative to monster's origin.
 	m_flFieldOfView = 0.5;	  // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
@@ -176,17 +183,9 @@ void CZombie::SpawnCore(const char* model, float health)
 	MonsterInit();
 }
 
-//=========================================================
-// Spawn
-//=========================================================
-void CZombie::Spawn()
+void CZombie::Precache()
 {
-	SpawnCore("models/zombie.mdl", gSkillData.zombieHealth);
-}
-
-void CZombie::PrecacheCore(const char* model)
-{
-	PRECACHE_MODEL(model);
+	PrecacheModel(STRING(pev->model));
 
 	PRECACHE_SOUND_ARRAY(pAttackHitSounds);
 	PRECACHE_SOUND_ARRAY(pAttackMissSounds);
@@ -194,14 +193,6 @@ void CZombie::PrecacheCore(const char* model)
 	PRECACHE_SOUND_ARRAY(pIdleSounds);
 	PRECACHE_SOUND_ARRAY(pAlertSounds);
 	PRECACHE_SOUND_ARRAY(pPainSounds);
-}
-
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
-void CZombie::Precache()
-{
-	PrecacheCore("models/zombie.mdl");
 }
 
 //=========================================================
@@ -214,7 +205,7 @@ int CZombie::IgnoreConditions()
 {
 	int iIgnore = CBaseMonster::IgnoreConditions();
 
-	if ((m_Activity == ACT_MELEE_ATTACK1) || (m_Activity == ACT_MELEE_ATTACK1))
+	if (m_Activity == ACT_MELEE_ATTACK1)
 	{
 #if 0
 		if (pev->health < 20)

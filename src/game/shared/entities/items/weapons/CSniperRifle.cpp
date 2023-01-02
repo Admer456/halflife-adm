@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 #include "UserMessages.h"
 
@@ -29,6 +29,13 @@ IMPLEMENT_SAVERESTORE(CSniperRifle, CSniperRifle::BaseClass);
 
 LINK_ENTITY_TO_CLASS(weapon_sniperrifle, CSniperRifle);
 
+void CSniperRifle::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_m40a1.mdl");
+}
+
 void CSniperRifle::Precache()
 {
 	pev->classname = MAKE_STRING("weapon_sniperrifle");
@@ -37,17 +44,17 @@ void CSniperRifle::Precache()
 
 	m_iId = WEAPON_SNIPERRIFLE;
 
-	PRECACHE_MODEL("models/w_m40a1.mdl");
-	PRECACHE_MODEL("models/v_m40a1.mdl");
-	PRECACHE_MODEL("models/p_m40a1.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/v_m40a1.mdl");
+	PrecacheModel("models/p_m40a1.mdl");
 
-	PRECACHE_SOUND("weapons/sniper_fire.wav");
-	PRECACHE_SOUND("weapons/sniper_zoom.wav");
-	PRECACHE_SOUND("weapons/sniper_reload_first_seq.wav");
-	PRECACHE_SOUND("weapons/sniper_reload_second_seq.wav");
-	PRECACHE_SOUND("weapons/sniper_miss.wav");
-	PRECACHE_SOUND("weapons/sniper_bolt1.wav");
-	PRECACHE_SOUND("weapons/sniper_bolt2.wav");
+	PrecacheSound("weapons/sniper_fire.wav");
+	PrecacheSound("weapons/sniper_zoom.wav");
+	PrecacheSound("weapons/sniper_reload_first_seq.wav");
+	PrecacheSound("weapons/sniper_reload_second_seq.wav");
+	PrecacheSound("weapons/sniper_miss.wav");
+	PrecacheSound("weapons/sniper_bolt1.wav");
+	PrecacheSound("weapons/sniper_bolt2.wav");
 
 	m_usSniper = PRECACHE_EVENT(1, "events/sniper.sc");
 }
@@ -56,23 +63,11 @@ void CSniperRifle::Spawn()
 {
 	Precache();
 
-	SET_MODEL(edict(), "models/w_m40a1.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = SNIPERRIFLE_DEFAULT_GIVE;
 
 	FallInit(); // get ready to fall down.
-}
-
-bool CSniperRifle::AddToPlayer(CBasePlayer* pPlayer)
-{
-	if (BaseClass::AddToPlayer(pPlayer))
-	{
-		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, nullptr, pPlayer->edict());
-		WRITE_BYTE(m_iId);
-		MESSAGE_END();
-		return true;
-	}
-	return false;
 }
 
 bool CSniperRifle::Deploy()
@@ -96,7 +91,7 @@ void CSniperRifle::Holster()
 
 void CSniperRifle::WeaponIdle()
 {
-	//Update autoaim
+	// Update autoaim
 	m_pPlayer->GetAutoaimVector(AUTOAIM_2DEGREES);
 
 	ResetEmptySound();
@@ -120,7 +115,7 @@ void CSniperRifle::WeaponIdle()
 
 void CSniperRifle::PrimaryAttack()
 {
-	if (m_pPlayer->pev->waterlevel == 3)
+	if (m_pPlayer->pev->waterlevel == WaterLevel::Head)
 	{
 		PlayEmptySound();
 		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 1.0f;
@@ -146,7 +141,7 @@ void CSniperRifle::PrimaryAttack()
 	Vector vecSrc = m_pPlayer->GetGunPosition();
 	Vector vecAiming = m_pPlayer->GetAutoaimVector(AUTOAIM_2DEGREES);
 
-	//TODO: 8192 constant should be defined somewhere - Solokiller
+	// TODO: 8192 constant should be defined somewhere - Solokiller
 	Vector vecShot = m_pPlayer->FireBulletsPlayer(1,
 		vecSrc, vecAiming, g_vecZero,
 		8192, BULLET_PLAYER_762, 0, 0,
@@ -169,7 +164,7 @@ void CSniperRifle::SecondaryAttack()
 
 	ToggleZoom();
 
-	//TODO: this doesn't really make sense
+	// TODO: this doesn't really make sense
 	pev->nextthink = 0.1;
 
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.5;
@@ -252,20 +247,20 @@ class CSniperRifleAmmo : public CBasePlayerAmmo
 public:
 	using BaseClass = CBasePlayerAmmo;
 
-	void Spawn() override
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(edict(), "models/w_m40a1clip.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_m40a1clip.mdl");
 	}
 
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_m40a1clip.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		BaseClass::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
 
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		if (pOther->GiveAmmo(AMMO_SNIPERRIFLE_GIVE, "762", SNIPERRIFLE_MAX_CARRY) != -1)
 		{

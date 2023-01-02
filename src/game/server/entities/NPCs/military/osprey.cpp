@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 #include "cbase.h"
 #include "customentity.h"
 #include "osprey.h"
@@ -52,23 +52,30 @@ TYPEDESCRIPTION COsprey::m_SaveData[] =
 };
 IMPLEMENT_SAVERESTORE(COsprey, CBaseMonster);
 
-void COsprey::SpawnCore(const char* model)
+void COsprey::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	pev->health = 400;
+	pev->model = MAKE_STRING("models/osprey.mdl");
+}
+
+void COsprey::Spawn()
 {
 	Precache();
 	// motor
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(ENT(pev), model);
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-400, -400, -100), Vector(400, 400, 32));
 	UTIL_SetOrigin(pev, pev->origin);
 
-	//Set FL_FLY so the Osprey model is interpolated.
+	// Set FL_FLY so the Osprey model is interpolated.
 	pev->flags |= FL_MONSTER | FL_FLY;
 	pev->takedamage = DAMAGE_YES;
-	m_flRightHealth = 200;
-	m_flLeftHealth = 200;
-	pev->health = 400;
+	m_flRightHealth = pev->health / 2;
+	m_flLeftHealth = pev->health / 2;
 	pev->max_health = pev->health;
 
 	m_flFieldOfView = 0; // 180 degrees
@@ -92,32 +99,27 @@ void COsprey::SpawnCore(const char* model)
 	m_vel2 = pev->velocity;
 }
 
-void COsprey::Spawn()
-{
-	SpawnCore("models/osprey.mdl");
-}
-
-void COsprey::PrecacheCore(const char* ospreyModel, const char* tailModel, const char* bodyModel, const char* engineModel)
+void COsprey::PrecacheCore(const char* tailModel, const char* bodyModel, const char* engineModel)
 {
 	UTIL_PrecacheOther(GetMonsterClassname());
 
-	PRECACHE_MODEL(ospreyModel);
-	PRECACHE_MODEL("models/HVR.mdl");
+	PrecacheModel(STRING(pev->model));
+	PrecacheModel("models/HVR.mdl");
 
-	PRECACHE_SOUND("apache/ap_rotor4.wav");
-	PRECACHE_SOUND("weapons/mortarhit.wav");
+	PrecacheSound("apache/ap_rotor4.wav");
+	PrecacheSound("weapons/mortarhit.wav");
 
-	m_iSpriteTexture = PRECACHE_MODEL("sprites/rope.spr");
+	m_iSpriteTexture = PrecacheModel("sprites/rope.spr");
 
-	m_iExplode = PRECACHE_MODEL("sprites/fexplo.spr");
-	m_iTailGibs = PRECACHE_MODEL(tailModel);
-	m_iBodyGibs = PRECACHE_MODEL(bodyModel);
-	m_iEngineGibs = PRECACHE_MODEL(engineModel);
+	m_iExplode = PrecacheModel("sprites/fexplo.spr");
+	m_iTailGibs = PrecacheModel(tailModel);
+	m_iBodyGibs = PrecacheModel(bodyModel);
+	m_iEngineGibs = PrecacheModel(engineModel);
 }
 
 void COsprey::Precache()
 {
-	PrecacheCore("models/osprey.mdl", "models/osprey_tailgibs.mdl", "models/osprey_bodygibs.mdl", "models/osprey_enginegibs.mdl");
+	PrecacheCore("models/osprey_tailgibs.mdl", "models/osprey_bodygibs.mdl", "models/osprey_enginegibs.mdl");
 }
 
 void COsprey::CommandUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
@@ -145,7 +147,7 @@ void COsprey::FindAllThink()
 
 	if (m_iUnits == 0)
 	{
-		ALERT(at_console, "%s error: no grunts to resupply\n", STRING(pev->classname));
+		AILogger->debug("{} error: no grunts to resupply", STRING(pev->classname));
 		UTIL_Remove(this);
 		return;
 	}
@@ -237,13 +239,13 @@ CBaseMonster* COsprey::MakeGrunt(Vector vecSrc)
 			pBeam->SetThink(&CBeam::SUB_Remove);
 			pBeam->pev->nextthink = gpGlobals->time + -4096.0 * tr.flFraction / pGrunt->pev->velocity.z + 0.5;
 
-			// ALERT( at_console, "%d at %.0f %.0f %.0f\n", i, m_vecOrigin[i].x, m_vecOrigin[i].y, m_vecOrigin[i].z );
+			// AILogger->debug("{} at {:.0f}", i, m_vecOrigin[i]);
 			pGrunt->m_vecLastPosition = m_vecOrigin[i];
 			m_hGrunt[i] = pGrunt;
 			return pGrunt;
 		}
 	}
-	// ALERT( at_console, "none dead\n");
+	// AILogger->debug("none dead");
 	return nullptr;
 }
 
@@ -302,7 +304,7 @@ void COsprey::UpdateGoal()
 	}
 	else
 	{
-		ALERT(at_console, "%s missing target\n", STRING(pev->classname));
+		AILogger->debug("{} missing target", STRING(pev->classname));
 	}
 }
 
@@ -316,7 +318,13 @@ void COsprey::FlyThink()
 
 	if (m_pGoalEnt == nullptr && !FStringNull(pev->target)) // this monster has a target
 	{
-		m_pGoalEnt = CBaseEntity::Instance(FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(pev->target)));
+		m_pGoalEnt = UTIL_FindEntityByTargetname(nullptr, STRING(pev->target));
+
+		if (!m_pGoalEnt)
+		{
+			m_pGoalEnt = World;
+		}
+
 		UpdateGoal();
 	}
 
@@ -330,7 +338,12 @@ void COsprey::FlyThink()
 			}
 			do
 			{
-				m_pGoalEnt = CBaseEntity::Instance(FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(m_pGoalEnt->pev->target)));
+				m_pGoalEnt = UTIL_FindEntityByTargetname(nullptr, STRING(m_pGoalEnt->pev->target));
+
+				if (!m_pGoalEnt)
+				{
+					m_pGoalEnt = World;
+				}
 			} while (m_pGoalEnt->pev->speed < 400 && !HasDead());
 			UpdateGoal();
 		}
@@ -345,7 +358,7 @@ void COsprey::Flight()
 {
 	float t = (gpGlobals->time - m_startTime);
 
-	//Only update if delta time is non-zero. It's zero if we're not moving at all (usually because we have no target).
+	// Only update if delta time is non-zero. It's zero if we're not moving at all (usually because we have no target).
 	if (m_dTime != 0)
 	{
 		float scale = 1.0 / m_dTime;
@@ -367,7 +380,7 @@ void COsprey::Flight()
 
 	float m_flIdealtilt = (160 - flSpeed) / 10.0;
 
-	// ALERT( at_console, "%f %f\n", flSpeed, flIdealtilt );
+	// AILogger->debug("{} {}", flSpeed, flIdealtilt);
 	if (m_flRotortilt < m_flIdealtilt)
 	{
 		m_flRotortilt += 0.5;
@@ -394,7 +407,7 @@ void COsprey::Flight()
 	{
 		CBaseEntity* pPlayer = nullptr;
 
-		pPlayer = UTIL_FindEntityByClassname(nullptr, "player");
+		pPlayer = UTIL_GetLocalPlayer();
 		// UNDONE: this needs to send different sounds to every player for multiplayer.
 		if (pPlayer)
 		{
@@ -414,7 +427,7 @@ void COsprey::Flight()
 			{
 				m_iPitch = pitch;
 				EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "apache/ap_rotor4.wav", 1.0, 0.15, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
-				// ALERT( at_console, "%.0f\n", pitch );
+				// AILogger->debug("{:.0f}", pitch);
 			}
 		}
 		// EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "apache/ap_whine1.wav", flVol, 0.2, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
@@ -542,7 +555,7 @@ void COsprey::DyingThink()
 		WRITE_BYTE(50);
 
 		// Model
-		WRITE_SHORT(m_iTailGibs); //model id#
+		WRITE_SHORT(m_iTailGibs); // model id#
 
 		// # of shards
 		WRITE_BYTE(8); // let client decide
@@ -651,7 +664,7 @@ void COsprey::DyingThink()
 		WRITE_BYTE(40);
 
 		// Model
-		WRITE_SHORT(m_iBodyGibs); //model id#
+		WRITE_SHORT(m_iBodyGibs); // model id#
 
 		// # of shards
 		WRITE_BYTE(128);
@@ -705,10 +718,10 @@ void COsprey::ShowDamage()
 
 void COsprey::Update()
 {
-	//Look around so AI triggers work.
+	// Look around so AI triggers work.
 	Look(4092);
 
-	//Listen for sounds so AI triggers work.
+	// Listen for sounds so AI triggers work.
 	Listen();
 
 	ShowDamage();
@@ -717,11 +730,11 @@ void COsprey::Update()
 
 bool COsprey::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
 {
-	//Set enemy to last attacker.
-	//Ospreys are not capable of fighting so they'll get angry at whatever shoots at them, not whatever looks like an enemy.
+	// Set enemy to last attacker.
+	// Ospreys are not capable of fighting so they'll get angry at whatever shoots at them, not whatever looks like an enemy.
 	m_hEnemy = Instance(pevAttacker);
 
-	//It's on now!
+	// It's on now!
 	m_MonsterState = MONSTERSTATE_COMBAT;
 
 	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
@@ -729,7 +742,7 @@ bool COsprey::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float 
 
 void COsprey::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
-	// ALERT( at_console, "%d %.0f\n", ptr->iHitgroup, flDamage );
+	// AILogger->debug("{} {:.0f}", ptr->iHitgroup, flDamage);
 
 	// only so much per engine
 	if (ptr->iHitgroup == 3)
@@ -753,7 +766,7 @@ void COsprey::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir,
 	// hit hard, hits cockpit, hits engines
 	if (flDamage > 50 || ptr->iHitgroup == 1 || ptr->iHitgroup == 2 || ptr->iHitgroup == 3)
 	{
-		// ALERT( at_console, "%.0f\n", flDamage );
+		// AILogger->debug("{:.0f}", flDamage);
 		AddMultiDamage(pevAttacker, this, flDamage, bitsDamageType);
 	}
 	else

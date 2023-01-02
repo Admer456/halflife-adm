@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 
@@ -27,6 +27,8 @@ enum w_squeak_e
 
 class CSqueakGrenade : public CGrenade
 {
+public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int Classify() override;
@@ -41,6 +43,7 @@ class CSqueakGrenade : public CGrenade
 
 	static TYPEDESCRIPTION m_SaveData[];
 
+private:
 	static float m_flNextBounceSoundTime;
 
 	// CBaseEntity *m_pTarget;
@@ -69,6 +72,14 @@ TYPEDESCRIPTION CSqueakGrenade::m_SaveData[] =
 IMPLEMENT_SAVERESTORE(CSqueakGrenade, CGrenade);
 
 #define SQUEEK_DETONATE_DELAY 15.0
+
+void CSqueakGrenade::OnCreate()
+{
+	CGrenade::OnCreate();
+
+	pev->health = GetSkillFloat("snark_health"sv);
+	pev->model = MAKE_STRING("models/w_squeak.mdl");
+}
 
 int CSqueakGrenade::Classify()
 {
@@ -99,7 +110,7 @@ void CSqueakGrenade::Spawn()
 	pev->movetype = MOVETYPE_BOUNCE;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(ENT(pev), "models/w_squeak.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-4, -4, 0), Vector(4, 4, 8));
 	UTIL_SetOrigin(pev, pev->origin);
 
@@ -110,11 +121,10 @@ void CSqueakGrenade::Spawn()
 
 	pev->flags |= FL_MONSTER;
 	pev->takedamage = DAMAGE_AIM;
-	pev->health = gSkillData.snarkHealth;
 	pev->gravity = 0.5;
 	pev->friction = 0.5;
 
-	pev->dmg = gSkillData.snarkDmgPop;
+	pev->dmg = GetSkillFloat("snark_dmg_pop"sv);
 
 	m_flDie = gpGlobals->time + SQUEEK_DETONATE_DELAY;
 
@@ -131,20 +141,20 @@ void CSqueakGrenade::Spawn()
 
 void CSqueakGrenade::Precache()
 {
-	PRECACHE_MODEL("models/w_squeak.mdl");
-	PRECACHE_SOUND("squeek/sqk_blast1.wav");
-	PRECACHE_SOUND("common/bodysplat.wav");
-	PRECACHE_SOUND("squeek/sqk_die1.wav");
-	PRECACHE_SOUND("squeek/sqk_hunt1.wav");
-	PRECACHE_SOUND("squeek/sqk_hunt2.wav");
-	PRECACHE_SOUND("squeek/sqk_hunt3.wav");
-	PRECACHE_SOUND("squeek/sqk_deploy1.wav");
+	PrecacheModel(STRING(pev->model));
+	PrecacheSound("squeek/sqk_blast1.wav");
+	PrecacheSound("common/bodysplat.wav");
+	PrecacheSound("squeek/sqk_die1.wav");
+	PrecacheSound("squeek/sqk_hunt1.wav");
+	PrecacheSound("squeek/sqk_hunt2.wav");
+	PrecacheSound("squeek/sqk_hunt3.wav");
+	PrecacheSound("squeek/sqk_deploy1.wav");
 }
 
 
 void CSqueakGrenade::Killed(entvars_t* pevAttacker, int iGib)
 {
-	pev->model = iStringNull; // make invisible
+	pev->model = string_t::Null; // make invisible
 	SetThink(&CSqueakGrenade::SUB_Remove);
 	SetTouch(nullptr);
 	pev->nextthink = gpGlobals->time + 0.1;
@@ -182,7 +192,7 @@ void CSqueakGrenade::GibMonster()
 
 void CSqueakGrenade::HuntThink()
 {
-	// ALERT( at_console, "think\n" );
+	// AILogger->debug("think");
 
 	if (!IsInWorld())
 	{
@@ -204,7 +214,7 @@ void CSqueakGrenade::HuntThink()
 	}
 
 	// float
-	if (pev->waterlevel != 0)
+	if (pev->waterlevel != WaterLevel::Dry)
 	{
 		if (pev->movetype == MOVETYPE_BOUNCE)
 		{
@@ -267,9 +277,8 @@ void CSqueakGrenade::HuntThink()
 		if (flAdj > 1.2)
 			flAdj = 1.2;
 
-		// ALERT( at_console, "think : enemy\n");
-
-		// ALERT( at_console, "%.0f %.2f %.2f %.2f\n", flVel, m_vecTarget.x, m_vecTarget.y, m_vecTarget.z );
+		// AILogger->debug("think : enemy");
+		// AILogger->debug("{:.0f} {:.2f}", flVel, m_vecTarget);
 
 		pev->velocity = pev->velocity * flAdj + m_vecTarget * 300;
 	}
@@ -333,15 +342,15 @@ void CSqueakGrenade::SuperBounceTouch(CBaseEntity* pOther)
 			// and it's not another squeakgrenade
 			if (tr.pHit->v.modelindex != pev->modelindex)
 			{
-				// ALERT( at_console, "hit enemy\n");
+				// AILogger->debug("hit enemy");
 				ClearMultiDamage();
-				pOther->TraceAttack(pev, gSkillData.snarkDmgBite, gpGlobals->v_forward, &tr, DMG_SLASH);
+				pOther->TraceAttack(pev, GetSkillFloat("snark_dmg_bite"sv), gpGlobals->v_forward, &tr, DMG_SLASH);
 				if (m_hOwner != nullptr)
 					ApplyMultiDamage(pev, m_hOwner->pev);
 				else
 					ApplyMultiDamage(pev, pev);
 
-				pev->dmg += gSkillData.snarkDmgPop; // add more explosion damage
+				pev->dmg += GetSkillFloat("snark_dmg_pop"sv); // add more explosion damage
 				// m_flDie += 2.0; // add more life
 
 				// make bite sound
@@ -351,7 +360,7 @@ void CSqueakGrenade::SuperBounceTouch(CBaseEntity* pOther)
 		}
 		else
 		{
-			// ALERT( at_console, "been hit\n");
+			// AILogger->debug("been hit");
 		}
 	}
 
@@ -394,14 +403,20 @@ void CSqueakGrenade::SuperBounceTouch(CBaseEntity* pOther)
 
 LINK_ENTITY_TO_CLASS(weapon_snark, CSqueak);
 
+void CSqueak::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_sqknest.mdl");
+}
 
 void CSqueak::Spawn()
 {
 	Precache();
 	m_iId = WEAPON_SNARK;
-	SET_MODEL(ENT(pev), "models/w_sqknest.mdl");
+	SetModel(STRING(pev->model));
 
-	FallInit(); //get ready to fall down.
+	FallInit(); // get ready to fall down.
 
 	m_iDefaultAmmo = SNARK_DEFAULT_GIVE;
 
@@ -413,11 +428,11 @@ void CSqueak::Spawn()
 
 void CSqueak::Precache()
 {
-	PRECACHE_MODEL("models/w_sqknest.mdl");
-	PRECACHE_MODEL("models/v_squeak.mdl");
-	PRECACHE_MODEL("models/p_squeak.mdl");
-	PRECACHE_SOUND("squeek/sqk_hunt2.wav");
-	PRECACHE_SOUND("squeek/sqk_hunt3.wav");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/v_squeak.mdl");
+	PrecacheModel("models/p_squeak.mdl");
+	PrecacheSound("squeek/sqk_hunt2.wav");
+	PrecacheSound("squeek/sqk_hunt3.wav");
 	UTIL_PrecacheOther("monster_snark");
 
 	m_usSnarkFire = PRECACHE_EVENT(1, "events/snarkfire.sc");

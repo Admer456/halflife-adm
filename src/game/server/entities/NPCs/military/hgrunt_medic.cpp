@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // hgrunt
 //=========================================================
@@ -34,6 +34,7 @@
 #include "COFSquadTalkMonster.h"
 #include "customentity.h"
 #include "hgrunt_ally_base.h"
+#include "blackmesa/scientist.h"
 
 //=========================================================
 // monster-specific DEFINE's
@@ -45,8 +46,11 @@ namespace MedicAllyBodygroup
 {
 enum MedicAllyBodygroup
 {
+	Invalid = -1,
 	Head = 2,
-	Weapons = 3
+	Deagle = 3,
+	Glock = 4,
+	Needle = 5
 };
 }
 
@@ -60,17 +64,6 @@ enum MedicAllyHead
 };
 }
 
-namespace MedicAllyWeapon
-{
-enum MedicAllyWeapon
-{
-	DesertEagle = 0,
-	Glock,
-	Needle,
-	None
-};
-}
-
 namespace MedicAllyWeaponFlag
 {
 enum MedicAllyWeaponFlag
@@ -81,6 +74,17 @@ enum MedicAllyWeaponFlag
 	HandGrenade = 1 << 3,
 };
 }
+
+struct MedicWeaponData
+{
+	MedicAllyBodygroup::MedicAllyBodygroup Group;
+	const char* ClassName;
+};
+
+static const MedicWeaponData MedicWeaponDatas[] =
+	{
+		{MedicAllyBodygroup::Deagle, "weapon_eagle"},
+		{MedicAllyBodygroup::Glock, "weapon_9mmhandgun"}};
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -101,6 +105,8 @@ enum
 class COFMedicAlly : public CBaseHGruntAlly
 {
 public:
+	void OnCreate() override;
+
 	void Spawn() override;
 	void Precache() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
@@ -148,7 +154,9 @@ public:
 
 	float m_flLastShot;
 
-	int m_iBrassShell; //TODO: no shell is being ejected atm
+	int m_iBrassShell; // TODO: no shell is being ejected atm
+
+	MedicAllyBodygroup::MedicAllyBodygroup m_WeaponGroup = MedicAllyBodygroup::Invalid;
 
 protected:
 	void DropWeapon(bool applyVelocity) override;
@@ -172,36 +180,42 @@ TYPEDESCRIPTION COFMedicAlly::m_SaveData[] =
 		DEFINE_FIELD(COFMedicAlly, m_flLastUseTime, FIELD_TIME),
 		DEFINE_FIELD(COFMedicAlly, m_fHealActive, FIELD_BOOLEAN),
 		DEFINE_FIELD(COFMedicAlly, m_flLastShot, FIELD_TIME),
+		DEFINE_FIELD(COFMedicAlly, m_WeaponGroup, FIELD_INTEGER),
 };
 
 IMPLEMENT_SAVERESTORE(COFMedicAlly, CBaseHGruntAlly);
 
+void COFMedicAlly::OnCreate()
+{
+	CBaseHGruntAlly::OnCreate();
+
+	pev->health = GetSkillFloat("medic_ally_health"sv);
+	pev->model = MAKE_STRING("models/hgrunt_medic.mdl");
+
+	// get voice pitch
+	m_voicePitch = 105;
+}
+
 void COFMedicAlly::DropWeapon(bool applyVelocity)
 {
-	if (GetBodygroup(MedicAllyBodygroup::Weapons) != MedicAllyWeapon::None)
-	{ // throw a gun if the grunt has one
+	for (const auto& weapon : MedicWeaponDatas)
+	{
+		if (GetBodygroup(weapon.Group) != NPCWeaponState::Blank)
+		{ // throw a gun if the grunt has one
 
-		Vector vecGunPos, vecGunAngles;
-		GetAttachment(0, vecGunPos, vecGunAngles);
+			Vector vecGunPos, vecGunAngles;
+			GetAttachment(0, vecGunPos, vecGunAngles);
 
-		CBaseEntity* pGun = nullptr;
+			CBaseEntity* pGun = DropItem(weapon.ClassName, vecGunPos, vecGunAngles);
 
-		if ((pev->weapons & MedicAllyWeaponFlag::Glock) != 0)
-		{
-			pGun = DropItem("weapon_9mmhandgun", vecGunPos, vecGunAngles);
+			if (pGun && applyVelocity)
+			{
+				pGun->pev->velocity = Vector(RANDOM_FLOAT(-100, 100), RANDOM_FLOAT(-100, 100), RANDOM_FLOAT(200, 300));
+				pGun->pev->avelocity = Vector(0, RANDOM_FLOAT(200, 400), 0);
+			}
+
+			SetBodygroup(weapon.Group, NPCWeaponState::Blank);
 		}
-		else if ((pev->weapons & MedicAllyWeaponFlag::DesertEagle) != 0)
-		{
-			pGun = DropItem("weapon_eagle", vecGunPos, vecGunAngles);
-		}
-
-		if (pGun && applyVelocity)
-		{
-			pGun->pev->velocity = Vector(RANDOM_FLOAT(-100, 100), RANDOM_FLOAT(-100, 100), RANDOM_FLOAT(200, 300));
-			pGun->pev->avelocity = Vector(0, RANDOM_FLOAT(200, 400), 0);
-		}
-
-		SetBodygroup(MedicAllyBodygroup::Weapons, MedicAllyWeapon::None);
 	}
 }
 
@@ -210,7 +224,7 @@ void COFMedicAlly::DropWeapon(bool applyVelocity)
 //=========================================================
 void COFMedicAlly::Shoot()
 {
-	//Limit fire rate
+	// Limit fire rate
 	if (m_hEnemy == nullptr || gpGlobals->time - m_flLastShot <= 0.11)
 	{
 		return;
@@ -283,19 +297,25 @@ void COFMedicAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 	break;
 
 	case MEDIC_AE_HOLSTER_GUN:
-		SetBodygroup(MedicAllyBodygroup::Weapons, MedicAllyWeapon::None);
+		if (m_WeaponGroup != MedicAllyBodygroup::Invalid)
+		{
+			SetBodygroup(m_WeaponGroup, NPCWeaponState::Holstered);
+		}
 		break;
 
 	case MEDIC_AE_EQUIP_NEEDLE:
-		SetBodygroup(MedicAllyBodygroup::Weapons, MedicAllyWeapon::Needle);
+		SetBodygroup(MedicAllyBodygroup::Needle, ScientistNeedle::Drawn);
 		break;
 
 	case MEDIC_AE_HOLSTER_NEEDLE:
-		SetBodygroup(MedicAllyBodygroup::Weapons, MedicAllyWeapon::None);
+		SetBodygroup(MedicAllyBodygroup::Needle, ScientistNeedle::Blank);
 		break;
 
 	case MEDIC_AE_EQUIP_GUN:
-		SetBodygroup(MedicAllyBodygroup::Weapons, (pev->weapons & MedicAllyWeaponFlag::Glock) != 0 ? MedicAllyWeapon::Glock : MedicAllyWeapon::DesertEagle);
+		if (m_WeaponGroup != MedicAllyBodygroup::Invalid)
+		{
+			SetBodygroup(m_WeaponGroup, NPCWeaponState::Drawn);
+		}
 		break;
 
 	default:
@@ -309,10 +329,10 @@ void COFMedicAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 //=========================================================
 void COFMedicAlly::Spawn()
 {
-	SpawnCore("models/hgrunt_medic.mdl", gSkillData.medicAllyHealth);
+	SpawnCore();
 
 	m_flLastUseTime = 0;
-	m_iHealCharge = gSkillData.medicAllyHeal;
+	m_iHealCharge = GetSkillFloat("medic_ally_heal"sv);
 	m_fHealActive = false;
 	m_fUseHealing = false;
 	m_fHealing = false;
@@ -333,27 +353,30 @@ void COFMedicAlly::Spawn()
 
 	if ((pev->weapons & MedicAllyWeaponFlag::Glock) != 0)
 	{
-		weaponIndex = MedicAllyWeapon::Glock;
+		m_WeaponGroup = MedicAllyBodygroup::Glock;
 		m_cClipSize = MEDIC_GLOCK_CLIP_SIZE;
 	}
 	else if ((pev->weapons & MedicAllyWeaponFlag::DesertEagle) != 0)
 	{
-		weaponIndex = MedicAllyWeapon::DesertEagle;
+		m_WeaponGroup = MedicAllyBodygroup::Deagle;
 		m_cClipSize = MEDIC_DEAGLE_CLIP_SIZE;
 	}
 	else if ((pev->weapons & MedicAllyWeaponFlag::Needle) != 0)
 	{
-		weaponIndex = MedicAllyWeapon::Needle;
+		SetBodygroup(MedicAllyBodygroup::Needle, ScientistNeedle::Drawn);
 		m_cClipSize = 1;
 	}
 	else
 	{
-		weaponIndex = MedicAllyWeapon::None;
 		m_cClipSize = 0;
 	}
 
 	SetBodygroup(MedicAllyBodygroup::Head, m_iGruntHead);
-	SetBodygroup(MedicAllyBodygroup::Weapons, weaponIndex);
+
+	if (m_WeaponGroup != MedicAllyBodygroup::Invalid)
+	{
+		SetBodygroup(m_WeaponGroup, NPCWeaponState::Drawn);
+	}
 
 	m_cAmmoLoaded = m_cClipSize;
 
@@ -372,23 +395,15 @@ void COFMedicAlly::Spawn()
 //=========================================================
 void COFMedicAlly::Precache()
 {
-	PRECACHE_MODEL("models/hgrunt_medic.mdl");
+	PrecacheSound("weapons/desert_eagle_fire.wav");
+	PrecacheSound("weapons/desert_eagle_reload.wav");
 
-	PRECACHE_SOUND("weapons/desert_eagle_fire.wav");
-	PRECACHE_SOUND("weapons/desert_eagle_reload.wav");
+	PrecacheSound("fgrunt/medic_give_shot.wav");
+	PrecacheSound("fgrunt/medical.wav");
 
-	PRECACHE_SOUND("fgrunt/medic_give_shot.wav");
-	PRECACHE_SOUND("fgrunt/medical.wav");
-
-	m_iBrassShell = PRECACHE_MODEL("models/shell.mdl");
+	m_iBrassShell = PrecacheModel("models/shell.mdl");
 
 	CBaseHGruntAlly::Precache();
-
-	// get voice pitch
-	if (!UTIL_IsRestoring())
-	{
-		m_voicePitch = 105;
-	}
 }
 
 //=========================================================
@@ -664,13 +679,13 @@ Schedule_t* COFMedicAlly::GetScheduleOfType(int Type)
 
 int COFMedicAlly::ObjectCaps()
 {
-	//Allow healing the player by continuously using
+	// Allow healing the player by continuously using
 	return FCAP_ACROSS_TRANSITION | FCAP_CONTINUOUS_USE;
 }
 
 void COFMedicAlly::Killed(entvars_t* pevAttacker, int iGib)
 {
-	//Clear medic handle from patient
+	// Clear medic handle from patient
 	if (m_hTargetEnt != nullptr)
 	{
 		auto pSquadMonster = m_hTargetEnt->MySquadTalkMonsterPointer();
@@ -684,13 +699,13 @@ void COFMedicAlly::Killed(entvars_t* pevAttacker, int iGib)
 
 void COFMedicAlly::MonsterThink()
 {
-	//Check if we need to start following the player again after healing them
+	// Check if we need to start following the player again after healing them
 	if (m_fFollowChecking && !m_fFollowChecked && gpGlobals->time - m_flFollowCheckTime > 0.5)
 	{
 		m_fFollowChecking = false;
 
-		//TODO: not suited for multiplayer
-		auto pPlayer = UTIL_FindEntityByClassname(nullptr, "player");
+		// TODO: not suited for multiplayer
+		auto pPlayer = UTIL_GetLocalPlayer();
 
 		FollowerUse(pPlayer, pPlayer, USE_TOGGLE, 0);
 	}
@@ -767,7 +782,7 @@ void COFMedicAlly::HealerActivate(CBaseMonster* pTarget)
 		if (pMonster)
 			pMonster->m_hWaitMedic = nullptr;
 
-		//TODO: could just change the type of pTarget since this is the only type passed in
+		// TODO: could just change the type of pTarget since this is the only type passed in
 		auto pSquadTarget = static_cast<COFSquadTalkMonster*>(pTarget);
 
 		pSquadTarget->m_hWaitMedic = this;
@@ -861,7 +876,7 @@ void COFMedicAlly::HealerUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_
 				}
 				else
 				{
-					SENTENCEG_PlayRndSz(edict(), "MG_HEAL", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(edict(), "MG_HEAL", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 					ChangeSchedule(slMedicAllyDrawNeedle);
 				}
 			}
@@ -886,7 +901,7 @@ void COFMedicAlly::HealerUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_
 			if (gpGlobals->time - m_flLastRejectAudio > 4.0 && m_iHealCharge <= 0 && !m_fHealing)
 			{
 				m_flLastRejectAudio = gpGlobals->time;
-				SENTENCEG_PlayRndSz(edict(), "MG_NOTHEAL", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(edict(), "MG_NOTHEAL", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 			}
 		}
 
@@ -899,8 +914,8 @@ void COFMedicAlly::HealerUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_
 }
 
 /**
-*	@brief when triggered, spawns a monster_human_medic_ally repelling down a line.
-*/
+ *	@brief when triggered, spawns a monster_human_medic_ally repelling down a line.
+ */
 class COFMedicAllyRepel : public CBaseHGruntAllyRepel
 {
 protected:

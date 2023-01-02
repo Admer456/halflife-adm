@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 #include "cbase.h"
 
 
@@ -19,15 +19,21 @@
 
 LINK_ENTITY_TO_CLASS(weapon_handgrenade, CHandGrenade);
 
+void CHandGrenade::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_grenade.mdl");
+}
 
 void CHandGrenade::Spawn()
 {
 	Precache();
 	m_iId = WEAPON_HANDGRENADE;
-	SET_MODEL(ENT(pev), "models/w_grenade.mdl");
+	SetModel(STRING(pev->model));
 
 #ifndef CLIENT_DLL
-	pev->dmg = gSkillData.plrDmgHandGrenade;
+	pev->dmg = GetSkillFloat("plr_hand_grenade"sv);
 #endif
 
 	m_iDefaultAmmo = HANDGRENADE_DEFAULT_GIVE;
@@ -38,9 +44,9 @@ void CHandGrenade::Spawn()
 
 void CHandGrenade::Precache()
 {
-	PRECACHE_MODEL("models/w_grenade.mdl");
-	PRECACHE_MODEL("models/v_grenade.mdl");
-	PRECACHE_MODEL("models/p_grenade.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/v_grenade.mdl");
+	PrecacheModel("models/p_grenade.mdl");
 }
 
 bool CHandGrenade::GetItemInfo(ItemInfo* p)
@@ -63,7 +69,7 @@ bool CHandGrenade::GetItemInfo(ItemInfo* p)
 void CHandGrenade::IncrementAmmo(CBasePlayer* pPlayer)
 {
 #ifndef CLIENT_DLL
-	//TODO: not sure how useful this is given that the player has to have this weapon for this method to be called
+	// TODO: not sure how useful this is given that the player has to have this weapon for this method to be called
 	if (!pPlayer->HasNamedPlayerItem("weapon_handgrenade"))
 	{
 		pPlayer->GiveNamedItem("weapon_handgrenade");
@@ -90,7 +96,7 @@ bool CHandGrenade::CanHolster()
 
 void CHandGrenade::Holster()
 {
-	//Stop any throw that was in process so players don't blow themselves or somebody else up when the weapon is deployed again.
+	// Stop any throw that was in process so players don't blow themselves or somebody else up when the weapon is deployed again.
 	m_flStartThrow = 0;
 
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
@@ -173,7 +179,7 @@ void CHandGrenade::WeaponIdle()
 		// player "shoot" animation
 		m_pPlayer->SetAnimation(PLAYER_ATTACK1);
 
-		//m_flReleaseThrow = 0;
+		// m_flReleaseThrow = 0;
 		m_flStartThrow = 0;
 		m_flNextPrimaryAttack = GetNextAttackDelay(0.5);
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.5;

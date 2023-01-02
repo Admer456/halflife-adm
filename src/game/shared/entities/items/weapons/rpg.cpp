@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "UserMessages.h"
@@ -26,10 +26,8 @@ LINK_ENTITY_TO_CLASS(laser_spot, CLaserSpot);
 //=========================================================
 CLaserSpot* CLaserSpot::CreateSpot()
 {
-	CLaserSpot* pSpot = GetClassPtr((CLaserSpot*)nullptr);
+	CLaserSpot* pSpot = g_EntityDictionary->Create<CLaserSpot>("laser_spot");
 	pSpot->Spawn();
-
-	pSpot->pev->classname = MAKE_STRING("laser_spot");
 
 	return pSpot;
 }
@@ -46,7 +44,7 @@ void CLaserSpot::Spawn()
 	pev->renderfx = kRenderFxNoDissipation;
 	pev->renderamt = 255;
 
-	SET_MODEL(ENT(pev), "sprites/laserdot.spr");
+	SetModel("sprites/laserdot.spr");
 	UTIL_SetOrigin(pev, pev->origin);
 };
 
@@ -73,16 +71,25 @@ void CLaserSpot::Revive()
 
 void CLaserSpot::Precache()
 {
-	PRECACHE_MODEL("sprites/laserdot.spr");
+	PrecacheModel("sprites/laserdot.spr");
 };
 
 LINK_ENTITY_TO_CLASS(rpg_rocket, CRpgRocket);
+
+CRpgRocket::~CRpgRocket()
+{
+	if (m_pLauncher)
+	{
+		// my launcher is still around, tell it I'm dead.
+		static_cast<CRpg*>(static_cast<CBaseEntity*>(m_pLauncher))->m_cActiveRockets--;
+	}
+}
 
 //=========================================================
 //=========================================================
 CRpgRocket* CRpgRocket::CreateRpgRocket(Vector vecOrigin, Vector vecAngles, CBaseEntity* pOwner, CRpg* pLauncher)
 {
-	CRpgRocket* pRocket = GetClassPtr((CRpgRocket*)nullptr);
+	CRpgRocket* pRocket = g_EntityDictionary->Create<CRpgRocket>("rpg_rocket");
 
 	UTIL_SetOrigin(pRocket->pev, vecOrigin);
 	pRocket->pev->angles = vecAngles;
@@ -104,11 +111,9 @@ void CRpgRocket::Spawn()
 	pev->movetype = MOVETYPE_BOUNCE;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(ENT(pev), "models/rpgrocket.mdl");
+	SetModel("models/rpgrocket.mdl");
 	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
 	UTIL_SetOrigin(pev, pev->origin);
-
-	pev->classname = MAKE_STRING("rpg_rocket");
 
 	SetThink(&CRpgRocket::IgniteThink);
 	SetTouch(&CRpgRocket::ExplodeTouch);
@@ -122,19 +127,13 @@ void CRpgRocket::Spawn()
 
 	pev->nextthink = gpGlobals->time + 0.4;
 
-	pev->dmg = gSkillData.plrDmgRPG;
+	pev->dmg = GetSkillFloat("plr_rpg"sv);
 }
 
 //=========================================================
 //=========================================================
 void CRpgRocket::RocketTouch(CBaseEntity* pOther)
 {
-	if (m_pLauncher)
-	{
-		// my launcher is still around, tell it I'm dead.
-		static_cast<CRpg*>(static_cast<CBaseEntity*>(m_pLauncher))->m_cActiveRockets--;
-	}
-
 	STOP_SOUND(edict(), CHAN_VOICE, "weapons/rocket1.wav");
 	ExplodeTouch(pOther);
 }
@@ -143,9 +142,9 @@ void CRpgRocket::RocketTouch(CBaseEntity* pOther)
 //=========================================================
 void CRpgRocket::Precache()
 {
-	PRECACHE_MODEL("models/rpgrocket.mdl");
-	m_iTrail = PRECACHE_MODEL("sprites/smoke.spr");
-	PRECACHE_SOUND("weapons/rocket1.wav");
+	PrecacheModel("models/rpgrocket.mdl");
+	m_iTrail = PrecacheModel("sprites/smoke.spr");
+	PrecacheSound("weapons/rocket1.wav");
 }
 
 
@@ -199,7 +198,7 @@ void CRpgRocket::FollowThink()
 	while ((pOther = UTIL_FindEntityByClassname(pOther, "laser_spot")) != nullptr)
 	{
 		UTIL_TraceLine(pev->origin, pOther->pev->origin, dont_ignore_monsters, ENT(pev), &tr);
-		// ALERT( at_console, "%f\n", tr.flFraction );
+		// WeaponsLogger->debug("{}", tr.flFraction);
 		if (tr.flFraction >= 0.90)
 		{
 			vecDir = pOther->pev->origin - pev->origin;
@@ -221,7 +220,7 @@ void CRpgRocket::FollowThink()
 	if (gpGlobals->time - m_flIgniteTime < 1.0)
 	{
 		pev->velocity = pev->velocity * 0.2 + vecTarget * (flSpeed * 0.8 + 400);
-		if (pev->waterlevel == 3)
+		if (pev->waterlevel == WaterLevel::Head)
 		{
 			// go slow underwater
 			if (pev->velocity.Length() > 300)
@@ -246,18 +245,23 @@ void CRpgRocket::FollowThink()
 			STOP_SOUND(ENT(pev), CHAN_VOICE, "weapons/rocket1.wav");
 		}
 		pev->velocity = pev->velocity * 0.2 + vecTarget * flSpeed * 0.798;
-		if (pev->waterlevel == 0 && pev->velocity.Length() < 1500)
+		if (pev->waterlevel == WaterLevel::Dry && pev->velocity.Length() < 1500)
 		{
 			Detonate();
 		}
 	}
-	// ALERT( at_console, "%.0f\n", flSpeed );
+	// WeaponsLogger->debug("{:.0f}", flSpeed);
 
 	pev->nextthink = gpGlobals->time + 0.1;
 }
 #endif
 
+void CRpg::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
 
+	m_WorldModel = pev->model = MAKE_STRING("models/w_rpg.mdl");
+}
 
 void CRpg::Reload()
 {
@@ -311,7 +315,7 @@ void CRpg::Spawn()
 	Precache();
 	m_iId = WEAPON_RPG;
 
-	SET_MODEL(ENT(pev), "models/w_rpg.mdl");
+	SetModel(STRING(pev->model));
 	m_fSpotActive = true;
 
 	if (UTIL_IsMultiplayer())
@@ -330,17 +334,17 @@ void CRpg::Spawn()
 
 void CRpg::Precache()
 {
-	PRECACHE_MODEL("models/w_rpg.mdl");
-	PRECACHE_MODEL("models/v_rpg.mdl");
-	PRECACHE_MODEL("models/p_rpg.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/v_rpg.mdl");
+	PrecacheModel("models/p_rpg.mdl");
 
-	PRECACHE_SOUND("items/9mmclip1.wav");
+	PrecacheSound("items/9mmclip1.wav");
 
 	UTIL_PrecacheOther("laser_spot");
 	UTIL_PrecacheOther("rpg_rocket");
 
-	PRECACHE_SOUND("weapons/rocketfire1.wav");
-	PRECACHE_SOUND("weapons/glauncher.wav"); // alternative fire sound
+	PrecacheSound("weapons/rocketfire1.wav");
+	PrecacheSound("weapons/glauncher.wav"); // alternative fire sound
 
 	m_usRpg = PRECACHE_EVENT(1, "events/rpg.sc");
 }
@@ -540,18 +544,20 @@ void CRpg::UpdateSpot()
 
 class CRpgAmmo : public CBasePlayerAmmo
 {
-	void Spawn() override
+public:
+	void OnCreate() override
 	{
-		Precache();
-		SET_MODEL(ENT(pev), "models/w_rpgammo.mdl");
-		CBasePlayerAmmo::Spawn();
+		CBasePlayerAmmo::OnCreate();
+
+		pev->model = MAKE_STRING("models/w_rpgammo.mdl");
 	}
+
 	void Precache() override
 	{
-		PRECACHE_MODEL("models/w_rpgammo.mdl");
-		PRECACHE_SOUND("items/9mmclip1.wav");
+		CBasePlayerAmmo::Precache();
+		PrecacheSound("items/9mmclip1.wav");
 	}
-	bool AddAmmo(CBaseEntity* pOther) override
+	bool AddAmmo(CBasePlayer* pOther) override
 	{
 		int iGive;
 

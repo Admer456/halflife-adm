@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 //
 // ========================== PATH_CORNER ===========================
 //
@@ -25,7 +25,6 @@ public:
 	void Spawn() override;
 	bool KeyValue(KeyValueData* pkvd) override;
 	float GetDelay() override { return m_flWait; }
-	//	void Touch( CBaseEntity *pOther ) override;
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
 
@@ -64,56 +63,6 @@ void CPathCorner::Spawn()
 {
 	ASSERTSZ(!FStringNull(pev->targetname), "path_corner without a targetname");
 }
-
-#if 0
-void CPathCorner::Touch(CBaseEntity* pOther)
-{
-	entvars_t* pevToucher = pOther->pev;
-
-	if (FBitSet(pevToucher->flags, FL_MONSTER))
-	{// monsters don't navigate path corners based on touch anymore
-		return;
-	}
-
-	// If OTHER isn't explicitly looking for this path_corner, bail out
-	if (pOther->m_pGoalEnt != this)
-	{
-		return;
-	}
-
-	// If OTHER has an enemy, this touch is incidental, ignore
-	if (!FNullEnt(pevToucher->enemy))
-	{
-		return;		// fighting, not following a path
-	}
-
-	// UNDONE: support non-zero flWait
-	/*
-	if (m_flWait != 0)
-		ALERT(at_warning, "Non-zero path-cornder waits NYI");
-	*/
-
-	// Find the next "stop" on the path, make it the goal of the "toucher".
-	if (FStringNull(pev->target))
-	{
-		ALERT(at_warning, "PathCornerTouch: no next stop specified");
-	}
-
-	pOther->m_pGoalEnt = CBaseEntity::Instance(FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(pev->target)));
-
-	// If "next spot" was not found (does not exist - level design error)
-	if (!pOther->m_pGoalEnt)
-	{
-		ALERT(at_console, "PathCornerTouch--%s couldn't find next stop in path: %s", STRING(pev->classname), STRING(pev->target));
-		return;
-	}
-
-	// Turn towards the next stop in the path.
-	pevToucher->ideal_yaw = UTIL_VecToYaw(pOther->m_pGoalEnt->pev->origin - pevToucher->origin);
-}
-#endif
-
-
 
 TYPEDESCRIPTION CPathTrack::m_SaveData[] =
 	{
@@ -174,14 +123,12 @@ void CPathTrack::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE use
 
 void CPathTrack::Link()
 {
-	edict_t* pentTarget;
-
 	if (!FStringNull(pev->target))
 	{
-		pentTarget = FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(pev->target));
-		if (!FNullEnt(pentTarget))
+		auto target = UTIL_FindEntityByTargetname(nullptr, STRING(pev->target));
+		if (!FNullEnt(target))
 		{
-			m_pnext = CPathTrack::Instance(pentTarget);
+			m_pnext = CPathTrack::Instance(target);
 
 			if (m_pnext) // If no next pointer, this is the end of a path
 			{
@@ -189,16 +136,16 @@ void CPathTrack::Link()
 			}
 		}
 		else
-			ALERT(at_console, "Dead end link %s\n", STRING(pev->target));
+			Logger->debug("Dead end link {}", STRING(pev->target));
 	}
 
 	// Find "alternate" path
 	if (!FStringNull(m_altName))
 	{
-		pentTarget = FIND_ENTITY_BY_TARGETNAME(nullptr, STRING(m_altName));
-		if (!FNullEnt(pentTarget))
+		auto target = UTIL_FindEntityByTargetname(nullptr, STRING(m_altName));
+		if (!FNullEnt(target))
 		{
-			m_paltpath = CPathTrack::Instance(pentTarget);
+			m_paltpath = CPathTrack::Instance(target);
 
 			if (m_paltpath) // If no next pointer, this is the end of a path
 			{
@@ -385,7 +332,7 @@ CPathTrack* CPathTrack::Nearest(Vector origin)
 		deadCount++;
 		if (deadCount > 9999)
 		{
-			ALERT(at_error, "Bad sequence of path_tracks from %s", STRING(pev->targetname));
+			Logger->error("Bad sequence of path_tracks from {}", STRING(pev->targetname));
 			return nullptr;
 		}
 		delta = origin - ppath->pev->origin;
@@ -402,10 +349,10 @@ CPathTrack* CPathTrack::Nearest(Vector origin)
 }
 
 
-CPathTrack* CPathTrack::Instance(edict_t* pent)
+CPathTrack* CPathTrack::Instance(CBaseEntity* pent)
 {
-	if (FClassnameIs(pent, "path_track"))
-		return (CPathTrack*)GET_PRIVATE(pent);
+	if (pent && FClassnameIs(pent->pev, "path_track"))
+		return static_cast<CPathTrack*>(pent);
 	return nullptr;
 }
 

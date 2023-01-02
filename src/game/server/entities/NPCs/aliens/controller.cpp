@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 //=========================================================
 // CONTROLLER
@@ -34,6 +34,7 @@
 class CController : public CSquadMonster
 {
 public:
+	void OnCreate() override;
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
 	static TYPEDESCRIPTION m_SaveData[];
@@ -143,6 +144,13 @@ const char* CController::pDeathSounds[] =
 		"controller/con_die2.wav",
 };
 
+void CController::OnCreate()
+{
+	CSquadMonster::OnCreate();
+
+	pev->health = GetSkillFloat("controller_health"sv);
+	pev->model = MAKE_STRING("models/controller.mdl");
+}
 
 //=========================================================
 // Classify - indicates this monster's place in the
@@ -353,14 +361,13 @@ void CController::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/controller.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-32, -32, 0), Vector(32, 32, 64));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_FLY;
 	pev->flags |= FL_FLY;
 	m_bloodColor = BLOOD_COLOR_GREEN;
-	pev->health = gSkillData.controllerHealth;
 	pev->view_ofs = Vector(0, 0, -2);  // position of the eyes relative to monster's origin.
 	m_flFieldOfView = VIEW_FIELD_FULL; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
@@ -373,7 +380,7 @@ void CController::Spawn()
 //=========================================================
 void CController::Precache()
 {
-	PRECACHE_MODEL("models/controller.mdl");
+	PrecacheModel(STRING(pev->model));
 
 	PRECACHE_SOUND_ARRAY(pAttackSounds);
 	PRECACHE_SOUND_ARRAY(pIdleSounds);
@@ -381,7 +388,7 @@ void CController::Precache()
 	PRECACHE_SOUND_ARRAY(pPainSounds);
 	PRECACHE_SOUND_ARRAY(pDeathSounds);
 
-	PRECACHE_MODEL("sprites/xspark4.spr");
+	PrecacheModel("sprites/xspark4.spr");
 
 	UTIL_PrecacheOther("controller_energy_ball");
 	UTIL_PrecacheOther("controller_head_ball");
@@ -497,7 +504,7 @@ void CController::StartTask(Task_t* pTask)
 		else
 		{
 			// no way to get there =(
-			ALERT(at_aiconsole, "GetPathToEnemyLKP failed!!\n");
+			AILogger->debug("GetPathToEnemyLKP failed!!");
 			TaskFail();
 		}
 		break;
@@ -519,7 +526,7 @@ void CController::StartTask(Task_t* pTask)
 		else
 		{
 			// no way to get there =(
-			ALERT(at_aiconsole, "GetPathToEnemy failed!!\n");
+			AILogger->debug("GetPathToEnemy failed!!");
 			TaskFail();
 		}
 		break;
@@ -557,7 +564,7 @@ Vector Intersect(Vector vecSrc, Vector vecDst, Vector vecMove, float flSpeed)
 			t = t1;
 	}
 
-	// ALERT( at_console, "Intersect %f\n", t );
+	// AILogger->debug("Intersect {}", t);
 
 	if (t < 0.1)
 		t = 0.1;
@@ -632,9 +639,9 @@ void CController::RunTask(Task_t* pTask)
 				{
 					m_vecEstVelocity = m_vecEstVelocity * 0.8;
 				}
-				vecDir = Intersect(vecSrc, m_hEnemy->BodyTarget(pev->origin), m_vecEstVelocity, gSkillData.controllerSpeedBall);
+				vecDir = Intersect(vecSrc, m_hEnemy->BodyTarget(pev->origin), m_vecEstVelocity, GetSkillFloat("controller_speedball"sv));
 				float delta = 0.03490; // +-2 degree
-				vecDir = vecDir + Vector(RANDOM_FLOAT(-delta, delta), RANDOM_FLOAT(-delta, delta), RANDOM_FLOAT(-delta, delta)) * gSkillData.controllerSpeedBall;
+				vecDir = vecDir + Vector(RANDOM_FLOAT(-delta, delta), RANDOM_FLOAT(-delta, delta), RANDOM_FLOAT(-delta, delta)) * GetSkillFloat("controller_speedball"sv);
 
 				vecSrc = vecSrc + vecDir * (gpGlobals->time - m_flShootTime);
 				CBaseMonster* pBall = (CBaseMonster*)Create("controller_energy_ball", vecSrc, pev->angles, edict());
@@ -659,8 +666,11 @@ void CController::RunTask(Task_t* pTask)
 	case TASK_WAIT:
 	case TASK_WAIT_FACE_ENEMY:
 	case TASK_WAIT_PVS:
-		MakeIdealYaw(m_vecEnemyLKP);
-		ChangeYaw(pev->yaw_speed);
+		if (m_hEnemy != 0)
+		{
+			MakeIdealYaw(m_vecEnemyLKP);
+			ChangeYaw(pev->yaw_speed);
+		}
 
 		if (m_fSequenceFinished)
 		{
@@ -746,7 +756,7 @@ Schedule_t* CController::GetSchedule()
 //=========================================================
 Schedule_t* CController::GetScheduleOfType(int Type)
 {
-	// ALERT( at_console, "%d\n", m_iFrustration );
+	// AILogger->debug( "{}", m_iFrustration);
 	switch (Type)
 	{
 	case SCHED_CHASE_ENEMY:
@@ -867,7 +877,7 @@ void CController::RunAI()
 }
 
 
-extern void DrawRoute(entvars_t* pev, WayPoint_t* m_Route, int m_iRouteIndex, int r, int g, int b);
+void DrawRoute(entvars_t* pev, WayPoint_t* m_Route, int m_iRouteIndex, int r, int g, int b);
 
 void CController::Stop()
 {
@@ -889,7 +899,7 @@ void CController::Move(float flInterval)
 	// Don't move if no valid route
 	if (FRouteClear())
 	{
-		ALERT(at_aiconsole, "Tried to move with no route!\n");
+		AILogger->debug("Tried to move with no route!");
 		TaskFail();
 		return;
 	}
@@ -978,7 +988,7 @@ void CController::Move(float flInterval)
 				{
 					// Wait for a second
 					m_flMoveWaitFinished = gpGlobals->time + m_moveWaitTime;
-					//				ALERT( at_aiconsole, "Move %s!!!\n", STRING( pBlocker->pev->classname ) );
+					//				AILogger->debug("Move {}!!!", STRING(pBlocker->pev->classname));
 					return;
 				}
 			}
@@ -992,7 +1002,7 @@ void CController::Move(float flInterval)
 				}
 				else
 				{
-					ALERT(at_aiconsole, "Couldn't Triangulate\n");
+					AILogger->debug("Couldn't Triangulate");
 					Stop();
 					if (m_moveWaitTime > 0)
 					{
@@ -1002,8 +1012,8 @@ void CController::Move(float flInterval)
 					else
 					{
 						TaskFail();
-						ALERT(at_aiconsole, "Failed to move!\n");
-						//ALERT( at_aiconsole, "%f, %f, %f\n", pev->origin.z, (pev->origin + (vecDir * flCheckDist)).z, m_Route[m_iRouteIndex].vecLocation.z );
+						AILogger->debug("Failed to move!");
+						// AILogger->debug("{}, {}, {}", pev->origin.z, (pev->origin + (vecDir * flCheckDist)).z, m_Route[m_iRouteIndex].vecLocation.z);
 					}
 					return;
 				}
@@ -1015,7 +1025,7 @@ void CController::Move(float flInterval)
 		{
 			MoveExecute(pTargetEnt, vecDir, flCheckDist / m_flGroundSpeed);
 
-			// ALERT( at_console, "%.02f\n", flInterval );
+			// AILogger->debug("{:.02f}", flInterval);
 			AdvanceRoute(flWaypointDist);
 			flMoveDist -= flCheckDist;
 		}
@@ -1075,15 +1085,14 @@ int CController::CheckLocalMove(const Vector& vecStart, const Vector& vecEnd, CB
 
 	UTIL_TraceHull(vecStart + Vector(0, 0, 32), vecEnd + Vector(0, 0, 32), dont_ignore_monsters, large_hull, edict(), &tr);
 
-	// ALERT( at_console, "%.0f %.0f %.0f : ", vecStart.x, vecStart.y, vecStart.z );
-	// ALERT( at_console, "%.0f %.0f %.0f\n", vecEnd.x, vecEnd.y, vecEnd.z );
+	// AILogger->debug("{:.0f} : {:.0f}", vecStart, vecEnd);
 
 	if (pflDist)
 	{
 		*pflDist = ((tr.vecEndPos - Vector(0, 0, 32)) - vecStart).Length(); // get the distance.
 	}
 
-	// ALERT( at_console, "check %d %d %f\n", tr.fStartSolid, tr.fAllSolid, tr.flFraction );
+	// AILogger->debug("check {} {} {}", tr.fStartSolid, tr.fAllSolid, tr.flFraction);
 	if (0 != tr.fStartSolid || tr.flFraction < 1.0)
 	{
 		if (pTarget && pTarget->edict() == gpGlobals->trace_ent)
@@ -1100,7 +1109,7 @@ void CController::MoveExecute(CBaseEntity* pTargetEnt, const Vector& vecDir, flo
 	if (m_IdealActivity != m_movementActivity)
 		m_IdealActivity = m_movementActivity;
 
-	// ALERT( at_console, "move %.4f %.4f %.4f : %f\n", vecDir.x, vecDir.y, vecDir.z, flInterval );
+	// AILogger->debug("move {:.4f} : {}", vecDir, flInterval);
 
 	// float flTotal = m_flGroundSpeed * pev->framerate * flInterval;
 	// UTIL_MoveToOrigin ( ENT(pev), m_Route[ m_iRouteIndex ].vecLocation, flTotal, MOVE_STRAFE );
@@ -1141,7 +1150,7 @@ void CControllerHeadBall::Spawn()
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(ENT(pev), "sprites/xspark4.spr");
+	SetModel("sprites/xspark4.spr");
 	pev->rendermode = kRenderTransAdd;
 	pev->rendercolor.x = 255;
 	pev->rendercolor.y = 255;
@@ -1166,9 +1175,9 @@ void CControllerHeadBall::Spawn()
 
 void CControllerHeadBall::Precache()
 {
-	PRECACHE_MODEL("sprites/xspark1.spr");
-	PRECACHE_SOUND("debris/zap4.wav");
-	PRECACHE_SOUND("weapons/electro4.wav");
+	PrecacheModel("sprites/xspark1.spr");
+	PrecacheSound("debris/zap4.wav");
+	PrecacheSound("weapons/electro4.wav");
 }
 
 
@@ -1212,7 +1221,7 @@ void CControllerHeadBall::HuntThink()
 		if (pEntity != nullptr && 0 != pEntity->pev->takedamage)
 		{
 			ClearMultiDamage();
-			pEntity->TraceAttack(m_hOwner->pev, gSkillData.controllerDmgZap, pev->velocity, &tr, DMG_SHOCK);
+			pEntity->TraceAttack(m_hOwner->pev, GetSkillFloat("controller_dmgzap"sv), pev->velocity, &tr, DMG_SHOCK);
 			ApplyMultiDamage(pev, m_hOwner->pev);
 		}
 
@@ -1335,7 +1344,7 @@ void CControllerZapBall::Spawn()
 	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
 
-	SET_MODEL(ENT(pev), "sprites/xspark4.spr");
+	SetModel("sprites/xspark4.spr");
 	pev->rendermode = kRenderTransAdd;
 	pev->rendercolor.x = 255;
 	pev->rendercolor.y = 255;
@@ -1357,9 +1366,9 @@ void CControllerZapBall::Spawn()
 
 void CControllerZapBall::Precache()
 {
-	PRECACHE_MODEL("sprites/xspark4.spr");
-	// PRECACHE_SOUND("debris/zap4.wav");
-	// PRECACHE_SOUND("weapons/electro4.wav");
+	PrecacheModel("sprites/xspark4.spr");
+	// PrecacheSound("debris/zap4.wav");
+	// PrecacheSound("weapons/electro4.wav");
 }
 
 
@@ -1394,7 +1403,7 @@ void CControllerZapBall::ExplodeTouch(CBaseEntity* pOther)
 		}
 
 		ClearMultiDamage();
-		pOther->TraceAttack(pevOwner, gSkillData.controllerDmgBall, pev->velocity.Normalize(), &tr, DMG_ENERGYBEAM);
+		pOther->TraceAttack(pevOwner, GetSkillFloat("controller_dmgball"sv), pev->velocity.Normalize(), &tr, DMG_ENERGYBEAM);
 		ApplyMultiDamage(pevOwner, pevOwner);
 
 		UTIL_EmitAmbientSound(ENT(pev), tr.vecEndPos, "weapons/electro4.wav", 0.3, ATTN_NORM, 0, RANDOM_LONG(90, 99));

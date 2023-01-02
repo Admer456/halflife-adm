@@ -1,24 +1,29 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
 
+#include <memory>
 #include <string_view>
 
+#include <spdlog/logger.h>
+
 #include "filesystem_utils.h"
-#include "logging_utils.h"
+#include "mathlib.h"
+#include "LogSystem.h"
+#include "string_utils.h"
 #include "extdll.h"
 #include "enginecallback.h"
 
@@ -26,39 +31,63 @@ extern globalvars_t* gpGlobals;
 
 inline cvar_t* g_pDeveloper;
 
+inline std::shared_ptr<spdlog::logger> g_AssertLogger;
+inline std::shared_ptr<spdlog::logger> g_PrecacheLogger;
+
+//
+// How did I ever live without ASSERT?
+//
+#ifdef DEBUG
+void DBG_AssertFunction(bool fExpr, const char* szExpr, const char* szFile, int szLine, const char* szMessage);
+#define ASSERT(f) DBG_AssertFunction(f, #f, __FILE__, __LINE__, nullptr)
+#define ASSERTSZ(f, sz) DBG_AssertFunction(f, #f, __FILE__, __LINE__, sz)
+#else // !DEBUG
+#define ASSERT(f)
+#define ASSERTSZ(f, sz)
+#endif // !DEBUG
+
+// Testing strings for nullity
+inline constexpr bool FStringNull(string_t iString)
+{
+	return iString == string_t::Null;
+}
+
 inline const char* STRING(string_t offset)
 {
-	return ((const char*)(gpGlobals->pStringBase + (unsigned int)(offset)));
+	return gpGlobals->pStringBase + static_cast<unsigned int>(offset.m_Value);
 }
 
 /**
-*	@brief Use this instead of ALLOC_STRING on constant strings
-*/
+ *	@brief Use this instead of ALLOC_STRING on constant strings
+ */
 inline string_t MAKE_STRING(const char* str)
 {
-	return ((uint64)(str) - (uint64)(STRING(0)));
+	return static_cast<string_t>(reinterpret_cast<uint64>(str) - reinterpret_cast<uint64>(gpGlobals->pStringBase));
 }
 
 string_t ALLOC_STRING(const char* str);
 
+string_t ALLOC_STRING_VIEW(std::string_view str);
+
 /**
-*	@brief Version of ALLOC_STRING that parses and converts escape characters
-*/
+ *	@brief Version of ALLOC_STRING that parses and converts escape characters
+ */
 string_t ALLOC_ESCAPED_STRING(const char* str);
 
 void ClearStringPool();
 
 void Con_Printf(const char* format, ...);
+void Con_DPrintf(const char* format, ...);
 
 /**
-*	@brief Gets the command line value for the given key
-*	@return Whether the key was specified on the command line
-*/
+ *	@brief Gets the command line value for the given key
+ *	@return Whether the key was specified on the command line
+ */
 bool COM_GetParam(const char* name, const char** next);
 
 /**
-*	@brief Checks whether the given key was specified on the command line
-*/
+ *	@brief Checks whether the given key was specified on the command line
+ */
 bool COM_HasParam(const char* name);
 
 constexpr bool UTIL_IsServer()
@@ -101,15 +130,67 @@ constexpr std::string_view GetLongLibraryPrefix()
 inline char com_token[1500];
 
 /**
-*	@brief Parse a token out of a string
-*/
+ *	@brief Parse a token out of a string
+ */
 const char* COM_Parse(const char* data);
 
 /**
-*	@brief Returns true if additional data is waiting to be processed on this line
-*/
+ *	@brief Returns true if additional data is waiting to be processed on this line
+ */
 bool COM_TokenWaiting(const char* buffer);
 
-//The client also provides these functions, so use them to make this cross-library.
+int UTIL_SharedRandomLong(unsigned int seed, int low, int high);
+float UTIL_SharedRandomFloat(unsigned int seed, float low, float high);
+
+// The client also provides these functions, so use them to make this cross-library.
 inline float CVAR_GET_FLOAT(const char* x) { return g_engfuncs.pfnCVarGetFloat(x); }
 inline const char* CVAR_GET_STRING(const char* x) { return g_engfuncs.pfnCVarGetString(x); }
+
+const char* UTIL_CheckForGlobalModelReplacement(const char* s);
+
+int UTIL_PrecacheModelDirect(const char* s);
+
+int UTIL_PrecacheModel(const char* s);
+
+int UTIL_PrecacheSoundDirect(const char* s);
+
+int UTIL_PrecacheSound(const char* s);
+
+int UTIL_PrecacheGenericDirect(const char* s);
+
+template <>
+struct fmt::formatter<Vector> : public fmt::formatter<float>
+{
+	template <typename FormatContext>
+	auto format(const Vector& p, FormatContext& ctx) const -> decltype(ctx.out())
+	{
+		auto out = fmt::formatter<float>::format(p.x, ctx);
+		*out++ = ' ';
+		ctx.advance_to(out);
+		out = fmt::formatter<float>::format(p.y, ctx);
+		*out++ = ' ';
+		ctx.advance_to(out);
+		return fmt::formatter<float>::format(p.z, ctx);
+	}
+};
+
+template <>
+struct fmt::formatter<Vector2D> : public fmt::formatter<float>
+{
+	template <typename FormatContext>
+	auto format(const Vector2D& p, FormatContext& ctx) const -> decltype(ctx.out())
+	{
+		auto out = fmt::formatter<float>::format(p.x, ctx);
+		*out++ = ' ';
+		ctx.advance_to(out);
+		return fmt::formatter<float>::format(p.y, ctx);
+	}
+};
+
+/**
+ *	@brief Helper constant to allow the use of @c static_assert without an actual condition.
+ *	Used mainly in <tt>if constexpr else</tt> branches.
+ *	@details See https://en.cppreference.com/w/cpp/utility/variant/visit
+ */
+template <typename>
+inline constexpr bool always_false_v = false;

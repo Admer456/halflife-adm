@@ -1,59 +1,65 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
 
-extern void respawn(entvars_t* pev, bool fCopyCorpse);
-extern qboolean ClientConnect(edict_t* pEntity, const char* pszName, const char* pszAddress, char szRejectReason[128]);
-extern void ClientDisconnect(edict_t* pEntity);
-extern void ClientKill(edict_t* pEntity);
-extern void ClientPutInServer(edict_t* pEntity);
-extern void ClientCommand(edict_t* pEntity);
-extern void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer);
-extern void ServerActivate(edict_t* pEdictList, int edictCount, int clientMax);
-extern void ServerDeactivate();
-extern void StartFrame();
-extern void PlayerPostThink(edict_t* pEntity);
-extern void PlayerPreThink(edict_t* pEntity);
-extern void ParmsNewLevel();
-extern void ParmsChangeLevel();
+class CBasePlayer;
+struct clientdata_t;
 
-extern void ClientPrecache();
+inline float g_LastPlayerJoinTime;
 
-extern const char* GetGameDescription();
-extern void PlayerCustomization(edict_t* pEntity, customization_t* pCust);
+void respawn(CBasePlayer* player, bool fCopyCorpse);
+qboolean ClientConnect(edict_t* pEntity, const char* pszName, const char* pszAddress, char szRejectReason[128]);
+void ClientDisconnect(edict_t* pEntity);
+void ClientKill(edict_t* pEntity);
+void ClientPutInServer(edict_t* pEntity);
+void SV_CreateClientCommands();
+void ExecuteClientCommand(edict_t* pEntity);
+void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer);
+void ServerActivate(edict_t* pEdictList, int edictCount, int clientMax);
+void ServerDeactivate();
+void StartFrame();
+void PlayerPostThink(edict_t* pEntity);
+void PlayerPreThink(edict_t* pEntity);
+void ParmsNewLevel();
+void ParmsChangeLevel();
 
-extern void Sys_Error(const char* error_string);
+void ClientPrecache();
 
-extern void SetupVisibility(edict_t* pViewEntity, edict_t* pClient, unsigned char** pvs, unsigned char** pas);
-extern void UpdateClientData(const struct edict_s* ent, int sendweapons, struct clientdata_s* cd);
-extern int AddToFullPack(struct entity_state_s* state, int e, edict_t* ent, edict_t* host, int hostflags, int player, unsigned char* pSet);
-extern void CreateBaseline(int player, int eindex, struct entity_state_s* baseline, struct edict_s* entity, int playermodelindex, Vector* player_mins, Vector* player_maxs);
-extern void RegisterEncoders();
+const char* GetGameDescription();
+void PlayerCustomization(edict_t* pEntity, customization_t* pCust);
 
-extern int GetWeaponData(struct edict_s* player, struct weapon_data_s* info);
+void Sys_Error(const char* error_string);
 
-extern void CmdStart(const edict_t* player, const struct usercmd_s* cmd, unsigned int random_seed);
-extern void CmdEnd(const edict_t* player);
+void SetupVisibility(edict_t* pViewEntity, edict_t* pClient, unsigned char** pvs, unsigned char** pas);
+void UpdateClientData(const edict_t* ent, int sendweapons, clientdata_t* cd);
+int AddToFullPack(entity_state_t* state, int e, edict_t* ent, edict_t* host, int hostflags, int player, unsigned char* pSet);
+void CreateBaseline(int player, int eindex, entity_state_t* baseline, edict_t* entity, int playermodelindex, Vector* player_mins, Vector* player_maxs);
+void RegisterEncoders();
 
-extern int ConnectionlessPacket(const struct netadr_s* net_from, const char* args, char* response_buffer, int* response_buffer_size);
+int GetWeaponData(edict_t* player, weapon_data_t* info);
 
-extern int GetHullBounds(int hullnumber, float* mins, float* maxs);
+void CmdStart(const edict_t* player, const usercmd_t* cmd, unsigned int random_seed);
+void CmdEnd(const edict_t* player);
 
-extern void CreateInstancedBaselines();
+int ConnectionlessPacket(const netadr_t* net_from, const char* args, char* response_buffer, int* response_buffer_size);
 
-extern int InconsistentFile(const edict_t* player, const char* filename, char* disconnect_message);
+int GetHullBounds(int hullnumber, float* mins, float* maxs);
 
-extern int AllowLagCompensation();
+void CreateInstancedBaselines();
+
+int InconsistentFile(const edict_t* player, const char* filename, char* disconnect_message);
+
+int AllowLagCompensation();

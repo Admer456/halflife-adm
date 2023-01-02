@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== buttons.cpp ========================================================
@@ -193,7 +193,7 @@ void CMultiSource::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE u
 	// if we didn't find it, report error and leave
 	if (i > m_iTotal)
 	{
-		ALERT(at_console, "MultiSrc:Used by non member %s.\n", STRING(pCaller->pev->classname));
+		IOLogger->debug("MultiSrc:Used by non member {}.", STRING(pCaller->pev->classname));
 		return;
 	}
 
@@ -204,7 +204,7 @@ void CMultiSource::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE u
 	//
 	if (IsTriggered(pActivator))
 	{
-		ALERT(at_aiconsole, "Multisource %s enabled (%d inputs)\n", STRING(pev->targetname), m_iTotal);
+		IOLogger->trace("Multisource {} enabled ({} inputs)", STRING(pev->targetname), m_iTotal);
 		USE_TYPE useType = USE_TOGGLE;
 		if (!FStringNull(m_globalstate))
 			useType = USE_ON;
@@ -240,34 +240,33 @@ bool CMultiSource::IsTriggered(CBaseEntity*)
 
 void CMultiSource::Register()
 {
-	edict_t* pentTarget = nullptr;
-
 	m_iTotal = 0;
 	memset(m_rgEntities, 0, MS_MAX_TARGETS * sizeof(EHANDLE));
 
 	SetThink(&CMultiSource::SUB_DoNothing);
 
 	// search for all entities which target this multisource (pev->targetname)
-
-	pentTarget = FIND_ENTITY_BY_STRING(nullptr, "target", STRING(pev->targetname));
-
-	while (!FNullEnt(pentTarget) && (m_iTotal < MS_MAX_TARGETS))
+	for (auto target : UTIL_FindEntitiesByTarget(STRING(pev->targetname)))
 	{
-		CBaseEntity* pTarget = CBaseEntity::Instance(pentTarget);
-		if (pTarget)
-			m_rgEntities[m_iTotal++] = pTarget;
+		if (m_iTotal >= MS_MAX_TARGETS)
+		{
+			break;
+		}
 
-		pentTarget = FIND_ENTITY_BY_STRING(pentTarget, "target", STRING(pev->targetname));
+		m_rgEntities[m_iTotal++] = target;
 	}
 
-	pentTarget = FIND_ENTITY_BY_STRING(nullptr, "classname", "multi_manager");
-	while (!FNullEnt(pentTarget) && (m_iTotal < MS_MAX_TARGETS))
+	for (auto target : UTIL_FindEntitiesByClassname("multi_manager"))
 	{
-		CBaseEntity* pTarget = CBaseEntity::Instance(pentTarget);
-		if (pTarget && pTarget->HasTarget(pev->targetname))
-			m_rgEntities[m_iTotal++] = pTarget;
+		if (m_iTotal >= MS_MAX_TARGETS)
+		{
+			break;
+		}
 
-		pentTarget = FIND_ENTITY_BY_STRING(pentTarget, "classname", "multi_manager");
+		if (target->HasTarget(pev->targetname))
+		{
+			m_rgEntities[m_iTotal++] = target;
+		}
 	}
 
 	pev->spawnflags &= ~SF_MULTI_INIT;
@@ -279,11 +278,11 @@ TYPEDESCRIPTION CBaseButton::m_SaveData[] =
 		DEFINE_FIELD(CBaseButton, m_fStayPushed, FIELD_BOOLEAN),
 		DEFINE_FIELD(CBaseButton, m_fRotating, FIELD_BOOLEAN),
 
-		DEFINE_FIELD(CBaseButton, m_sounds, FIELD_INTEGER),
-		DEFINE_FIELD(CBaseButton, m_bLockedSound, FIELD_CHARACTER),
-		DEFINE_FIELD(CBaseButton, m_bLockedSentence, FIELD_CHARACTER),
-		DEFINE_FIELD(CBaseButton, m_bUnlockedSound, FIELD_CHARACTER),
-		DEFINE_FIELD(CBaseButton, m_bUnlockedSentence, FIELD_CHARACTER),
+		DEFINE_FIELD(CBaseButton, m_sounds, FIELD_SOUNDNAME),
+		DEFINE_FIELD(CBaseButton, m_LockedSound, FIELD_SOUNDNAME),
+		DEFINE_FIELD(CBaseButton, m_LockedSentence, FIELD_STRING),
+		DEFINE_FIELD(CBaseButton, m_UnlockedSound, FIELD_SOUNDNAME),
+		DEFINE_FIELD(CBaseButton, m_UnlockedSentence, FIELD_STRING),
 		DEFINE_FIELD(CBaseButton, m_strChangeTarget, FIELD_STRING),
 		//	DEFINE_FIELD( CBaseButton, m_ls, FIELD_??? ),   // This is restored in Precache()
 };
@@ -293,102 +292,33 @@ IMPLEMENT_SAVERESTORE(CBaseButton, CBaseToggle);
 
 void CBaseButton::Precache()
 {
-	const char* pszSound;
-
 	if (FBitSet(pev->spawnflags, SF_BUTTON_SPARK_IF_OFF)) // this button should spark in OFF state
 	{
-		PRECACHE_SOUND("buttons/spark1.wav");
-		PRECACHE_SOUND("buttons/spark2.wav");
-		PRECACHE_SOUND("buttons/spark3.wav");
-		PRECACHE_SOUND("buttons/spark4.wav");
-		PRECACHE_SOUND("buttons/spark5.wav");
-		PRECACHE_SOUND("buttons/spark6.wav");
+		PrecacheSound("buttons/spark1.wav");
+		PrecacheSound("buttons/spark2.wav");
+		PrecacheSound("buttons/spark3.wav");
+		PrecacheSound("buttons/spark4.wav");
+		PrecacheSound("buttons/spark5.wav");
+		PrecacheSound("buttons/spark6.wav");
 	}
 
 	// get door button sounds, for doors which require buttons to open
 
-	if (0 != m_bLockedSound)
+	if (!FStringNull(m_LockedSound))
 	{
-		pszSound = ButtonSound((int)m_bLockedSound);
-		PRECACHE_SOUND(pszSound);
-		m_ls.sLockedSound = ALLOC_STRING(pszSound);
+		PrecacheSound(STRING(m_LockedSound));
+		m_ls.sLockedSound = m_LockedSound;
 	}
 
-	if (0 != m_bUnlockedSound)
+	if (!FStringNull(m_UnlockedSound))
 	{
-		pszSound = ButtonSound((int)m_bUnlockedSound);
-		PRECACHE_SOUND(pszSound);
-		m_ls.sUnlockedSound = ALLOC_STRING(pszSound);
+		PrecacheSound(STRING(m_UnlockedSound));
+		m_ls.sUnlockedSound = m_UnlockedSound;
 	}
 
 	// get sentence group names, for doors which are directly 'touched' to open
-
-	switch (m_bLockedSentence)
-	{
-	case 1:
-		m_ls.sLockedSentence = MAKE_STRING("NA");
-		break; // access denied
-	case 2:
-		m_ls.sLockedSentence = MAKE_STRING("ND");
-		break; // security lockout
-	case 3:
-		m_ls.sLockedSentence = MAKE_STRING("NF");
-		break; // blast door
-	case 4:
-		m_ls.sLockedSentence = MAKE_STRING("NFIRE");
-		break; // fire door
-	case 5:
-		m_ls.sLockedSentence = MAKE_STRING("NCHEM");
-		break; // chemical door
-	case 6:
-		m_ls.sLockedSentence = MAKE_STRING("NRAD");
-		break; // radiation door
-	case 7:
-		m_ls.sLockedSentence = MAKE_STRING("NCON");
-		break; // gen containment
-	case 8:
-		m_ls.sLockedSentence = MAKE_STRING("NH");
-		break; // maintenance door
-	case 9:
-		m_ls.sLockedSentence = MAKE_STRING("NG");
-		break; // broken door
-
-	default:
-		m_ls.sLockedSentence = 0;
-		break;
-	}
-
-	switch (m_bUnlockedSentence)
-	{
-	case 1:
-		m_ls.sUnlockedSentence = MAKE_STRING("EA");
-		break; // access granted
-	case 2:
-		m_ls.sUnlockedSentence = MAKE_STRING("ED");
-		break; // security door
-	case 3:
-		m_ls.sUnlockedSentence = MAKE_STRING("EF");
-		break; // blast door
-	case 4:
-		m_ls.sUnlockedSentence = MAKE_STRING("EFIRE");
-		break; // fire door
-	case 5:
-		m_ls.sUnlockedSentence = MAKE_STRING("ECHEM");
-		break; // chemical door
-	case 6:
-		m_ls.sUnlockedSentence = MAKE_STRING("ERAD");
-		break; // radiation door
-	case 7:
-		m_ls.sUnlockedSentence = MAKE_STRING("ECON");
-		break; // gen containment
-	case 8:
-		m_ls.sUnlockedSentence = MAKE_STRING("EH");
-		break; // maintenance door
-
-	default:
-		m_ls.sUnlockedSentence = 0;
-		break;
-	}
+	m_ls.sLockedSentence = m_LockedSentence;
+	m_ls.sUnlockedSentence = m_UnlockedSentence;
 }
 
 //
@@ -404,27 +334,27 @@ bool CBaseButton::KeyValue(KeyValueData* pkvd)
 	}
 	else if (FStrEq(pkvd->szKeyName, "locked_sound"))
 	{
-		m_bLockedSound = atof(pkvd->szValue);
+		m_LockedSound = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "locked_sentence"))
 	{
-		m_bLockedSentence = atof(pkvd->szValue);
+		m_LockedSentence = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "unlocked_sound"))
 	{
-		m_bUnlockedSound = atof(pkvd->szValue);
+		m_UnlockedSound = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "unlocked_sentence"))
 	{
-		m_bUnlockedSentence = atof(pkvd->szValue);
+		m_UnlockedSentence = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "sounds"))
 	{
-		m_sounds = atoi(pkvd->szValue);
+		m_sounds = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 
@@ -449,7 +379,7 @@ bool CBaseButton::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, fl
 
 	if (code == BUTTON_RETURN)
 	{
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(pev->noise), 1, ATTN_NORM);
+		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_sounds), 1, ATTN_NORM);
 
 		// Toggle buttons fire when they get back to their "home" position
 		if ((pev->spawnflags & SF_BUTTON_TOGGLE) == 0)
@@ -484,15 +414,16 @@ LINK_ENTITY_TO_CLASS(func_button, CBaseButton);
 
 void CBaseButton::Spawn()
 {
-	const char* pszSound;
+	//----------------------------------------------------
+	// determine sounds for buttons
+	// a sound of 0 should not make a sound
+	//----------------------------------------------------
+	if (FStrEq("", STRING(m_sounds)))
+	{
+		m_sounds = ALLOC_STRING("common/null.wav");
+	}
 
-	//----------------------------------------------------
-	//determine sounds for buttons
-	//a sound of 0 should not make a sound
-	//----------------------------------------------------
-	pszSound = ButtonSound(m_sounds);
-	PRECACHE_SOUND(pszSound);
-	pev->noise = ALLOC_STRING(pszSound);
+	PrecacheSound(STRING(m_sounds));
 
 	Precache();
 
@@ -506,7 +437,7 @@ void CBaseButton::Spawn()
 
 	pev->movetype = MOVETYPE_PUSH;
 	pev->solid = SOLID_BSP;
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	if (pev->speed == 0)
 		pev->speed = 40;
@@ -547,88 +478,6 @@ void CBaseButton::Spawn()
 	}
 }
 
-
-// Button sound table.
-// Also used by CBaseDoor to get 'touched' door lock/unlock sounds
-
-const char* ButtonSound(int sound)
-{
-	const char* pszSound;
-
-	switch (sound)
-	{
-	case 0:
-		pszSound = "common/null.wav";
-		break;
-	case 1:
-		pszSound = "buttons/button1.wav";
-		break;
-	case 2:
-		pszSound = "buttons/button2.wav";
-		break;
-	case 3:
-		pszSound = "buttons/button3.wav";
-		break;
-	case 4:
-		pszSound = "buttons/button4.wav";
-		break;
-	case 5:
-		pszSound = "buttons/button5.wav";
-		break;
-	case 6:
-		pszSound = "buttons/button6.wav";
-		break;
-	case 7:
-		pszSound = "buttons/button7.wav";
-		break;
-	case 8:
-		pszSound = "buttons/button8.wav";
-		break;
-	case 9:
-		pszSound = "buttons/button9.wav";
-		break;
-	case 10:
-		pszSound = "buttons/button10.wav";
-		break;
-	case 11:
-		pszSound = "buttons/button11.wav";
-		break;
-	case 12:
-		pszSound = "buttons/latchlocked1.wav";
-		break;
-	case 13:
-		pszSound = "buttons/latchunlocked1.wav";
-		break;
-	case 14:
-		pszSound = "buttons/lightswitch2.wav";
-		break;
-
-		// next 6 slots reserved for any additional sliding button sounds we may add
-
-	case 21:
-		pszSound = "buttons/lever1.wav";
-		break;
-	case 22:
-		pszSound = "buttons/lever2.wav";
-		break;
-	case 23:
-		pszSound = "buttons/lever3.wav";
-		break;
-	case 24:
-		pszSound = "buttons/lever4.wav";
-		break;
-	case 25:
-		pszSound = "buttons/lever5.wav";
-		break;
-
-	default:
-		pszSound = "buttons/button9.wav";
-		break;
-	}
-
-	return pszSound;
-}
-
 //
 // Makes flagged buttons spark when turned off
 //
@@ -638,7 +487,7 @@ void DoSpark(entvars_t* pev, const Vector& location)
 	Vector tmp = location + pev->size * 0.5;
 	UTIL_Sparks(tmp);
 
-	float flVolume = RANDOM_FLOAT(0.25, 0.75) * 0.4; //random volume range
+	float flVolume = RANDOM_FLOAT(0.25, 0.75) * 0.4; // random volume range
 	switch ((int)(RANDOM_FLOAT(0, 1) * 6))
 	{
 	case 0:
@@ -667,7 +516,7 @@ void CBaseButton::ButtonSpark()
 	SetThink(&CBaseButton::ButtonSpark);
 	pev->nextthink = pev->ltime + (0.1 + RANDOM_FLOAT(0, 1.5)); // spark again at random interval
 
-	DoSpark(pev, pev->mins);
+	DoSpark(pev, pev->absmin);
 }
 
 
@@ -686,9 +535,9 @@ void CBaseButton::ButtonUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_T
 	{
 		if (!m_fStayPushed && FBitSet(pev->spawnflags, SF_BUTTON_TOGGLE))
 		{
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(pev->noise), 1, ATTN_NORM);
+			EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_sounds), 1, ATTN_NORM);
 
-			//SUB_UseTargets( m_eoActivator );
+			// SUB_UseTargets( m_eoActivator );
 			ButtonReturn();
 		}
 	}
@@ -725,7 +574,7 @@ CBaseButton::BUTTON_CODE CBaseButton::ButtonResponseToTouch()
 void CBaseButton::ButtonTouch(CBaseEntity* pOther)
 {
 	// Ignore touches by anything but players
-	if (!FClassnameIs(pOther->pev, "player"))
+	if (!pOther->IsPlayer())
 		return;
 
 	m_hActivator = pOther;
@@ -747,7 +596,7 @@ void CBaseButton::ButtonTouch(CBaseEntity* pOther)
 
 	if (code == BUTTON_RETURN)
 	{
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(pev->noise), 1, ATTN_NORM);
+		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_sounds), 1, ATTN_NORM);
 		SUB_UseTargets(m_hActivator, USE_TOGGLE, 0);
 		ButtonReturn();
 	}
@@ -760,7 +609,7 @@ void CBaseButton::ButtonTouch(CBaseEntity* pOther)
 //
 void CBaseButton::ButtonActivate()
 {
-	EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(pev->noise), 1, ATTN_NORM);
+	EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_sounds), 1, ATTN_NORM);
 
 	if (!UTIL_IsMasterTriggered(m_sMaster, m_hActivator))
 	{
@@ -849,7 +698,7 @@ void CBaseButton::ButtonBackHome()
 
 	if (FBitSet(pev->spawnflags, SF_BUTTON_TOGGLE))
 	{
-		//EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(pev->noise), 1, ATTN_NORM);
+		// EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_sounds), 1, ATTN_NORM);
 
 		SUB_UseTargets(m_hActivator, USE_TOGGLE, 0);
 	}
@@ -857,20 +706,12 @@ void CBaseButton::ButtonBackHome()
 
 	if (!FStringNull(pev->target))
 	{
-		edict_t* pentTarget = nullptr;
-		for (;;)
+		for (auto target : UTIL_FindEntitiesByTargetname(STRING(pev->target)))
 		{
-			pentTarget = FIND_ENTITY_BY_TARGETNAME(pentTarget, STRING(pev->target));
-
-			if (FNullEnt(pentTarget))
-				break;
-
-			if (!FClassnameIs(pentTarget, "multisource"))
+			if (!FClassnameIs(target->pev, "multisource"))
 				continue;
-			CBaseEntity* pTarget = CBaseEntity::Instance(pentTarget);
 
-			if (pTarget)
-				pTarget->Use(m_hActivator, this, USE_TOGGLE, 0);
+			target->Use(m_hActivator, this, USE_TOGGLE, 0);
 		}
 	}
 
@@ -884,10 +725,11 @@ void CBaseButton::ButtonBackHome()
 		SetTouch(&CBaseButton::ButtonTouch);
 
 	// reset think for a sparking button
-	if (FBitSet(pev->spawnflags, SF_BUTTON_SPARK_IF_OFF))
+	// func_rot_button's X Axis spawnflag overlaps with this one so don't use it here.
+	if (!FClassnameIs(pev, "func_rot_button") && FBitSet(pev->spawnflags, SF_BUTTON_SPARK_IF_OFF))
 	{
 		SetThink(&CBaseButton::ButtonSpark);
-		pev->nextthink = gpGlobals->time + 0.5; // no hurry.
+		pev->nextthink = pev->ltime + 0.5; // no hurry.
 	}
 }
 
@@ -906,14 +748,16 @@ LINK_ENTITY_TO_CLASS(func_rot_button, CRotButton);
 
 void CRotButton::Spawn()
 {
-	const char* pszSound;
 	//----------------------------------------------------
-	//determine sounds for buttons
-	//a sound of 0 should not make a sound
+	// determine sounds for buttons
+	// a sound of 0 should not make a sound
 	//----------------------------------------------------
-	pszSound = ButtonSound(m_sounds);
-	PRECACHE_SOUND(pszSound);
-	pev->noise = ALLOC_STRING(pszSound);
+	if (FStrEq("", STRING(m_sounds)))
+	{
+		m_sounds = ALLOC_STRING("common/null.wav");
+	}
+
+	PrecacheSound(STRING(m_sounds));
 
 	// set the axis of rotation
 	CBaseToggle::AxisDir(pev);
@@ -929,7 +773,7 @@ void CRotButton::Spawn()
 	else
 		pev->solid = SOLID_BSP;
 
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	if (pev->speed == 0)
 		pev->speed = 40;
@@ -959,7 +803,7 @@ void CRotButton::Spawn()
 	else // touchable button
 		SetTouch(&CRotButton::ButtonTouch);
 
-	//SetTouch( ButtonTouch );
+	// SetTouch( ButtonTouch );
 }
 
 
@@ -991,7 +835,6 @@ public:
 	void PlaySound();
 	void UpdateTarget(float value);
 
-	static CMomentaryRotButton* Instance(edict_t* pent) { return (CMomentaryRotButton*)GET_PRIVATE(pent); }
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
 
@@ -1002,7 +845,7 @@ public:
 	float m_returnSpeed;
 	Vector m_start;
 	Vector m_end;
-	int m_sounds;
+	string_t m_sounds;
 };
 TYPEDESCRIPTION CMomentaryRotButton::m_SaveData[] =
 	{
@@ -1011,7 +854,7 @@ TYPEDESCRIPTION CMomentaryRotButton::m_SaveData[] =
 		DEFINE_FIELD(CMomentaryRotButton, m_returnSpeed, FIELD_FLOAT),
 		DEFINE_FIELD(CMomentaryRotButton, m_start, FIELD_VECTOR),
 		DEFINE_FIELD(CMomentaryRotButton, m_end, FIELD_VECTOR),
-		DEFINE_FIELD(CMomentaryRotButton, m_sounds, FIELD_INTEGER),
+		DEFINE_FIELD(CMomentaryRotButton, m_sounds, FIELD_SOUNDNAME),
 };
 
 IMPLEMENT_SAVERESTORE(CMomentaryRotButton, CBaseToggle);
@@ -1046,11 +889,14 @@ void CMomentaryRotButton::Spawn()
 
 	pev->movetype = MOVETYPE_PUSH;
 	UTIL_SetOrigin(pev, pev->origin);
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
-	const char* pszSound = ButtonSound(m_sounds);
-	PRECACHE_SOUND(pszSound);
-	pev->noise = ALLOC_STRING(pszSound);
+	if (FStrEq("", STRING(m_sounds)))
+	{
+		m_sounds = ALLOC_STRING("common/null.wav");
+	}
+
+	PrecacheSound(STRING(m_sounds));
 	m_lastUsed = false;
 }
 
@@ -1063,7 +909,7 @@ bool CMomentaryRotButton::KeyValue(KeyValueData* pkvd)
 	}
 	else if (FStrEq(pkvd->szKeyName, "sounds"))
 	{
-		m_sounds = atoi(pkvd->szValue);
+		m_sounds = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 
@@ -1072,7 +918,7 @@ bool CMomentaryRotButton::KeyValue(KeyValueData* pkvd)
 
 void CMomentaryRotButton::PlaySound()
 {
-	EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(pev->noise), 1, ATTN_NORM);
+	EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_sounds), 1, ATTN_NORM);
 }
 
 // BUGBUG: This design causes a latentcy.  When the button is retriggered, the first impulse
@@ -1093,24 +939,15 @@ void CMomentaryRotButton::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE
 void CMomentaryRotButton::UpdateAllButtons(float value, bool start)
 {
 	// Update all rot buttons attached to the same target
-	edict_t* pentTarget = nullptr;
-	for (;;)
+	for (auto target : UTIL_FindEntitiesByTarget(STRING(pev->target)))
 	{
-
-		pentTarget = FIND_ENTITY_BY_STRING(pentTarget, "target", STRING(pev->target));
-		if (FNullEnt(pentTarget))
-			break;
-
-		if (FClassnameIs(VARS(pentTarget), "momentary_rot_button"))
+		if (FClassnameIs(target->pev, "momentary_rot_button"))
 		{
-			CMomentaryRotButton* pEntity = CMomentaryRotButton::Instance(pentTarget);
-			if (pEntity)
-			{
-				if (start)
-					pEntity->UpdateSelf(value);
-				else
-					pEntity->UpdateSelfReturn(value);
-			}
+			auto pEntity = static_cast<CMomentaryRotButton*>(target);
+			if (start)
+				pEntity->UpdateSelf(value);
+			else
+				pEntity->UpdateSelfReturn(value);
 		}
 	}
 }
@@ -1157,23 +994,17 @@ void CMomentaryRotButton::UpdateTarget(float value)
 {
 	if (!FStringNull(pev->target))
 	{
-		edict_t* pentTarget = nullptr;
-		for (;;)
+		for (auto target : UTIL_FindEntitiesByTargetname(STRING(pev->target)))
 		{
-			pentTarget = FIND_ENTITY_BY_TARGETNAME(pentTarget, STRING(pev->target));
-			if (FNullEnt(pentTarget))
-				break;
-			CBaseEntity* pEntity = CBaseEntity::Instance(pentTarget);
-			if (pEntity)
-			{
-				pEntity->Use(this, this, USE_SET, value);
-			}
+			target->Use(this, this, USE_SET, value);
 		}
 	}
 }
 
 void CMomentaryRotButton::Off()
 {
+	STOP_SOUND(ENT(pev), CHAN_VOICE, STRING(m_sounds));
+
 	pev->avelocity = g_vecZero;
 	m_lastUsed = false;
 	if (FBitSet(pev->spawnflags, SF_PENDULUM_AUTO_RETURN) && m_returnSpeed > 0)
@@ -1217,7 +1048,7 @@ void CMomentaryRotButton::UpdateSelfReturn(float value)
 // Spark
 //----------------------------------------------------------------
 
-class CEnvSpark : public CBaseEntity
+class CEnvSpark : public CPointEntity
 {
 public:
 	void Spawn() override;
@@ -1275,12 +1106,12 @@ void CEnvSpark::Spawn()
 
 void CEnvSpark::Precache()
 {
-	PRECACHE_SOUND("buttons/spark1.wav");
-	PRECACHE_SOUND("buttons/spark2.wav");
-	PRECACHE_SOUND("buttons/spark3.wav");
-	PRECACHE_SOUND("buttons/spark4.wav");
-	PRECACHE_SOUND("buttons/spark5.wav");
-	PRECACHE_SOUND("buttons/spark6.wav");
+	PrecacheSound("buttons/spark1.wav");
+	PrecacheSound("buttons/spark2.wav");
+	PrecacheSound("buttons/spark3.wav");
+	PrecacheSound("buttons/spark4.wav");
+	PrecacheSound("buttons/spark5.wav");
+	PrecacheSound("buttons/spark6.wav");
 }
 
 bool CEnvSpark::KeyValue(KeyValueData* pkvd)
@@ -1340,7 +1171,7 @@ void CButtonTarget::Spawn()
 {
 	pev->movetype = MOVETYPE_PUSH;
 	pev->solid = SOLID_BSP;
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 	pev->takedamage = DAMAGE_YES;
 
 	if (FBitSet(pev->spawnflags, SF_BTARGET_ON))

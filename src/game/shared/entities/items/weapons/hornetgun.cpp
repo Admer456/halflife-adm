@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "aliens/hornet.h"
@@ -31,11 +31,18 @@ bool CHgun::IsUseable()
 	return true;
 }
 
+void CHgun::OnCreate()
+{
+	CBasePlayerWeapon::OnCreate();
+
+	m_WorldModel = pev->model = MAKE_STRING("models/w_hgun.mdl");
+}
+
 void CHgun::Spawn()
 {
 	Precache();
 	m_iId = WEAPON_HORNETGUN;
-	SET_MODEL(ENT(pev), "models/w_hgun.mdl");
+	SetModel(STRING(pev->model));
 
 	m_iDefaultAmmo = HIVEHAND_DEFAULT_GIVE;
 	m_iFirePhase = 0;
@@ -46,16 +53,16 @@ void CHgun::Spawn()
 
 void CHgun::Precache()
 {
-	PRECACHE_MODEL("models/v_hgun.mdl");
-	PRECACHE_MODEL("models/w_hgun.mdl");
-	PRECACHE_MODEL("models/p_hgun.mdl");
+	PrecacheModel("models/v_hgun.mdl");
+	PrecacheModel(STRING(m_WorldModel));
+	PrecacheModel("models/p_hgun.mdl");
 
 	m_usHornetFire = PRECACHE_EVENT(1, "events/firehornet.sc");
 
 	UTIL_PrecacheOther("hornet");
 }
 
-bool CHgun::AddToPlayer(CBasePlayer* pPlayer)
+void CHgun::AddToPlayer(CBasePlayer* pPlayer)
 {
 #ifndef CLIENT_DLL
 	if (g_pGameRules->IsMultiplayer())
@@ -65,7 +72,7 @@ bool CHgun::AddToPlayer(CBasePlayer* pPlayer)
 	}
 #endif
 
-	return CBasePlayerWeapon::AddToPlayer(pPlayer);
+	CBasePlayerWeapon::AddToPlayer(pPlayer);
 }
 
 bool CHgun::GetItemInfo(ItemInfo* p)
@@ -163,7 +170,7 @@ void CHgun::SecondaryAttack()
 		return;
 	}
 
-	//Wouldn't be a bad idea to completely predict these, since they fly so fast...
+	// Wouldn't be a bad idea to completely predict these, since they fly so fast...
 #ifndef CLIENT_DLL
 	CBaseEntity* pHornet;
 	Vector vecSrc;

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // hgrunt
 //=========================================================
@@ -83,16 +83,17 @@ namespace HGruntAllyWeapon
 {
 enum HGruntAllyWeapon
 {
-	MP5 = 0,
+	Blank = 0,
+	MP5,
 	Shotgun,
-	Saw,
-	None
+	Saw
 };
 }
 
 class CHGruntAlly : public CBaseHGruntAlly
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
@@ -110,7 +111,7 @@ protected:
 
 	PostureType GetPreferredCombatPosture() const override
 	{
-		//Always stand when using Saw
+		// Always stand when using Saw
 		if ((pev->weapons & HGruntAllyWeaponFlag::Saw) != 0)
 		{
 			return PostureType::Standing;
@@ -136,9 +137,17 @@ protected:
 
 LINK_ENTITY_TO_CLASS(monster_human_grunt_ally, CHGruntAlly);
 
+void CHGruntAlly::OnCreate()
+{
+	CBaseHGruntAlly::OnCreate();
+
+	pev->health = GetSkillFloat("hgrunt_ally_health"sv);
+	pev->model = MAKE_STRING("models/hgrunt_opfor.mdl");
+}
+
 void CHGruntAlly::DropWeapon(bool applyVelocity)
 {
-	if (GetBodygroup(HGruntAllyBodygroup::Weapons) != HGruntAllyWeapon::None)
+	if (GetBodygroup(HGruntAllyBodygroup::Weapons) != HGruntAllyWeapon::Blank)
 	{ // throw a gun if the grunt has one
 		Vector vecGunPos, vecGunAngles;
 		GetAttachment(0, vecGunPos, vecGunAngles);
@@ -172,7 +181,7 @@ void CHGruntAlly::DropWeapon(bool applyVelocity)
 			}
 		}
 
-		SetBodygroup(HGruntAllyBodygroup::Weapons, HGruntAllyWeapon::None);
+		SetBodygroup(HGruntAllyBodygroup::Weapons, HGruntAllyWeapon::Blank);
 	}
 }
 
@@ -252,12 +261,12 @@ void CHGruntAlly::Shoot(bool firstShotInBurst)
 	}
 	else
 	{
-		//Check this so shotgunners don't shoot bursts if the animation happens to have the events
+		// Check this so shotgunners don't shoot bursts if the animation happens to have the events
 		if (firstShotInBurst)
 		{
 			const Vector vecShellVelocity = gpGlobals->v_right * RANDOM_FLOAT(40, 90) + gpGlobals->v_up * RANDOM_FLOAT(75, 200) + gpGlobals->v_forward * RANDOM_FLOAT(-40, 40);
 			EjectBrass(vecShootOrigin - vecShootDir * 24, vecShellVelocity, pev->angles.y, m_iShotgunShell, TE_BOUNCE_SHOTSHELL);
-			FireBullets(gSkillData.hgruntAllyShotgunPellets, vecShootOrigin, vecShootDir, VECTOR_CONE_15DEGREES, 2048, BULLET_PLAYER_BUCKSHOT, 0); // shoot +-7.5 degrees
+			FireBullets(GetSkillFloat("hgrunt_ally_pellets"sv), vecShootOrigin, vecShootDir, VECTOR_CONE_15DEGREES, 2048, BULLET_PLAYER_BUCKSHOT, 0); // shoot +-7.5 degrees
 
 			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/sbarrel1.wav", 1, ATTN_NORM);
 
@@ -315,9 +324,9 @@ void CHGruntAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 //=========================================================
 void CHGruntAlly::Spawn()
 {
-	SpawnCore("models/hgrunt_opfor.mdl", gSkillData.hgruntAllyHealth);
+	SpawnCore();
 
-	//TODO: make torso customizable
+	// TODO: make torso customizable
 	m_iGruntTorso = HGruntAllyTorso::Normal;
 
 	int weaponIndex = 0;
@@ -341,7 +350,7 @@ void CHGruntAlly::Spawn()
 	}
 	else
 	{
-		weaponIndex = HGruntAllyWeapon::None;
+		weaponIndex = HGruntAllyWeapon::Blank;
 		m_cClipSize = 0;
 	}
 
@@ -361,7 +370,7 @@ void CHGruntAlly::Spawn()
 		{
 			m_iGruntHead = RANDOM_LONG(0, 1) + HGruntAllyHead::BandanaWhite;
 		}
-		else if (weaponIndex == HGruntAllyWeapon::None)
+		else if (weaponIndex == HGruntAllyWeapon::Blank)
 		{
 			m_iGruntHead = HGruntAllyHead::MilitaryPolice;
 		}
@@ -375,7 +384,7 @@ void CHGruntAlly::Spawn()
 	SetBodygroup(HGruntAllyBodygroup::Torso, m_iGruntTorso);
 	SetBodygroup(HGruntAllyBodygroup::Weapons, weaponIndex);
 
-	//TODO: probably also needs this for head HGruntAllyHead::BeretBlack
+	// TODO: probably also needs this for head HGruntAllyHead::BeretBlack
 	if (m_iGruntHead == HGruntAllyHead::OpsMask || m_iGruntHead == HGruntAllyHead::BandanaBlack)
 	{
 		m_voicePitch = 90;
@@ -387,27 +396,19 @@ void CHGruntAlly::Spawn()
 //=========================================================
 void CHGruntAlly::Precache()
 {
-	PRECACHE_MODEL("models/hgrunt_opfor.mdl");
+	PrecacheSound("weapons/saw_fire1.wav");
+	PrecacheSound("weapons/saw_fire2.wav");
+	PrecacheSound("weapons/saw_fire3.wav");
+	PrecacheSound("weapons/saw_reload.wav");
 
-	PRECACHE_SOUND("weapons/saw_fire1.wav");
-	PRECACHE_SOUND("weapons/saw_fire2.wav");
-	PRECACHE_SOUND("weapons/saw_fire3.wav");
-	PRECACHE_SOUND("weapons/saw_reload.wav");
+	PrecacheSound("weapons/glauncher.wav");
 
-	PRECACHE_SOUND("weapons/glauncher.wav");
-
-	m_iBrassShell = PRECACHE_MODEL("models/shell.mdl"); // brass shell
-	m_iShotgunShell = PRECACHE_MODEL("models/shotgunshell.mdl");
-	m_iSawShell = PRECACHE_MODEL("models/saw_shell.mdl");
-	m_iSawLink = PRECACHE_MODEL("models/saw_link.mdl");
+	m_iBrassShell = PrecacheModel("models/shell.mdl"); // brass shell
+	m_iShotgunShell = PrecacheModel("models/shotgunshell.mdl");
+	m_iSawShell = PrecacheModel("models/saw_shell.mdl");
+	m_iSawLink = PrecacheModel("models/saw_link.mdl");
 
 	CBaseHGruntAlly::Precache();
-
-	// get voice pitch
-	if (!UTIL_IsRestoring())
-	{
-		m_voicePitch = 100;
-	}
 }
 
 std::tuple<int, Activity> CHGruntAlly::GetSequenceForActivity(Activity NewActivity)
@@ -467,8 +468,8 @@ std::tuple<int, Activity> CHGruntAlly::GetSequenceForActivity(Activity NewActivi
 }
 
 /**
-*	@brief when triggered, spawns a monster_human_grunt_ally repelling down a line.
-*/
+ *	@brief when triggered, spawns a monster_human_grunt_ally repelling down a line.
+ */
 class CHGruntAllyRepel : public CBaseHGruntAllyRepel
 {
 protected:
@@ -483,6 +484,7 @@ LINK_ENTITY_TO_CLASS(monster_grunt_ally_repel, CHGruntAllyRepel);
 class CDeadHGruntAlly : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	int Classify() override { return CLASS_HUMAN_MILITARY_FRIENDLY; }
 
@@ -494,6 +496,15 @@ public:
 };
 
 const char* CDeadHGruntAlly::m_szPoses[] = {"deadstomach", "deadside", "deadsitting", "dead_on_back", "hgrunt_dead_stomach", "dead_headcrabed", "dead_canyon"};
+
+void CDeadHGruntAlly::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	// Corpses have less health
+	pev->health = 8;
+	pev->model = MAKE_STRING("models/hgrunt_opfor.mdl");
+}
 
 bool CDeadHGruntAlly::KeyValue(KeyValueData* pkvd)
 {
@@ -518,8 +529,8 @@ LINK_ENTITY_TO_CLASS(monster_human_grunt_ally_dead, CDeadHGruntAlly);
 //=========================================================
 void CDeadHGruntAlly::Spawn()
 {
-	PRECACHE_MODEL("models/hgrunt_opfor.mdl");
-	SET_MODEL(ENT(pev), "models/hgrunt_opfor.mdl");
+	PrecacheModel(STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	pev->effects = 0;
 	pev->yaw_speed = 8;
@@ -530,11 +541,8 @@ void CDeadHGruntAlly::Spawn()
 
 	if (pev->sequence == -1)
 	{
-		ALERT(at_console, "Dead hgrunt with bad pose\n");
+		AILogger->debug("Dead hgrunt with bad pose");
 	}
-
-	// Corpses have less health
-	pev->health = 8;
 
 	if ((pev->weapons & HGruntAllyWeaponFlag::MP5) != 0)
 	{
@@ -554,7 +562,7 @@ void CDeadHGruntAlly::Spawn()
 	else
 	{
 		SetBodygroup(HGruntAllyBodygroup::Torso, HGruntAllyTorso::Normal);
-		SetBodygroup(HGruntAllyBodygroup::Weapons, HGruntAllyWeapon::None);
+		SetBodygroup(HGruntAllyBodygroup::Weapons, HGruntAllyWeapon::Blank);
 	}
 
 	SetBodygroup(HGruntAllyBodygroup::Head, m_iGruntHead);

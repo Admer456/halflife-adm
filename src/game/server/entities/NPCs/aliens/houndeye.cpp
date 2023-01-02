@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // Houndeye - spooky sonic dog.
 //=========================================================
@@ -26,7 +26,8 @@
 #define HOUNDEYE_MAX_ATTACK_RADIUS 384
 #define HOUNDEYE_SQUAD_BONUS (float)1.1
 
-#define HOUNDEYE_EYE_FRAMES 4 // how many different switchable maps for the eye
+// Marphy Fact Files Fix - Fix various instances of Houndeye not correctly blinking/closing eyes
+#define HOUNDEYE_EYE_FRAMES 3 // how many different switchable maps for the eye
 
 #define HOUNDEYE_SOUND_STARTLE_VOLUME 128 // how loud a sound has to be to badly scare a sleeping houndeye
 
@@ -67,6 +68,7 @@ enum
 class CHoundeye : public CSquadMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	int Classify() override;
@@ -113,6 +115,14 @@ TYPEDESCRIPTION CHoundeye::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE(CHoundeye, CSquadMonster);
 
+void CHoundeye::OnCreate()
+{
+	CSquadMonster::OnCreate();
+
+	pev->health = GetSkillFloat("houndeye_health"sv);
+	pev->model = MAKE_STRING("models/houndeye.mdl");
+}
+
 //=========================================================
 // Classify - indicates this monster's place in the
 // relationship table.
@@ -143,7 +153,7 @@ bool CHoundeye::FValidateHintType(short sHint)
 		}
 	}
 
-	ALERT(at_aiconsole, "Couldn't validate hint type");
+	AILogger->debug("Couldn't validate hint type");
 	return false;
 }
 
@@ -201,7 +211,7 @@ void CHoundeye::SetYawSpeed()
 
 	switch (m_Activity)
 	{
-	case ACT_CROUCHIDLE: //sleeping!
+	case ACT_CROUCHIDLE: // sleeping!
 		ys = 0;
 		break;
 	case ACT_IDLE:
@@ -319,14 +329,13 @@ void CHoundeye::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/houndeye.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 36));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_YELLOW;
 	pev->effects = 0;
-	pev->health = gSkillData.houndeyeHealth;
 	pev->yaw_speed = 5;	   //!!! should we put this in the monster's changeanim function since turn rates may vary with state/anim?
 	m_flFieldOfView = 0.5; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
@@ -342,37 +351,37 @@ void CHoundeye::Spawn()
 //=========================================================
 void CHoundeye::Precache()
 {
-	PRECACHE_MODEL("models/houndeye.mdl");
+	PrecacheModel(STRING(pev->model));
 
-	PRECACHE_SOUND("houndeye/he_alert1.wav");
-	PRECACHE_SOUND("houndeye/he_alert2.wav");
-	PRECACHE_SOUND("houndeye/he_alert3.wav");
+	PrecacheSound("houndeye/he_alert1.wav");
+	PrecacheSound("houndeye/he_alert2.wav");
+	PrecacheSound("houndeye/he_alert3.wav");
 
-	PRECACHE_SOUND("houndeye/he_die1.wav");
-	PRECACHE_SOUND("houndeye/he_die2.wav");
-	PRECACHE_SOUND("houndeye/he_die3.wav");
+	PrecacheSound("houndeye/he_die1.wav");
+	PrecacheSound("houndeye/he_die2.wav");
+	PrecacheSound("houndeye/he_die3.wav");
 
-	PRECACHE_SOUND("houndeye/he_idle1.wav");
-	PRECACHE_SOUND("houndeye/he_idle2.wav");
-	PRECACHE_SOUND("houndeye/he_idle3.wav");
+	PrecacheSound("houndeye/he_idle1.wav");
+	PrecacheSound("houndeye/he_idle2.wav");
+	PrecacheSound("houndeye/he_idle3.wav");
 
-	PRECACHE_SOUND("houndeye/he_hunt1.wav");
-	PRECACHE_SOUND("houndeye/he_hunt2.wav");
-	PRECACHE_SOUND("houndeye/he_hunt3.wav");
+	PrecacheSound("houndeye/he_hunt1.wav");
+	PrecacheSound("houndeye/he_hunt2.wav");
+	PrecacheSound("houndeye/he_hunt3.wav");
 
-	PRECACHE_SOUND("houndeye/he_pain1.wav");
-	PRECACHE_SOUND("houndeye/he_pain3.wav");
-	PRECACHE_SOUND("houndeye/he_pain4.wav");
-	PRECACHE_SOUND("houndeye/he_pain5.wav");
+	PrecacheSound("houndeye/he_pain1.wav");
+	PrecacheSound("houndeye/he_pain3.wav");
+	PrecacheSound("houndeye/he_pain4.wav");
+	PrecacheSound("houndeye/he_pain5.wav");
 
-	PRECACHE_SOUND("houndeye/he_attack1.wav");
-	PRECACHE_SOUND("houndeye/he_attack3.wav");
+	PrecacheSound("houndeye/he_attack1.wav");
+	PrecacheSound("houndeye/he_attack3.wav");
 
-	PRECACHE_SOUND("houndeye/he_blast1.wav");
-	PRECACHE_SOUND("houndeye/he_blast2.wav");
-	PRECACHE_SOUND("houndeye/he_blast3.wav");
+	PrecacheSound("houndeye/he_blast1.wav");
+	PrecacheSound("houndeye/he_blast2.wav");
+	PrecacheSound("houndeye/he_blast3.wav");
 
-	m_iSpriteTexture = PRECACHE_MODEL("sprites/shockwave.spr");
+	m_iSpriteTexture = PrecacheModel("sprites/shockwave.spr");
 }
 
 //=========================================================
@@ -521,7 +530,7 @@ void CHoundeye::WriteBeamColor()
 			bBlue = 211;
 			break;
 		default:
-			ALERT(at_aiconsole, "Unsupported Houndeye SquadSize!\n");
+			AILogger->debug("Unsupported Houndeye SquadSize!");
 			bRed = 188;
 			bGreen = 220;
 			bBlue = 255;
@@ -581,7 +590,7 @@ void CHoundeye::SonicAttack()
 
 	WriteBeamColor();
 
-	WRITE_BYTE(255); //brightness
+	WRITE_BYTE(255); // brightness
 	WRITE_BYTE(0);	 // speed
 	MESSAGE_END();
 
@@ -602,7 +611,7 @@ void CHoundeye::SonicAttack()
 
 	WriteBeamColor();
 
-	WRITE_BYTE(255); //brightness
+	WRITE_BYTE(255); // brightness
 	WRITE_BYTE(0);	 // speed
 	MESSAGE_END();
 
@@ -623,12 +632,12 @@ void CHoundeye::SonicAttack()
 				if (SquadCount() > 1)
 				{
 					// squad gets attack bonus.
-					flAdjustedDamage = gSkillData.houndeyeDmgBlast + gSkillData.houndeyeDmgBlast * (HOUNDEYE_SQUAD_BONUS * (SquadCount() - 1));
+					flAdjustedDamage = GetSkillFloat("houndeye_dmg_blast"sv) + GetSkillFloat("houndeye_dmg_blast"sv) * (HOUNDEYE_SQUAD_BONUS * (SquadCount() - 1));
 				}
 				else
 				{
 					// solo
-					flAdjustedDamage = gSkillData.houndeyeDmgBlast;
+					flAdjustedDamage = GetSkillFloat("houndeye_dmg_blast"sv);
 				}
 
 				flDist = (pEntity->Center() - pev->origin).Length();
@@ -651,7 +660,7 @@ void CHoundeye::SonicAttack()
 					}
 				}
 
-				//ALERT ( at_aiconsole, "Damage: %f\n", flAdjustedDamage );
+				// AILogger->debug("Damage: {}", flAdjustedDamage);
 
 				if (flAdjustedDamage > 0)
 				{
@@ -885,10 +894,11 @@ void CHoundeye::PrescheduleThink()
 //=========================================================
 // AI Schedules Specific to this monster
 //=========================================================
+// Marphy Fact Files Fix - Fix freeze stutter after leaderlook sequence
 Task_t tlHoundGuardPack[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
-		{TASK_GUARD, (float)0},
+		{TASK_PLAY_SEQUENCE, (float)ACT_GUARD},
 };
 
 Schedule_t slHoundGuardPack[] =
@@ -1166,6 +1176,11 @@ Schedule_t* CHoundeye::GetScheduleOfType(int Type)
 		{
 			return &slHoundSleep[0];
 		}
+		// Marphy Fact Files Fix - Restore squad leader leaderlook animation
+		if (InSquad() && IsLeader() && !m_fAsleep && RANDOM_LONG(0, 14) < 1)
+		{
+			return &slHoundGuardPack[0];
+		}
 		else
 		{
 			return CSquadMonster::GetScheduleOfType(Type);
@@ -1282,6 +1297,7 @@ Schedule_t* CHoundeye::GetSchedule()
 class CDeadHoundeye : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	int Classify() override { return CLASS_ALIEN_PASSIVE; }
 
@@ -1292,6 +1308,15 @@ public:
 };
 
 const char* CDeadHoundeye::m_szPoses[] = {"dead"};
+
+void CDeadHoundeye::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	// Corpses have less health
+	pev->health = 8;
+	pev->model = MAKE_STRING("models/houndeye_dead.mdl");
+}
 
 bool CDeadHoundeye::KeyValue(KeyValueData* pkvd)
 {
@@ -1311,8 +1336,8 @@ LINK_ENTITY_TO_CLASS(monster_houndeye_dead, CDeadHoundeye);
 //=========================================================
 void CDeadHoundeye::Spawn()
 {
-	PRECACHE_MODEL("models/houndeye_dead.mdl");
-	SET_MODEL(ENT(pev), "models/houndeye_dead.mdl");
+	PrecacheModel(STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	pev->effects = 0;
 	pev->yaw_speed = 8;
@@ -1323,11 +1348,8 @@ void CDeadHoundeye::Spawn()
 
 	if (pev->sequence == -1)
 	{
-		ALERT(at_console, "Dead houndeye with bad pose\n");
+		AILogger->debug("Dead houndeye with bad pose");
 	}
-
-	// Corpses have less health
-	pev->health = 8;
 
 	MonsterInitDead();
 }

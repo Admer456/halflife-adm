@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== doors.cpp ========================================================
@@ -22,10 +22,7 @@
 #include "doors.h"
 
 
-extern void SetMovedir(entvars_t* ev);
-
-#define noiseMoving noise1
-#define noiseArrived noise2
+void SetMovedir(entvars_t* ev);
 
 class CBaseDoor : public CBaseToggle
 {
@@ -63,28 +60,28 @@ public:
 
 	byte m_bHealthValue; // some doors are medi-kit doors, they give players health
 
-	byte m_bMoveSnd; // sound a door makes while moving
-	byte m_bStopSnd; // sound a door makes when it stops
+	string_t m_MoveSound; // sound a door makes while moving
+	string_t m_StopSound; // sound a door makes when it stops
 
 	locksound_t m_ls; // door lock sounds
 
-	byte m_bLockedSound; // ordinals from entity selection
-	byte m_bLockedSentence;
-	byte m_bUnlockedSound;
-	byte m_bUnlockedSentence;
+	string_t m_LockedSound;
+	string_t m_LockedSentence;
+	string_t m_UnlockedSound;
+	string_t m_UnlockedSentence;
 };
 
 
 TYPEDESCRIPTION CBaseDoor::m_SaveData[] =
 	{
 		DEFINE_FIELD(CBaseDoor, m_bHealthValue, FIELD_CHARACTER),
-		DEFINE_FIELD(CBaseDoor, m_bMoveSnd, FIELD_CHARACTER),
-		DEFINE_FIELD(CBaseDoor, m_bStopSnd, FIELD_CHARACTER),
+		DEFINE_FIELD(CBaseDoor, m_MoveSound, FIELD_SOUNDNAME),
+		DEFINE_FIELD(CBaseDoor, m_StopSound, FIELD_SOUNDNAME),
 
-		DEFINE_FIELD(CBaseDoor, m_bLockedSound, FIELD_CHARACTER),
-		DEFINE_FIELD(CBaseDoor, m_bLockedSentence, FIELD_CHARACTER),
-		DEFINE_FIELD(CBaseDoor, m_bUnlockedSound, FIELD_CHARACTER),
-		DEFINE_FIELD(CBaseDoor, m_bUnlockedSentence, FIELD_CHARACTER),
+		DEFINE_FIELD(CBaseDoor, m_LockedSound, FIELD_SOUNDNAME),
+		DEFINE_FIELD(CBaseDoor, m_LockedSentence, FIELD_STRING),
+		DEFINE_FIELD(CBaseDoor, m_UnlockedSound, FIELD_SOUNDNAME),
+		DEFINE_FIELD(CBaseDoor, m_UnlockedSentence, FIELD_STRING),
 
 };
 
@@ -139,7 +136,7 @@ void PlayLockSounds(entvars_t* pev, locksound_t* pls, bool flocked, bool fbutton
 			// play next 'door locked' sentence in group
 			int iprev = pls->iLockedSentence;
 
-			pls->iLockedSentence = SENTENCEG_PlaySequentialSz(ENT(pev), STRING(pls->sLockedSentence),
+			pls->iLockedSentence = sentences::g_Sentences.PlaySequentialSz(ENT(pev), STRING(pls->sLockedSentence),
 				0.85, ATTN_NORM, 0, 100, pls->iLockedSentence, false);
 			pls->iUnlockedSentence = 0;
 
@@ -175,7 +172,7 @@ void PlayLockSounds(entvars_t* pev, locksound_t* pls, bool flocked, bool fbutton
 		{
 			int iprev = pls->iUnlockedSentence;
 
-			pls->iUnlockedSentence = SENTENCEG_PlaySequentialSz(ENT(pev), STRING(pls->sUnlockedSentence),
+			pls->iUnlockedSentence = sentences::g_Sentences.PlaySequentialSz(ENT(pev), STRING(pls->sUnlockedSentence),
 				0.85, ATTN_NORM, 0, 100, pls->iUnlockedSentence, false);
 			pls->iLockedSentence = 0;
 
@@ -193,19 +190,19 @@ void PlayLockSounds(entvars_t* pev, locksound_t* pls, bool flocked, bool fbutton
 bool CBaseDoor::KeyValue(KeyValueData* pkvd)
 {
 
-	if (FStrEq(pkvd->szKeyName, "skin")) //skin is used for content type
+	if (FStrEq(pkvd->szKeyName, "skin")) // skin is used for content type
 	{
 		pev->skin = atof(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "movesnd"))
 	{
-		m_bMoveSnd = atof(pkvd->szValue);
+		m_MoveSound = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "stopsnd"))
 	{
-		m_bStopSnd = atof(pkvd->szValue);
+		m_StopSound = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "healthvalue"))
@@ -215,22 +212,22 @@ bool CBaseDoor::KeyValue(KeyValueData* pkvd)
 	}
 	else if (FStrEq(pkvd->szKeyName, "locked_sound"))
 	{
-		m_bLockedSound = atof(pkvd->szValue);
+		m_LockedSound = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "locked_sentence"))
 	{
-		m_bLockedSentence = atof(pkvd->szValue);
+		m_LockedSentence = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "unlocked_sound"))
 	{
-		m_bUnlockedSound = atof(pkvd->szValue);
+		m_UnlockedSound = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "unlocked_sentence"))
 	{
-		m_bUnlockedSentence = atof(pkvd->szValue);
+		m_UnlockedSentence = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "WaveHeight"))
@@ -280,7 +277,7 @@ void CBaseDoor::Spawn()
 	SetMovedir(pev);
 
 	if (pev->skin == 0)
-	{ //normal door
+	{ // normal door
 		if (FBitSet(pev->spawnflags, SF_DOOR_PASSABLE))
 			pev->solid = SOLID_NOT;
 		else
@@ -294,7 +291,7 @@ void CBaseDoor::Spawn()
 
 	pev->movetype = MOVETYPE_PUSH;
 	UTIL_SetOrigin(pev, pev->origin);
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	if (pev->speed == 0)
 		pev->speed = 100;
@@ -333,186 +330,39 @@ void CBaseDoor::SetToggleState(int state)
 
 void CBaseDoor::Precache()
 {
-	const char* pszSound;
-
 	// set the door's "in-motion" sound
-	switch (m_bMoveSnd)
+	if (FStrEq("", STRING(m_MoveSound)))
 	{
-	case 0:
-		pev->noiseMoving = ALLOC_STRING("common/null.wav");
-		break;
-	case 1:
-		PRECACHE_SOUND("doors/doormove1.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove1.wav");
-		break;
-	case 2:
-		PRECACHE_SOUND("doors/doormove2.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove2.wav");
-		break;
-	case 3:
-		PRECACHE_SOUND("doors/doormove3.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove3.wav");
-		break;
-	case 4:
-		PRECACHE_SOUND("doors/doormove4.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove4.wav");
-		break;
-	case 5:
-		PRECACHE_SOUND("doors/doormove5.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove5.wav");
-		break;
-	case 6:
-		PRECACHE_SOUND("doors/doormove6.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove6.wav");
-		break;
-	case 7:
-		PRECACHE_SOUND("doors/doormove7.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove7.wav");
-		break;
-	case 8:
-		PRECACHE_SOUND("doors/doormove8.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove8.wav");
-		break;
-	case 9:
-		PRECACHE_SOUND("doors/doormove9.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove9.wav");
-		break;
-	case 10:
-		PRECACHE_SOUND("doors/doormove10.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove10.wav");
-		break;
-	default:
-		pev->noiseMoving = ALLOC_STRING("common/null.wav");
-		break;
+		m_MoveSound = ALLOC_STRING("common/null.wav");
 	}
+
+	PrecacheSound(STRING(m_MoveSound));
 
 	// set the door's 'reached destination' stop sound
-	switch (m_bStopSnd)
+	if (FStrEq("", STRING(m_StopSound)))
 	{
-	case 0:
-		pev->noiseArrived = ALLOC_STRING("common/null.wav");
-		break;
-	case 1:
-		PRECACHE_SOUND("doors/doorstop1.wav");
-		pev->noiseArrived = ALLOC_STRING("doors/doorstop1.wav");
-		break;
-	case 2:
-		PRECACHE_SOUND("doors/doorstop2.wav");
-		pev->noiseArrived = ALLOC_STRING("doors/doorstop2.wav");
-		break;
-	case 3:
-		PRECACHE_SOUND("doors/doorstop3.wav");
-		pev->noiseArrived = ALLOC_STRING("doors/doorstop3.wav");
-		break;
-	case 4:
-		PRECACHE_SOUND("doors/doorstop4.wav");
-		pev->noiseArrived = ALLOC_STRING("doors/doorstop4.wav");
-		break;
-	case 5:
-		PRECACHE_SOUND("doors/doorstop5.wav");
-		pev->noiseArrived = ALLOC_STRING("doors/doorstop5.wav");
-		break;
-	case 6:
-		PRECACHE_SOUND("doors/doorstop6.wav");
-		pev->noiseArrived = ALLOC_STRING("doors/doorstop6.wav");
-		break;
-	case 7:
-		PRECACHE_SOUND("doors/doorstop7.wav");
-		pev->noiseArrived = ALLOC_STRING("doors/doorstop7.wav");
-		break;
-	case 8:
-		PRECACHE_SOUND("doors/doorstop8.wav");
-		pev->noiseArrived = ALLOC_STRING("doors/doorstop8.wav");
-		break;
-	default:
-		pev->noiseArrived = ALLOC_STRING("common/null.wav");
-		break;
+		m_StopSound = ALLOC_STRING("common/null.wav");
 	}
+
+	PrecacheSound(STRING(m_StopSound));
 
 	// get door button sounds, for doors which are directly 'touched' to open
 
-	if (0 != m_bLockedSound)
+	if (!FStringNull(m_LockedSound))
 	{
-		pszSound = ButtonSound((int)m_bLockedSound);
-		PRECACHE_SOUND(pszSound);
-		m_ls.sLockedSound = ALLOC_STRING(pszSound);
+		PrecacheSound(STRING(m_LockedSound));
+		m_ls.sLockedSound = m_LockedSound;
 	}
 
-	if (0 != m_bUnlockedSound)
+	if (!FStringNull(m_UnlockedSound))
 	{
-		pszSound = ButtonSound((int)m_bUnlockedSound);
-		PRECACHE_SOUND(pszSound);
-		m_ls.sUnlockedSound = ALLOC_STRING(pszSound);
+		PrecacheSound(STRING(m_UnlockedSound));
+		m_ls.sUnlockedSound = m_UnlockedSound;
 	}
 
 	// get sentence group names, for doors which are directly 'touched' to open
-
-	switch (m_bLockedSentence)
-	{
-	case 1:
-		m_ls.sLockedSentence = ALLOC_STRING("NA");
-		break; // access denied
-	case 2:
-		m_ls.sLockedSentence = ALLOC_STRING("ND");
-		break; // security lockout
-	case 3:
-		m_ls.sLockedSentence = ALLOC_STRING("NF");
-		break; // blast door
-	case 4:
-		m_ls.sLockedSentence = ALLOC_STRING("NFIRE");
-		break; // fire door
-	case 5:
-		m_ls.sLockedSentence = ALLOC_STRING("NCHEM");
-		break; // chemical door
-	case 6:
-		m_ls.sLockedSentence = ALLOC_STRING("NRAD");
-		break; // radiation door
-	case 7:
-		m_ls.sLockedSentence = ALLOC_STRING("NCON");
-		break; // gen containment
-	case 8:
-		m_ls.sLockedSentence = ALLOC_STRING("NH");
-		break; // maintenance door
-	case 9:
-		m_ls.sLockedSentence = ALLOC_STRING("NG");
-		break; // broken door
-
-	default:
-		m_ls.sLockedSentence = 0;
-		break;
-	}
-
-	switch (m_bUnlockedSentence)
-	{
-	case 1:
-		m_ls.sUnlockedSentence = ALLOC_STRING("EA");
-		break; // access granted
-	case 2:
-		m_ls.sUnlockedSentence = ALLOC_STRING("ED");
-		break; // security door
-	case 3:
-		m_ls.sUnlockedSentence = ALLOC_STRING("EF");
-		break; // blast door
-	case 4:
-		m_ls.sUnlockedSentence = ALLOC_STRING("EFIRE");
-		break; // fire door
-	case 5:
-		m_ls.sUnlockedSentence = ALLOC_STRING("ECHEM");
-		break; // chemical door
-	case 6:
-		m_ls.sUnlockedSentence = ALLOC_STRING("ERAD");
-		break; // radiation door
-	case 7:
-		m_ls.sUnlockedSentence = ALLOC_STRING("ECON");
-		break; // gen containment
-	case 8:
-		m_ls.sUnlockedSentence = ALLOC_STRING("EH");
-		break; // maintenance door
-
-	default:
-		m_ls.sUnlockedSentence = 0;
-		break;
-	}
+	m_ls.sLockedSentence = m_LockedSentence;
+	m_ls.sUnlockedSentence = m_UnlockedSentence;
 }
 
 //
@@ -520,10 +370,8 @@ void CBaseDoor::Precache()
 //
 void CBaseDoor::DoorTouch(CBaseEntity* pOther)
 {
-	entvars_t* pevToucher = pOther->pev;
-
 	// Ignore touches by anything but players
-	if (!FClassnameIs(pevToucher, "player"))
+	if (!pOther->IsPlayer())
 		return;
 
 	// If door has master, and it's not ready to trigger,
@@ -591,7 +439,7 @@ bool CBaseDoor::DoorActivate()
 	return true;
 }
 
-extern Vector VecBModelOrigin(entvars_t* pevBModel);
+Vector VecBModelOrigin(entvars_t* pevBModel);
 
 //
 // Starts the door going to its "up" position (simply ToggleData->vecPosition2).
@@ -608,7 +456,7 @@ void CBaseDoor::DoorGoUp()
 	if (!FBitSet(pev->spawnflags, SF_DOOR_SILENT))
 	{
 		if (m_toggle_state != TS_GOING_UP && m_toggle_state != TS_GOING_DOWN)
-			EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(pev->noiseMoving), 1, ATTN_NORM);
+			EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound), 1, ATTN_NORM);
 	}
 
 	m_toggle_state = TS_GOING_UP;
@@ -650,8 +498,8 @@ void CBaseDoor::DoorHitTop()
 {
 	if (!FBitSet(pev->spawnflags, SF_DOOR_SILENT))
 	{
-		STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(pev->noiseMoving));
-		EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(pev->noiseArrived), 1, ATTN_NORM);
+		STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound));
+		EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(m_StopSound), 1, ATTN_NORM);
 	}
 
 	ASSERT(m_toggle_state == TS_GOING_UP);
@@ -692,7 +540,7 @@ void CBaseDoor::DoorGoDown()
 	if (!FBitSet(pev->spawnflags, SF_DOOR_SILENT))
 	{
 		if (m_toggle_state != TS_GOING_UP && m_toggle_state != TS_GOING_DOWN)
-			EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(pev->noiseMoving), 1, ATTN_NORM);
+			EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound), 1, ATTN_NORM);
 	}
 
 #ifdef DOOR_ASSERT
@@ -701,7 +549,7 @@ void CBaseDoor::DoorGoDown()
 	m_toggle_state = TS_GOING_DOWN;
 
 	SetMoveDone(&CBaseDoor::DoorHitBottom);
-	if (FClassnameIs(pev, "func_door_rotating")) //rotating door
+	if (FClassnameIs(pev, "func_door_rotating")) // rotating door
 		AngularMove(m_vecAngle1, pev->speed);
 	else
 		LinearMove(m_vecPosition1, pev->speed);
@@ -714,8 +562,8 @@ void CBaseDoor::DoorHitBottom()
 {
 	if (!FBitSet(pev->spawnflags, SF_DOOR_SILENT))
 	{
-		STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(pev->noiseMoving));
-		EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(pev->noiseArrived), 1, ATTN_NORM);
+		STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound));
+		EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(m_StopSound), 1, ATTN_NORM);
 	}
 
 	ASSERT(m_toggle_state == TS_GOING_DOWN);
@@ -738,10 +586,6 @@ void CBaseDoor::DoorHitBottom()
 
 void CBaseDoor::Blocked(CBaseEntity* pOther)
 {
-	edict_t* pentTarget = nullptr;
-	CBaseDoor* pDoor = nullptr;
-
-
 	// Hurt the blocker a little.
 	if (0 != pev->dmg)
 		pOther->TakeDamage(pev, pev, pev->dmg, DMG_CRUSH);
@@ -764,26 +608,22 @@ void CBaseDoor::Blocked(CBaseEntity* pOther)
 	// Block all door pieces with the same targetname here.
 	if (!FStringNull(pev->targetname))
 	{
-		for (;;)
+		CBaseDoor* pDoor = nullptr;
+
+		for (auto target : UTIL_FindEntitiesByTargetname(STRING(pev->targetname)))
 		{
-			pentTarget = FIND_ENTITY_BY_TARGETNAME(pentTarget, STRING(pev->targetname));
-
-			if (VARS(pentTarget) != pev)
+			if (target != this)
 			{
-				if (FNullEnt(pentTarget))
-					break;
-
-				if (FClassnameIs(pentTarget, "func_door") || FClassnameIs(pentTarget, "func_door_rotating"))
+				if (FClassnameIs(target->pev, "func_door") || FClassnameIs(target->pev, "func_door_rotating"))
 				{
-
-					pDoor = GetClassPtr((CBaseDoor*)VARS(pentTarget));
+					pDoor = static_cast<CBaseDoor*>(target);
 
 					if (pDoor->m_flWait >= 0)
 					{
 						if (pDoor->pev->velocity == pev->velocity && pDoor->pev->avelocity == pev->velocity)
 						{
 							// this is the most hacked, evil, bastardized thing I've ever seen. kjb
-							if (FClassnameIs(pentTarget, "func_door"))
+							if (FClassnameIs(pDoor->pev, "func_door"))
 							{ // set origin to realign normal doors
 								pDoor->pev->origin = pev->origin;
 								pDoor->pev->velocity = g_vecZero; // stop!
@@ -796,7 +636,7 @@ void CBaseDoor::Blocked(CBaseEntity* pOther)
 						}
 
 						if (!FBitSet(pev->spawnflags, SF_DOOR_SILENT))
-							STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(pev->noiseMoving));
+							STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound));
 
 						if (pDoor->m_toggle_state == TS_GOING_DOWN)
 							pDoor->DoorGoUp();
@@ -868,7 +708,7 @@ void CRotDoor::Spawn()
 	if (FBitSet(pev->spawnflags, SF_DOOR_ROTATE_BACKWARDS))
 		pev->movedir = pev->movedir * -1;
 
-	//m_flWait			= 2; who the hell did this? (sjb)
+	// m_flWait			= 2; who the hell did this? (sjb)
 	m_vecAngle1 = pev->angles;
 	m_vecAngle2 = pev->angles + pev->movedir * m_flMoveDistance;
 
@@ -881,7 +721,7 @@ void CRotDoor::Spawn()
 
 	pev->movetype = MOVETYPE_PUSH;
 	UTIL_SetOrigin(pev, pev->origin);
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	if (pev->speed == 0)
 		pev->speed = 100;
@@ -934,15 +774,18 @@ public:
 	static TYPEDESCRIPTION m_SaveData[];
 
 	void EXPORT DoorMoveDone();
+	void EXPORT StopMoveSound();
 
-	byte m_bMoveSnd; // sound a door makes while moving
+	string_t m_MoveSound; // sound a door makes while moving
+	string_t m_StopSound;
 };
 
 LINK_ENTITY_TO_CLASS(momentary_door, CMomentaryDoor);
 
 TYPEDESCRIPTION CMomentaryDoor::m_SaveData[] =
 	{
-		DEFINE_FIELD(CMomentaryDoor, m_bMoveSnd, FIELD_CHARACTER),
+		DEFINE_FIELD(CMomentaryDoor, m_MoveSound, FIELD_SOUNDNAME),
+		DEFINE_FIELD(CMomentaryDoor, m_StopSound, FIELD_SOUNDNAME),
 };
 
 IMPLEMENT_SAVERESTORE(CMomentaryDoor, CBaseToggle);
@@ -955,7 +798,7 @@ void CMomentaryDoor::Spawn()
 	pev->movetype = MOVETYPE_PUSH;
 
 	UTIL_SetOrigin(pev, pev->origin);
-	SET_MODEL(ENT(pev), STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	if (pev->speed == 0)
 		pev->speed = 100;
@@ -980,49 +823,17 @@ void CMomentaryDoor::Spawn()
 
 void CMomentaryDoor::Precache()
 {
-
 	// set the door's "in-motion" sound
-	switch (m_bMoveSnd)
+	if (FStringNull(m_MoveSound))
 	{
-	case 0:
-		pev->noiseMoving = ALLOC_STRING("common/null.wav");
-		break;
-	case 1:
-		PRECACHE_SOUND("doors/doormove1.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove1.wav");
-		break;
-	case 2:
-		PRECACHE_SOUND("doors/doormove2.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove2.wav");
-		break;
-	case 3:
-		PRECACHE_SOUND("doors/doormove3.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove3.wav");
-		break;
-	case 4:
-		PRECACHE_SOUND("doors/doormove4.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove4.wav");
-		break;
-	case 5:
-		PRECACHE_SOUND("doors/doormove5.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove5.wav");
-		break;
-	case 6:
-		PRECACHE_SOUND("doors/doormove6.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove6.wav");
-		break;
-	case 7:
-		PRECACHE_SOUND("doors/doormove7.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove7.wav");
-		break;
-	case 8:
-		PRECACHE_SOUND("doors/doormove8.wav");
-		pev->noiseMoving = ALLOC_STRING("doors/doormove8.wav");
-		break;
-	default:
-		pev->noiseMoving = ALLOC_STRING("common/null.wav");
-		break;
+		m_MoveSound = ALLOC_STRING("common/null.wav");
 	}
+
+	PrecacheSound(STRING(m_MoveSound));
+
+	m_StopSound = ALLOC_STRING("common/null.wav");
+
+	PrecacheSound(STRING(m_StopSound));
 }
 
 bool CMomentaryDoor::KeyValue(KeyValueData* pkvd)
@@ -1030,7 +841,7 @@ bool CMomentaryDoor::KeyValue(KeyValueData* pkvd)
 
 	if (FStrEq(pkvd->szKeyName, "movesnd"))
 	{
-		m_bMoveSnd = atof(pkvd->szValue);
+		m_MoveSound = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq(pkvd->szKeyName, "stopsnd"))
@@ -1060,7 +871,7 @@ void CMomentaryDoor::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE
 	Vector move = m_vecPosition1 + (value * (m_vecPosition2 - m_vecPosition1));
 
 	Vector delta = move - pev->origin;
-	//float speed = delta.Length() * 10;
+	// float speed = delta.Length() * 10;
 	float speed = delta.Length() / 0.1; // move there in 0.1 sec
 	if (speed == 0)
 		return;
@@ -1068,7 +879,7 @@ void CMomentaryDoor::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE
 	// This entity only thinks when it moves, so if it's thinking, it's in the process of moving
 	// play the sound when it starts moving (not yet thinking)
 	if (pev->nextthink < pev->ltime || pev->nextthink == 0)
-		EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(pev->noiseMoving), 1, ATTN_NORM);
+		EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound), 1, ATTN_NORM);
 	// If we already moving to designated point, return
 	else if (move == m_vecFinalDest)
 		return;
@@ -1082,6 +893,16 @@ void CMomentaryDoor::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE
 //
 void CMomentaryDoor::DoorMoveDone()
 {
-	STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(pev->noiseMoving));
-	EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(pev->noiseArrived), 1, ATTN_NORM);
+	// Stop sounds at the next think, rather than here as another
+	// Use call might immediately follow the end of this move
+	// This think function will be replaced by LinearMove if that happens.
+	SetThink(&CMomentaryDoor::StopMoveSound);
+	pev->nextthink = pev->ltime + 0.1f;
+}
+
+void CMomentaryDoor::StopMoveSound()
+{
+	STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound));
+	EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(m_StopSound), 1, ATTN_NORM);
+	SetThink(nullptr);
 }

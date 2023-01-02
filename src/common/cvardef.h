@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #pragma once
 
@@ -30,12 +30,12 @@
 #define FCVAR_ISEXECUTED (1 << 12)		// This cvar's string contains a value that will be executed as a cfg file; don't allow commands to be appended to it
 #define FCVAR_ISPATH (1 << 13)			// This cvar's string is a path or filename; don't allow absolute paths, escaping to another directory or backslashes
 
-typedef struct cvar_s
+struct cvar_t
 {
 	const char* name;
-	//Technically this should be non-const but that only matters to engine code
+	// Technically this should be non-const but that only matters to engine code
 	const char* string;
 	int flags;
 	float value;
-	struct cvar_s* next;
-} cvar_t;
+	cvar_t* next;
+};

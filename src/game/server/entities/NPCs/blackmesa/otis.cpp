@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // monster template
 //=========================================================
@@ -21,13 +21,59 @@
 #include "talkmonster.h"
 #include "barney.h"
 
-//TODO: work out a way to abstract sentences out so we don't need to override here to change just those
+namespace OtisBodyGroup
+{
+/**
+ *	@brief See GuardBodyGroup::GuardBodyGroup for the enum that this extends.
+ */
+enum OtisBodyGroup
+{
+	Weapons = GuardBodyGroup::Weapons,
+	Sleeves,
+	Items
+};
+}
+
+namespace OtisSleeves
+{
+enum OtisSleeves
+{
+	Random = -1,
+	Long = 0,
+	Short
+};
+}
+
+namespace OtisItem
+{
+enum OtisItem
+{
+	None = 0,
+	Clipboard,
+	Donut
+};
+}
+
+namespace OtisSkin
+{
+enum OtisSkin
+{
+	Random = -1,
+	HeadWithHair = 0,
+	Bald,
+	BlackHeadWithHair
+};
+}
+
+// TODO: work out a way to abstract sentences out so we don't need to override here to change just those
 
 class COtis : public CBarney
 {
 public:
-	void Spawn() override;
+	void OnCreate() override;
+	bool KeyValue(KeyValueData* pkvd) override;
 	void Precache() override;
+	void Spawn() override;
 	void GuardFirePistol() override;
 	void AlertSound() override;
 
@@ -40,9 +86,21 @@ public:
 protected:
 	void DropWeapon() override;
 	void SpeakKilledEnemy() override;
+
+private:
+	int m_Sleeves;
+	int m_Item;
 };
 
 LINK_ENTITY_TO_CLASS(monster_otis, COtis);
+
+void COtis::OnCreate()
+{
+	CBarney::OnCreate();
+
+	pev->health = GetSkillFloat("otis_health"sv);
+	pev->model = MAKE_STRING("models/otis.mdl");
+}
 
 //=========================================================
 // ALertSound - otis says "Freeze!"
@@ -91,12 +149,20 @@ void COtis::GuardFirePistol()
 	m_cAmmoLoaded--; // take away a bullet!
 }
 
-//=========================================================
-// Spawn
-//=========================================================
-void COtis::Spawn()
+bool COtis::KeyValue(KeyValueData* pkvd)
 {
-	SpawnCore("models/otis.mdl", gSkillData.otisHealth);
+	if (FStrEq("sleeves", pkvd->szKeyName))
+	{
+		m_Sleeves = atoi(pkvd->szValue);
+		return true;
+	}
+	else if (FStrEq("item", pkvd->szKeyName))
+	{
+		m_Item = atoi(pkvd->szValue);
+		return true;
+	}
+
+	return CBarney::KeyValue(pkvd);
 }
 
 //=========================================================
@@ -104,8 +170,26 @@ void COtis::Spawn()
 //=========================================================
 void COtis::Precache()
 {
-	PrecacheCore("models/otis.mdl");
-	PRECACHE_SOUND("weapons/de_shot1.wav");
+	CBarney::Precache();
+	PrecacheSound("weapons/de_shot1.wav");
+}
+
+void COtis::Spawn()
+{
+	CBarney::Spawn();
+
+	if (pev->skin == OtisSkin::Random)
+	{
+		pev->skin = RANDOM_LONG(OtisSkin::HeadWithHair, OtisSkin::BlackHeadWithHair);
+	}
+
+	if (m_Sleeves == OtisSleeves::Random)
+	{
+		m_Sleeves = RANDOM_LONG(OtisSleeves::Long, OtisSleeves::Short);
+	}
+
+	SetBodygroup(OtisBodyGroup::Sleeves, m_Sleeves);
+	SetBodygroup(OtisBodyGroup::Items, m_Item);
 }
 
 // Init talk data
@@ -130,8 +214,8 @@ void COtis::TalkInit()
 	m_szGrp[TLK_PLHURT2] = "!OT_CUREB";
 	m_szGrp[TLK_PLHURT3] = "!OT_CUREC";
 
-	m_szGrp[TLK_PHELLO] = nullptr;			  //"OT_PHELLO";		// UNDONE
-	m_szGrp[TLK_PIDLE] = nullptr;			  //"OT_PIDLE";			// UNDONE
+	m_szGrp[TLK_PHELLO] = nullptr;		  //"OT_PHELLO";		// UNDONE
+	m_szGrp[TLK_PIDLE] = nullptr;		  //"OT_PIDLE";			// UNDONE
 	m_szGrp[TLK_PQUESTION] = "OT_PQUEST"; // UNDONE
 
 	m_szGrp[TLK_SMELL] = "OT_SMELL";
@@ -211,6 +295,7 @@ void COtis::DeclineFollowing()
 class CDeadOtis : public CBaseMonster
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	int Classify() override { return CLASS_PLAYER_ALLY; }
 
@@ -221,6 +306,15 @@ public:
 };
 
 const char* CDeadOtis::m_szPoses[] = {"lying_on_back", "lying_on_side", "lying_on_stomach", "stuffed_in_vent", "dead_sitting"};
+
+void CDeadOtis::OnCreate()
+{
+	CBaseMonster::OnCreate();
+
+	// Corpses have less health
+	pev->health = 8; // GetSkillFloat("otis_health"sv);
+	pev->model = MAKE_STRING("models/otis.mdl");
+}
 
 bool CDeadOtis::KeyValue(KeyValueData* pkvd)
 {
@@ -240,8 +334,8 @@ LINK_ENTITY_TO_CLASS(monster_otis_dead, CDeadOtis);
 //=========================================================
 void CDeadOtis::Spawn()
 {
-	PRECACHE_MODEL("models/otis.mdl");
-	SET_MODEL(ENT(pev), "models/otis.mdl");
+	PrecacheModel(STRING(pev->model));
+	SetModel(STRING(pev->model));
 
 	pev->effects = 0;
 	pev->yaw_speed = 8;
@@ -251,10 +345,8 @@ void CDeadOtis::Spawn()
 	pev->sequence = LookupSequence(m_szPoses[m_iPose]);
 	if (pev->sequence == -1)
 	{
-		ALERT(at_console, "Dead otis with bad pose\n");
+		AILogger->debug("Dead otis with bad pose");
 	}
-	// Corpses have less health
-	pev->health = 8; //gSkillData.otisHealth;
 
 	MonsterInitDead();
 }

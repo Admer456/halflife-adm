@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 //	-------------------------------------------
 //
@@ -34,7 +34,7 @@ public:
 	bool Restore(CRestore& restore) override;
 	static TYPEDESCRIPTION m_SaveData[];
 
-	void SetMaster(int iszMaster) { m_iszMaster = iszMaster; }
+	void SetMaster(string_t iszMaster) { m_iszMaster = iszMaster; }
 
 protected:
 	bool CanFireForActivator(CBaseEntity* pActivator);
@@ -96,7 +96,7 @@ void CRulePointEntity::Spawn()
 {
 	CRuleEntity::Spawn();
 	pev->frame = 0;
-	pev->model = 0;
+	pev->model = string_t::Null;
 }
 
 //
@@ -113,7 +113,7 @@ private:
 
 void CRuleBrushEntity::Spawn()
 {
-	SET_MODEL(edict(), STRING(pev->model));
+	SetModel(STRING(pev->model));
 	CRuleEntity::Spawn();
 }
 
@@ -172,13 +172,15 @@ void CGameScore::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE use
 	// Only players can use this
 	if (pActivator->IsPlayer())
 	{
+		auto player = static_cast<CBasePlayer*>(pActivator);
+
 		if (AwardToTeam())
 		{
-			pActivator->AddPointsToTeam(Points(), AllowNegativeScore());
+			player->AddPointsToTeam(Points(), AllowNegativeScore());
 		}
 		else
 		{
-			pActivator->AddPoints(Points(), AllowNegativeScore());
+			player->AddPoints(Points(), AllowNegativeScore());
 		}
 	}
 }
@@ -251,7 +253,7 @@ void CGameText::Precache()
 {
 	CRulePointEntity::Precache();
 
-	//Re-allocate the message to handle escape characters
+	// Re-allocate the message to handle escape characters
 	if (!FStringNull(pev->message))
 	{
 		pev->message = ALLOC_ESCAPED_STRING(STRING(pev->message));
@@ -612,12 +614,12 @@ void CGamePlayerZone::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYP
 		}
 	}
 
-	if (0 != m_iszInCount)
+	if (!FStringNull(m_iszInCount))
 	{
 		FireTargets(STRING(m_iszInCount), pActivator, this, USE_SET, playersInCount);
 	}
 
-	if (0 != m_iszOutCount)
+	if (!FStringNull(m_iszOutCount))
 	{
 		FireTargets(STRING(m_iszOutCount), pActivator, this, USE_SET, playersOutCount);
 	}

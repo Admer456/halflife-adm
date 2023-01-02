@@ -1,13 +1,10 @@
-# Server library
 include(../shared/game_shared.cmake)
 
-# Add the def file as well
-add_library(hl SHARED $<$<PLATFORM_ID:Windows>:hl.def>)
+add_library(server SHARED $<$<PLATFORM_ID:Windows>:server.def>)
 
-set_common_properties(hl)
-add_json_dependencies(hl)
+set_common_properties(server)
 
-target_include_directories(hl PRIVATE
+target_include_directories(server PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}
 	entities
 	entities/items
@@ -22,30 +19,31 @@ target_include_directories(hl PRIVATE
 	../shared/utils
 	../../public)
 	
-target_compile_definitions(hl PRIVATE
+target_compile_definitions(server PRIVATE
 	VALVE_DLL)
 
-target_sources(hl PRIVATE
+target_sources(server PRIVATE
 	activity.h
 	activitymap.h
 	cdll_dll.h
 	client.cpp
 	client.h
-	CMapState.cpp
-	CMapState.h
-	CServerLibrary.cpp
-	CServerLibrary.h
+	ClientCommandRegistry.cpp
+	ClientCommandRegistry.h
 	decals.h
 	enginecallback.h
 	extdll.h
 	game.cpp
 	game.h
 	h_export.cpp
+	MapState.h
 	nodes.cpp
 	nodes.h
 	plane.cpp
 	plane.h
 	saverestore.h
+	ServerLibrary.cpp
+	ServerLibrary.h
 	skill.cpp
 	skill.h
 	UserMessages.cpp
@@ -64,6 +62,13 @@ target_sources(hl PRIVATE
 	entities/buttons.cpp
 	entities/cbase.cpp
 	entities/cbase.h
+	entities/CBaseAnimating.h
+	entities/CBaseButton.h
+	entities/CBaseDelay.h
+	entities/CBaseEntity.h
+	entities/CBaseToggle.h
+	entities/CMultiSource.h
+	entities/CPointEntity.h
 	entities/doors.cpp
 	entities/doors.h
 	entities/effects.cpp
@@ -79,7 +84,6 @@ target_sources(hl PRIVATE
 	entities/func_break.cpp
 	entities/func_break.h
 	entities/func_tank.cpp
-	entities/func_tank_of.cpp
 	entities/h_cycler.cpp
 	entities/lights.cpp
 	entities/maprules.cpp
@@ -274,25 +278,50 @@ target_sources(hl PRIVATE
 	gamerules/teamplay_gamerules.cpp
 	gamerules/teamplay_gamerules.h
 	
+	sound/SentencesSystem.cpp
+	sound/SentencesSystem.h
+	sound/ServerSoundSystem.cpp
+	sound/ServerSoundSystem.h
+	
+	../../common/com_model.h
+	../../common/common_types.h
+	../../common/const.h
+	../../common/cvardef.h
+	../../common/director_cmds.h
+	../../common/entity_state.h
+	../../common/entity_types.h
+	../../common/event_flags.h
+	../../common/hltv.h
+	../../common/in_buttons.h
 	../../common/mathlib.cpp
+	../../common/mathlib.h
 	../../common/Platform.h
 	../../common/PlatformHeaders.h
+	../../common/pmtrace.h
+	../../common/r_studioint.h
+	../../common/screenfade.h
 	../../common/Sequence.h
+	../../common/usercmd.h
+	../../common/weaponinfo.h
+	../../common/winsani_in.h
+	../../common/winsani_out.h
 
+	../../engine/custom.h
+	../../engine/customentity.h
 	../../engine/edict.h
 	../../engine/eiface.h
 	../../engine/progdefs.h
+	../../engine/progs.h
+	../../engine/shake.h
+	../../engine/studio.h
 	
 	../../public/interface.cpp
 	../../public/interface.h
 	../../public/steam/steamtypes.h)
 
-add_game_shared_sources(hl)
+add_game_shared_sources(server)
 
-target_precompile_headers(hl
-	PRIVATE
-		entities/cbase.h)
+target_precompile_headers(server PRIVATE entities/cbase.h)
 
-# Create filters
-get_target_property(SERVER_SOURCES hl SOURCES)
+get_target_property(SERVER_SOURCES server SOURCES)
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/../../.. FILES ${SERVER_SOURCES})

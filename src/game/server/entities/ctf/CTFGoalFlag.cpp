@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "basemonster.h"
@@ -39,13 +39,13 @@ void CTFGoalFlag::Precache()
 {
 	if (!FStringNull(pev->model))
 	{
-		PRECACHE_MODEL(STRING(pev->model));
+		PrecacheModel(STRING(pev->model));
 	}
 
-	g_engfuncs.pfnPrecacheSound("ctf/bm_flagtaken.wav");
-	g_engfuncs.pfnPrecacheSound("ctf/soldier_flagtaken.wav");
-	g_engfuncs.pfnPrecacheSound("ctf/marine_flag_capture.wav");
-	g_engfuncs.pfnPrecacheSound("ctf/civ_flag_capture.wav");
+	PrecacheSound("ctf/bm_flagtaken.wav");
+	PrecacheSound("ctf/soldier_flagtaken.wav");
+	PrecacheSound("ctf/marine_flag_capture.wav");
+	PrecacheSound("ctf/civ_flag_capture.wav");
 }
 
 void CTFGoalFlag::PlaceItem()
@@ -219,21 +219,14 @@ void CTFGoalFlag::Spawn()
 
 		if (0 == g_engfuncs.pfnDropToFloor(edict()))
 		{
-			ALERT(
-				at_error,
-				"Item %s fell out of level at %f,%f,%f",
-				STRING(pev->classname),
-				pev->origin.x,
-				pev->origin.y,
-				pev->origin.z);
-
+			CBaseEntity::Logger->error("Item {} fell out of level at {}", STRING(pev->classname), pev->origin);
 			UTIL_Remove(this);
 		}
 		else
 		{
 			if (!FStringNull(pev->model))
 			{
-				g_engfuncs.pfnSetModel(edict(), STRING(pev->model));
+				SetModel(STRING(pev->model));
 
 				pev->sequence = LookupSequence("flag_positioned");
 
@@ -264,7 +257,7 @@ void CTFGoalFlag::Spawn()
 	}
 	else
 	{
-		ALERT(at_error, "Invalid goal_no set for CTF flag\n");
+		CBaseEntity::Logger->error("Invalid goal_no set for CTF flag");
 	}
 }
 
@@ -285,7 +278,7 @@ void CTFGoalFlag::ReturnFlagThink()
 		name = "ReturnedOpposingForceFlag";
 	}
 
-	UTIL_LogPrintf("World triggered \"%s\"\n", name);
+	CGameRules::Logger->trace("World triggered \"{}\"", name);
 	DisplayTeamFlags(nullptr);
 }
 
@@ -367,11 +360,7 @@ void CTFGoalFlag::ScoreFlagTouch(CBasePlayer* pPlayer)
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "#CTFFlagScorerOF");
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "\n");
 
-				UTIL_LogPrintf("\"%s<%i><%u><%s>\" triggered \"CapturedFlag\"\n",
-					STRING(pPlayer->pev->netname),
-					g_engfuncs.pfnGetPlayerUserId(pPlayer->edict()),
-					g_engfuncs.pfnGetPlayerWONId(pPlayer->edict()),
-					GetTeamName(pPlayer->edict()));
+				CGameRules::Logger->trace("{} triggered \"CapturedFlag\"", PlayerLogInfo{*pPlayer});
 
 				++teamscores[static_cast<int>(pPlayer->m_iTeamNum) - 1];
 
@@ -385,11 +374,7 @@ void CTFGoalFlag::ScoreFlagTouch(CBasePlayer* pPlayer)
 				g_engfuncs.pfnMessageEnd();
 
 				ClientPrint(pPlayer->pev, HUD_PRINTTALK, "#CTFScorePoints");
-				g_engfuncs.pfnMessageBegin(MSG_ALL, gmsgScoreInfo, nullptr, nullptr);
-				g_engfuncs.pfnWriteByte(pPlayer->entindex());
-				g_engfuncs.pfnWriteShort(pPlayer->pev->frags);
-				g_engfuncs.pfnWriteShort(pPlayer->m_iDeaths);
-				g_engfuncs.pfnMessageEnd();
+				pPlayer->SendScoreInfoAll();
 
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "#CTFTeamBM");
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, UTIL_VarArgs(": %d\n", teamscores[0]));
@@ -417,11 +402,7 @@ void CTFGoalFlag::ScoreFlagTouch(CBasePlayer* pPlayer)
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "#CTFFlagGetBM");
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "\n");
 
-				UTIL_LogPrintf("\"%s<%i><%u><%s>\" triggered \"TookFlag\"\n",
-					STRING(pPlayer->pev->netname),
-					g_engfuncs.pfnGetPlayerUserId(pPlayer->edict()),
-					g_engfuncs.pfnGetPlayerWONId(pPlayer->edict()),
-					GetTeamName(pPlayer->edict()));
+				CGameRules::Logger->trace("{} triggered \"TookFlag\"", PlayerLogInfo{*pPlayer});
 			}
 		}
 		else
@@ -432,11 +413,7 @@ void CTFGoalFlag::ScoreFlagTouch(CBasePlayer* pPlayer)
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "#CTFFlagScorerBM");
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "\n");
 
-				UTIL_LogPrintf("\"%s<%i><%u><%s>\" triggered \"CapturedFlag\"\n",
-					STRING(pPlayer->pev->netname),
-					g_engfuncs.pfnGetPlayerUserId(pPlayer->edict()),
-					g_engfuncs.pfnGetPlayerWONId(pPlayer->edict()),
-					GetTeamName(pPlayer->edict()));
+				CGameRules::Logger->trace("{} triggered \"CapturedFlag\"", PlayerLogInfo{*pPlayer});
 
 				++teamscores[static_cast<int>(pPlayer->m_iTeamNum) - 1];
 
@@ -444,18 +421,14 @@ void CTFGoalFlag::ScoreFlagTouch(CBasePlayer* pPlayer)
 				pPlayer->m_iCTFScore += 10;
 				pPlayer->m_iOffense += 10;
 
-			g_engfuncs.pfnMessageBegin(MSG_ALL, gmsgCTFScore, nullptr, nullptr);
+				g_engfuncs.pfnMessageBegin(MSG_ALL, gmsgCTFScore, nullptr, nullptr);
 				g_engfuncs.pfnWriteByte(pPlayer->entindex());
 				g_engfuncs.pfnWriteByte(pPlayer->m_iCTFScore);
 				g_engfuncs.pfnMessageEnd();
 
 				ClientPrint(pPlayer->pev, HUD_PRINTTALK, "#CTFScorePoints");
 
-			g_engfuncs.pfnMessageBegin(MSG_ALL, gmsgScoreInfo, nullptr, nullptr);
-				g_engfuncs.pfnWriteByte(pPlayer->entindex());
-				g_engfuncs.pfnWriteShort(pPlayer->pev->frags);
-				g_engfuncs.pfnWriteShort(pPlayer->m_iDeaths);
-				g_engfuncs.pfnMessageEnd();
+				pPlayer->SendScoreInfoAll();
 
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "#CTFTeamBM");
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, UTIL_VarArgs(": %d\n", teamscores[0]));
@@ -469,7 +442,7 @@ void CTFGoalFlag::ScoreFlagTouch(CBasePlayer* pPlayer)
 					++pPlayer->m_iCTFScore;
 					++pPlayer->m_iOffense;
 
-				g_engfuncs.pfnMessageBegin(MSG_ALL, gmsgCTFScore, nullptr, nullptr);
+					g_engfuncs.pfnMessageBegin(MSG_ALL, gmsgCTFScore, nullptr, nullptr);
 					g_engfuncs.pfnWriteByte(pPlayer->entindex());
 					g_engfuncs.pfnWriteByte(pPlayer->m_iCTFScore);
 					g_engfuncs.pfnMessageEnd();
@@ -485,11 +458,7 @@ void CTFGoalFlag::ScoreFlagTouch(CBasePlayer* pPlayer)
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "#CTFFlagGetOF");
 				UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "\n");
 
-				UTIL_LogPrintf("\"%s<%i><%u><%s>\" triggered \"TookFlag\"\n",
-					STRING(pPlayer->pev->netname),
-					g_engfuncs.pfnGetPlayerUserId(pPlayer->edict()),
-					g_engfuncs.pfnGetPlayerWONId(pPlayer->edict()),
-					GetTeamName(pPlayer->edict()));
+				CGameRules::Logger->trace("{} triggered \"TookFlag\"", PlayerLogInfo{*pPlayer});
 			}
 		}
 	}
@@ -589,11 +558,7 @@ void CTFGoalFlag::GiveFlagToPlayer(CBasePlayer* pPlayer)
 
 	ClientPrint(pPlayer->pev, HUD_PRINTTALK, "#CTFScorePoint");
 
-	g_engfuncs.pfnMessageBegin(MSG_ALL, gmsgScoreInfo, nullptr, nullptr);
-	g_engfuncs.pfnWriteByte(pPlayer->entindex());
-	g_engfuncs.pfnWriteShort(pPlayer->pev->frags);
-	g_engfuncs.pfnWriteShort(pPlayer->m_iDeaths);
-	g_engfuncs.pfnMessageEnd();
+	pPlayer->SendScoreInfoAll();
 
 	DisplayTeamFlags(nullptr);
 
@@ -609,7 +574,7 @@ void CTFGoalFlag::GiveFlagToPlayer(CBasePlayer* pPlayer)
 
 void CTFGoalFlag::goal_item_touch(CBaseEntity* pOther)
 {
-	if (pOther->Classify() != CLASS_PLAYER)
+	if (!pOther->IsPlayer())
 		return;
 
 	if (pOther->pev->health <= 0)
@@ -651,24 +616,14 @@ void CTFGoalFlag::goal_item_touch(CBaseEntity* pOther)
 		UTIL_ClientPrintAll(HUD_PRINTNOTIFY, STRING(pPlayer->pev->netname));
 		UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "#CTFFlagReturnBM");
 
-		UTIL_LogPrintf(
-			"\"%s<%i><%u><%s>\" triggered \"ReturnedFlag\"\n",
-			STRING(pPlayer->pev->netname),
-			g_engfuncs.pfnGetPlayerUserId(pPlayer->edict()),
-			g_engfuncs.pfnGetPlayerWONId(pPlayer->edict()),
-			GetTeamName(pPlayer->edict()));
+		CGameRules::Logger->trace("{} triggered \"ReturnedFlag\"", PlayerLogInfo{*pPlayer});
 	}
 	else if (pPlayer->m_iTeamNum == CTFTeam::OpposingForce)
 	{
 		UTIL_ClientPrintAll(HUD_PRINTNOTIFY, STRING(pPlayer->pev->netname));
 		UTIL_ClientPrintAll(HUD_PRINTNOTIFY, "#CTFFlagReturnOF");
 
-		UTIL_LogPrintf(
-			"\"%s<%i><%u><%s>\" triggered \"ReturnedFlag\"\n",
-			STRING(pPlayer->pev->netname),
-			g_engfuncs.pfnGetPlayerUserId(pPlayer->edict()),
-			g_engfuncs.pfnGetPlayerWONId(pPlayer->edict()),
-			GetTeamName(pPlayer->edict()));
+		CGameRules::Logger->trace("{} triggered \"ReturnedFlag\"", PlayerLogInfo{*pPlayer});
 	}
 
 	for (int i = 1; i <= gpGlobals->maxClients; ++i)
@@ -700,11 +655,7 @@ void CTFGoalFlag::goal_item_touch(CBaseEntity* pOther)
 
 	ClientPrint(pPlayer->pev, HUD_PRINTTALK, "#CTFScorePoint");
 
-	g_engfuncs.pfnMessageBegin(MSG_ALL, gmsgScoreInfo, nullptr, nullptr);
-	g_engfuncs.pfnWriteByte(pPlayer->entindex());
-	g_engfuncs.pfnWriteShort(pPlayer->pev->frags);
-	g_engfuncs.pfnWriteShort(pPlayer->m_iDeaths);
-	g_engfuncs.pfnMessageEnd();
+	pPlayer->SendScoreInfoAll();
 
 	ReturnFlag();
 

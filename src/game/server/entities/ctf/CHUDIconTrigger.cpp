@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 
 #include "cbase.h"
 #include "UserMessages.h"
@@ -22,7 +22,7 @@ LINK_ENTITY_TO_CLASS(ctf_hudicon, CHUDIconTrigger);
 void CHUDIconTrigger::Spawn()
 {
 	pev->solid = SOLID_TRIGGER;
-	g_engfuncs.pfnSetModel(edict(), STRING(pev->model));
+	SetModel(STRING(pev->model));
 	pev->movetype = MOVETYPE_NONE;
 	m_fIsActive = false;
 }
@@ -92,7 +92,7 @@ bool CHUDIconTrigger::KeyValue(KeyValueData* pkvd)
 {
 	if (FStrEq("icon_name", pkvd->szKeyName))
 	{
-		m_iszCustomName = g_engfuncs.pfnAllocString(pkvd->szValue);
+		m_iszCustomName = ALLOC_STRING(pkvd->szValue);
 		return true;
 	}
 	else if (FStrEq("icon_index", pkvd->szKeyName))
@@ -147,7 +147,7 @@ void CHUDIconTrigger::UpdateUser(CBaseEntity* pPlayer)
 
 void RefreshCustomHUD(CBasePlayer* pPlayer)
 {
-	//TODO: this will break when an index is larger than 31 or a negative value
+	// TODO: this will break when an index is larger than 31 or a negative value
 	int activeIcons = 0;
 
 	for (auto entity : UTIL_FindEntitiesByClassname<CHUDIconTrigger>("ctf_hudicon"))

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   Use, distribution, and modification of this source code and/or resulting
-*   object code is restricted to non-commercial enhancements to products from
-*   Valve LLC.  All other use, distribution, or modification is prohibited
-*   without written permission from Valve LLC.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   Use, distribution, and modification of this source code and/or resulting
+ *   object code is restricted to non-commercial enhancements to products from
+ *   Valve LLC.  All other use, distribution, or modification is prohibited
+ *   without written permission from Valve LLC.
+ *
+ ****/
 /*
 
 ===== mortar.cpp ========================================================
@@ -39,8 +39,8 @@ public:
 
 	void EXPORT FieldUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 
-	int m_iszXController;
-	int m_iszYController;
+	string_t m_iszXController;
+	string_t m_iszYController;
 	float m_flSpread;
 	float m_flDelay;
 	int m_iCount;
@@ -98,7 +98,7 @@ bool CFuncMortarField::KeyValue(KeyValueData* pkvd)
 void CFuncMortarField::Spawn()
 {
 	pev->solid = SOLID_NOT;
-	SET_MODEL(ENT(pev), STRING(pev->model)); // set size and link into world
+	SetModel(STRING(pev->model)); // set size and link into world
 	pev->movetype = MOVETYPE_NONE;
 	SetBits(pev->effects, EF_NODRAW);
 	SetUse(&CFuncMortarField::FieldUse);
@@ -108,9 +108,9 @@ void CFuncMortarField::Spawn()
 
 void CFuncMortarField::Precache()
 {
-	PRECACHE_SOUND("weapons/mortar.wav");
-	PRECACHE_SOUND("weapons/mortarhit.wav");
-	PRECACHE_MODEL("sprites/lgtning.spr");
+	PrecacheSound("weapons/mortar.wav");
+	PrecacheSound("weapons/mortarhit.wav");
+	PrecacheModel("sprites/lgtning.spr");
 }
 
 
@@ -215,7 +215,7 @@ void CMortar::Spawn()
 
 void CMortar::Precache()
 {
-	m_spriteTexture = PRECACHE_MODEL("sprites/lgtning.spr");
+	m_spriteTexture = PrecacheModel("sprites/lgtning.spr");
 }
 
 void CMortar::MortarExplode()
@@ -304,7 +304,7 @@ void CMortar::MortarExplode()
 #if 0
 void CMortar::ShootTimed(EVARS* pevOwner, Vector vecStart, float time)
 {
-	CMortar* pMortar = GetClassPtr((CMortar*)nullptr);
+	CMortar* pMortar = g_EntityDictionary->Create<CMortar>("monster_mortar");
 	pMortar->Spawn();
 
 	TraceResult tr;

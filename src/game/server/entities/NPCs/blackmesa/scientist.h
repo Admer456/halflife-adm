@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 
 #pragma once
 
@@ -31,8 +31,25 @@ enum ScientistBodygroup
 	Body = 0,
 	Head = 1,
 	Needle = 2,
+	Item = 3,
 };
 }
+
+namespace ScientistNeedle
+{
+enum ScientistNeedle
+{
+	Blank = 0,
+	Drawn
+};
+}
+
+enum class ScientistItem
+{
+	None = 0,
+	Clipboard,
+	Stick
+};
 
 enum
 {
@@ -55,8 +72,6 @@ enum
 	TASK_MOVE_TO_TARGET_RANGE_SCARED,
 };
 
-const int SF_SCIENTIST_NO_USE = 1 << 8;
-
 //=========================================================
 // Monster's Anim Events Go Here
 //=========================================================
@@ -71,6 +86,8 @@ const int SF_SCIENTIST_NO_USE = 1 << 8;
 class CScientist : public CTalkMonster
 {
 public:
+	void OnCreate() override;
+	bool KeyValue(KeyValueData* pkvd) override;
 	void Spawn() override;
 	void Precache() override;
 
@@ -117,26 +134,18 @@ protected:
 	float m_healTime;
 	float m_fearTime;
 
-protected:
-	/**
-	*	@brief Spawns the Scientist
-	*	@param model Must be a string literal
-	*/
-	void SpawnCore(const char* model, float health);
-
-	/**
-	*	@brief Precaches all of the Scientist's assets
-	*	@param model Must be a string literal
-	*/
-	void PrecacheCore(const char* model);
+	// Don't save, only used during spawn.
+	ScientistItem m_Item = ScientistItem::None;
+	bool m_AllowFollow = true;
 };
 
 /**
-*	@brief Sitting Scientist PROP
-*/
+ *	@brief Sitting Scientist PROP
+ */
 class CSittingScientist : public CScientist // kdb: changed from public CBaseMonster so he can speak
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 
@@ -153,11 +162,4 @@ public:
 	int m_baseSequence;
 	int m_headTurn;
 	float m_flResponseDelay;
-
-protected:
-	/**
-	*	@brief Spawns the Scientist
-	*	@param model Must be a string literal
-	*/
-	void SpawnCore(const char* model);
 };

@@ -1,17 +1,17 @@
 /***
-*
-*	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
-*
-*	This product contains software technology licensed from Id
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
-*	All Rights Reserved.
-*
-*   This source code contains proprietary and confidential information of
-*   Valve LLC and its suppliers.  Access to this code is restricted to
-*   persons who have executed a written SDK license with Valve.  Any access,
-*   use or distribution of this code by or to any unlicensed person is illegal.
-*
-****/
+ *
+ *	Copyright (c) 1996-2001, Valve LLC. All rights reserved.
+ *
+ *	This product contains software technology licensed from Id
+ *	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
+ *	All Rights Reserved.
+ *
+ *   This source code contains proprietary and confidential information of
+ *   Valve LLC and its suppliers.  Access to this code is restricted to
+ *   persons who have executed a written SDK license with Valve.  Any access,
+ *   use or distribution of this code by or to any unlicensed person is illegal.
+ *
+ ****/
 //=========================================================
 // male assassin
 //=========================================================
@@ -58,9 +58,9 @@ namespace MAssassinWeapon
 {
 enum MAssassinWeapon
 {
-	MP5 = 0,
+	Blank = 0,
+	MP5,
 	SniperRifle,
-	None
 };
 }
 
@@ -75,8 +75,8 @@ enum MAssassinWeaponFlag
 class CMOFAssassin : public CHGrunt
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
-	void Precache() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	bool CheckRangeAttack1(float flDot, float flDist) override;
 	bool CheckRangeAttack2(float flDot, float flDist) override;
@@ -120,6 +120,14 @@ TYPEDESCRIPTION CMOFAssassin::m_SaveData[] =
 
 IMPLEMENT_SAVERESTORE(CMOFAssassin, CHGrunt);
 
+void CMOFAssassin::OnCreate()
+{
+	CHGrunt::OnCreate();
+
+	pev->health = GetSkillFloat("massassin_health"sv);
+	pev->model = MAKE_STRING("models/massn.mdl");
+}
+
 //=========================================================
 // GibMonster - make gun fly through the air.
 //=========================================================
@@ -128,7 +136,7 @@ void CMOFAssassin::GibMonster()
 	Vector vecGunPos;
 	Vector vecGunAngles;
 
-	if (GetBodygroup(2) != 2)
+	if (GetBodygroup(MAssassinBodygroup::Weapons) != MAssassinWeapon::Blank)
 	{ // throw a gun if the grunt has one
 		GetAttachment(0, vecGunPos, vecGunAngles);
 
@@ -190,7 +198,7 @@ bool CMOFAssassin::CheckRangeAttack1(float flDot, float flDist)
 //=========================================================
 bool CMOFAssassin::CheckRangeAttack2(float flDot, float flDist)
 {
-	return CheckRangeAttack2Core(flDot, flDist, gSkillData.massassinGrenadeSpeed);
+	return CheckRangeAttack2Core(flDot, flDist, GetSkillFloat("massassin_gspeed"sv));
 }
 
 //=========================================================
@@ -210,7 +218,7 @@ void CMOFAssassin::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector ve
 
 void CMOFAssassin::IdleSound()
 {
-	//Male Assassin doesn't make idle chat
+	// Male Assassin doesn't make idle chat
 }
 
 //=========================================================
@@ -266,7 +274,7 @@ void CMOFAssassin::Shoot(bool firstShotInBurst)
 	}
 	else
 	{
-		//TODO: why is this 556? is 762 too damaging?
+		// TODO: why is this 556? is 762 too damaging?
 		FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_1DEGREES, 2048, BULLET_PLAYER_556);
 
 		if (firstShotInBurst)
@@ -294,7 +302,7 @@ void CMOFAssassin::Shoot(bool firstShotInBurst)
 //=========================================================
 void CMOFAssassin::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
-	//Override grunt events that require assassin-specific behavior
+	// Override grunt events that require assassin-specific behavior
 	switch (pEvent->event)
 	{
 	case HGRUNT_AE_DROP_GUN:
@@ -305,7 +313,7 @@ void CMOFAssassin::HandleAnimEvent(MonsterEvent_t* pEvent)
 		GetAttachment(0, vecGunPos, vecGunAngles);
 
 		// switch to body group with no gun.
-		SetBodygroup(MAssassinBodygroup::Weapons, MAssassinWeapon::None);
+		SetBodygroup(MAssassinBodygroup::Weapons, MAssassinWeapon::Blank);
 
 		// now spawn a gun.
 		if (FBitSet(pev->weapons, HGRUNT_9MMAR))
@@ -333,7 +341,7 @@ void CMOFAssassin::HandleAnimEvent(MonsterEvent_t* pEvent)
 			UTIL_MakeVectors(pev->angles);
 			pHurt->pev->punchangle.x = 15;
 			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 100 + gpGlobals->v_up * 50;
-			pHurt->TakeDamage(pev, pev, gSkillData.massassinDmgKick, DMG_CLUB);
+			pHurt->TakeDamage(pev, pev, GetSkillFloat("massassin_kick"sv), DMG_CLUB);
 		}
 	}
 	break;
@@ -351,14 +359,13 @@ void CMOFAssassin::Spawn()
 {
 	Precache();
 
-	SET_MODEL(ENT(pev), "models/massn.mdl");
+	SetModel(STRING(pev->model));
 	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
 	m_bloodColor = BLOOD_COLOR_RED;
 	pev->effects = 0;
-	pev->health = gSkillData.massassinHealth;
 	m_flFieldOfView = 0.2; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 	m_flNextGrenadeCheck = gpGlobals->time + 1;
@@ -385,7 +392,7 @@ void CMOFAssassin::Spawn()
 		m_iAssassinHead = RANDOM_LONG(MAssassinHead::White, MAssassinHead::ThermalVision);
 	}
 
-	auto weaponModel = MAssassinWeapon::None;
+	auto weaponModel = MAssassinWeapon::Blank;
 
 	if (FBitSet(pev->weapons, HGRUNT_9MMAR))
 	{
@@ -399,7 +406,7 @@ void CMOFAssassin::Spawn()
 	}
 	else
 	{
-		weaponModel = MAssassinWeapon::None;
+		weaponModel = MAssassinWeapon::Blank;
 		m_cClipSize = 0;
 	}
 
@@ -410,8 +417,6 @@ void CMOFAssassin::Spawn()
 
 	m_flLastShot = gpGlobals->time;
 
-	pev->skin = 0;
-
 	m_fStandingGround = m_flStandGroundRange != 0;
 
 	CTalkMonster::g_talkWaitTime = 0;
@@ -420,19 +425,11 @@ void CMOFAssassin::Spawn()
 }
 
 //=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
-void CMOFAssassin::Precache()
-{
-	PrecacheCore("models/massn.mdl");
-}
-
-//=========================================================
 // PainSound
 //=========================================================
 void CMOFAssassin::PainSound()
 {
-	//Male Assassin doesn't make pain sounds
+	// Male Assassin doesn't make pain sounds
 }
 
 std::tuple<int, Activity> CMOFAssassin::GetSequenceForActivity(Activity NewActivity)
@@ -444,7 +441,7 @@ std::tuple<int, Activity> CMOFAssassin::GetSequenceForActivity(Activity NewActiv
 	{
 	case ACT_RANGE_ATTACK1:
 		// grunt is either shooting standing or shooting crouched
-		//Sniper uses the same set
+		// Sniper uses the same set
 		if (m_fStanding)
 		{
 			// get aimable sequence
@@ -483,6 +480,7 @@ class CMOFAssassinRepel : public CHGruntRepel
 {
 public:
 	void Precache() override;
+	void Spawn() override;
 	void EXPORT RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 };
 
@@ -490,6 +488,12 @@ LINK_ENTITY_TO_CLASS(monster_assassin_repel, CMOFAssassinRepel);
 void CMOFAssassinRepel::Precache()
 {
 	PrecacheCore("monster_male_assassin");
+}
+
+void CMOFAssassinRepel::Spawn()
+{
+	CHGruntRepel::Spawn();
+	SetUse(&CMOFAssassinRepel::RepelUse);
 }
 
 void CMOFAssassinRepel::RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
@@ -500,14 +504,22 @@ void CMOFAssassinRepel::RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, 
 class CDeadMOFAssassin : public CDeadHGrunt
 {
 public:
+	void OnCreate() override;
 	void Spawn() override;
 };
 
 LINK_ENTITY_TO_CLASS(monster_massassin_dead, CDeadMOFAssassin);
 
+void CDeadMOFAssassin::OnCreate()
+{
+	CDeadHGrunt::OnCreate();
+
+	pev->model = MAKE_STRING("models/massn.mdl");
+}
+
 void CDeadMOFAssassin::Spawn()
 {
-	SpawnCore("models/massn.mdl");
+	SpawnCore();
 
 	// map old bodies onto new bodies
 	switch (pev->body)
@@ -528,13 +540,13 @@ void CDeadMOFAssassin::Spawn()
 		pev->body = 0;
 		pev->skin = 0;
 		SetBodygroup(MAssassinBodygroup::Heads, MAssassinHead::Black);
-		SetBodygroup(MAssassinBodygroup::Weapons, MAssassinWeapon::None);
+		SetBodygroup(MAssassinBodygroup::Weapons, MAssassinWeapon::Blank);
 		break;
 	case 3: // Commander no Gun
 		pev->body = 0;
 		pev->skin = 0;
 		SetBodygroup(MAssassinBodygroup::Heads, MAssassinHead::ThermalVision);
-		SetBodygroup(MAssassinBodygroup::Weapons, MAssassinWeapon::None);
+		SetBodygroup(MAssassinBodygroup::Weapons, MAssassinWeapon::Blank);
 		break;
 	}
 }
