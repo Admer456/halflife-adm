@@ -30,8 +30,8 @@ private:
 	bool Validate() const;
 
 private:
-	string_t m_ParentTarget{iStringNull};
-	string_t m_ChildTarget{iStringNull};
+	string_t m_ParentTarget{};
+	string_t m_ChildTarget{};
 
 	CBaseEntity* m_ParentEntity{nullptr};
 	CBaseEntity* m_ChildEntity{nullptr};

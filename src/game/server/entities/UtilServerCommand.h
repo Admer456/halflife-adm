@@ -19,5 +19,5 @@ public:
 	static	TYPEDESCRIPTION m_SaveData[];
 
 protected:
-	string_t m_Command{iStringNull};
+	string_t m_Command{};
 };

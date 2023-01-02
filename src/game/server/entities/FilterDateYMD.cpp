@@ -25,19 +25,17 @@ void FilterDateYMD::Spawn()
 {
 	CPointEntity::Spawn();
 
-	if (!pev->targetname)
+	if (pev->targetname == string_t::Null)
 	{
-		ALERT(at_warning, "filter_date_ymd at ( %4.2f %4.2f ) does not have a targetname! Removing...\n",
-			pev->origin.x, pev->origin.y, pev->origin.z);
+		Logger->warn("filter_date_ymd at ({}) does not have a targetname! Removing...", pev->origin);
 
 		UTIL_Remove(this);
 		return;
 	}
 
-	if (!pev->target)
+	if (pev->target == string_t::Null)
 	{
-		ALERT(at_warning, "filter_date_ymd '%s' does not have a target! Removing...\n",
-			STRING(pev->target));
+		Logger->warn("filter_date_ymd '{}' does not have a target! Removing...", STRING(pev->target));
 
 		UTIL_Remove(this);
 		return;
@@ -45,8 +43,8 @@ void FilterDateYMD::Spawn()
 
 	if (m_Year == -1 && m_Month == -1 && m_Day == -1)
 	{
-		ALERT(at_warning, "filter_date_ymd '%s' has -1 for all parameters!\n"
-			"It will not filter anything, so consider removing this entity to use fewer edicts.\n",
+		Logger->warn("filter_date_ymd '%s' has -1 for all parameters!\n"
+					 "It will not filter anything, so consider removing this entity to use fewer edicts.\n",
 			STRING(pev->targetname));
 	}
 }

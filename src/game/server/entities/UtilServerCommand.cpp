@@ -20,10 +20,9 @@ IMPLEMENT_SAVERESTORE( UtilServerCommand, CBaseEntity );
 void UtilServerCommand::Spawn()
 {
 	// Todo: flexible validation methods for less code duplication
-	if (!m_Command)
+	if (m_Command == string_t::Null)
 	{
-		ALERT(at_console, "util_servercommand at (%4.2f %4.2f %4.2f) does not have a command! Deleting...\n",
-			pev->origin.x, pev->origin.y, pev->origin.z);
+		Logger->warn("util_servercommand at ({}) does not have a command! Deleting...", pev->origin);
 		
 		UTIL_Remove(this);
 		return;
@@ -31,8 +30,7 @@ void UtilServerCommand::Spawn()
 
 	if (!STRING(m_Command)[0])
 	{
-		ALERT(at_console, "util_servercommand at (%4.2f %4.2f %4.2f) has empty command! Deleting...", 
-			pev->origin.x, pev->origin.y, pev->origin.z);
+		Logger->warn("util_servercommand at ({}) has empty command! Deleting...", pev->origin);
 
 		UTIL_Remove(this);
 		return;

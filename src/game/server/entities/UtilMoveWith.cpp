@@ -107,57 +107,54 @@ bool UtilMoveWith::Validate() const
 {
 	// Gotta let the mapper easily recognise which entity this is
 	std::string identifier;
-	if (pev->targetname)
+	if (pev->targetname != string_t::Null)
 	{
 		identifier = std::string("'") + STRING(pev->targetname) + "'";
 	}
 	else 
 	{
 		// Should probably write UTIL_VecToString, or even better, write a Vector::ToString()
-		char buffer[64];
-		snprintf(buffer, 64, "at ( %4.2f %4.2f %4.2f )", pev->origin.x, pev->origin.y, pev->origin.z);
+		char buffer[128];
+		snprintf(buffer, 128, "at ( %4.2f %4.2f %4.2f )", pev->origin.x, pev->origin.y, pev->origin.z);
 		identifier = buffer;
 	}
 
-	if (!m_ParentTarget && !m_ChildTarget)
+	const bool parentTargetNull = m_ParentTarget == string_t::Null;
+	const bool childTargetNull = m_ChildTarget == string_t::Null;
+
+	if (parentTargetNull && childTargetNull)
 	{
-		ALERT(at_console, "util_movewith %s does not have 'parent' and 'child' keyvalues! Removing...\n", 
-			identifier.c_str());
+		Logger->warn("util_movewith {} does not have 'parent' and 'child' keyvalues! Removing...", identifier);
 		return false;
 	}
 
-	if (!m_ParentTarget)
+	if (parentTargetNull)
 	{
-		ALERT(at_console, "util_movewith %s does not have 'parent' keyvalue! Removing...\n", 
-			identifier.c_str());
+		Logger->warn("util_movewith %s does not have 'parent' keyvalue! Removing...", identifier);
 		return false;
 	}
 
-	if (!m_ChildTarget)
+	if (childTargetNull)
 	{
-		ALERT(at_console, "util_movewith %s does not have 'child' keyvalue! Removing...\n", 
-			identifier.c_str());
+		Logger->warn("util_movewith %s does not have 'child' keyvalue! Removing...", identifier);
 		return false;
 	}
 
-	if (!m_ParentEntity)
+	if (nullptr == m_ParentEntity)
 	{
-		ALERT(at_console, "util_movewith %s: parent entity '%s' does not exist! Did you make a typo? Removing...\n", 
-			identifier.c_str(), STRING(m_ParentTarget));
+		Logger->warn("util_movewith %s: parent entity '%s' does not exist! Did you make a typo? Removing...", identifier, STRING(m_ParentTarget));
 		return false;
 	}
 
-	if (!m_ChildEntity)
+	if (nullptr == m_ChildEntity)
 	{
-		ALERT(at_console, "util_movewith %s: child entity '%s' does not exist! Did you make a typo? Removing...\n", 
-			identifier.c_str(), STRING(m_ChildTarget));
+		Logger->warn("util_movewith %s: child entity '%s' does not exist! Did you make a typo? Removing...", identifier, STRING(m_ChildTarget));
 		return false;
 	}
 
 	if (m_ParentEntity == m_ChildEntity)
 	{
-		ALERT(at_console, "util_movewith %s: 'parent' and 'child' are the same! That makes util_movewith needless. Removing...\n", 
-			identifier.c_str());
+		Logger->warn("util_movewith %s: 'parent' and 'child' are the same! That makes util_movewith needless. Removing...", identifier);
 		return false;
 	}
 

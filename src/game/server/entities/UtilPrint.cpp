@@ -12,16 +12,15 @@ LINK_ENTITY_TO_CLASS(util_print, UtilPrint);
 // ================================
 void UtilPrint::Spawn()
 {
-	if (!pev->targetname)
+	if (pev->targetname == string_t::Null)
 	{
-		ALERT(at_console, "util_print at ( %4.2f %4.2f %4.2f ) doesn't have a name! Removing...\n",
-			pev->origin.x, pev->origin.y, pev->origin.z);
+		Logger->warn("util_print at ({}) doesn't have a name! Removing...", pev->origin);
 		return UTIL_Remove(this);
 	}
 
-	if (!pev->netname)
+	if (pev->netname == string_t::Null)
 	{
-		ALERT(at_console, "util_print '%s' does not have a message! Removing...\n", STRING(pev->targetname));
+		Logger->warn("util_print '{}' does not have a message! Removing...\n", STRING(pev->targetname));
 		return UTIL_Remove(this);
 	}
 }
@@ -31,5 +30,5 @@ void UtilPrint::Spawn()
 // ================================
 void UtilPrint::Use(CBaseEntity* activator, CBaseEntity* caller, USE_TYPE useType, float value)
 {
-	ALERT(at_console, "%s\n", STRING(pev->netname));
+	Logger->info("{}", STRING(pev->netname));
 }
