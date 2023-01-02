@@ -1030,6 +1030,26 @@
     _minlight(string) : "Minimum light level"
 ]
 
+@SolidClass = func_detail : "Non-structural brushes"
+[
+    // You can leave the detail level to 1. For tiny objects, you might set to 2, so that they won't chop faces of other func_details.
+    zhlt_detaillevel(integer) : "Detail level" : 1
+    // For large shapes such as terrain and walls, set this to no less than their detail level, so that they can chop the faces of adjacent world brushes.
+    zhlt_chopdown(integer) : "Lower its level to chop others" : 0
+    // Usually you don't have to use this.
+    zhlt_chopup(integer) : "Raise its level to get chopped" : 0
+    // For brushes in the same detail level and have overlapping faces (which are on the same plane), this priority determines which one will appear.
+    zhlt_coplanarpriority(integer) : "Priority when faces overlap" : 0
+    // Setting this to 0 will reduce clipnode count, but will lose the benefit of func_detail's better content deciding method which is designed to prevent "Ambiguous leafnode contents" problem.
+    zhlt_clipnodedetaillevel(integer) : "Detail level of cliphulls" : 1
+    // Very useful option which can reduce clipnode count.
+    zhlt_noclip(choices) : "Passable" : "" =
+    [
+        "": "No"
+        1: "Yes"
+    ]
+]
+
 @SolidClass base(Door, ZHLT) = func_door : "Basic door" []
 
 @SolidClass base(Door, ZHLT) = func_door_rotating : "Rotating door" 
