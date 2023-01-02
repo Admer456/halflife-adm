@@ -2,7 +2,8 @@
 
 [![CI/CD](https://github.com/Admer456/halflife-adm/actions/workflows/ci-cd.yml/badge.svg?branch=master)](https://github.com/Admer456/halflife-adm/actions/workflows/ci-cd.yml)
 
-Half-Life mod base with (soon) cool features for modders. It's gonna be under construction for a while. Seriously. Check back in 2024 or something.
+Half-Life mod base with (soon) cool features for modders. It's gonna be under construction for a while. Seriously. Check back in 2024 or something.  
+For more info, you can contact me on Discord (either on TWHL Discord or [my own server](https://discord.gg/tneyeuhgxH)), or here, or wherever. Roadmap coming soon.
 
 Based on [Half-Life Unified SDK](https://github.com/SamVanheer/halflife-unified-sdk).
 
