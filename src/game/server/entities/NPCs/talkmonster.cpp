@@ -425,7 +425,7 @@ void CTalkMonster::StartTask(Task_t* pTask)
 		dir.y = pev->ideal_yaw + 180;
 		Vector move;
 
-		UTIL_MakeVectorsPrivate(dir, move, nullptr, nullptr);
+		AngleVectors(dir, &move, nullptr, nullptr);
 		dir = pev->origin + move * pTask->flData;
 		if (MoveToLocation(ACT_WALK, 2, dir))
 		{
@@ -589,20 +589,20 @@ void CTalkMonster::RunTask(Task_t* pTask)
 }
 
 
-void CTalkMonster::Killed(entvars_t* pevAttacker, int iGib)
+void CTalkMonster::Killed(CBaseEntity* attacker, int iGib)
 {
 	// If a client killed me (unless I was already Barnacle'd), make everyone else mad/afraid of him
-	if ((pevAttacker->flags & FL_CLIENT) != 0 && m_MonsterState != MONSTERSTATE_PRONE)
+	if ((attacker->pev->flags & FL_CLIENT) != 0 && m_MonsterState != MONSTERSTATE_PRONE)
 	{
 		AlertFriends();
-		LimitFollowers(CBaseEntity::Instance(pevAttacker), 0);
+		LimitFollowers(CBaseEntity::Instance(attacker), 0);
 	}
 
 	m_hTargetEnt = nullptr;
 	// Don't finish that sentence
 	StopTalking();
 	SetUse(nullptr);
-	CBaseMonster::Killed(pevAttacker, iGib);
+	CBaseMonster::Killed(attacker, iGib);
 }
 
 void CTalkMonster::AlertFriends()
@@ -793,8 +793,6 @@ void CTalkMonster::Touch(CBaseEntity* pOther)
 //=========================================================
 void CTalkMonster::IdleRespond()
 {
-	int pitch = GetVoicePitch();
-
 	// play response
 	PlaySentence(m_szGrp[TLK_ANSWER], RANDOM_FLOAT(2.8, 3.2), VOL_NORM, ATTN_IDLE);
 }
@@ -956,7 +954,7 @@ bool CTalkMonster::FIdleSpeak()
 				if (!FBitSet(m_bitsSaid, bit_saidDamageHeavy) &&
 					(m_hTargetEnt->pev->health <= m_hTargetEnt->pev->max_health / 8))
 				{
-					// EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, m_szGrp[TLK_PLHURT3], 1.0, ATTN_IDLE, 0, pitch);
+					// EmitSoundDyn(CHAN_VOICE, m_szGrp[TLK_PLHURT3], 1.0, ATTN_IDLE, 0, pitch);
 					PlaySentence(m_szGrp[TLK_PLHURT3], duration, VOL_NORM, ATTN_IDLE);
 					SetBits(m_bitsSaid, bit_saidDamageHeavy);
 					return true;
@@ -964,7 +962,7 @@ bool CTalkMonster::FIdleSpeak()
 				else if (!FBitSet(m_bitsSaid, bit_saidDamageMedium) &&
 						 (m_hTargetEnt->pev->health <= m_hTargetEnt->pev->max_health / 4))
 				{
-					// EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, m_szGrp[TLK_PLHURT2], 1.0, ATTN_IDLE, 0, pitch);
+					// EmitSoundDyn(CHAN_VOICE, m_szGrp[TLK_PLHURT2], 1.0, ATTN_IDLE, 0, pitch);
 					PlaySentence(m_szGrp[TLK_PLHURT2], duration, VOL_NORM, ATTN_IDLE);
 					SetBits(m_bitsSaid, bit_saidDamageMedium);
 					return true;
@@ -972,7 +970,7 @@ bool CTalkMonster::FIdleSpeak()
 				else if (!FBitSet(m_bitsSaid, bit_saidDamageLight) &&
 						 (m_hTargetEnt->pev->health <= m_hTargetEnt->pev->max_health / 2))
 				{
-					// EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, m_szGrp[TLK_PLHURT1], 1.0, ATTN_IDLE, 0, pitch);
+					// EmitSoundDyn(CHAN_VOICE, m_szGrp[TLK_PLHURT1], 1.0, ATTN_IDLE, 0, pitch);
 					PlaySentence(m_szGrp[TLK_PLHURT1], duration, VOL_NORM, ATTN_IDLE);
 					SetBits(m_bitsSaid, bit_saidDamageLight);
 					return true;
@@ -993,7 +991,7 @@ bool CTalkMonster::FIdleSpeak()
 	if (pFriend && !(pFriend->IsMoving()) && (RANDOM_LONG(0, 99) < 75))
 	{
 		PlaySentence(szQuestionGroup, duration, VOL_NORM, ATTN_IDLE);
-		// sentences::g_Sentences.PlayRndSz( ENT(pev), szQuestionGroup, 1.0, ATTN_IDLE, 0, pitch );
+		// sentences::g_Sentences.PlayRndSz(this, szQuestionGroup, 1.0, ATTN_IDLE, 0, pitch);
 
 		// force friend to answer
 		CTalkMonster* pTalkMonster = (CTalkMonster*)pFriend;
@@ -1008,7 +1006,7 @@ bool CTalkMonster::FIdleSpeak()
 	// otherwise, play an idle statement, try to face client when making a statement.
 	if (RANDOM_LONG(0, 1))
 	{
-		// sentences::g_Sentences.PlayRndSz( ENT(pev), szIdleGroup, 1.0, ATTN_IDLE, 0, pitch );
+		// sentences::g_Sentences.PlayRndSz(this, szIdleGroup, 1.0, ATTN_IDLE, 0, pitch);
 		CBaseEntity* pFriend = FindNearestFriend(true);
 
 		if (pFriend)
@@ -1044,9 +1042,9 @@ void CTalkMonster::PlaySentenceCore(const char* pszSentence, float duration, flo
 
 	CTalkMonster::g_talkWaitTime = gpGlobals->time + duration + 2.0;
 	if (pszSentence[0] == '!')
-		EMIT_SOUND_DYN(edict(), CHAN_VOICE, pszSentence, volume, attenuation, 0, GetVoicePitch());
+		EmitSoundDyn(CHAN_VOICE, pszSentence, volume, attenuation, 0, GetVoicePitch());
 	else
-		sentences::g_Sentences.PlayRndSz(edict(), pszSentence, volume, attenuation, 0, GetVoicePitch());
+		sentences::g_Sentences.PlayRndSz(this, pszSentence, volume, attenuation, 0, GetVoicePitch());
 
 	// If you say anything, don't greet the player - you may have already spoken to them
 	SetBits(m_bitsSaid, bit_saidHelloPlayer);
@@ -1077,12 +1075,12 @@ void CTalkMonster::SetAnswerQuestion(CTalkMonster* pSpeaker)
 	m_hTalkTarget = (CBaseMonster*)pSpeaker;
 }
 
-bool CTalkMonster::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CTalkMonster::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	if (IsAlive())
 	{
 		// if player damaged this entity, have other friends talk about it
-		if (pevAttacker && m_MonsterState != MONSTERSTATE_PRONE && FBitSet(pevAttacker->flags, FL_CLIENT))
+		if (attacker && m_MonsterState != MONSTERSTATE_PRONE && FBitSet(attacker->pev->flags, FL_CLIENT))
 		{
 			CBaseEntity* pFriend = FindNearestFriend(false);
 
@@ -1094,7 +1092,7 @@ bool CTalkMonster::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, f
 			}
 		}
 	}
-	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
 
@@ -1130,7 +1128,7 @@ Schedule_t* CTalkMonster::GetScheduleOfType(int Type)
 		// sustained light wounds?
 		if (!FBitSet(m_bitsSaid, bit_saidWoundLight) && (pev->health <= (pev->max_health * 0.75)))
 		{
-			// sentences::g_Sentences.PlayRndSz( ENT(pev), m_szGrp[TLK_WOUND], 1.0, ATTN_IDLE, 0, GetVoicePitch() );
+			// sentences::g_Sentences.PlayRndSz(this, m_szGrp[TLK_WOUND], 1.0, ATTN_IDLE, 0, GetVoicePitch());
 			// CTalkMonster::g_talkWaitTime = gpGlobals->time + RANDOM_FLOAT(2.8, 3.2);
 			PlaySentence(m_szGrp[TLK_WOUND], RANDOM_FLOAT(2.8, 3.2), VOL_NORM, ATTN_IDLE);
 			SetBits(m_bitsSaid, bit_saidWoundLight);
@@ -1139,7 +1137,7 @@ Schedule_t* CTalkMonster::GetScheduleOfType(int Type)
 		// sustained heavy wounds?
 		else if (!FBitSet(m_bitsSaid, bit_saidWoundHeavy) && (pev->health <= (pev->max_health * 0.5)))
 		{
-			// sentences::g_Sentences.PlayRndSz( ENT(pev), m_szGrp[TLK_MORTAL], 1.0, ATTN_IDLE, 0, GetVoicePitch() );
+			// sentences::g_Sentences.PlayRndSz(this, m_szGrp[TLK_MORTAL], 1.0, ATTN_IDLE, 0, GetVoicePitch());
 			// CTalkMonster::g_talkWaitTime = gpGlobals->time + RANDOM_FLOAT(2.8, 3.2);
 			PlaySentence(m_szGrp[TLK_MORTAL], RANDOM_FLOAT(2.8, 3.2), VOL_NORM, ATTN_IDLE);
 			SetBits(m_bitsSaid, bit_saidWoundHeavy);

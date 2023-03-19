@@ -39,7 +39,7 @@ public:
 	void Move(float flInterval) override;
 	void PickNewDest(int iCondition);
 	void EXPORT Touch(CBaseEntity* pOther) override;
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 
 	float m_flLastLightLevel;
 	float m_flNextSmellTime;
@@ -100,7 +100,7 @@ void CRoach::Touch(CBaseEntity* pOther)
 	// This isn't really blood.  So you don't have to screen it out based on violence levels (UTIL_ShouldShowBlood())
 	UTIL_DecalTrace(&tr, DECAL_YBLOOD1 + RANDOM_LONG(0, 5));
 
-	TakeDamage(pOther->pev, pOther->pev, pev->health, DMG_CRUSH);
+	TakeDamage(pOther, pOther, pev->health, DMG_CRUSH);
 }
 
 //=========================================================
@@ -124,7 +124,7 @@ void CRoach::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-1, -1, 0), Vector(1, 1, 2));
+	SetSize(Vector(-1, -1, 0), Vector(1, 1, 2));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -160,7 +160,7 @@ void CRoach::Precache()
 //=========================================================
 // Killed.
 //=========================================================
-void CRoach::Killed(entvars_t* pevAttacker, int iGib)
+void CRoach::Killed(CBaseEntity* attacker, int iGib)
 {
 	pev->solid = SOLID_NOT;
 
@@ -169,11 +169,11 @@ void CRoach::Killed(entvars_t* pevAttacker, int iGib)
 	// random sound
 	if (RANDOM_LONG(0, 4) == 1)
 	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "roach/rch_die.wav", 0.8, ATTN_NORM, 0, 80 + RANDOM_LONG(0, 39));
+		EmitSoundDyn(CHAN_VOICE, "roach/rch_die.wav", 0.8, ATTN_NORM, 0, 80 + RANDOM_LONG(0, 39));
 	}
 	else
 	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_BODY, "roach/rch_smash.wav", 0.7, ATTN_NORM, 0, 80 + RANDOM_LONG(0, 39));
+		EmitSoundDyn(CHAN_BODY, "roach/rch_smash.wav", 0.7, ATTN_NORM, 0, 80 + RANDOM_LONG(0, 39));
 	}
 
 	CSoundEnt::InsertSound(bits_SOUND_WORLD, pev->origin, 128, 1);
@@ -181,7 +181,7 @@ void CRoach::Killed(entvars_t* pevAttacker, int iGib)
 	CBaseEntity* pOwner = CBaseEntity::Instance(pev->owner);
 	if (pOwner)
 	{
-		pOwner->DeathNotice(pev);
+		pOwner->DeathNotice(this);
 	}
 	UTIL_Remove(this);
 }
@@ -346,7 +346,7 @@ void CRoach::PickNewDest(int iCondition)
 	if (RANDOM_LONG(0, 9) == 1)
 	{
 		// every once in a while, a roach will play a skitter sound when they decide to run
-		EMIT_SOUND_DYN(ENT(pev), CHAN_BODY, "roach/rch_walk.wav", 1, ATTN_NORM, 0, 80 + RANDOM_LONG(0, 39));
+		EmitSoundDyn(CHAN_BODY, "roach/rch_walk.wav", 1, ATTN_NORM, 0, 80 + RANDOM_LONG(0, 39));
 	}
 }
 
@@ -356,7 +356,6 @@ void CRoach::PickNewDest(int iCondition)
 void CRoach::Move(float flInterval)
 {
 	float flWaypointDist;
-	Vector vecApex;
 
 	// local move to waypoint.
 	flWaypointDist = (m_Route[m_iRouteIndex].vecLocation - pev->origin).Length2D();

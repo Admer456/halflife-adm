@@ -55,6 +55,7 @@ This page lists all changes made since the last release in the current developme
 * Decrement RPG rocket count only if the rocket was successfully created
 * Added spawnflag to `item_generic` to make a entity solid and based on mins/maxs
 * Removed duplicate conditions in zombie code
+* Fixed c2a5 barrels not flying up as high as they're supposed to (Thanks Uncle Mike for pointing to the cause and fix, Streit and rbar1um43 for providing a link to this information)
 
 ### New features
 
@@ -812,9 +813,16 @@ Fixes that have been reported but not yet fixed in the original game:
 
 Many changes have been made since 2019. All changes made after [[this|https://github.com/Solokiller/halflife-op4/commit/0acdeaea6c27c6b3e1f0ef458f58b98925bc201b]] commit are new.
 
-## Changes in V1.0.0 Beta 011
+## Changes in V1.0.0 Beta 012
 
 > Note: this beta has not been released yet.
+
+### Bug fixes
+
+* Force Pitworm animations to interpolate to fix stuttering movement [Unified SDK #434](SamVanheer/halflife-unified-sdk#434) (Thanks [malortie](https://github.com/malortie))
+* Implemented snow footsteps and impact sounds, changed snow material type ID to `O` to match Opposing Force
+
+## Changes in V1.0.0 Beta 011
 
 ### Bug fixes
 
@@ -1472,9 +1480,16 @@ Fixes that have been reported but not yet fixed in the original game:
 
 # Half-Life Updated changelog
 
-## Changes in V1.0.0 Beta 014
+## Changges in V1.0.0 Beta 015
 
-> **Note:** This beta has not been released yet.
+> Note: this beta has not been released yet.
+
+### Bug fixes
+
+* Fixed tripmines not detonating if placed on breakable and a save game is loaded [#192](https://github.com/SamVanheer/halflife-updated/issues/192) (Thanks forklift.mdl)
+* Fixed func_friction not working properly in multiplayer (halflife issue [#1542](https://github.com/ValveSoftware/halflife/issues/1542)) (Thanks L453rh4wk)
+
+## Changes in V1.0.0 Beta 014
 
 ### Bug fixes
 
@@ -1486,6 +1501,26 @@ Fixes that have been reported but not yet fixed in the original game:
 * Fixed NPCs not being able to speak scripted sentences while in scripted death [#180](https://github.com/SamVanheer/halflife-updated/issues/180) (Thanks λλλλλλ)
 * Removed unnecessary semicolons (Thanks Shepard)
 * Updated source file encoding to UTF-8 [#183](https://github.com/SamVanheer/halflife-updated/issues/183) (Thanks anchurcn)
+* Renamed `CWorld::Instance` to `CWorld::World` to avoid conflicting with `CBaseEntity::Instance` function name
+* Added `-flifetime-dse=1` flag to Linux Makefile to disable compiler optimization that removed entity memory zero-initialization, resulting in the game crashing when any entity touches the world  [#187](https://github.com/SamVanheer/halflife-updated/issues/187)(Thanks FreeSlave)
+* Fixed game_player_equip crashing when given a null activator [#189](https://github.com/SamVanheer/halflife-updated/issues/189)
+* Fixed Hornet gun recharging to full ammo after loading a save game [#190](https://github.com/SamVanheer/halflife-updated/issues/190)
+* Fixed explosives that impact the underside of a brush dealing damage to entities on the other side of that brush (halflife issue [#3244](https://github.com/ValveSoftware/halflife/issues/3244))
+* Fixed entities with an index greater than 2047 corrupting the client's heap if sent over the network [#191](https://github.com/SamVanheer/halflife-updated/issues/191)
+
+### New features
+
+* Save and restore game_player_equip [#188](https://github.com/SamVanheer/halflife-updated/issues/188)
+* Moved IsFacing function from barney.cpp to h_ai.cpp to help prevent linker errors when copy pasting source file
+* When using `impulse 107` to get the name of a texture the texture type (as used in `materials.txt`) will also be printed
+* Made `PM_FindTextureType` const correct
+* Added `WRITE_FLOAT` function corresponding to the client's `READ_FLOAT` function
+* Set maximum edicts to 2048 in liblist.gam [#181](https://github.com/SamVanheer/halflife-updated/issues/181)
+
+### Project changes
+
+* Added `delta.lst` to the archive again (was accidentally removed in the previous beta)
+* Added game icons to the archive
 
 ## Changes in V1.0.0 Beta 013
 

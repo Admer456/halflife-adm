@@ -57,7 +57,7 @@ void CApache::Spawn()
 	pev->solid = SOLID_BBOX;
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-32, -32, -64), Vector(32, 32, 0));
+	SetSize(Vector(-32, -32, -64), Vector(32, 32, 0));
 	UTIL_SetOrigin(pev, pev->origin);
 
 	pev->flags |= FL_MONSTER;
@@ -126,16 +126,16 @@ void CApache::StartupUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE
 	SetUse(nullptr);
 }
 
-void CApache::Killed(entvars_t* pevAttacker, int iGib)
+void CApache::Killed(CBaseEntity* attacker, int iGib)
 {
 	ClearShockEffect();
 
 	pev->movetype = MOVETYPE_TOSS;
 	pev->gravity = 0.3;
 
-	STOP_SOUND(ENT(pev), CHAN_STATIC, "apache/ap_rotor2.wav");
+	StopSound(CHAN_STATIC, "apache/ap_rotor2.wav");
 
-	UTIL_SetSize(pev, Vector(-32, -32, -64), Vector(32, 32, 0));
+	SetSize(Vector(-32, -32, -64), Vector(32, 32, 0));
 	SetThink(&CApache::DyingThink);
 	SetTouch(&CApache::CrashTouch);
 	pev->nextthink = gpGlobals->time + 0.1;
@@ -166,16 +166,16 @@ void CApache::DyingThink()
 		FCheckAITrigger();
 
 		// random explosions
-		MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, pev->origin);
-		WRITE_BYTE(TE_EXPLOSION); // This just makes a dynamic light now
-		WRITE_COORD(pev->origin.x + RANDOM_FLOAT(-150, 150));
-		WRITE_COORD(pev->origin.y + RANDOM_FLOAT(-150, 150));
-		WRITE_COORD(pev->origin.z + RANDOM_FLOAT(-150, -50));
-		WRITE_SHORT(g_sModelIndexFireball);
-		WRITE_BYTE(RANDOM_LONG(0, 29) + 30); // scale * 10
-		WRITE_BYTE(12);						 // framerate
-		WRITE_BYTE(TE_EXPLFLAG_NONE);
-		MESSAGE_END();
+		// This just makes a dynamic light now
+		Vector explosionOrigin = pev->origin;
+
+		explosionOrigin.x += RANDOM_FLOAT(-150, 150);
+		explosionOrigin.y += RANDOM_FLOAT(-150, 150);
+		explosionOrigin.z += RANDOM_FLOAT(-150, -50);
+
+		UTIL_ExplosionEffect(explosionOrigin, g_sModelIndexFireball,
+			RANDOM_LONG(0, 29) + 30, 12, TE_EXPLFLAG_NONE,
+			MSG_PVS, pev->origin);
 
 		// lots of smoke
 		MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, pev->origin);
@@ -234,15 +234,10 @@ void CApache::DyingThink()
 		Vector vecSpot = pev->origin + (pev->mins + pev->maxs) * 0.5;
 
 		/*
-		MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
-			WRITE_BYTE( TE_EXPLOSION);		// This just makes a dynamic light now
-			WRITE_COORD( vecSpot.x );
-			WRITE_COORD( vecSpot.y );
-			WRITE_COORD( vecSpot.z + 300 );
-			WRITE_SHORT( g_sModelIndexFireball );
-			WRITE_BYTE( 250 ); // scale * 10
-			WRITE_BYTE( 8  ); // framerate
-		MESSAGE_END();
+		// This just makes a dynamic light now
+		UTIL_ExplosionEffect(vecSpot + Vector(0, 0, 300), g_sModelIndexFireball,
+			250, 10, TE_EXPLFLAG_NONE,
+			MSG_BROADCAST);
 		*/
 
 		// fireball
@@ -289,15 +284,15 @@ void CApache::DyingThink()
 		WRITE_BYTE(0);	 // speed
 		MESSAGE_END();
 
-		EMIT_SOUND(ENT(pev), CHAN_STATIC, "weapons/mortarhit.wav", 1.0, 0.3);
+		EmitSound(CHAN_STATIC, "weapons/mortarhit.wav", 1.0, 0.3);
 
-		RadiusDamage(pev->origin, pev, pev, 300, CLASS_NONE, DMG_BLAST);
+		RadiusDamage(pev->origin, this, this, 300, CLASS_NONE, DMG_BLAST);
 
 		if (/*(pev->spawnflags & SF_NOWRECKAGE) == 0 && */ (pev->flags & FL_ONGROUND) != 0)
 		{
 			CBaseEntity* pWreckage = Create("cycler_wreckage", pev->origin, pev->angles);
 			// pWreckage->SetModel(STRING(pev->model));
-			UTIL_SetSize(pWreckage->pev, Vector(-200, -200, -128), Vector(200, 200, -32));
+			pWreckage->SetSize(Vector(-200, -200, -128), Vector(200, 200, -32));
 			pWreckage->pev->frame = pev->frame;
 			pWreckage->pev->sequence = pev->sequence;
 			pWreckage->pev->framerate = 0;
@@ -375,7 +370,7 @@ void CApache::CrashTouch(CBaseEntity* pOther)
 
 void CApache::GibMonster()
 {
-	// EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "common/bodysplat.wav", 0.75, ATTN_NORM, 0, 200);
+	// EmitSoundDyn(CHAN_VOICE, "common/bodysplat.wav", 0.75, ATTN_NORM, 0, 200);
 }
 
 
@@ -660,8 +655,8 @@ void CApache::Flight()
 	// make rotor, engine sounds
 	if (m_iSoundState == 0)
 	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "apache/ap_rotor2.wav", 1.0, 0.3, 0, 110);
-		// EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "apache/ap_whine1.wav", 0.5, 0.2, 0, 110 );
+		EmitSoundDyn(CHAN_STATIC, "apache/ap_rotor2.wav", 1.0, 0.3, 0, 110);
+		// EmitSoundDyn(CHAN_STATIC, "apache/ap_whine1.wav", 0.5, 0.2, 0, 110 );
 
 		m_iSoundState = SND_CHANGE_PITCH; // hack for going through level transitions
 	}
@@ -689,9 +684,9 @@ void CApache::Flight()
 			if (flVol > 1.0)
 				flVol = 1.0;
 
-			EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "apache/ap_rotor2.wav", 1.0, 0.3, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
+			EmitSoundDyn(CHAN_STATIC, "apache/ap_rotor2.wav", 1.0, 0.3, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
 		}
-		// EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "apache/ap_whine1.wav", flVol, 0.2, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
+		// EmitSoundDyn(CHAN_STATIC, "apache/ap_whine1.wav", flVol, 0.2, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
 
 		// AILogger->debug("{:.0f} {:.2f}", pitch, flVol);
 	}
@@ -701,7 +696,6 @@ void CApache::Flight()
 void CApache::FireRocket()
 {
 	static float side = 1.0;
-	static int count;
 
 	if (m_iRockets <= 0)
 		return;
@@ -797,7 +791,7 @@ bool CApache::FireGun()
 	{
 #if 1
 		FireBullets(1, posGun, vecGun, VECTOR_CONE_4DEGREES, 8192, BULLET_MONSTER_12MM, 1);
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "turret/tu_fire1.wav", 1, 0.3);
+		EmitSound(CHAN_WEAPON, "turret/tu_fire1.wav", 1, 0.3);
 #else
 		static float flNext;
 		TraceResult tr;
@@ -852,9 +846,9 @@ void CApache::ShowDamage()
 }
 
 
-bool CApache::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CApache::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
-	if (pevInflictor->owner == edict())
+	if (inflictor->pev->owner == edict())
 		return false;
 
 	if ((bitsDamageType & DMG_BLAST) != 0)
@@ -871,7 +865,7 @@ bool CApache::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float 
 	*/
 
 	// AILogger->debug("{:.0f}", flDamage);
-	const bool result = CBaseEntity::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	const bool result = CBaseEntity::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 
 	// Are we damaged at all?
 	if (pev->health < pev->max_health)
@@ -901,7 +895,7 @@ bool CApache::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float 
 
 
 
-void CApache::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void CApache::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	// AILogger->debug("{} {:.0f}", ptr->iHitgroup, flDamage);
 
@@ -913,13 +907,13 @@ void CApache::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir,
 	if (flDamage > 50 || ptr->iHitgroup == 1 || ptr->iHitgroup == 2)
 	{
 		// AILogger->debug("{:.0f}", flDamage);
-		AddMultiDamage(pevAttacker, this, flDamage, bitsDamageType);
+		AddMultiDamage(attacker, this, flDamage, bitsDamageType);
 		m_iDoSmokePuff = 3 + (flDamage / 5.0);
 	}
 	else
 	{
 		// do half damage in the body
-		// AddMultiDamage( pevAttacker, this, flDamage / 2.0, bitsDamageType );
+		// AddMultiDamage( attacker, this, flDamage / 2.0, bitsDamageType );
 		UTIL_Ricochet(ptr->vecEndPos, 2.0);
 	}
 }
@@ -960,7 +954,7 @@ void CApacheHVR::Spawn()
 	pev->solid = SOLID_BBOX;
 
 	SetModel("models/HVR.mdl");
-	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
+	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
 	UTIL_SetOrigin(pev, pev->origin);
 
 	SetThink(&CApacheHVR::IgniteThink);
@@ -992,7 +986,7 @@ void CApacheHVR::IgniteThink()
 	pev->effects |= EF_LIGHT;
 
 	// make rocket sound
-	EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/rocket1.wav", 1, 0.5);
+	EmitSound(CHAN_VOICE, "weapons/rocket1.wav", 1, 0.5);
 
 	// rocket trail
 	MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);

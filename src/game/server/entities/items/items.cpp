@@ -99,7 +99,7 @@ void CItem::Spawn()
 	pev->movetype = MOVETYPE_TOSS;
 	pev->solid = SOLID_TRIGGER;
 	UTIL_SetOrigin(pev, pev->origin);
-	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 16));
+	SetSize(Vector(-16, -16, 0), Vector(16, 16, 16));
 	SetTouch(&CItem::ItemTouch);
 
 	if (DROP_TO_FLOOR(ENT(pev)) == 0)
@@ -166,7 +166,7 @@ void CItem::Materialize()
 	if ((pev->effects & EF_NODRAW) != 0)
 	{
 		// changing from invisible state to visible.
-		EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "items/suitchargeok1.wav", 1, ATTN_NORM, 0, 150);
+		EmitSoundDyn(CHAN_WEAPON, "items/suitchargeok1.wav", 1, ATTN_NORM, 0, 150);
 		pev->effects &= ~EF_NODRAW;
 		pev->effects |= EF_MUZZLEFLASH;
 	}
@@ -191,9 +191,9 @@ public:
 			return false;
 
 		if ((pev->spawnflags & SF_SUIT_SHORTLOGON) != 0)
-			EMIT_SOUND_SUIT(pPlayer->edict(), "!HEV_A0"); // short version of suit logon,
+			EMIT_SOUND_SUIT(pPlayer, "!HEV_A0"); // short version of suit logon,
 		else
-			EMIT_SOUND_SUIT(pPlayer->edict(), "!HEV_AAx"); // long version of suit logon
+			EMIT_SOUND_SUIT(pPlayer, "!HEV_AAx"); // long version of suit logon
 
 		pPlayer->SetHasSuit(true);
 		return true;
@@ -235,7 +235,7 @@ public:
 			pPlayer->pev->armorvalue += GetSkillFloat("battery"sv);
 			pPlayer->pev->armorvalue = V_min(pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY);
 
-			EMIT_SOUND(pPlayer->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
+			pPlayer->EmitSound(CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
 
 			MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, pPlayer->pev);
 			WRITE_STRING(STRING(pev->classname));
@@ -251,7 +251,7 @@ public:
 
 			sprintf(szcharge, "!HEV_%1dP", pct);
 
-			// EMIT_SOUND_SUIT(ENT(pev), szcharge);
+			// EMIT_SOUND_SUIT(this, szcharge);
 			pPlayer->SetSuitUpdate(szcharge, false, SUIT_NEXT_IN_30SEC);
 			return true;
 		}
@@ -327,7 +327,7 @@ public:
 			WRITE_STRING(STRING(pev->classname));
 			MESSAGE_END();
 
-			EMIT_SOUND_SUIT(pPlayer->edict(), "!HEV_A1"); // Play the longjump sound UNDONE: Kelly? correct sound?
+			EMIT_SOUND_SUIT(pPlayer, "!HEV_A1"); // Play the longjump sound UNDONE: Kelly? correct sound?
 			return true;
 		}
 		return false;
@@ -360,7 +360,7 @@ public:
 			pPlayer->pev->armorvalue += 40;
 			pPlayer->pev->armorvalue = V_min(pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY);
 
-			EMIT_SOUND(pPlayer->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
+			pPlayer->EmitSound(CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
 
 			MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, pPlayer->pev);
 			WRITE_STRING(STRING(pev->classname));
@@ -376,7 +376,7 @@ public:
 
 			sprintf(szcharge, "!HEV_%1dP", pct);
 
-			// EMIT_SOUND_SUIT(ENT(pev), szcharge);
+			// EMIT_SOUND_SUIT(this, szcharge);
 			pPlayer->SetSuitUpdate(szcharge, false, SUIT_NEXT_IN_30SEC);
 			return true;
 		}
@@ -411,7 +411,7 @@ public:
 			pPlayer->pev->armorvalue += 60;
 			pPlayer->pev->armorvalue = V_min(pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY);
 
-			EMIT_SOUND(pPlayer->edict(), CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
+			pPlayer->EmitSound(CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
 
 			MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, pPlayer->pev);
 			WRITE_STRING(STRING(pev->classname));
@@ -427,7 +427,7 @@ public:
 
 			sprintf(szcharge, "!HEV_%1dP", pct);
 
-			// EMIT_SOUND_SUIT(ENT(pev), szcharge);
+			// EMIT_SOUND_SUIT(this, szcharge);
 			pPlayer->SetSuitUpdate(szcharge, false, SUIT_NEXT_IN_30SEC);
 			return true;
 		}

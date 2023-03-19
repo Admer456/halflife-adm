@@ -36,7 +36,7 @@
 #endif
 
 class CBaseEntity;
-class CBasePlayerItem;
+class CBasePlayerWeapon;
 class CBasePlayer;
 
 inline globalvars_t* gpGlobals = nullptr;
@@ -45,17 +45,6 @@ inline globalvars_t* gpGlobals = nullptr;
 #define SetBits(flBitVector, bits) ((flBitVector) = (int)(flBitVector) | (bits))
 #define ClearBits(flBitVector, bits) ((flBitVector) = (int)(flBitVector) & ~(bits))
 #define FBitSet(flBitVector, bit) (((int)(flBitVector) & (bit)) != 0)
-
-// Makes these more explicit, and easier to find
-#define FILE_GLOBAL static
-#define DLL_GLOBAL
-
-// Until we figure out why "const" gives the compiler problems, we'll just have to use
-// this bogus "empty" define to mark things as constant.
-#define CONSTANT
-
-// More explicit than "int"
-typedef int EOFFSET;
 
 /**
  *	@brief Gets the list of entities.
@@ -68,57 +57,10 @@ edict_t* UTIL_GetEntityList();
  */
 CBasePlayer* UTIL_GetLocalPlayer();
 
-//
-// Conversion among the three types of "entity", including identity-conversions.
-//
-#ifdef DEBUG
-edict_t* DBG_EntOfVars(const entvars_t* pev);
-inline edict_t* ENT(const entvars_t* pev) { return DBG_EntOfVars(pev); }
-#else
-inline edict_t* ENT(const entvars_t* pev)
-{
-	return pev->pContainingEntity;
-}
-#endif
-inline edict_t* ENT(edict_t* pent)
-{
-	return pent;
-}
-inline edict_t* ENT(EOFFSET eoffset) { return (*g_engfuncs.pfnPEntityOfEntOffset)(eoffset); }
-inline EOFFSET OFFSET(const edict_t* pent)
-{
-	ASSERTSZ(pent, "Bad ent in OFFSET()");
-	return (*g_engfuncs.pfnEntOffsetOfPEntity)(pent);
-}
-inline EOFFSET OFFSET(entvars_t* pev)
-{
-	ASSERTSZ(pev, "Bad pev in OFFSET()");
-	return OFFSET(ENT(pev));
-}
-
-inline entvars_t* VARS(edict_t* pent)
-{
-	if (!pent)
-		return nullptr;
-
-	return &pent->v;
-}
-
-inline int ENTINDEX(edict_t* pEdict) { return (*g_engfuncs.pfnIndexOfEdict)(pEdict); }
-inline edict_t* INDEXENT(int iEdictNum) { return (*g_engfuncs.pfnPEntityOfEntIndex)(iEdictNum); }
 inline void MESSAGE_BEGIN(int msg_dest, int msg_type, const float* pOrigin, entvars_t* ent)
 {
 	(*g_engfuncs.pfnMessageBegin)(msg_dest, msg_type, pOrigin, ENT(ent));
 }
-
-// Testing the three types of "entity" for nullity
-#define eoNullEntity 0
-inline bool FNullEnt(EOFFSET eoffset)
-{
-	return eoffset == 0;
-}
-inline bool FNullEnt(const edict_t* pent) { return pent == nullptr || FNullEnt(OFFSET(pent)); }
-inline bool FNullEnt(entvars_t* pev) { return pev == nullptr || FNullEnt(OFFSET(pev)); }
 
 #define cchMapNameMost 32
 
@@ -167,17 +109,8 @@ inline bool FStrEq(const char* sz1, const char* sz2)
 {
 	return (strcmp(sz1, sz2) == 0);
 }
-inline bool FClassnameIs(edict_t* pent, const char* szClassname)
-{
-	return FStrEq(STRING(VARS(pent)->classname), szClassname);
-}
-inline bool FClassnameIs(entvars_t* pev, const char* szClassname)
-{
-	return FStrEq(STRING(pev->classname), szClassname);
-}
 
 // Misc. Prototypes
-void UTIL_SetSize(entvars_t* pev, const Vector& vecMin, const Vector& vecMax);
 float UTIL_VecToYaw(const Vector& vec);
 Vector UTIL_VecToAngles(const Vector& vec);
 float UTIL_AngleMod(float a);
@@ -189,17 +122,17 @@ CBaseEntity* UTIL_FindEntityByClassname(CBaseEntity* pStartEntity, const char* s
 CBaseEntity* UTIL_FindEntityByTargetname(CBaseEntity* pStartEntity, const char* szName);
 
 /**
-*	@brief For doing a reverse lookup. Say you have a door, and want to find its button.
-*/
+ *	@brief For doing a reverse lookup. Say you have a door, and want to find its button.
+ */
 CBaseEntity* UTIL_FindEntityByTarget(CBaseEntity* pStartEntity, const char* szName);
 
 CBaseEntity* UTIL_FindEntityGeneric(const char* szName, Vector& vecSrc, float flRadius);
 
 /**
-*	@brief returns a CBasePlayer pointer to a player by index.
-*	Only returns if the player is spawned and connected, otherwise returns nullptr.
-*	@param playerIndex 1 based player index
-*/
+ *	@brief returns a CBasePlayer pointer to a player by index.
+ *	Only returns if the player is spawned and connected, otherwise returns nullptr.
+ *	@param playerIndex 1 based player index
+ */
 CBasePlayer* UTIL_PlayerByIndex(int playerIndex);
 
 /**
@@ -213,11 +146,6 @@ void UTIL_MakeVectors(const Vector& vecAngles);
 // Pass in an array of pointers and an array size, it fills the array and returns the number inserted
 int UTIL_MonstersInSphere(CBaseEntity** pList, int listMax, const Vector& center, float radius);
 int UTIL_EntitiesInBox(CBaseEntity** pList, int listMax, const Vector& mins, const Vector& maxs, int flagMask);
-
-inline void UTIL_MakeVectorsPrivate(const Vector& vecAngles, float* p_vForward, float* p_vRight, float* p_vUp)
-{
-	g_engfuncs.pfnAngleVectors(vecAngles, p_vForward, p_vRight, p_vUp);
-}
 
 void UTIL_MakeAimVectors(const Vector& vecAngles); // like MakeVectors, but assumes pitch isn't inverted
 void UTIL_MakeInvVectors(const Vector& vec, globalvars_t* pgv);
@@ -266,6 +194,8 @@ void UTIL_BloodDecalTrace(TraceResult* pTrace, int bloodColor);
 void UTIL_DecalTrace(TraceResult* pTrace, int decalNumber);
 void UTIL_PlayerDecalTrace(TraceResult* pTrace, int playernum, int decalNumber, bool bIsCustom);
 void UTIL_GunshotDecalTrace(TraceResult* pTrace, int decalNumber);
+void UTIL_ExplosionEffect(const Vector& explosionOrigin, int modelIndex, byte scale, int framerate, int flags,
+	int msg_dest, const float* pOrigin = nullptr, edict_t* ed = nullptr);
 void UTIL_Sparks(const Vector& position);
 void UTIL_Ricochet(const Vector& position, float scale);
 void UTIL_StringToIntArray(int* pVector, int count, const char* pString);
@@ -360,7 +290,7 @@ int BuildChangeList(LEVELLIST* pLevelList, int maxList);
 //
 #define LANGUAGE_GERMAN 1
 
-inline DLL_GLOBAL int g_Language;
+inline int g_Language;
 
 #define AMBIENT_SOUND_STATIC 0 // medium radius attenuation
 #define AMBIENT_SOUND_EVERYWHERE 1
@@ -436,48 +366,27 @@ constexpr int SND_PLAY_WHEN_PAUSED = 1 << 9; // For client side use only: start 
 
 float TEXTURETYPE_PlaySound(TraceResult* ptr, Vector vecSrc, Vector vecEnd, int iBulletType);
 
-// NOTE: use EMIT_SOUND_DYN to set the pitch of a sound. Pitch of 100
-// is no pitch shift.  Pitch > 100 up to 255 is a higher pitch, pitch < 100
-// down to 1 is a lower pitch.   150 to 70 is the realistic range.
-// EMIT_SOUND_DYN with pitch != 100 should be used sparingly, as it's not quite as
-// fast as EMIT_SOUND (the pitchshift mixer is not native coded).
-
-void EMIT_SOUND_DYN(edict_t* entity, int channel, const char* sample, float volume, float attenuation,
-	int flags, int pitch);
-
-void UTIL_EmitAmbientSound(edict_t* entity, const Vector& vecOrigin, const char* samp, float vol, float attenuation, int fFlags, int pitch);
-
-inline void EMIT_SOUND(edict_t* entity, int channel, const char* sample, float volume, float attenuation)
-{
-	EMIT_SOUND_DYN(entity, channel, sample, volume, attenuation, 0, PITCH_NORM);
-}
-
-inline void STOP_SOUND(edict_t* entity, int channel, const char* sample)
-{
-	EMIT_SOUND_DYN(entity, channel, sample, 0, 0, SND_STOP, PITCH_NORM);
-}
-
 /**
- *	@brief Just like @see EMIT_SOUND_DYN, but will skip the current host player if they have cl_lw turned on.
+ *	@brief Just like @see CBaseEntity::EmitSoundDyn, but will skip the current host player if they have cl_lw turned on.
  *	@details entity must be the current host entity for this to work, and must be called only inside a player's PostThink method.
  */
-void EMIT_SOUND_PREDICTED(edict_t* entity, int channel, const char* sample, float volume, float attenuation,
+void EMIT_SOUND_PREDICTED(CBaseEntity* entity, int channel, const char* sample, float volume, float attenuation,
 	int flags, int pitch);
 
 /**
  *	@brief play a specific sentence over the HEV suit speaker - just pass player entity, and !sentencename
  */
-void EMIT_SOUND_SUIT(edict_t* entity, const char* sample);
+void EMIT_SOUND_SUIT(CBaseEntity* entity, const char* sample);
 
 /**
  *	@brief play a sentence, randomly selected from the passed in group id, over the HEV suit speaker
  */
-void EMIT_GROUPID_SUIT(edict_t* entity, int isentenceg);
+void EMIT_GROUPID_SUIT(CBaseEntity* entity, int isentenceg);
 
 /**
  *	@brief play a sentence, randomly selected from the passed in groupname
  */
-void EMIT_GROUPNAME_SUIT(edict_t* entity, const char* groupname);
+void EMIT_GROUPNAME_SUIT(CBaseEntity* entity, const char* groupname);
 
 #define PRECACHE_SOUND_ARRAY(a)                        \
 	{                                                  \
@@ -486,7 +395,7 @@ void EMIT_GROUPNAME_SUIT(edict_t* entity, const char* groupname);
 	}
 
 #define EMIT_SOUND_ARRAY_DYN(chan, array) \
-	EMIT_SOUND_DYN(ENT(pev), chan, array[RANDOM_LONG(0, std::size(array) - 1)], 1.0, ATTN_NORM, 0, RANDOM_LONG(95, 105));
+	EmitSoundDyn(chan, array[RANDOM_LONG(0, std::size(array) - 1)], 1.0, ATTN_NORM, 0, RANDOM_LONG(95, 105));
 
 #define RANDOM_SOUND_ARRAY(array) (array)[RANDOM_LONG(0, std::size((array)) - 1)]
 

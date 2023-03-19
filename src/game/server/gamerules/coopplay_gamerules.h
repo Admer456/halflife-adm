@@ -28,9 +28,9 @@ public:
 
 	void UpdateGameMode(CBasePlayer* pPlayer) override;
 
-	void DeathNotice(CBasePlayer* pVictim, entvars_t* pKiller, entvars_t* pevInflictor) override {}
+	void DeathNotice(CBasePlayer* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor) override {}
 
-	void MonsterKilled(CBaseMonster* pVictim, entvars_t* pKiller, entvars_t* pInflictor) override;
+	void MonsterKilled(CBaseMonster* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor) override;
 
 	int PlayerRelationship(CBaseEntity* pPlayer, CBaseEntity* pTarget) override;
 
@@ -50,11 +50,11 @@ public:
 
 	int DeadPlayerWeapons(CBasePlayer* pPlayer) override;
 
-	void PlayerKilled(CBasePlayer* pVictim, entvars_t* pKiller, entvars_t* pInflictor) override;
+	void PlayerKilled(CBasePlayer* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor) override;
 
 	void Think() override;
 
-	int WeaponShouldRespawn(CBasePlayerItem* pWeapon) override;
+	int WeaponShouldRespawn(CBasePlayerWeapon* pWeapon) override;
 
 	int ItemShouldRespawn(CItem* pItem) override;
 	float FlItemRespawnTime(CItem* pItem) override;
@@ -64,9 +64,9 @@ public:
 
 	bool FPlayerCanTakeDamage(CBasePlayer* pPlayer, CBaseEntity* pAttacker) override;
 
-	float FlWeaponTryRespawn(CBasePlayerItem* pWeapon) override;
+	float FlWeaponTryRespawn(CBasePlayerWeapon* pWeapon) override;
 
-	float FlWeaponRespawnTime(CBasePlayerItem* pWeapon) override;
+	float FlWeaponRespawnTime(CBasePlayerWeapon* pWeapon) override;
 
 	const char* GetGameDescription() override { return "HL Coopplay"; }
 

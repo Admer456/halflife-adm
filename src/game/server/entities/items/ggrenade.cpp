@@ -59,8 +59,6 @@ void CGrenade::Explode(Vector vecSrc, Vector vecAim)
 // UNDONE: temporary scorching for PreAlpha - find a less sleazy permenant solution.
 void CGrenade::Explode(TraceResult* pTrace, int bitsDamageType)
 {
-	float flRndSound; // sound randomizer
-
 	pev->model = string_t::Null; // invisible
 	pev->solid = SOLID_NOT;		 // intangible
 
@@ -74,34 +72,22 @@ void CGrenade::Explode(TraceResult* pTrace, int bitsDamageType)
 
 	int iContents = UTIL_PointContents(pev->origin);
 
-	MESSAGE_BEGIN(MSG_PAS, SVC_TEMPENTITY, pev->origin);
-	WRITE_BYTE(TE_EXPLOSION);	// This makes a dynamic light and the explosion sprites/sound
-	WRITE_COORD(pev->origin.x); // Send to PAS because of the sound
-	WRITE_COORD(pev->origin.y);
-	WRITE_COORD(pev->origin.z);
-	if (iContents != CONTENTS_WATER)
-	{
-		WRITE_SHORT(g_sModelIndexFireball);
-	}
-	else
-	{
-		WRITE_SHORT(g_sModelIndexWExplosion);
-	}
-	WRITE_BYTE((pev->dmg - 50) * .60); // scale * 10
-	WRITE_BYTE(15);					   // framerate
-	WRITE_BYTE(TE_EXPLFLAG_NONE);
-	MESSAGE_END();
+	// This makes a dynamic light and the explosion sprites/sound
+	// Send to PAS because of the sound
+	UTIL_ExplosionEffect(pev->origin, iContents != CONTENTS_WATER ? g_sModelIndexFireball : g_sModelIndexWExplosion,
+		(pev->dmg - 50) * .60, 15, TE_EXPLFLAG_NONE,
+		MSG_PAS, pev->origin);
 
 	CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, NORMAL_EXPLOSION_VOLUME, 3.0);
-	entvars_t* pevOwner;
-	if (pev->owner)
-		pevOwner = VARS(pev->owner);
-	else
-		pevOwner = nullptr;
+	CBaseEntity* owner = GetOwner();
 
 	pev->owner = nullptr; // can't traceline attack owner if this is set
 
-	RadiusDamage(pev, pevOwner, pev->dmg, CLASS_NONE, bitsDamageType);
+	// Counteract the + 1 in RadiusDamage.
+	Vector origin = pev->origin;
+	origin.z -= 1;
+
+	RadiusDamage(origin, this, owner, pev->dmg, CLASS_NONE, bitsDamageType);
 
 	if (RANDOM_FLOAT(0, 1) < 0.5)
 	{
@@ -112,18 +98,16 @@ void CGrenade::Explode(TraceResult* pTrace, int bitsDamageType)
 		UTIL_DecalTrace(pTrace, DECAL_SCORCH2);
 	}
 
-	flRndSound = RANDOM_FLOAT(0, 1);
-
 	switch (RANDOM_LONG(0, 2))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/debris1.wav", 0.55, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "weapons/debris1.wav", 0.55, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/debris2.wav", 0.55, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "weapons/debris2.wav", 0.55, ATTN_NORM);
 		break;
 	case 2:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/debris3.wav", 0.55, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "weapons/debris3.wav", 0.55, ATTN_NORM);
 		break;
 	}
 
@@ -162,7 +146,7 @@ void CGrenade::Smoke()
 	UTIL_Remove(this);
 }
 
-void CGrenade::Killed(entvars_t* pevAttacker, int iGib)
+void CGrenade::Killed(CBaseEntity* attacker, int iGib)
 {
 	Detonate();
 }
@@ -234,19 +218,19 @@ void CGrenade::DangerSoundThink()
 void CGrenade::BounceTouch(CBaseEntity* pOther)
 {
 	// don't hit the guy that launched this grenade
-	if (pOther->edict() == pev->owner)
+	if (pOther == GetOwner())
 		return;
 
 	// only do damage if we're moving fairly fast
 	if (m_flNextAttack < gpGlobals->time && pev->velocity.Length() > 100)
 	{
-		entvars_t* pevOwner = VARS(pev->owner);
-		if (pevOwner)
+		CBaseEntity* owner = GetOwner();
+		if (owner)
 		{
 			TraceResult tr = UTIL_GetGlobalTrace();
 			ClearMultiDamage();
-			pOther->TraceAttack(pevOwner, 1, gpGlobals->v_forward, &tr, DMG_CLUB);
-			ApplyMultiDamage(pev, pevOwner);
+			pOther->TraceAttack(owner, 1, gpGlobals->v_forward, &tr, DMG_CLUB);
+			ApplyMultiDamage(this, owner);
 		}
 		m_flNextAttack = gpGlobals->time + 1.0; // debounce
 	}
@@ -322,13 +306,13 @@ void CGrenade::BounceSound()
 	switch (RANDOM_LONG(0, 2))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/grenade_hit1.wav", 0.25, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "weapons/grenade_hit1.wav", 0.25, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/grenade_hit2.wav", 0.25, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "weapons/grenade_hit2.wav", 0.25, ATTN_NORM);
 		break;
 	case 2:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/grenade_hit3.wav", 0.25, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "weapons/grenade_hit3.wav", 0.25, ATTN_NORM);
 		break;
 	}
 }
@@ -370,7 +354,7 @@ void CGrenade::Spawn()
 	pev->solid = SOLID_BBOX;
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
+	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
 
 	pev->dmg = 100;
 	m_fRegisteredSound = false;
@@ -453,7 +437,7 @@ CGrenade* CGrenade::ShootSatchelCharge(entvars_t* pevOwner, Vector vecStart, Vec
 
 	pGrenade->SetModel("models/grenade.mdl"); // Change this to satchel charge model
 
-	UTIL_SetSize(pGrenade->pev, Vector(0, 0, 0), Vector(0, 0, 0));
+	pGrenade->SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
 
 	pGrenade->pev->dmg = 200;
 	UTIL_SetOrigin(pGrenade->pev, vecStart);

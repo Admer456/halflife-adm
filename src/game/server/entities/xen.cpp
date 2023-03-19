@@ -101,7 +101,7 @@ void CXenPLight::Spawn()
 	pev->movetype = MOVETYPE_NONE;
 	pev->solid = SOLID_TRIGGER;
 
-	UTIL_SetSize(pev, Vector(-80, -80, 0), Vector(80, 80, 32));
+	SetSize(Vector(-80, -80, 0), Vector(80, 80, 32));
 	SetActivity(ACT_IDLE);
 	pev->nextthink = gpGlobals->time + 0.1;
 	pev->frame = RANDOM_FLOAT(0, 255);
@@ -208,7 +208,7 @@ void CXenHair::Spawn()
 {
 	Precache();
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-4, -4, 0), Vector(4, 4, 32));
+	SetSize(Vector(-4, -4, 0), Vector(4, 4, 32));
 	pev->sequence = 0;
 
 	if ((pev->spawnflags & SF_HAIR_SYNC) == 0)
@@ -277,7 +277,7 @@ public:
 	void Precache() override;
 	void Touch(CBaseEntity* pOther) override;
 	void Think() override;
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override
 	{
 		Attack();
 		return false;
@@ -323,18 +323,18 @@ void CXenTree::Spawn()
 
 	pev->takedamage = DAMAGE_YES;
 
-	UTIL_SetSize(pev, Vector(-30, -30, 0), Vector(30, 30, 188));
+	SetSize(Vector(-30, -30, 0), Vector(30, 30, 188));
 	SetActivity(ACT_IDLE);
 	pev->nextthink = gpGlobals->time + 0.1;
 	pev->frame = RANDOM_FLOAT(0, 255);
 	pev->framerate = RANDOM_FLOAT(0.7, 1.4);
 
 	Vector triggerPosition;
-	UTIL_MakeVectorsPrivate(pev->angles, triggerPosition, nullptr, nullptr);
+	AngleVectors(pev->angles, &triggerPosition, nullptr, nullptr);
 	triggerPosition = pev->origin + (triggerPosition * 64);
 	// Create the trigger
 	m_pTrigger = CXenTreeTrigger::TriggerCreate(edict(), triggerPosition);
-	UTIL_SetSize(m_pTrigger->pev, Vector(-24, -24, 0), Vector(24, 24, 128));
+	m_pTrigger->SetSize(Vector(-24, -24, 0), Vector(24, 24, 128));
 }
 
 const char* CXenTree::pAttackHitSounds[] =
@@ -361,7 +361,7 @@ void CXenTree::Precache()
 
 void CXenTree::Touch(CBaseEntity* pOther)
 {
-	if (!pOther->IsPlayer() && FClassnameIs(pOther->pev, "monster_bigmomma"))
+	if (!pOther->IsPlayer() && pOther->ClassnameIs("monster_bigmomma"))
 		return;
 
 	Attack();
@@ -390,7 +390,7 @@ void CXenTree::HandleAnimEvent(MonsterEvent_t* pEvent)
 		int count = UTIL_EntitiesInBox(pList, 8, m_pTrigger->pev->absmin, m_pTrigger->pev->absmax, FL_MONSTER | FL_CLIENT);
 		Vector forward;
 
-		UTIL_MakeVectorsPrivate(pev->angles, forward, nullptr, nullptr);
+		AngleVectors(pev->angles, &forward, nullptr, nullptr);
 
 		for (int i = 0; i < count; i++)
 		{
@@ -399,7 +399,7 @@ void CXenTree::HandleAnimEvent(MonsterEvent_t* pEvent)
 				if (pList[i]->pev->owner != edict())
 				{
 					sound = true;
-					pList[i]->TakeDamage(pev, pev, 25, DMG_CRUSH | DMG_SLASH);
+					pList[i]->TakeDamage(this, this, 25, DMG_CRUSH | DMG_SLASH);
 					pList[i]->pev->punchangle.x = 15;
 					pList[i]->pev->velocity = pList[i]->pev->velocity + forward * 100;
 				}
@@ -454,7 +454,7 @@ public:
 	void Precache() override;
 	void Touch(CBaseEntity* pOther) override;
 	void Think() override;
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override
 	{
 		Attack();
 		return false;
@@ -499,7 +499,7 @@ CXenHull* CXenHull::CreateHull(CBaseEntity* source, const Vector& mins, const Ve
 	pHull->pev->solid = SOLID_BBOX;
 	pHull->pev->movetype = MOVETYPE_NONE;
 	pHull->pev->owner = source->edict();
-	UTIL_SetSize(pHull->pev, mins, maxs);
+	pHull->SetSize(mins, maxs);
 	pHull->pev->renderamt = 0;
 	pHull->pev->rendermode = kRenderTransTexture;
 	//	pHull->pev->effects = EF_NODRAW;
@@ -517,13 +517,13 @@ void CXenSporeSmall::Spawn()
 {
 	pev->skin = 0;
 	CXenSpore::Spawn();
-	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 64));
+	SetSize(Vector(-16, -16, 0), Vector(16, 16, 64));
 }
 void CXenSporeMed::Spawn()
 {
 	pev->skin = 1;
 	CXenSpore::Spawn();
-	UTIL_SetSize(pev, Vector(-40, -40, 0), Vector(40, 40, 120));
+	SetSize(Vector(-40, -40, 0), Vector(40, 40, 120));
 }
 
 
@@ -541,11 +541,11 @@ void CXenSporeLarge::Spawn()
 {
 	pev->skin = 2;
 	CXenSpore::Spawn();
-	UTIL_SetSize(pev, Vector(-48, -48, 110), Vector(48, 48, 240));
+	SetSize(Vector(-48, -48, 110), Vector(48, 48, 240));
 
 	Vector forward, right;
 
-	UTIL_MakeVectorsPrivate(pev->angles, forward, right, nullptr);
+	AngleVectors(pev->angles, &forward, &right, nullptr);
 
 	// Rotate the leg hulls into position
 	for (std::size_t i = 0; i < std::size(m_hullSizes); i++)
@@ -604,7 +604,6 @@ void CXenSpore::Touch(CBaseEntity* pOther)
 
 void CXenSpore::Think()
 {
-	float flInterval = StudioFrameAdvance();
 	pev->nextthink = gpGlobals->time + 0.1;
 
 #if 0

@@ -16,10 +16,14 @@
 #pragma once
 
 #include "GameSystem.h"
+#include "networking/NetworkDataSystem.h"
+
+class CBaseEntity;
+struct cvar_t;
 
 namespace sound
 {
-class ServerSoundSystem final : public IGameSystem
+class ServerSoundSystem final : public IGameSystem, public INetworkDataBlockHandler
 {
 public:
 	const char* GetName() const override { return "ServerSound"; }
@@ -28,21 +32,35 @@ public:
 	void PostInitialize() override;
 	void Shutdown() override;
 
-	void EmitSound(edict_t* entity, int channel, const char* sample, float volume, float attenuation, int flags, int pitch);
+	void HandleNetworkDataBlock(NetworkDataBlock& block) override;
 
-	void EmitAmbientSound(edict_t* entity, const Vector& vecOrigin, const char* samp, float vol, float attenuation, int fFlags, int pitch);
+	/**
+	*	@details Use this to set the pitch of a sound.
+	*	Pitch of 100 is no pitch shift.
+	*	Pitch > 100 up to 255 is a higher pitch, pitch < 100 down to 1 is a lower pitch.
+	*	150 to 70 is the realistic range.
+	*	EmitSound with pitch != 100 should be used sparingly,
+	*	as it's not quite as fast as with normal pitch (the pitchshift mixer is not native coded).
+	*	TODO: is this still true?
+	*/
+	void EmitSound(CBaseEntity* entity, int channel, const char* sample, float volume, float attenuation, int flags, int pitch);
+
+	void EmitAmbientSound(CBaseEntity* entity, const Vector& vecOrigin, const char* samp, float vol, float attenuation, int fFlags, int pitch);
 
 	const char* CheckForSoundReplacement(const char* soundName) const;
 
 private:
-	void EmitSoundCore(edict_t* entity, int channel, const char* sample, float volume, float attenuation,
+	const char* CheckForSoundReplacement(CBaseEntity* entity, const char* soundName) const;
+
+	void EmitSoundCore(CBaseEntity* entity, int channel, const char* sample, float volume, float attenuation,
 		int flags, int pitch, const Vector& origin, bool alwaysBroadcast);
 
-	void EmitSoundSentence(edict_t* entity, int channel, const char* sample, float volume, float attenuation,
+	void EmitSoundSentence(CBaseEntity* entity, int channel, const char* sample, float volume, float attenuation,
 		int flags, int pitch);
 
 private:
 	std::shared_ptr<spdlog::logger> m_Logger;
+	cvar_t* m_UseOpenAl{};
 };
 
 inline ServerSoundSystem g_ServerSound;

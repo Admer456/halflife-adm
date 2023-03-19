@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <memory>
 #include <optional>
 
 #include "cdll_dll.h"
@@ -40,9 +41,8 @@ public:
 	std::optional<RGB24> m_HudColor;
 	std::optional<SuitLightType> m_LightType;
 
-	const ReplacementMap* m_GlobalModelReplacement{&ReplacementMap::Empty};
-	const ReplacementMap* m_GlobalSentenceReplacement{&ReplacementMap::Empty};
-
-	Filename m_GlobalSoundReplacementFileName;
-	const ReplacementMap* m_GlobalSoundReplacement{&ReplacementMap::Empty};
+	// Initialized during config load.
+	std::unique_ptr<const ReplacementMap> m_GlobalModelReplacement;
+	std::unique_ptr<const ReplacementMap> m_GlobalSentenceReplacement;
+	std::unique_ptr<const ReplacementMap> m_GlobalSoundReplacement;
 };

@@ -21,14 +21,15 @@
 */
 
 #include "cbase.h"
+#include "CCorpse.h"
 #include "nodes.h"
 #include "client.h"
 #include "teamplay_gamerules.h"
 #include "ctfplay_gamerules.h"
+#include "spawnpoints.h"
 #include "world.h"
 #include "ServerLibrary.h"
 #include "ctf/CItemCTF.h"
-#include "sound/MaterialSystem.h"
 
 CGlobalState gGlobalState;
 
@@ -149,11 +150,11 @@ void CDecal::TriggerDecal(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYP
 	WRITE_COORD(pev->origin.x);
 	WRITE_COORD(pev->origin.y);
 	WRITE_COORD(pev->origin.z);
-	WRITE_SHORT((int)pev->skin);
+	WRITE_SHORT(pev->skin);
 	entityIndex = (short)ENTINDEX(trace.pHit);
 	WRITE_SHORT(entityIndex);
 	if (0 != entityIndex)
-		WRITE_SHORT((int)VARS(trace.pHit)->modelindex);
+		WRITE_SHORT(VARS(trace.pHit)->modelindex);
 	MESSAGE_END();
 
 	SetThink(&CDecal::SUB_Remove);
@@ -170,11 +171,11 @@ void CDecal::StaticDecal()
 
 	entityIndex = (short)ENTINDEX(trace.pHit);
 	if (0 != entityIndex)
-		modelIndex = (int)VARS(trace.pHit)->modelindex;
+		modelIndex = VARS(trace.pHit)->modelindex;
 	else
 		modelIndex = 0;
 
-	g_engfuncs.pfnStaticDecal(pev->origin, (int)pev->skin, entityIndex, modelIndex);
+	g_engfuncs.pfnStaticDecal(pev->origin, pev->skin, entityIndex, modelIndex);
 
 	SUB_Remove();
 }
@@ -196,71 +197,6 @@ bool CDecal::KeyValue(KeyValueData* pkvd)
 
 	return CBaseEntity::KeyValue(pkvd);
 }
-
-
-// Body queue class here.... It's really just CBaseEntity
-class CCorpse : public CBaseEntity
-{
-	int ObjectCaps() override { return FCAP_DONT_SAVE; }
-};
-
-LINK_ENTITY_TO_CLASS(bodyque, CCorpse);
-
-static void InitBodyQue()
-{
-	const std::string_view className{"bodyque"sv};
-
-	g_pBodyQueueHead = g_EntityDictionary->Create(className)->edict();
-	entvars_t* pev = VARS(g_pBodyQueueHead);
-
-	// Reserve 3 more slots for dead bodies
-	for (int i = 0; i < 3; i++)
-	{
-		pev->owner = g_EntityDictionary->Create(className)->edict();
-		pev = VARS(pev->owner);
-	}
-
-	pev->owner = g_pBodyQueueHead;
-}
-
-
-//
-// make a body que entry for the given ent so the ent can be respawned elsewhere
-//
-// GLOBALS ASSUMED SET:  g_eoBodyQueueHead
-//
-void CopyToBodyQue(entvars_t* pev)
-{
-	if ((pev->effects & EF_NODRAW) != 0)
-		return;
-
-	entvars_t* pevHead = VARS(g_pBodyQueueHead);
-
-	pevHead->angles = pev->angles;
-	pevHead->model = pev->model;
-	pevHead->modelindex = pev->modelindex;
-	pevHead->frame = pev->frame;
-	pevHead->colormap = pev->colormap;
-	pevHead->movetype = MOVETYPE_TOSS;
-	pevHead->velocity = pev->velocity;
-	pevHead->flags = 0;
-	pevHead->deadflag = pev->deadflag;
-	pevHead->renderfx = kRenderFxDeadPlayer;
-	pevHead->renderamt = ENTINDEX(ENT(pev));
-
-	pevHead->effects = pev->effects | EF_NOINTERP;
-	// pevHead->goalstarttime = pev->goalstarttime;
-	// pevHead->goalframe	= pev->goalframe;
-	// pevHead->goalendtime = pev->goalendtime ;
-
-	pevHead->sequence = pev->sequence;
-	pevHead->animtime = pev->animtime;
-
-	UTIL_SetOrigin(pevHead, pev->origin);
-	UTIL_SetSize(pevHead, pev->mins, pev->maxs);
-	g_pBodyQueueHead = pevHead->owner;
-}
-
 
 CGlobalState::CGlobalState()
 {
@@ -556,11 +492,6 @@ void CWorld::Precache()
 	}
 
 	InitBodyQue();
-
-	// init texture type array from materials.txt
-
-	PM_InitTextureTypes();
-
 
 	// the area based ambient sounds MUST be the first precache_sounds
 

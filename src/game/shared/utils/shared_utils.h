@@ -20,12 +20,14 @@
 
 #include <spdlog/logger.h>
 
+#include "entity_utils.h"
 #include "filesystem_utils.h"
 #include "mathlib.h"
 #include "LogSystem.h"
 #include "string_utils.h"
 #include "extdll.h"
 #include "enginecallback.h"
+#include "utils/PrecacheList.h"
 
 extern globalvars_t* gpGlobals;
 
@@ -45,6 +47,45 @@ void DBG_AssertFunction(bool fExpr, const char* szExpr, const char* szFile, int 
 #define ASSERT(f)
 #define ASSERTSZ(f, sz)
 #endif // !DEBUG
+
+//
+// Conversion among the three types of "entity", including identity-conversions.
+//
+#ifdef DEBUG
+edict_t* DBG_EntOfVars(const entvars_t* pev);
+inline edict_t* ENT(const entvars_t* pev) { return DBG_EntOfVars(pev); }
+#else
+inline edict_t* ENT(const entvars_t* pev)
+{
+	return pev->pContainingEntity;
+}
+#endif
+inline edict_t* ENT(edict_t* pent)
+{
+	return pent;
+}
+
+inline entvars_t* VARS(edict_t* pent)
+{
+	if (!pent)
+		return nullptr;
+
+	return &pent->v;
+}
+
+inline int ENTINDEX(const edict_t* pEdict) { return (*g_engfuncs.pfnIndexOfEdict)(pEdict); }
+inline edict_t* INDEXENT(int iEdictNum) { return (*g_engfuncs.pfnPEntityOfEntIndex)(iEdictNum); }
+
+// Testing the three types of "entity" for nullity
+
+// Index 0 is worldspawn, which is treated as a null entity to match Quake 1's QuakeC integer boolean logic.
+// if (ent) is false for index 0.
+inline bool FNullEnt(const edict_t* pent) { return pent == nullptr || ENTINDEX(pent) == 0; }
+inline bool FNullEnt(entvars_t* pev) { return pev == nullptr || FNullEnt(ENT(pev)); }
+
+// entity offsets are no longer used. These overloads exist only to produce compiler errors if code passes integers.
+inline bool FNullEnt(int eoffset) = delete;
+inline edict_t* ENT(int eoffset) = delete;
 
 // Testing strings for nullity
 inline constexpr bool FStringNull(string_t iString)
@@ -76,6 +117,10 @@ string_t ALLOC_ESCAPED_STRING(const char* str);
 
 void ClearStringPool();
 
+bool Con_IsPrintBufferingEnabled();
+
+void Con_SetPrintBufferingEnabled(bool enabled);
+
 void Con_Printf(const char* format, ...);
 void Con_DPrintf(const char* format, ...);
 
@@ -90,6 +135,12 @@ bool COM_GetParam(const char* name, const char** next);
  */
 bool COM_HasParam(const char* name);
 
+/**
+ *	@brief Fixes bounds vectors so that the min components are <= than the max components.
+ *	This avoids the "backwards mins/maxs" engine error.
+ */
+bool UTIL_FixBoundsVectors(Vector& mins, Vector& maxs);
+
 constexpr bool UTIL_IsServer()
 {
 #ifdef CLIENT_DLL
@@ -101,8 +152,6 @@ constexpr bool UTIL_IsServer()
 
 constexpr std::string_view GetShortLibraryPrefix()
 {
-	using namespace std::literals;
-
 	if constexpr (UTIL_IsServer())
 	{
 		return "sv"sv;
@@ -115,8 +164,6 @@ constexpr std::string_view GetShortLibraryPrefix()
 
 constexpr std::string_view GetLongLibraryPrefix()
 {
-	using namespace std::literals;
-
 	if constexpr (UTIL_IsServer())
 	{
 		return "server"sv;
@@ -145,6 +192,12 @@ float UTIL_SharedRandomFloat(unsigned int seed, float low, float high);
 // The client also provides these functions, so use them to make this cross-library.
 inline float CVAR_GET_FLOAT(const char* x) { return g_engfuncs.pfnCVarGetFloat(x); }
 inline const char* CVAR_GET_STRING(const char* x) { return g_engfuncs.pfnCVarGetString(x); }
+
+inline std::unique_ptr<PrecacheList> g_ModelPrecache;
+inline std::unique_ptr<PrecacheList> g_SoundPrecache;
+inline std::unique_ptr<PrecacheList> g_GenericPrecache;
+
+void UTIL_CreatePrecacheLists();
 
 const char* UTIL_CheckForGlobalModelReplacement(const char* s);
 

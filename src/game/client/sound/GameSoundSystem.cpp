@@ -48,11 +48,19 @@ GameSoundSystem::~GameSoundSystem()
 		alDeleteEffects(m_RoomEffects.size(), m_RoomEffects.data());
 		std::memset(m_RoomEffects.data(), 0, m_RoomEffects.size() * sizeof(ALuint));
 	}
+
+	g_Logging.RemoveLogger(m_SentencesLogger);
+	m_SentencesLogger.reset();
+
+	g_Logging.RemoveLogger(m_CacheLogger);
+	m_CacheLogger.reset();
 }
 
 bool GameSoundSystem::Create(std::shared_ptr<spdlog::logger> logger, ALCdevice* device)
 {
 	m_Logger = logger;
+	m_CacheLogger = g_Logging.CreateLogger("sound.cache");
+	m_SentencesLogger = g_Logging.CreateLogger("sound.sentences");
 
 	m_Volume = gEngfuncs.pfnGetCvarPointer("volume");
 	m_RoomOff = gEngfuncs.pfnGetCvarPointer("room_off");
@@ -88,7 +96,7 @@ bool GameSoundSystem::Create(std::shared_ptr<spdlog::logger> logger, ALCdevice* 
 		return false;
 	}
 
-	ALint attribs[4] = {0};
+	ALCint attribs[3] = {0};
 
 	// We only need 1.
 	attribs[0] = ALC_MAX_AUXILIARY_SENDS;
@@ -106,6 +114,23 @@ bool GameSoundSystem::Create(std::shared_ptr<spdlog::logger> logger, ALCdevice* 
 	{
 		m_Logger->error("Couldn't make OpenAL context current");
 		return false;
+	}
+
+	// An active context is required to query these.
+	{
+		const auto getOpenALString = [](ALenum param)
+		{
+			if (const auto result = alGetString(param); result)
+			{
+				return result;
+			}
+
+			return "Unknown";
+		};
+
+		m_Logger->trace("OpenAL vendor: {}", getOpenALString(AL_VENDOR));
+		m_Logger->trace("OpenAL version: {}", getOpenALString(AL_VERSION));
+		m_Logger->trace("OpenAL renderer: {}", getOpenALString(AL_RENDERER));
 	}
 
 	ALCint auxSendsCount = 0;
@@ -171,15 +196,45 @@ bool GameSoundSystem::Create(std::shared_ptr<spdlog::logger> logger, ALCdevice* 
 	constexpr double metersPerUnit = footInMeters / 16;
 	alListenerf(AL_METERS_PER_UNIT, static_cast<float>(metersPerUnit));
 
-	m_SoundCache = std::make_unique<SoundCache>(m_Logger);
-	m_Sentences = std::make_unique<SentencesSystem>(m_Logger, m_SoundCache.get());
+	alDopplerFactor(0.f);
+
+	m_SoundCache = std::make_unique<SoundCache>(m_CacheLogger);
+	m_Sentences = std::make_unique<SentencesSystem>(m_SentencesLogger, m_SoundCache.get());
 
 	return true;
 }
 
-void GameSoundSystem::LoadSentences()
+void GameSoundSystem::OnBeginNetworkDataProcessing()
 {
-	m_Sentences->LoadSentences();
+	// Clear all references to sounds and sentences.
+	StopAllSounds();
+
+	// Remove all sentences so we can load the incoming list.
+	m_Sentences->Clear();
+
+	// Clear the entire cache so we start fresh.
+	m_SoundCache->Clear();
+
+	m_PrecacheMap.clear();
+}
+
+void GameSoundSystem::HandleNetworkDataBlock(NetworkDataBlock& block)
+{
+	if (block.Name == "SoundList")
+	{
+		// The empty name, shouldn't be used.
+		m_PrecacheMap.push_back(SoundIndex{});
+
+		for (const auto& fileName : block.Data)
+		{
+			// TODO: avoid constructing multiple strings here
+			m_PrecacheMap.push_back(m_SoundCache->FindName(fileName.get<std::string>().c_str()));
+		}
+	}
+	else if (block.Name == "Sentences")
+	{
+		m_Sentences->HandleNetworkDataBlock(block);
+	}
 }
 
 void GameSoundSystem::Update()
@@ -388,6 +443,8 @@ void GameSoundSystem::StartSound(
 
 	if (SetupChannel(*newChannel, entityIndex, channelIndex, std::move(sound), origin, volume, pitch, attenuation, false))
 	{
+		m_Logger->trace("Playing \"{}\": Entity {}, channel {}", soundOrSentence, entityIndex, channelIndex);
+
 		if (!m_Paused || (flags & SND_PLAY_WHEN_PAUSED) != 0)
 		{
 			alSourcePlay(newChannel->Source.Id);
@@ -404,16 +461,7 @@ void GameSoundSystem::StopAllSounds()
 	m_Channels.clear();
 }
 
-void GameSoundSystem::ClearCaches()
-{
-	// Need to stop sounds to clear OpenAL buffers.
-	StopAllSounds();
-
-	// Clear all cached data. The sounds themselves need to stay because the sentences reference them.
-	m_SoundCache->ClearBuffers();
-}
-
-void GameSoundSystem::UserMsg_EmitSound(const char* pszName, int iSize, void* pbuf)
+void GameSoundSystem::MsgFunc_EmitSound(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 
@@ -444,33 +492,48 @@ void GameSoundSystem::UserMsg_EmitSound(const char* pszName, int iSize, void* pb
 
 	const int pitch = (flags & SND_PITCH) != 0 ? READ_BYTE() : 100;
 
-	if (entityIndex < 0 || entityIndex >= g_MaxEntities)
-	{
-		m_Logger->error("UserMsg_EmitSound: Entity index {} is invalid, max edicts is {}", entityIndex, g_MaxEntities);
-		return;
-	}
+	const auto entity = gEngfuncs.GetEntityByIndex(entityIndex);
 
-	if ((flags & SND_SENTENCE) == 0)
+	if (!entity)
 	{
-		m_Logger->error("UserMsg_EmitSound: Cannot play regular sounds");
+		m_Logger->error("MsgFunc_EmitSound: Entity index {} is invalid", entityIndex);
 		return;
 	}
 
 	const std::size_t absoluteSoundIndex = soundIndex >= 0 ? static_cast<std::size_t>(soundIndex) : SentencesSystem::InvalidIndex;
 
-	const auto sentence = m_Sentences->GetSentence(absoluteSoundIndex);
-
-	if (!sentence)
+	// TODO: this is needlessly converting from index to filename and back again
+	if ((flags & SND_SENTENCE) == 0)
 	{
-		m_Logger->error("UserMsg_EmitSound: Invalid sentence index {}", soundIndex);
-		return;
+		if (absoluteSoundIndex >= m_PrecacheMap.size())
+		{
+			m_Logger->error("MsgFunc_EmitSound: Invalid sound index {}", soundIndex);
+			return;
+		}
+
+		const SoundIndex soundIndex = m_PrecacheMap[absoluteSoundIndex];
+
+		const auto sound = m_SoundCache->GetSound(soundIndex);
+
+		assert(sound);
+
+		StartSound(entityIndex, channel, sound->Name.c_str(), origin, volume, attenuation, pitch, flags);
 	}
+	else
+	{
+		const auto sentence = m_Sentences->GetSentence(absoluteSoundIndex);
 
-	Filename sample;
+		if (!sentence)
+		{
+			m_Logger->error("MsgFunc_EmitSound: Invalid sentence index {}", soundIndex);
+			return;
+		}
+		
+		Filename sample;
+		fmt::format_to(std::back_inserter(sample), "!{}", sentence->Name.c_str());
 
-	fmt::format_to(std::back_inserter(sample), "!{}", sentence->Name.c_str());
-
-	StartSound(entityIndex, channel, sample.c_str(), origin, volume, attenuation, pitch, flags);
+		StartSound(entityIndex, channel, sample.c_str(), origin, volume, attenuation, pitch, flags);
+	}
 }
 
 bool GameSoundSystem::MakeCurrent()
@@ -487,6 +550,31 @@ bool GameSoundSystem::MakeCurrent()
 void GameSoundSystem::SetVolume()
 {
 	alListenerf(AL_GAIN, m_Volume->value);
+}
+
+std::string_view GameSoundSystem::GetSoundName(const SoundData& sound) const
+{
+	return std::visit([&, this](auto&& sound)
+		{
+			using T = std::decay_t<decltype(sound)>;
+
+			if constexpr (std::is_same_v<T, SoundIndex>)
+			{
+				const auto& soundData = *m_SoundCache->GetSound(sound);
+				return std::string_view{soundData.Name.data(), soundData.Name.size()};
+			}
+			else if constexpr (std::is_same_v<T, SentenceChannel>)
+			{
+				const auto& sentence = *m_Sentences->GetSentence(sound.Sentence);
+				return std::string_view{sentence.Name.data(), sentence.Name.size()};
+			}
+			else
+			{
+				static_assert(always_false_v<T>, "GetSoundName does not handle all sound types");
+			}
+
+			return std::string_view{}; },
+		sound);
 }
 
 Channel* GameSoundSystem::CreateChannel()
@@ -522,18 +610,65 @@ void GameSoundSystem::RemoveChannel(Channel& channel)
 	m_Channels.erase(m_Channels.begin() + (&channel - m_Channels.data()));
 }
 
+template <typename FilterFunction>
+Channel* GameSoundSystem::FindDynamicChannel(int entityIndex, FilterFunction&& filterFunction)
+{
+	for (auto& channel : m_Channels)
+	{
+		if (channel.ChannelIndex == CHAN_STATIC)
+			continue;
+
+		if (channel.EntityIndex != entityIndex)
+			continue;
+
+		if (filterFunction(channel))
+			return &channel;
+	}
+
+	return nullptr;
+}
+
 Channel* GameSoundSystem::FindOrCreateChannel(int entityIndex, int channelIndex)
 {
-	if (channelIndex != CHAN_STATIC)
+	// The engine's original behavior works like this:
+	// There are 128 channels. 4 ambient, 8 dynamic, 116 static.
+	// Ambient channels are left over from Quake 1 and are never used.
+	// For dynamic channels it depends on the channel index.
+	// CHAN_AUTO picks the first unused channel or the channel closest to finishing its sound.
+	// CHAN_VOICE prefers channels assigned to the current entity's voice channel,
+	// otherwise same as CHAN_AUTO.
+	// All other channels will reuse channels assigned to the current entity if
+	// they are the same channel or if the requested channel is -1, otherwise same as CHAN_AUTO.
+	// For static channels it always tries to find an unused static channel.
+
+	// This sound system allocates channels on demand so it tries to follow the old rules first,
+	// falling back to allocating a channel if no in-use channels match.
+	if (channelIndex != CHAN_STATIC && channelIndex != CHAN_AUTO)
 	{
-		// Dynamic channels only allow a single sound to play on them for a given entity.
-		for (auto& channel : m_Channels)
+		Channel* channel = nullptr;
+
+		if (channelIndex == CHAN_VOICE)
 		{
-			if (channel.ChannelIndex != CHAN_STATIC && channel.EntityIndex == entityIndex && channel.ChannelIndex == channelIndex)
-			{
-				ClearChannel(channel);
-				return &channel;
-			}
+			// Always override existing voice lines.
+			channel = FindDynamicChannel(entityIndex, [&](Channel& channel)
+				{ return channel.ChannelIndex == CHAN_VOICE; });
+		}
+		else if (channelIndex != -1)
+		{
+			channel = FindDynamicChannel(entityIndex, [&](Channel& channel)
+				{ return channel.ChannelIndex == channelIndex; });
+		}
+		else
+		{
+			channel = FindDynamicChannel(entityIndex, [&](Channel& channel)
+				{ return true; });
+		}
+
+		if (channel)
+		{
+			m_Logger->trace("Clearing \"{}\": entity {}, channel {}", GetSoundName(channel->Sound), entityIndex, channelIndex);
+			ClearChannel(*channel);
+			return channel;
 		}
 	}
 
@@ -548,10 +683,22 @@ bool GameSoundSystem::SetupChannel(Channel& channel, int entityIndex, int channe
 	channel.ChannelIndex = channelIndex;
 	channel.Pitch = pitch;
 
-	alSourcefv(channel.Source.Id, AL_POSITION, origin);
+	// If attenuation is 0 then the sound will play everywhere.
+	// Make it relative to the listener to stop it from having 3D spatialization.
+	if (!isRelative && attenuation == 0)
+	{
+		isRelative = true;
+		alSourcefv(channel.Source.Id, AL_POSITION, vec3_origin);
+	}
+	else
+	{
+		alSourcefv(channel.Source.Id, AL_POSITION, origin);
+	}
+
 	alSourcef(channel.Source.Id, AL_GAIN, volume);
 	alSourcef(channel.Source.Id, AL_PITCH, pitch / 100.f);
 	alSourcef(channel.Source.Id, AL_ROLLOFF_FACTOR, attenuation);
+	alSourcef(channel.Source.Id, AL_REFERENCE_DISTANCE, 0);
 	alSourcef(channel.Source.Id, AL_MAX_DISTANCE, NominalClippingDistance);
 	alSourcei(channel.Source.Id, AL_SOURCE_RELATIVE, isRelative ? AL_TRUE : AL_FALSE);
 	alSourcei(channel.Source.Id, AL_LOOPING, AL_FALSE);
@@ -796,7 +943,7 @@ bool GameSoundSystem::UpdateSound(Channel& channel)
 void GameSoundSystem::Spatialize(Channel& channel, int messagenum)
 {
 	// Update sound channel position.
-	if (channel.EntityIndex > 0 && channel.EntityIndex < g_MaxEntities)
+	if (channel.EntityIndex > 0)
 	{
 		auto entity = gEngfuncs.GetEntityByIndex(channel.EntityIndex);
 

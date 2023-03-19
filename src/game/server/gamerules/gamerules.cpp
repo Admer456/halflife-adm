@@ -22,10 +22,10 @@
 #include "teamplay_gamerules.h"
 #include "ctfplay_gamerules.h"
 #include "coopplay_gamerules.h"
+#include "spawnpoints.h"
 #include "world.h"
 #include "UserMessages.h"
-
-edict_t* EntSelectSpawnPoint(CBasePlayer* pPlayer);
+#include "items/weapons/AmmoTypeSystem.h"
 
 CGameRules::CGameRules()
 {
@@ -41,7 +41,7 @@ CGameRules::CGameRules()
 				player->Observer_SetMode(atoi(CMD_ARGV(1))); });
 }
 
-CBasePlayerItem* CGameRules::FindNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pCurrentWeapon)
+CBasePlayerWeapon* CGameRules::FindNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pCurrentWeapon)
 {
 	if (pCurrentWeapon != nullptr && !pCurrentWeapon->CanHolster())
 	{
@@ -51,13 +51,13 @@ CBasePlayerItem* CGameRules::FindNextBestWeapon(CBasePlayer* pPlayer, CBasePlaye
 
 	const int currentWeight = pCurrentWeapon != nullptr ? pCurrentWeapon->iWeight() : -1;
 
-	CBasePlayerItem* pBest = nullptr; // this will be used in the event that we don't find a weapon in the same category.
+	CBasePlayerWeapon* pBest = nullptr; // this will be used in the event that we don't find a weapon in the same category.
 
 	int iBestWeight = -1; // no weapon lower than -1 can be autoswitched to
 
-	for (int i = 0; i < MAX_ITEM_TYPES; i++)
+	for (int i = 0; i < MAX_WEAPON_SLOTS; i++)
 	{
-		for (auto pCheck = pPlayer->m_rgpPlayerItems[i]; pCheck; pCheck = pCheck->m_pNext)
+		for (auto pCheck = pPlayer->m_rgpPlayerWeapons[i]; pCheck; pCheck = pCheck->m_pNext)
 		{
 			// don't reselect the weapon we're trying to get rid of
 			if (pCheck == pCurrentWeapon)
@@ -101,7 +101,7 @@ CBasePlayerItem* CGameRules::FindNextBestWeapon(CBasePlayer* pPlayer, CBasePlaye
 	return pBest;
 }
 
-bool CGameRules::GetNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pCurrentWeapon, bool alwaysSearch)
+bool CGameRules::GetNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pCurrentWeapon, bool alwaysSearch)
 {
 	if (auto pBest = FindNextBestWeapon(pPlayer, pCurrentWeapon); pBest != nullptr)
 	{
@@ -114,17 +114,13 @@ bool CGameRules::GetNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pCurre
 
 //=========================================================
 //=========================================================
-bool CGameRules::CanHaveAmmo(CBasePlayer* pPlayer, const char* pszAmmoName, int iMaxCarry)
+bool CGameRules::CanHaveAmmo(CBasePlayer* pPlayer, const char* pszAmmoName)
 {
-	int iAmmoIndex;
-
 	if (pszAmmoName)
 	{
-		iAmmoIndex = pPlayer->GetAmmoIndex(pszAmmoName);
-
-		if (iAmmoIndex > -1)
+		if (const auto type = g_AmmoTypes.GetByName(pszAmmoName); type)
 		{
-			if (pPlayer->AmmoInventory(iAmmoIndex) < iMaxCarry)
+			if (pPlayer->AmmoInventory(type->Id) < type->MaximumCapacity)
 			{
 				// player has room for more of this type of ammo
 				return true;
@@ -137,23 +133,23 @@ bool CGameRules::CanHaveAmmo(CBasePlayer* pPlayer, const char* pszAmmoName, int 
 
 //=========================================================
 //=========================================================
-edict_t* CGameRules::GetPlayerSpawnSpot(CBasePlayer* pPlayer)
+CBaseEntity* CGameRules::GetPlayerSpawnSpot(CBasePlayer* pPlayer)
 {
-	edict_t* pentSpawnSpot = EntSelectSpawnPoint(pPlayer);
+	CBaseEntity* pSpawnSpot = EntSelectSpawnPoint(pPlayer);
 
-	pPlayer->pev->origin = VARS(pentSpawnSpot)->origin + Vector(0, 0, 1);
+	pPlayer->pev->origin = pSpawnSpot->pev->origin + Vector(0, 0, 1);
 	pPlayer->pev->v_angle = g_vecZero;
 	pPlayer->pev->velocity = g_vecZero;
-	pPlayer->pev->angles = VARS(pentSpawnSpot)->angles;
+	pPlayer->pev->angles = pSpawnSpot->pev->angles;
 	pPlayer->pev->punchangle = g_vecZero;
 	pPlayer->pev->fixangle = 1;
 
-	return pentSpawnSpot;
+	return pSpawnSpot;
 }
 
 //=========================================================
 //=========================================================
-bool CGameRules::CanHavePlayerItem(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon)
+bool CGameRules::CanHavePlayerWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pWeapon)
 {
 	// only living players can have items
 	if (pPlayer->pev->deadflag != DEAD_NO)
@@ -161,11 +157,11 @@ bool CGameRules::CanHavePlayerItem(CBasePlayer* pPlayer, CBasePlayerItem* pWeapo
 
 	if (pWeapon->pszAmmo1())
 	{
-		if (!CanHaveAmmo(pPlayer, pWeapon->pszAmmo1(), pWeapon->iMaxAmmo1()))
+		if (!CanHaveAmmo(pPlayer, pWeapon->pszAmmo1()))
 		{
 			// we can't carry anymore ammo for this gun. We can only
 			// have the gun if we aren't already carrying one of this type
-			if (pPlayer->HasPlayerItem(pWeapon))
+			if (pPlayer->HasPlayerWeapon(pWeapon))
 			{
 				return false;
 			}
@@ -174,7 +170,7 @@ bool CGameRules::CanHavePlayerItem(CBasePlayer* pPlayer, CBasePlayerItem* pWeapo
 	else
 	{
 		// weapon doesn't use ammo, don't take another if you already have it.
-		if (pPlayer->HasPlayerItem(pWeapon))
+		if (pPlayer->HasPlayerWeapon(pWeapon))
 		{
 			return false;
 		}
@@ -191,8 +187,8 @@ void CGameRules::BecomeSpectator(CBasePlayer* player, const CommandArgs& args)
 	// always allow proxies to become a spectator
 	if ((player->pev->flags & FL_PROXY) != 0 || allow_spectators.value != 0)
 	{
-		edict_t* pentSpawnSpot = g_pGameRules->GetPlayerSpawnSpot(player);
-		player->StartObserver(player->pev->origin, VARS(pentSpawnSpot)->angles);
+		CBaseEntity* pSpawnSpot = g_pGameRules->GetPlayerSpawnSpot(player);
+		player->StartObserver(player->pev->origin, pSpawnSpot->pev->angles);
 
 		// notify other clients of player switching to spectator mode
 		UTIL_ClientPrintAll(HUD_PRINTNOTIFY, UTIL_VarArgs("%s switched to spectator mode\n",

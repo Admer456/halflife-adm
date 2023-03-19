@@ -42,6 +42,7 @@ target_sources(server PRIVATE
 	plane.cpp
 	plane.h
 	saverestore.h
+	ServerConfigContext.h
 	ServerLibrary.cpp
 	ServerLibrary.h
 	skill.cpp
@@ -67,8 +68,11 @@ target_sources(server PRIVATE
 	entities/CBaseDelay.h
 	entities/CBaseEntity.h
 	entities/CBaseToggle.h
+	entities/CCorpse.cpp
+	entities/CCorpse.h
 	entities/CMultiSource.h
 	entities/CPointEntity.h
+	entities/CTriggerChangeKeyValue.cpp
 	entities/doors.cpp
 	entities/doors.h
 	entities/effects.cpp
@@ -97,6 +101,8 @@ target_sources(server PRIVATE
 	entities/player.cpp
 	entities/player.h
 	entities/player_sethudcolor.cpp
+	entities/spawnpoints.cpp
+	entities/spawnpoints.h
 	entities/sound.cpp
 	entities/soundent.cpp
 	entities/soundent.h
@@ -144,6 +150,8 @@ target_sources(server PRIVATE
 	entities/ctf/CTFSpawn.h
 	
 	entities/items/airtank.cpp
+	entities/items/CWeaponBox.cpp
+	entities/items/CWeaponBox.h
 	entities/items/ggrenade.cpp
 	entities/items/healthkit.cpp
 	entities/items/h_battery.cpp
@@ -157,6 +165,8 @@ target_sources(server PRIVATE
 	entities/items/weapons/CEagleLaser.h
 	entities/items/weapons/CGrappleTip.cpp
 	entities/items/weapons/CGrappleTip.h
+	entities/items/weapons/CLaserSpot.cpp
+	entities/items/weapons/CLaserSpot.h
 	entities/items/weapons/CShockBeam.cpp
 	entities/items/weapons/CShockBeam.h
 	entities/items/weapons/CSpore.cpp
@@ -260,17 +270,16 @@ target_sources(server PRIVATE
 	entities/NPCs/racex/voltigore.cpp
 	entities/NPCs/racex/voltigore.h
 	
-	gamerules/coopplay_gamerules.cpp
-	gamerules/coopplay_gamerules.h
-	gamerules/ctfplay_gamerules.cpp
-	gamerules/ctfplay_gamerules.h
-	
 	entities/NPCs/zombies/gonome.cpp
 	entities/NPCs/zombies/zombie.cpp
 	entities/NPCs/zombies/zombie.h
 	entities/NPCs/zombies/zombie_barney.cpp
 	entities/NPCs/zombies/zombie_soldier.cpp
-
+	
+	gamerules/coopplay_gamerules.cpp
+	gamerules/coopplay_gamerules.h
+	gamerules/ctfplay_gamerules.cpp
+	gamerules/ctfplay_gamerules.h
 	gamerules/gamerules.cpp
 	gamerules/gamerules.h
 	gamerules/multiplay_gamerules.cpp

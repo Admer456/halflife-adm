@@ -17,6 +17,7 @@
 
 #include <array>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include <spdlog/logger.h>
@@ -37,7 +38,9 @@ public:
 
 	bool Create(std::shared_ptr<spdlog::logger> logger, ALCdevice* device);
 
-	void LoadSentences() override;
+	void OnBeginNetworkDataProcessing() override;
+
+	void HandleNetworkDataBlock(NetworkDataBlock& block) override;
 
 	void Update();
 
@@ -54,14 +57,14 @@ public:
 
 	void StopAllSounds() override;
 
-	void ClearCaches() override;
-
-	void UserMsg_EmitSound(const char* pszName, int iSize, void* pbuf) override;
+	void MsgFunc_EmitSound(const char* pszName, int iSize, void* pbuf) override;
 
 private:
 	bool MakeCurrent();
 
 	void SetVolume();
+
+	std::string_view GetSoundName(const SoundData& sound) const;
 
 	Channel* CreateChannel();
 
@@ -71,6 +74,9 @@ private:
 	void ClearChannel(Channel& channel);
 
 	void RemoveChannel(Channel& channel);
+
+	template <typename FilterFunction>
+	Channel* FindDynamicChannel(int entityIndex, FilterFunction&& filterFunction);
 
 	Channel* FindOrCreateChannel(int entityIndex, int channelIndex);
 
@@ -91,6 +97,8 @@ private:
 
 private:
 	std::shared_ptr<spdlog::logger> m_Logger;
+	std::shared_ptr<spdlog::logger> m_CacheLogger;
+	std::shared_ptr<spdlog::logger> m_SentencesLogger;
 
 	cvar_t* m_Volume{};
 	cvar_t* m_RoomOff{};
@@ -118,5 +126,7 @@ private:
 	bool m_Paused{false};
 
 	float m_LastKnownVolume{-1};
+
+	std::vector<SoundIndex> m_PrecacheMap;
 };
 }

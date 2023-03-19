@@ -38,8 +38,6 @@ void CSniperRifle::OnCreate()
 
 void CSniperRifle::Precache()
 {
-	pev->classname = MAKE_STRING("weapon_sniperrifle");
-
 	BaseClass::Precache();
 
 	m_iId = WEAPON_SNIPERRIFLE;
@@ -145,7 +143,7 @@ void CSniperRifle::PrimaryAttack()
 	Vector vecShot = m_pPlayer->FireBulletsPlayer(1,
 		vecSrc, vecAiming, g_vecZero,
 		8192, BULLET_PLAYER_762, 0, 0,
-		m_pPlayer->pev, m_pPlayer->random_seed);
+		m_pPlayer, m_pPlayer->random_seed);
 
 	PLAYBACK_EVENT_FULL(FEV_NOTHOST,
 		m_pPlayer->edict(), m_usSniper, 0,
@@ -160,7 +158,7 @@ void CSniperRifle::PrimaryAttack()
 
 void CSniperRifle::SecondaryAttack()
 {
-	EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_ITEM, "weapons/sniper_zoom.wav", VOL_NORM, ATTN_NORM, 0, PITCH_NORM);
+	m_pPlayer->EmitSound(CHAN_ITEM, "weapons/sniper_zoom.wav", VOL_NORM, ATTN_NORM);
 
 	ToggleZoom();
 
@@ -201,32 +199,23 @@ void CSniperRifle::Reload()
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 4.102;
 }
 
-int CSniperRifle::iItemSlot()
+bool CSniperRifle::GetWeaponInfo(WeaponInfo& info)
 {
-	return 4;
-}
-
-bool CSniperRifle::GetItemInfo(ItemInfo* p)
-{
-	p->pszAmmo1 = "762";
-	p->iMaxAmmo1 = SNIPERRIFLE_MAX_CARRY;
-	p->pszName = STRING(pev->classname);
-	p->pszAmmo2 = nullptr;
-	p->iMaxAmmo2 = WEAPON_NOCLIP;
-	p->iMaxClip = SNIPERRIFLE_MAX_CLIP;
-	p->iSlot = 5;
-	p->iPosition = 2;
-	p->iFlags = 0;
-	p->iId = m_iId = WEAPON_SNIPERRIFLE;
-	p->iWeight = SNIPERRIFLE_WEIGHT;
+	info.AmmoType1 = "762";
+	info.Name = STRING(pev->classname);
+	info.MagazineSize1 = SNIPERRIFLE_MAX_CLIP;
+	info.Slot = 5;
+	info.Position = 2;
+	info.Id = m_iId = WEAPON_SNIPERRIFLE;
+	info.Weight = SNIPERRIFLE_WEIGHT;
 	return true;
 }
 
 void CSniperRifle::IncrementAmmo(CBasePlayer* pPlayer)
 {
-	if (pPlayer->GiveAmmo(1, "762", SNIPERRIFLE_MAX_CARRY) >= 0)
+	if (pPlayer->GiveAmmo(1, "762") >= 0)
 	{
-		EMIT_SOUND(pPlayer->edict(), CHAN_STATIC, "ctf/pow_backpack.wav", 0.5, ATTN_NORM);
+		pPlayer->EmitSound(CHAN_STATIC, "ctf/pow_backpack.wav", 0.5, ATTN_NORM);
 	}
 }
 
@@ -262,9 +251,9 @@ public:
 
 	bool AddAmmo(CBasePlayer* pOther) override
 	{
-		if (pOther->GiveAmmo(AMMO_SNIPERRIFLE_GIVE, "762", SNIPERRIFLE_MAX_CARRY) != -1)
+		if (pOther->GiveAmmo(AMMO_SNIPERRIFLE_GIVE, "762") != -1)
 		{
-			EMIT_SOUND(edict(), CHAN_ITEM, "items/9mmclip1.wav", VOL_NORM, ATTN_NORM);
+			EmitSound(CHAN_ITEM, "items/9mmclip1.wav", VOL_NORM, ATTN_NORM);
 
 			return true;
 		}

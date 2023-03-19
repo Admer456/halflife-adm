@@ -22,6 +22,7 @@
 #include "entity_state.h"
 #include "r_efx.h"
 #include "view.h"
+#include "sound/ISoundSystem.h"
 
 // remember the current animation for the view model, in case we get out of sync with
 //  server.
@@ -58,19 +59,14 @@ int HUD_GetWeaponAnim()
 	return g_currentanim;
 }
 
-/*
-=====================
-HUD_PlaySound
-
-Play a sound, if we are seeing this command for the first time
-=====================
-*/
-void HUD_PlaySound(const char* sound, float volume)
+// Play a sound if we are seeing this command for the first time
+void EMIT_SOUND_PREDICTED(CBaseEntity* entity, int channel, const char* sample, float volume, float attenuation,
+	int flags, int pitch)
 {
 	if (!g_runfuncs || !g_finalstate)
 		return;
 
-	gEngfuncs.pfnPlaySoundByNameAtLocation(sound, volume, g_finalstate->playerstate.origin);
+	CL_StartSound(g_ViewEntity, channel, sample, g_finalstate->playerstate.origin, volume, attenuation, pitch, flags);
 }
 
 /*
@@ -127,8 +123,6 @@ stub functions for such things as precaching.  So we don't have to modify weapon
  is compiled into both game and client .dlls.
 ======================
 */
-int stub_PrecacheModel(const char* s) { return 0; }
-int stub_PrecacheSound(const char* s) { return 0; }
 unsigned short stub_PrecacheEvent(int type, const char* s) { return 0; }
 const char* stub_NameForFunction(uint32 function) { return "func"; }
 void stub_SetModel(edict_t* e, const char* m) {}

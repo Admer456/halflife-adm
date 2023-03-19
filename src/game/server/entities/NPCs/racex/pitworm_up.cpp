@@ -86,9 +86,9 @@ public:
 
 	void PainSound() override;
 
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 
-	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
+	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 
 	bool FVisible(CBaseEntity* pEntity) override;
 
@@ -331,7 +331,7 @@ void COFPitWormUp::Spawn()
 
 	SetModel(STRING(pev->model));
 
-	UTIL_SetSize(pev, {-32, -32, 0}, {32, 32, 64});
+	SetSize({-32, -32, 0}, {32, 32, 64});
 
 	UTIL_SetOrigin(pev, pev->origin);
 
@@ -346,6 +346,9 @@ void COFPitWormUp::Spawn()
 	m_flFieldOfView = 0.5;
 
 	pev->sequence = 0;
+
+	// Force interpolation on.
+	m_EFlags |= EFLAG_SLERP;
 
 	ResetSequenceInfo();
 
@@ -623,7 +626,7 @@ void COFPitWormUp::DyingThink()
 
 		ClearShockEffect();
 
-		EMIT_SOUND(edict(), CHAN_VOICE, "pitworm/pit_worm_death.wav", VOL_NORM, 0.1);
+		EmitSound(CHAN_VOICE, "pitworm/pit_worm_death.wav", VOL_NORM, 0.1);
 
 		m_flDeathStartTime = gpGlobals->time;
 
@@ -656,7 +659,7 @@ void COFPitWormUp::HitTouch(CBaseEntity* pOther)
 
 	if (pOther->pev->modelindex != pev->modelindex && m_flHitTime <= gpGlobals->time && tr.pHit && pev->modelindex == tr.pHit->v.modelindex && pOther->pev->takedamage != DAMAGE_NO)
 	{
-		pOther->TakeDamage(pev, pev, 20, DMG_CRUSH | DMG_SLASH);
+		pOther->TakeDamage(this, this, 20, DMG_CRUSH | DMG_SLASH);
 
 		pOther->pev->punchangle.z = 15;
 
@@ -666,10 +669,10 @@ void COFPitWormUp::HitTouch(CBaseEntity* pOther)
 		pOther->pev->flags &= ~FL_ONGROUND;
 
 
-		EMIT_SOUND_DYN(edict(), CHAN_WEAPON, pAttackSounds[RANDOM_LONG(0, 2)], VOL_NORM, ATTN_NORM, 0, RANDOM_LONG(-5, 5) + 100);
+		EmitSoundDyn(CHAN_WEAPON, pAttackSounds[RANDOM_LONG(0, 2)], VOL_NORM, ATTN_NORM, 0, RANDOM_LONG(-5, 5) + 100);
 
 		if (tr.iHitgroup == 2)
-			pOther->TakeDamage(pev, pev, 10, DMG_CRUSH | DMG_SLASH);
+			pOther->TakeDamage(this, this, 10, DMG_CRUSH | DMG_SLASH);
 
 		m_flHitTime = gpGlobals->time + 1.0;
 	}
@@ -805,8 +808,8 @@ void COFPitWormUp::ShootBeam()
 			if (pHit && pHit->pev->takedamage != DAMAGE_NO)
 			{
 				ClearMultiDamage();
-				pHit->TraceAttack(pev, GetSkillFloat("pitworm_dmg_beam"sv), m_vecBeam, &tr, 1024);
-				pHit->TakeDamage(pev, pev, GetSkillFloat("pitworm_dmg_beam"sv), 1024);
+				pHit->TraceAttack(this, GetSkillFloat("pitworm_dmg_beam"sv), m_vecBeam, &tr, 1024);
+				pHit->TakeDamage(this, this, GetSkillFloat("pitworm_dmg_beam"sv), 1024);
 			}
 			else if (tr.flFraction != 1.0)
 			{
@@ -827,7 +830,7 @@ void COFPitWormUp::ShootBeam()
 
 			m_flIdealHeadYaw += m_flBeamDir * 50.0;
 
-			EMIT_SOUND_DYN(edict(), CHAN_WEAPON, pShootSounds[RANDOM_LONG(0, std::size(pShootSounds) - 1)], VOL_NORM, ATTN_NORM, 0, RANDOM_LONG(-5, 5) + 100);
+			EmitSoundDyn(CHAN_WEAPON, pShootSounds[RANDOM_LONG(0, std::size(pShootSounds) - 1)], VOL_NORM, ATTN_NORM, 0, RANDOM_LONG(-5, 5) + 100);
 			MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);
 			WRITE_BYTE(TE_ELIGHT);
 			WRITE_SHORT(entindex() | (1 << 12));
@@ -887,8 +890,8 @@ void COFPitWormUp::StrafeBeam()
 	{
 		ClearMultiDamage();
 
-		pHit->TraceAttack(pev, GetSkillFloat("pitworm_dmg_beam"sv), m_vecBeam, &tr, DMG_ENERGYBEAM);
-		pHit->TakeDamage(pev, pev, GetSkillFloat("pitworm_dmg_beam"sv), DMG_ENERGYBEAM);
+		pHit->TraceAttack(this, GetSkillFloat("pitworm_dmg_beam"sv), m_vecBeam, &tr, DMG_ENERGYBEAM);
+		pHit->TakeDamage(this, this, GetSkillFloat("pitworm_dmg_beam"sv), DMG_ENERGYBEAM);
 
 		// TODO: missing an ApplyMultiDamage call here
 		// Should probably replace the TakeDamage call
@@ -970,9 +973,6 @@ void COFPitWormUp::NextActivity()
 {
 	UTIL_MakeAimVectors(pev->angles);
 
-	// TODO: never used?
-	const auto moveDistance = m_posDesired - pev->origin;
-
 	if (m_hEnemy)
 	{
 		if (!m_hEnemy->IsAlive())
@@ -998,7 +998,7 @@ void COFPitWormUp::NextActivity()
 
 		if (m_hEnemy)
 		{
-			EMIT_SOUND(edict(), CHAN_VOICE, "pitworm/pit_worm_alert.wav", VOL_NORM, 0.1);
+			EmitSound(CHAN_VOICE, "pitworm/pit_worm_alert.wav", VOL_NORM, 0.1);
 		}
 	}
 
@@ -1090,7 +1090,7 @@ bool COFPitWormUp::ClawAttack()
 			}
 		}
 
-		EMIT_SOUND(edict(), CHAN_VOICE, pAttackVoiceSounds[RANDOM_LONG(0, std::size(pAttackVoiceSounds) - 1)], VOL_NORM, 0.1);
+		EmitSound(CHAN_VOICE, pAttackVoiceSounds[RANDOM_LONG(0, std::size(pAttackVoiceSounds) - 1)], VOL_NORM, 0.1);
 
 		m_fLockHeight = true;
 		m_fLockYaw = true;
@@ -1181,11 +1181,11 @@ bool COFPitWormUp::ClawAttack()
 
 	if (pev->sequence == PITWORM_ANIM_RangeAttack)
 	{
-		EMIT_SOUND(edict(), CHAN_VOICE, "pitworm/pit_worm_attack_eyeblast.wav", VOL_NORM, 0.1);
+		EmitSound(CHAN_VOICE, "pitworm/pit_worm_attack_eyeblast.wav", VOL_NORM, 0.1);
 	}
 	else
 	{
-		EMIT_SOUND(edict(), CHAN_VOICE, pAttackVoiceSounds[RANDOM_LONG(0, std::size(pAttackVoiceSounds) - 1)], VOL_NORM, 0.1);
+		EmitSound(CHAN_VOICE, pAttackVoiceSounds[RANDOM_LONG(0, std::size(pAttackVoiceSounds) - 1)], VOL_NORM, 0.1);
 	}
 
 	m_fAttacking = true;
@@ -1210,7 +1210,7 @@ void COFPitWormUp::LockTopLevel()
 
 void COFPitWormUp::IdleSound()
 {
-	EMIT_SOUND(edict(), CHAN_VOICE, pPainSounds[RANDOM_LONG(0, std::size(pPainSounds) - 1)], VOL_NORM, 0.1);
+	EmitSound(CHAN_VOICE, pPainSounds[RANDOM_LONG(0, std::size(pPainSounds) - 1)], VOL_NORM, 0.1);
 }
 
 void COFPitWormUp::PainSound()
@@ -1219,17 +1219,17 @@ void COFPitWormUp::PainSound()
 	{
 		m_flNextPainSound = RANDOM_FLOAT(2, 5) + gpGlobals->time;
 
-		EMIT_SOUND(edict(), CHAN_VOICE, pPainSounds[RANDOM_LONG(0, std::size(pPainSounds) - 1)], VOL_NORM, 0.1);
+		EmitSound(CHAN_VOICE, pPainSounds[RANDOM_LONG(0, std::size(pPainSounds) - 1)], VOL_NORM, 0.1);
 	}
 }
 
-bool COFPitWormUp::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool COFPitWormUp::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	PainSound();
 	return false;
 }
 
-void COFPitWormUp::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void COFPitWormUp::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	if (ptr->iHitgroup == 1)
 	{
@@ -1249,14 +1249,14 @@ void COFPitWormUp::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector ve
 				SpawnBlood(ptr->vecEndPos - vecDir * 4, m_bloodColor, flDamage * 10.0);
 				TraceBleed(flDamage, vecDir, ptr, bitsDamageType);
 
-				if (pevAttacker && !m_hEnemy)
+				if (attacker && !m_hEnemy)
 				{
-					auto pAttacker = Instance(pevAttacker);
+					auto pAttacker = Instance(attacker);
 
 					if (pAttacker && pAttacker->MyMonsterPointer())
 					{
 						m_hEnemy = pAttacker;
-						EMIT_SOUND(edict(), CHAN_VOICE, "pitworm/pit_worm_alert.wav", VOL_NORM, 0.1);
+						EmitSound(CHAN_VOICE, "pitworm/pit_worm_alert.wav", VOL_NORM, 0.1);
 
 						if (!m_fFirstSighting)
 						{
@@ -1312,7 +1312,7 @@ void COFPitWormUp::HandleAnimEvent(MonsterEvent_t* pEvent)
 	switch (pEvent->event)
 	{
 	case PITWORM_UP_AE_HITGROUND:
-		EMIT_SOUND_DYN(edict(), CHAN_WEAPON, pHitGroundSounds[RANDOM_LONG(0, std::size(pHitGroundSounds) - 1)], VOL_NORM, ATTN_NORM, 0, RANDOM_LONG(-5, 5) + 100);
+		EmitSoundDyn(CHAN_WEAPON, pHitGroundSounds[RANDOM_LONG(0, std::size(pHitGroundSounds) - 1)], VOL_NORM, ATTN_NORM, 0, RANDOM_LONG(-5, 5) + 100);
 
 		if (pev->sequence == PITWORM_ANIM_Level2AttackCenter)
 			UTIL_ScreenShake(pev->origin, 12.0, 100.0, 2.0, 1000.0);
@@ -1491,7 +1491,7 @@ void COFPitWormGib::Spawn()
 
 	SetModel("models/pit_worm_gibs.mdl");
 
-	UTIL_SetSize(pev, {-8, -8, -4}, {8, 8, 16});
+	SetSize({-8, -8, -4}, {8, 8, 16});
 
 	pev->nextthink = gpGlobals->time + 0.1;
 	SetThink(&COFPitWormGib::GibFloat);
@@ -1689,7 +1689,7 @@ public:
 		pev->yaw_speed = yawSpeed;
 	}
 
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 	void Precache() override;
 
 	bool CheckMeleeAttack1(float flDot, float flDist) override
@@ -1735,7 +1735,7 @@ public:
 		return false;
 	}
 
-	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
+	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 
 	void Move(float flInterval) override;
 
@@ -1880,7 +1880,7 @@ void COFPitWorm::OnCreate()
 	pev->model = MAKE_STRING("models/pit_worm.mdl");
 }
 
-bool COFPitWorm::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool COFPitWorm::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	// Don't take any acid damage -- BigMomma's mortar is acid
 	if ((bitsDamageType & DMG_ACID) != 0)
@@ -1980,7 +1980,7 @@ void COFPitWorm::StartMonster()
 			// JAY: How important is this error message?  Big Momma doesn't obey this rule, so I took it out.
 #if 0
 			// At this point, we expect only a path_corner as initial goal
-			if (!FClassnameIs(m_pGoalEnt->pev, "path_corner"))
+			if (!m_pGoalEnt->ClassnameIs("path_corner"))
 			{
 				Logger->warning("ReadyMonster--monster's initial goal '{}' is not a path_corner", STRING(pev->target));
 			}
@@ -2020,7 +2020,7 @@ void COFPitWorm::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-32, -32, 0), Vector(32, 32, 64));
+	SetSize(Vector(-32, -32, 0), Vector(32, 32, 64));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -2038,7 +2038,7 @@ void COFPitWorm::Spawn()
 	m_pBeam = nullptr;
 }
 
-void COFPitWorm::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void COFPitWorm::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	if (ptr->iHitgroup != 1)
 	{
@@ -2079,7 +2079,7 @@ void COFPitWorm::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecD
 	}
 
 
-	CBaseMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+	CBaseMonster::TraceAttack(attacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
 #define DIST_TO_CHECK 200
@@ -2090,7 +2090,6 @@ void COFPitWorm::Move(float flInterval)
 	float flCheckDist;
 	float flDist; // how far the lookahead check got before hitting an object.
 	Vector vecDir;
-	Vector vecApex;
 	CBaseEntity* pTargetEnt;
 
 	// Don't move if no valid route
@@ -2275,8 +2274,8 @@ void COFPitWorm::ShootBeam()
 			if (target && target->pev->takedamage != DAMAGE_NO)
 			{
 				ClearMultiDamage();
-				target->TraceAttack(pev, 10, m_vecBeam, &tr, DMG_ENERGYBEAM);
-				target->TakeDamage(pev, pev, 10, DMG_ENERGYBEAM);
+				target->TraceAttack(this, 10, m_vecBeam, &tr, DMG_ENERGYBEAM);
+				target->TakeDamage(this, this, 10, DMG_ENERGYBEAM);
 			}
 			else if (tr.flFraction != 1.0)
 			{
@@ -2300,7 +2299,7 @@ void COFPitWorm::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 		Vector forward, right;
 
-		UTIL_MakeVectorsPrivate(pev->angles, forward, right, nullptr);
+		AngleVectors(pev->angles, &forward, &right, nullptr);
 
 		Vector center = pev->origin + forward * 128;
 		Vector mins = center - Vector(96, 96, 0);
@@ -2321,13 +2320,13 @@ void COFPitWorm::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 		if (pHurt)
 		{
-			pHurt->TakeDamage(pev, pev, GetSkillFloat("bigmomma_dmg_slash"sv), DMG_CRUSH | DMG_SLASH);
+			pHurt->TakeDamage(this, this, GetSkillFloat("bigmomma_dmg_slash"sv), DMG_CRUSH | DMG_SLASH);
 			pHurt->pev->punchangle.x = 15;
 
 			pHurt->pev->velocity = pHurt->pev->velocity + (forward * 220) + Vector(0, 0, 200);
 
 			pHurt->pev->flags &= ~FL_ONGROUND;
-			EMIT_SOUND_DYN(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 		}
 	}
 	break;
@@ -2391,8 +2390,8 @@ void COFPitWorm::StrafeBeam()
 	if (hit && hit->pev->takedamage != DAMAGE_NO)
 	{
 		ClearMultiDamage();
-		hit->TraceAttack(pev, 0x41200000, m_vecBeam, &tr, 1024);
-		hit->TakeDamage(pev, pev, 0x41200000, 1024);
+		hit->TraceAttack(this, 0x41200000, m_vecBeam, &tr, 1024);
+		hit->TakeDamage(this, this, 0x41200000, 1024);
 	}
 	else if (tr.flFraction != 1)
 	{

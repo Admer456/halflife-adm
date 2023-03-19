@@ -13,6 +13,7 @@
  *
  ****/
 
+#include <algorithm>
 #include <string>
 
 #include "cbase.h"
@@ -43,6 +44,20 @@ void DBG_AssertFunction(
 		g_AssertLogger->critical("ASSERT FAILED:\n {} \n({}@{})\n{}", szExpr, szFile, szLine, szMessage);
 	else
 		g_AssertLogger->critical("ASSERT FAILED:\n {} \n({}@{})", szExpr, szFile, szLine);
+}
+#endif // DEBUG
+
+#ifdef DEBUG
+edict_t* DBG_EntOfVars(const entvars_t* pev)
+{
+	if (pev->pContainingEntity != nullptr)
+		return pev->pContainingEntity;
+	CBaseEntity::Logger->debug("entvars_t pContainingEntity is nullptr, calling into engine");
+	edict_t* pent = (*g_engfuncs.pfnFindEntityByVars)((entvars_t*)pev);
+	if (pent == nullptr)
+		CBaseEntity::Logger->debug("DAMN!  Even the engine couldn't FindEntityByVars!");
+	((entvars_t*)pev)->pContainingEntity = pent;
+	return pent;
 }
 #endif // DEBUG
 
@@ -99,6 +114,66 @@ void ClearStringPool()
 	g_StringPool = StringPool{};
 }
 
+static bool g_PrintBufferingEnabled = false;
+
+std::string g_PrintBuffer;
+
+bool Con_IsPrintBufferingEnabled()
+{
+	return g_PrintBufferingEnabled;
+}
+
+void Con_SetPrintBufferingEnabled(bool enabled)
+{
+	if (g_PrintBufferingEnabled == enabled)
+	{
+		return;
+	}
+
+	g_PrintBufferingEnabled = enabled;
+
+	if (!g_PrintBufferingEnabled)
+	{
+		// Flush buffer to console. Send it one line at a time to minimize the chances of truncation.
+		if (!g_PrintBuffer.empty())
+		{
+			// Append a newline so we're sure every line ends with one.
+			// This newline will be temporarily converted to a null terminator below for the last line.
+			g_PrintBuffer += '\n';
+
+			std::size_t startIndex = 0;
+
+			while (true)
+			{
+				// Don't print last newline.
+				if (startIndex == std::string::npos || startIndex == (g_PrintBuffer.size() - 1))
+				{
+					break;
+				}
+
+				std::size_t endIndex = g_PrintBuffer.find('\n', startIndex + 1);
+
+				const std::size_t actualEndIndex = endIndex != std::string::npos ? endIndex : g_PrintBuffer.size();
+
+				const std::size_t count = actualEndIndex - startIndex;
+
+				g_PrintBuffer[actualEndIndex] = '\0';
+
+				// Print substring.
+				g_engfuncs.pfnServerPrint(g_PrintBuffer.data() + startIndex);
+
+				g_PrintBuffer[actualEndIndex] = '\n';
+
+				// If there was a valid newline it'll be printed next iteration.
+				startIndex = endIndex;
+			}
+		}
+
+		g_PrintBuffer.clear();
+		g_PrintBuffer.shrink_to_fit();
+	}
+}
+
 void Con_VPrintf(const char* format, va_list list)
 {
 	static char buffer[8192];
@@ -107,7 +182,14 @@ void Con_VPrintf(const char* format, va_list list)
 
 	if (result >= 0 && static_cast<std::size_t>(result) < std::size(buffer))
 	{
-		g_engfuncs.pfnServerPrint(buffer);
+		if (g_PrintBufferingEnabled)
+		{
+			g_PrintBuffer += buffer;
+		}
+		else
+		{
+			g_engfuncs.pfnServerPrint(buffer);
+		}
 	}
 	else
 	{
@@ -160,6 +242,22 @@ bool COM_GetParam(const char* name, const char** next)
 bool COM_HasParam(const char* name)
 {
 	return g_engfuncs.pfnCheckParm(name, nullptr) != 0;
+}
+
+bool UTIL_FixBoundsVectors(Vector& mins, Vector& maxs)
+{
+	bool neededFixing = false;
+
+	for (std::size_t i = 0; i < 3; ++i)
+	{
+		if (mins[i] > maxs[i])
+		{
+			neededFixing = true;
+			std::swap(mins[i], maxs[i]);
+		}
+	}
+
+	return neededFixing;
 }
 
 const char* COM_Parse(const char* data)
@@ -339,6 +437,34 @@ float UTIL_SharedRandomFloat(unsigned int seed, float low, float high)
 	}
 }
 
+static const char* ValidateModel(const char* str, PrecacheList* list)
+{
+	if (str[0] == '!')
+	{
+		++str;
+	}
+
+	return str;
+}
+
+static const char* ValidateSound(const char* str, PrecacheList* list)
+{
+	if (str[0] == '!')
+	{
+		list->GetLogger()->error("\"{}\": Do not precache sentence names!", str);
+		return nullptr;
+	}
+
+	return str;
+}
+
+void UTIL_CreatePrecacheLists()
+{
+	g_ModelPrecache = std::make_unique<PrecacheList>("model", g_PrecacheLogger, &ValidateModel, g_engfuncs.pfnPrecacheModel);
+	g_SoundPrecache = std::make_unique<PrecacheList>("sound", g_PrecacheLogger, &ValidateSound, g_engfuncs.pfnPrecacheSound);
+	g_GenericPrecache = std::make_unique<PrecacheList>("generic", g_PrecacheLogger, nullptr, g_engfuncs.pfnPrecacheGeneric);
+}
+
 const char* UTIL_CheckForGlobalModelReplacement(const char* s)
 {
 #ifndef CLIENT_DLL
@@ -348,18 +474,13 @@ const char* UTIL_CheckForGlobalModelReplacement(const char* s)
 	return s;
 }
 
-static void UTIL_PrecacheLog(const char* type, const char* fileName)
-{
-	if (g_PrecacheLogger->should_log(spdlog::level::trace))
-	{
-		g_PrecacheLogger->trace("[{}] \"{}\"{}", type, fileName, fileName == gpGlobals->pStringBase ? " (Null string_t)" : "");
-	}
-}
-
 int UTIL_PrecacheModelDirect(const char* s)
 {
-	UTIL_PrecacheLog("model", s);
-	return g_engfuncs.pfnPrecacheModel(s);
+#ifndef CLIENT_DLL
+	return g_ModelPrecache->Add(s);
+#else
+	return 0;
+#endif
 }
 
 int UTIL_PrecacheModel(const char* s)
@@ -379,8 +500,11 @@ int UTIL_PrecacheModel(const char* s)
 
 int UTIL_PrecacheSoundDirect(const char* s)
 {
-	UTIL_PrecacheLog("sound", s);
-	return g_engfuncs.pfnPrecacheSound(s);
+#ifndef CLIENT_DLL
+	return g_SoundPrecache->Add(s);
+#else
+	return 0;
+#endif
 }
 
 int UTIL_PrecacheSound(const char* s)
@@ -402,6 +526,9 @@ int UTIL_PrecacheSound(const char* s)
 
 int UTIL_PrecacheGenericDirect(const char* s)
 {
-	UTIL_PrecacheLog("generic", s);
-	return g_engfuncs.pfnPrecacheGeneric(s);
+#ifndef CLIENT_DLL
+	return g_GenericPrecache->Add(s);
+#else
+	return 0;
+#endif
 }

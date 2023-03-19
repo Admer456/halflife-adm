@@ -42,13 +42,13 @@ void CHud::Think()
 	GetScreenInfo(&m_scrinfo);
 
 	int newfov;
-	HUDLIST* pList = m_pHudList;
 
-	while (pList)
+	for (auto hudElement : m_HudList)
 	{
-		if ((pList->p->m_iFlags & HUD_ACTIVE) != 0)
-			pList->p->Think();
-		pList = pList->pNext;
+		if ((hudElement->m_iFlags & HUD_ACTIVE) != 0)
+		{
+			hudElement->Think();
+		}
 	}
 
 	newfov = HUD_GetFOV();
@@ -147,27 +147,23 @@ bool CHud::Redraw(float flTime, bool intermission)
 	// draw all registered HUD elements
 	if (0 != m_pCvarDraw->value)
 	{
-		HUDLIST* pList = m_pHudList;
-
-		while (pList)
+		for (auto hudElement : m_HudList)
 		{
 			if (!intermission)
 			{
-				if ((pList->p->m_iFlags & HUD_ACTIVE) != 0 && (m_iHideHUDDisplay & HIDEHUD_ALL) == 0)
-					pList->p->Draw(flTime);
+				if ((hudElement->m_iFlags & HUD_ACTIVE) != 0 && (m_iHideHUDDisplay & HIDEHUD_ALL) == 0)
+					hudElement->Draw(flTime);
 			}
 			else
 			{ // it's an intermission,  so only draw hud elements that are set to draw during intermissions
-				if ((pList->p->m_iFlags & HUD_INTERMISSION) != 0)
-					pList->p->Draw(flTime);
+				if ((hudElement->m_iFlags & HUD_INTERMISSION) != 0)
+					hudElement->Draw(flTime);
 			}
-
-			pList = pList->pNext;
 		}
 	}
 
 	// are we in demo mode? do we need to draw the logo in the top corner?
-	if (0 != m_iLogo)
+	if (m_ShowLogo)
 	{
 		int x, y, i;
 
@@ -292,8 +288,8 @@ int CHud::DrawHudNumber(int x, int y, int iFlags, int iNumber, const RGB24& colo
 		if (iNumber >= 100)
 		{
 			k = iNumber / 100;
-			SPR_Set(GetSprite(m_HUD_number_0 + k), color);
-			SPR_DrawAdditive(0, x, y, &GetSpriteRect(m_HUD_number_0 + k));
+			SPR_Set(GetSprite(m_HudNumbers[k]), color);
+			SPR_DrawAdditive(0, x, y, &GetSpriteRect(m_HudNumbers[k]));
 			x += iWidth;
 		}
 		else if ((iFlags & DHN_3DIGITS) != 0)
@@ -306,8 +302,8 @@ int CHud::DrawHudNumber(int x, int y, int iFlags, int iNumber, const RGB24& colo
 		if (iNumber >= 10)
 		{
 			k = (iNumber % 100) / 10;
-			SPR_Set(GetSprite(m_HUD_number_0 + k), color);
-			SPR_DrawAdditive(0, x, y, &GetSpriteRect(m_HUD_number_0 + k));
+			SPR_Set(GetSprite(m_HudNumbers[k]), color);
+			SPR_DrawAdditive(0, x, y, &GetSpriteRect(m_HudNumbers[k]));
 			x += iWidth;
 		}
 		else if ((iFlags & (DHN_3DIGITS | DHN_2DIGITS)) != 0)
@@ -318,8 +314,8 @@ int CHud::DrawHudNumber(int x, int y, int iFlags, int iNumber, const RGB24& colo
 
 		// SPR_Draw ones
 		k = iNumber % 10;
-		SPR_Set(GetSprite(m_HUD_number_0 + k), color);
-		SPR_DrawAdditive(0, x, y, &GetSpriteRect(m_HUD_number_0 + k));
+		SPR_Set(GetSprite(m_HudNumbers[k]), color);
+		SPR_DrawAdditive(0, x, y, &GetSpriteRect(m_HudNumbers[k]));
 		x += iWidth;
 	}
 	else if ((iFlags & DHN_DRAWZERO) != 0)
@@ -405,7 +401,7 @@ int CHud::DrawHudNumberReverse(int x, int y, int number, int flags, const RGB24&
 		do
 		{
 			const int digit = remainder % 10;
-			const int digitSpriteIndex = m_HUD_number_0 + digit;
+			const int digitSpriteIndex = m_HudNumbers[digit];
 
 			// This has to happen *before* drawing because we're drawing in reverse
 			x -= digitWidth;

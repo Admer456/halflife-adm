@@ -172,13 +172,13 @@ public:
 	void Precache() override;
 	bool KeyValue(KeyValueData* pkvd) override;
 	void Activate() override;
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 
 	void RunTask(Task_t* pTask) override;
 	void StartTask(Task_t* pTask) override;
 	Schedule_t* GetSchedule() override;
 	Schedule_t* GetScheduleOfType(int Type) override;
-	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
+	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 
 	void NodeStart(string_t iszNextNode);
 	void NodeReach();
@@ -247,7 +247,7 @@ public:
 		m_crabCount = 0;
 	}
 
-	void DeathNotice(entvars_t* pevChild) override;
+	void DeathNotice(CBaseEntity* child) override;
 
 	bool CanLayCrab()
 	{
@@ -442,7 +442,7 @@ void CBigMomma::HandleAnimEvent(MonsterEvent_t* pEvent)
 	{
 		Vector forward, right;
 
-		UTIL_MakeVectorsPrivate(pev->angles, forward, right, nullptr);
+		AngleVectors(pev->angles, &forward, &right, nullptr);
 
 		Vector center = pev->origin + forward * 128;
 		Vector mins = center - Vector(64, 64, 0);
@@ -463,7 +463,7 @@ void CBigMomma::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 		if (pHurt)
 		{
-			pHurt->TakeDamage(pev, pev, GetSkillFloat("bigmomma_dmg_slash"sv), DMG_CRUSH | DMG_SLASH);
+			pHurt->TakeDamage(this, this, GetSkillFloat("bigmomma_dmg_slash"sv), DMG_CRUSH | DMG_SLASH);
 			pHurt->pev->punchangle.x = 15;
 			switch (pEvent->event)
 			{
@@ -481,7 +481,7 @@ void CBigMomma::HandleAnimEvent(MonsterEvent_t* pEvent)
 			}
 
 			pHurt->pev->flags &= ~FL_ONGROUND;
-			EMIT_SOUND_DYN(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 		}
 	}
 	break;
@@ -553,7 +553,7 @@ void CBigMomma::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-void CBigMomma::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void CBigMomma::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	if (ptr->iHitgroup != 1)
 	{
@@ -574,11 +574,11 @@ void CBigMomma::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDi
 	}
 
 
-	CBaseMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+	CBaseMonster::TraceAttack(attacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
 
-bool CBigMomma::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CBigMomma::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	// Don't take any acid damage -- BigMomma's mortar is acid
 	if ((bitsDamageType & DMG_ACID) != 0)
@@ -594,7 +594,7 @@ bool CBigMomma::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, floa
 		}
 	}
 
-	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
 void CBigMomma::LayHeadcrab()
@@ -619,13 +619,13 @@ void CBigMomma::LayHeadcrab()
 	UTIL_TraceLine(pev->origin, pev->origin - Vector(0, 0, 100), ignore_monsters, edict(), &tr);
 	UTIL_DecalTrace(&tr, DECAL_MOMMABIRTH);
 
-	EMIT_SOUND_DYN(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBirthSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+	EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBirthSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 	m_crabCount++;
 }
 
 
 
-void CBigMomma::DeathNotice(entvars_t* pevChild)
+void CBigMomma::DeathNotice(CBaseEntity* child)
 {
 	if (m_crabCount > 0) // Some babies may cross a transition, but we reset the count then
 		m_crabCount--;
@@ -644,7 +644,7 @@ void CBigMomma::LaunchMortar()
 	Vector startPos = pev->origin;
 	startPos.z += 180;
 
-	EMIT_SOUND_DYN(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pSackSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+	EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pSackSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 	CBMortar* pBomb = CBMortar::Shoot(edict(), startPos, pev->movedir);
 	pBomb->pev->gravity = 1.0;
 	MortarSpray(startPos, Vector(0, 0, 1), gSpitSprite, 24);
@@ -658,7 +658,7 @@ void CBigMomma::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-32, -32, 0), Vector(32, 32, 64));
+	SetSize(Vector(-32, -32, 0), Vector(32, 32, 64));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -1005,7 +1005,7 @@ void CBigMomma::StartTask(Task_t* pTask)
 
 	case TASK_MELEE_ATTACK1:
 		// Play an attack sound here
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), 1.0, ATTN_NORM, 0, PITCH_NORM);
+		EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), 1.0, ATTN_NORM);
 		CBaseMonster::StartTask(pTask);
 		break;
 
@@ -1075,9 +1075,7 @@ Vector VecCheckSplatToss(entvars_t* pev, const Vector& vecSpot1, Vector vecSpot2
 	TraceResult tr;
 	Vector vecMidPoint; // halfway point between Spot1 and Spot2
 	Vector vecApex;		// highest point
-	Vector vecScale;
 	Vector vecGrenadeVel;
-	Vector vecTemp;
 	float flGravity = g_psv_gravity->value;
 
 	// calculate the midpoint and apex of the 'triangle'
@@ -1103,7 +1101,6 @@ Vector VecCheckSplatToss(entvars_t* pev, const Vector& vecSpot1, Vector vecSpot2
 	float time = speed / flGravity;
 	vecGrenadeVel = (vecSpot2 - vecSpot1);
 	vecGrenadeVel.z = 0;
-	float distance = vecGrenadeVel.Length();
 
 	// Travel half the distance to the target in that time (apex is at the midpoint)
 	vecGrenadeVel = vecGrenadeVel * (0.5 / time);
@@ -1152,7 +1149,7 @@ void CBMortar::Spawn()
 	pev->frame = 0;
 	pev->scale = 0.5;
 
-	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
+	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
 
 	m_maxFrame = (float)MODEL_FRAMES(pev->modelindex) - 1;
 	pev->dmgtime = gpGlobals->time + 0.4;
@@ -1200,15 +1197,15 @@ void CBMortar::Touch(CBaseEntity* pOther)
 	// splat sound
 	iPitch = RANDOM_FLOAT(90, 110);
 
-	EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "bullchicken/bc_acid1.wav", 1, ATTN_NORM, 0, iPitch);
+	EmitSoundDyn(CHAN_VOICE, "bullchicken/bc_acid1.wav", 1, ATTN_NORM, 0, iPitch);
 
 	switch (RANDOM_LONG(0, 1))
 	{
 	case 0:
-		EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "bullchicken/bc_spithit1.wav", 1, ATTN_NORM, 0, iPitch);
+		EmitSoundDyn(CHAN_WEAPON, "bullchicken/bc_spithit1.wav", 1, ATTN_NORM, 0, iPitch);
 		break;
 	case 1:
-		EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "bullchicken/bc_spithit2.wav", 1, ATTN_NORM, 0, iPitch);
+		EmitSoundDyn(CHAN_WEAPON, "bullchicken/bc_spithit2.wav", 1, ATTN_NORM, 0, iPitch);
 		break;
 	}
 
@@ -1227,10 +1224,8 @@ void CBMortar::Touch(CBaseEntity* pOther)
 	// make some flecks
 	MortarSpray(tr.vecEndPos, tr.vecPlaneNormal, gSpitSprite, 24);
 
-	entvars_t* pevOwner = nullptr;
-	if (pev->owner)
-		pevOwner = VARS(pev->owner);
+	auto owner = GetOwner();
 
-	RadiusDamage(pev->origin, pev, pevOwner, GetSkillFloat("bigmomma_dmg_blast"sv), GetSkillFloat("bigmomma_radius_blast"sv), CLASS_NONE, DMG_ACID);
+	RadiusDamage(pev->origin, this, owner, GetSkillFloat("bigmomma_dmg_blast"sv), GetSkillFloat("bigmomma_radius_blast"sv), CLASS_NONE, DMG_ACID);
 	UTIL_Remove(this);
 }

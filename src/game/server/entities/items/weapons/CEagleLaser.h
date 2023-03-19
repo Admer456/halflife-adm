@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "CLaserSpot.h"
+
 /**
  *	@brief Identical to CLaserSpot, different class to avoid RPG laser confusion logic. - Solokiller
  */

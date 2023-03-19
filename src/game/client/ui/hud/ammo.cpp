@@ -19,14 +19,19 @@
 //
 
 #include "hud.h"
+#include "HudSpriteConfigSystem.h"
 #include "pm_shared.h"
 #include "triangleapi.h"
 #include "com_model.h"
 #include "r_studioint.h"
 
 #include "ammohistory.h"
+#include "AmmoTypeSystem.h"
 #include "vgui_TeamFortressViewport.h"
 #include "view.h"
+#include "WeaponDataSystem.h"
+
+#include "sound/ISoundSystem.h"
 
 extern engine_studio_api_t IEngineStudio;
 
@@ -34,25 +39,57 @@ WEAPON* gpActiveSel; // nullptr means off, 1 means just the menu bar, otherwise
 					 // this points to the active weapon menu item
 WEAPON* gpLastSel;	 // Last weapon menu selection
 
-client_sprite_t* GetSpriteList(client_sprite_t* pList, const char* psz, int iRes, int iCount);
-
 int g_weaponselect = 0;
 
-void WeaponsResource::LoadAllWeaponSprites()
+void WeaponsResource::InitializeWeapons()
 {
-	for (int i = 0; i < MAX_WEAPONS; i++)
+	// Reload weapons based on current level's weapon data.
+	rgWeapons = {};
+
+	for (int i = 0; i < g_WeaponData.GetCount(); ++i)
 	{
-		if (0 != rgWeapons[i].iId)
-			LoadWeaponSprites(&rgWeapons[i]);
+		const auto info = g_WeaponData.GetByIndex(i + 1);
+
+		if (!info || info->Id == WEAPON_NONE)
+		{
+			continue;
+		}
+
+		auto& weapon = rgWeapons[i + 1];
+
+		weapon.Info = info;
+		weapon.AmmoType1 = g_AmmoTypes.GetByName(info->AmmoType1.c_str());
+		weapon.AmmoType2 = g_AmmoTypes.GetByName(info->AmmoType2.c_str());
+
+		LoadWeaponSprites(&weapon);
 	}
 }
 
-int WeaponsResource::CountAmmo(int iId)
+void WeaponsResource::PickupWeapon(WEAPON* wp)
 {
-	if (iId < 0)
+	rgSlots[wp->Info->Slot][wp->Info->Position] = wp;
+}
+
+void WeaponsResource::DropWeapon(WEAPON* wp)
+{
+	rgSlots[wp->Info->Slot][wp->Info->Position] = nullptr;
+}
+
+void WeaponsResource::DropAllWeapons()
+{
+	for (int i = 0; i < MAX_WEAPONS; i++)
+	{
+		if (rgWeapons[i].Info && rgWeapons[i].Info->Id != WEAPON_NONE)
+			DropWeapon(&rgWeapons[i]);
+	}
+}
+
+int WeaponsResource::CountAmmo(const AmmoType* type)
+{
+	if (!type)
 		return 0;
 
-	return riAmmo[iId];
+	return riAmmo[type->Id];
 }
 
 bool WeaponsResource::HasAmmo(WEAPON* p)
@@ -60,66 +97,63 @@ bool WeaponsResource::HasAmmo(WEAPON* p)
 	if (!p)
 		return false;
 
-	// weapons with no max ammo can always be selected
-	if (p->iMax1 == -1)
+	// weapons with no primary ammo or unlimited ammo can always be selected
+	if (!p->AmmoType1 || p->AmmoType1->MaximumCapacity == WEAPON_NOCLIP)
 		return true;
 
-	return (p->iAmmoType == -1) || p->iClip > 0 || 0 != CountAmmo(p->iAmmoType) || 0 != CountAmmo(p->iAmmo2Type) || (p->iFlags & WEAPON_FLAGS_SELECTONEMPTY) != 0;
+	return p->AmmoInMagazine > 0 ||
+		0 != CountAmmo(p->AmmoType1) ||
+		0 != CountAmmo(p->AmmoType2) ||
+		(p->Info->Flags & WEAPON_FLAGS_SELECTONEMPTY) != 0;
 }
 
 
 void WeaponsResource::LoadWeaponSprites(WEAPON* pWeapon)
 {
-	int i;
-
-	char sz[256];
-
 	if (!pWeapon)
 		return;
 
-	memset(&pWeapon->rcActive, 0, sizeof(Rect));
-	memset(&pWeapon->rcInactive, 0, sizeof(Rect));
-	memset(&pWeapon->rcAmmo, 0, sizeof(Rect));
-	memset(&pWeapon->rcAmmo2, 0, sizeof(Rect));
+	pWeapon->rcCrosshair = Rect{};
+	pWeapon->rcAutoaim = Rect{};
+	pWeapon->rcZoomedCrosshair = Rect{};
+	pWeapon->rcZoomedAutoaim = Rect{};
+	pWeapon->rcInactive = Rect{};
+	pWeapon->rcActive = Rect{};
+	pWeapon->rcAmmo = Rect{};
+	pWeapon->rcAmmo2 = Rect{};
+
+	pWeapon->hCrosshair = 0;
+	pWeapon->hAutoaim = 0;
+	pWeapon->hZoomedCrosshair = 0;
+	pWeapon->hZoomedAutoaim = 0;
 	pWeapon->hInactive = 0;
 	pWeapon->hActive = 0;
 	pWeapon->hAmmo = 0;
 	pWeapon->hAmmo2 = 0;
 
-	sprintf(sz, "sprites/%s.txt", pWeapon->szName);
-	client_sprite_t* pList = SPR_GetList(sz, &i);
+	const auto sprites = g_HudSpriteConfig.Load(fmt::format("sprites/{}.json", pWeapon->Info->Name.c_str()).c_str());
 
-	if (!pList)
+	if (sprites.empty())
 		return;
 
-	client_sprite_t* p;
+	const HudSprite* p;
 
-	p = GetSpriteList(pList, "crosshair", CHud::m_iRes, i);
-	if (p)
+	if (p = GetSpriteList(sprites, "crosshair"); p)
 	{
-		sprintf(sz, "sprites/%s.spr", p->szSprite);
-		pWeapon->hCrosshair = SPR_Load(sz);
-		pWeapon->rcCrosshair = p->rc;
+		pWeapon->hCrosshair = SPR_Load(fmt::format("sprites/{}.spr", p->SpriteName.c_str()));
+		pWeapon->rcCrosshair = p->Rectangle;
 	}
-	else
-		pWeapon->hCrosshair = 0;
 
-	p = GetSpriteList(pList, "autoaim", CHud::m_iRes, i);
-	if (p)
+	if (p = GetSpriteList(sprites, "autoaim"); p)
 	{
-		sprintf(sz, "sprites/%s.spr", p->szSprite);
-		pWeapon->hAutoaim = SPR_Load(sz);
-		pWeapon->rcAutoaim = p->rc;
+		pWeapon->hAutoaim = SPR_Load(fmt::format("sprites/{}.spr", p->SpriteName.c_str()));
+		pWeapon->rcAutoaim = p->Rectangle;
 	}
-	else
-		pWeapon->hAutoaim = 0;
 
-	p = GetSpriteList(pList, "zoom", CHud::m_iRes, i);
-	if (p)
+	if (p = GetSpriteList(sprites, "zoom"); p)
 	{
-		sprintf(sz, "sprites/%s.spr", p->szSprite);
-		pWeapon->hZoomedCrosshair = SPR_Load(sz);
-		pWeapon->rcZoomedCrosshair = p->rc;
+		pWeapon->hZoomedCrosshair = SPR_Load(fmt::format("sprites/{}.spr", p->SpriteName.c_str()));
+		pWeapon->rcZoomedCrosshair = p->Rectangle;
 	}
 	else
 	{
@@ -127,64 +161,47 @@ void WeaponsResource::LoadWeaponSprites(WEAPON* pWeapon)
 		pWeapon->rcZoomedCrosshair = pWeapon->rcCrosshair;
 	}
 
-	p = GetSpriteList(pList, "zoom_autoaim", CHud::m_iRes, i);
-	if (p)
+	if (p = GetSpriteList(sprites, "zoom_autoaim"); p)
 	{
-		sprintf(sz, "sprites/%s.spr", p->szSprite);
-		pWeapon->hZoomedAutoaim = SPR_Load(sz);
-		pWeapon->rcZoomedAutoaim = p->rc;
+		pWeapon->hZoomedAutoaim = SPR_Load(fmt::format("sprites/{}.spr", p->SpriteName.c_str()));
+		pWeapon->rcZoomedAutoaim = p->Rectangle;
 	}
 	else
 	{
+		// TODO: should this be using hAutoaim instead?
 		pWeapon->hZoomedAutoaim = pWeapon->hZoomedCrosshair; // default to zoomed crosshair
 		pWeapon->rcZoomedAutoaim = pWeapon->rcZoomedCrosshair;
 	}
 
-	p = GetSpriteList(pList, "weapon", CHud::m_iRes, i);
-	if (p)
+	if (p = GetSpriteList(sprites, "weapon"); p)
 	{
-		sprintf(sz, "sprites/%s.spr", p->szSprite);
-		pWeapon->hInactive = SPR_Load(sz);
-		pWeapon->rcInactive = p->rc;
+		pWeapon->hInactive = SPR_Load(fmt::format("sprites/{}.spr", p->SpriteName.c_str()));
+		pWeapon->rcInactive = p->Rectangle;
 
 		gHR.iHistoryGap = V_max(gHR.iHistoryGap, pWeapon->rcActive.bottom - pWeapon->rcActive.top);
 	}
-	else
-		pWeapon->hInactive = 0;
 
-	p = GetSpriteList(pList, "weapon_s", CHud::m_iRes, i);
-	if (p)
+	if (p = GetSpriteList(sprites, "weapon_s"); p)
 	{
-		sprintf(sz, "sprites/%s.spr", p->szSprite);
-		pWeapon->hActive = SPR_Load(sz);
-		pWeapon->rcActive = p->rc;
+		pWeapon->hActive = SPR_Load(fmt::format("sprites/{}.spr", p->SpriteName.c_str()));
+		pWeapon->rcActive = p->Rectangle;
 	}
-	else
-		pWeapon->hActive = 0;
 
-	p = GetSpriteList(pList, "ammo", CHud::m_iRes, i);
-	if (p)
+	if (p = GetSpriteList(sprites, "ammo"); p)
 	{
-		sprintf(sz, "sprites/%s.spr", p->szSprite);
-		pWeapon->hAmmo = SPR_Load(sz);
-		pWeapon->rcAmmo = p->rc;
+		pWeapon->hAmmo = SPR_Load(fmt::format("sprites/{}.spr", p->SpriteName.c_str()));
+		pWeapon->rcAmmo = p->Rectangle;
 
 		gHR.iHistoryGap = V_max(gHR.iHistoryGap, pWeapon->rcActive.bottom - pWeapon->rcActive.top);
 	}
-	else
-		pWeapon->hAmmo = 0;
 
-	p = GetSpriteList(pList, "ammo2", CHud::m_iRes, i);
-	if (p)
+	if (p = GetSpriteList(sprites, "ammo2"); p)
 	{
-		sprintf(sz, "sprites/%s.spr", p->szSprite);
-		pWeapon->hAmmo2 = SPR_Load(sz);
-		pWeapon->rcAmmo2 = p->rc;
+		pWeapon->hAmmo2 = SPR_Load(fmt::format("sprites/{}.spr", p->SpriteName.c_str()));
+		pWeapon->rcAmmo2 = p->Rectangle;
 
 		gHR.iHistoryGap = V_max(gHR.iHistoryGap, pWeapon->rcActive.bottom - pWeapon->rcActive.top);
 	}
-	else
-		pWeapon->hAmmo2 = 0;
 }
 
 // Returns the first weapon for a given slot.
@@ -227,14 +244,6 @@ const int giABWidth = 20;
 
 HSPRITE ghsprBuckets; // Sprite for top row of weapons menu
 
-DECLARE_MESSAGE(m_Ammo, CurWeapon);	 // Current weapon and clip
-DECLARE_MESSAGE(m_Ammo, WeaponList); // new weapon type
-DECLARE_MESSAGE(m_Ammo, AmmoX);		 // update known ammo type's count
-DECLARE_MESSAGE(m_Ammo, AmmoPickup); // flashes an ammo pickup record
-DECLARE_MESSAGE(m_Ammo, WeapPickup); // flashes a weapon pickup record
-DECLARE_MESSAGE(m_Ammo, HideWeapon); // hides the weapon, ammo, and crosshair displays temporarily
-DECLARE_MESSAGE(m_Ammo, ItemPickup);
-
 DECLARE_COMMAND(m_Ammo, Slot1);
 DECLARE_COMMAND(m_Ammo, Slot2);
 DECLARE_COMMAND(m_Ammo, Slot3);
@@ -275,13 +284,12 @@ bool CHudAmmo::Init()
 {
 	gHUD.AddHudElem(this);
 
-	HOOK_MESSAGE(CurWeapon);
-	HOOK_MESSAGE(WeaponList);
-	HOOK_MESSAGE(AmmoPickup);
-	HOOK_MESSAGE(WeapPickup);
-	HOOK_MESSAGE(ItemPickup);
-	HOOK_MESSAGE(HideWeapon);
-	HOOK_MESSAGE(AmmoX);
+	g_ClientUserMessages.RegisterHandler("CurWeapon", &CHudAmmo::MsgFunc_CurWeapon, this);	 // Current weapon and clip
+	g_ClientUserMessages.RegisterHandler("AmmoPickup", &CHudAmmo::MsgFunc_AmmoPickup, this); // flashes an ammo pickup record
+	g_ClientUserMessages.RegisterHandler("WeapPickup", &CHudAmmo::MsgFunc_WeapPickup, this); // flashes a weapon pickup record
+	g_ClientUserMessages.RegisterHandler("ItemPickup", &CHudAmmo::MsgFunc_ItemPickup, this);
+	g_ClientUserMessages.RegisterHandler("HideWeapon", &CHudAmmo::MsgFunc_HideWeapon, this); // hides the weapon, ammo, and crosshair displays temporarily
+	g_ClientUserMessages.RegisterHandler("AmmoX", &CHudAmmo::MsgFunc_AmmoX, this);			 // update known ammo type's count
 
 	HOOK_COMMAND("slot1", Slot1);
 	HOOK_COMMAND("slot2", Slot2);
@@ -335,8 +343,8 @@ bool CHudAmmo::VidInit()
 
 	gHR.iHistoryGap = V_max(gHR.iHistoryGap, gHUD.GetSpriteRect(m_HUD_bucket0).bottom - gHUD.GetSpriteRect(m_HUD_bucket0).top);
 
-	// If we've already loaded weapons, let's get new sprites
-	gWR.LoadAllWeaponSprites();
+	// Get weapon and ammo info from server info, load weapon sprites.
+	gWR.InitializeWeapons();
 
 	return true;
 }
@@ -358,9 +366,9 @@ void CHudAmmo::Think()
 		{
 			WEAPON* p = gWR.GetWeapon(i);
 
-			if (p && WEAPON_NONE != p->iId)
+			if (p && p->Info)
 			{
-				if (gHUD.HasWeapon(p->iId))
+				if (gHUD.HasWeapon(p->Info->Id))
 					gWR.PickupWeapon(p);
 				else
 					gWR.DropWeapon(p);
@@ -376,8 +384,8 @@ void CHudAmmo::Think()
 	{
 		if (gpActiveSel != (WEAPON*)1)
 		{
-			SendWeaponSelectCommand(gpActiveSel->szName);
-			g_weaponselect = gpActiveSel->iId;
+			SendWeaponSelectCommand(gpActiveSel->Info->Name.c_str());
+			g_weaponselect = gpActiveSel->Info->Id;
 		}
 
 		gpLastSel = gpActiveSel;
@@ -394,17 +402,22 @@ void CHudAmmo::Think()
 
 HSPRITE* WeaponsResource::GetAmmoPicFromWeapon(int iAmmoId, Rect& rect)
 {
-	for (int i = 0; i < MAX_WEAPONS; i++)
+	for (auto& weapon : rgWeapons)
 	{
-		if (rgWeapons[i].iAmmoType == iAmmoId)
+		if (!weapon.Info)
 		{
-			rect = rgWeapons[i].rcAmmo;
-			return &rgWeapons[i].hAmmo;
+			continue;
 		}
-		else if (rgWeapons[i].iAmmo2Type == iAmmoId)
+
+		if (weapon.AmmoType1 && weapon.AmmoType1->Id == iAmmoId)
 		{
-			rect = rgWeapons[i].rcAmmo2;
-			return &rgWeapons[i].hAmmo2;
+			rect = weapon.rcAmmo;
+			return &weapon.hAmmo;
+		}
+		else if (weapon.AmmoType2 && weapon.AmmoType2->Id == iAmmoId)
+		{
+			rect = weapon.rcAmmo2;
+			return &weapon.hAmmo2;
 		}
 	}
 
@@ -437,7 +450,7 @@ void WeaponsResource::SelectSlot(int iSlot, bool fAdvance, int iDirection)
 	WEAPON* p = nullptr;
 	bool fastSwitch = CVAR_GET_FLOAT("hud_fastswitch") != 0;
 
-	if ((gpActiveSel == nullptr) || (gpActiveSel == (WEAPON*)1) || (iSlot != gpActiveSel->iSlot))
+	if ((gpActiveSel == nullptr) || (gpActiveSel == (WEAPON*)1) || (iSlot != gpActiveSel->Info->Slot))
 	{
 		PlaySound("common/wpn_hudon.wav", 1);
 		p = GetFirstPos(iSlot);
@@ -446,11 +459,11 @@ void WeaponsResource::SelectSlot(int iSlot, bool fAdvance, int iDirection)
 		{
 			// if fast weapon switch is on, then weapons can be selected in a single keypress
 			// but only if there is only one item in the bucket
-			WEAPON* p2 = GetNextActivePos(p->iSlot, p->iSlotPos);
+			WEAPON* p2 = GetNextActivePos(p->Info->Slot, p->Info->Position);
 			if (!p2)
 			{ // only one active item in bucket, so change directly to weapon
-				SendWeaponSelectCommand(p->szName);
-				g_weaponselect = p->iId;
+				SendWeaponSelectCommand(p->Info->Name.c_str());
+				g_weaponselect = p->Info->Id;
 				return;
 			}
 		}
@@ -459,7 +472,7 @@ void WeaponsResource::SelectSlot(int iSlot, bool fAdvance, int iDirection)
 	{
 		PlaySound("common/wpn_moveselect.wav", 1);
 		if (gpActiveSel)
-			p = GetNextActivePos(gpActiveSel->iSlot, gpActiveSel->iSlotPos);
+			p = GetNextActivePos(gpActiveSel->Info->Slot, gpActiveSel->Info->Position);
 		if (!p)
 			p = GetFirstPos(iSlot);
 	}
@@ -484,7 +497,7 @@ void WeaponsResource::SelectSlot(int iSlot, bool fAdvance, int iDirection)
 //
 // AmmoX  -- Update the count of a known type of ammo
 //
-bool CHudAmmo::MsgFunc_AmmoX(const char* pszName, int iSize, void* pbuf)
+void CHudAmmo::MsgFunc_AmmoX(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 
@@ -492,11 +505,9 @@ bool CHudAmmo::MsgFunc_AmmoX(const char* pszName, int iSize, void* pbuf)
 	int iCount = READ_BYTE();
 
 	gWR.SetAmmo(iIndex, abs(iCount));
-
-	return true;
 }
 
-bool CHudAmmo::MsgFunc_AmmoPickup(const char* pszName, int iSize, void* pbuf)
+void CHudAmmo::MsgFunc_AmmoPickup(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 	int iIndex = READ_BYTE();
@@ -504,41 +515,35 @@ bool CHudAmmo::MsgFunc_AmmoPickup(const char* pszName, int iSize, void* pbuf)
 
 	// Add ammo to the history
 	gHR.AddToHistory(HISTSLOT_AMMO, iIndex, abs(iCount));
-
-	return true;
 }
 
-bool CHudAmmo::MsgFunc_WeapPickup(const char* pszName, int iSize, void* pbuf)
+void CHudAmmo::MsgFunc_WeapPickup(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 	int iIndex = READ_BYTE();
 
 	// Add the weapon to the history
 	gHR.AddToHistory(HISTSLOT_WEAP, iIndex);
-
-	return true;
 }
 
-bool CHudAmmo::MsgFunc_ItemPickup(const char* pszName, int iSize, void* pbuf)
+void CHudAmmo::MsgFunc_ItemPickup(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 	const char* szName = READ_STRING();
 
 	// Add the weapon to the history
 	gHR.AddToHistory(HISTSLOT_ITEM, szName);
-
-	return true;
 }
 
 
-bool CHudAmmo::MsgFunc_HideWeapon(const char* pszName, int iSize, void* pbuf)
+void CHudAmmo::MsgFunc_HideWeapon(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 
 	gHUD.m_iHideHUDDisplay = READ_BYTE();
 
 	if (0 != gEngfuncs.IsSpectateOnly())
-		return true;
+		return;
 
 	if ((gHUD.m_iHideHUDDisplay & (HIDEHUD_WEAPONS | HIDEHUD_ALL)) != 0)
 	{
@@ -555,8 +560,6 @@ bool CHudAmmo::MsgFunc_HideWeapon(const char* pszName, int iSize, void* pbuf)
 			SetCrosshair(m_pWeapon->hCrosshair, m_pWeapon->rcCrosshair);
 		}
 	}
-
-	return true;
 }
 
 //
@@ -564,7 +567,7 @@ bool CHudAmmo::MsgFunc_HideWeapon(const char* pszName, int iSize, void* pbuf)
 //  counts are updated with AmmoX. Server assures that the Weapon ammo type
 //  numbers match a real ammo type.
 //
-bool CHudAmmo::MsgFunc_CurWeapon(const char* pszName, int iSize, void* pbuf)
+void CHudAmmo::MsgFunc_CurWeapon(const char* pszName, int iSize, void* pbuf)
 {
 	static Rect nullrc;
 	bool fOnTarget = false;
@@ -586,7 +589,7 @@ bool CHudAmmo::MsgFunc_CurWeapon(const char* pszName, int iSize, void* pbuf)
 		SetDrawCrosshair(false);
 		SetCrosshair(0, nullrc);
 		m_pWeapon = nullptr;
-		return false;
+		return;
 	}
 
 	if (g_iUser1 != OBS_IN_EYE)
@@ -596,7 +599,7 @@ bool CHudAmmo::MsgFunc_CurWeapon(const char* pszName, int iSize, void* pbuf)
 		{
 			gHUD.m_fPlayerDead = true;
 			gpActiveSel = nullptr;
-			return true;
+			return;
 		}
 		gHUD.m_fPlayerDead = false;
 	}
@@ -604,16 +607,16 @@ bool CHudAmmo::MsgFunc_CurWeapon(const char* pszName, int iSize, void* pbuf)
 	WEAPON* pWeapon = gWR.GetWeapon(iId);
 
 	if (!pWeapon)
-		return false;
+		return;
 
 	if (iClip < -1)
-		pWeapon->iClip = abs(iClip);
+		pWeapon->AmmoInMagazine = abs(iClip);
 	else
-		pWeapon->iClip = iClip;
+		pWeapon->AmmoInMagazine = iClip;
 
 
 	if (iState == 0) // we're not the current weapon, so update no more
-		return true;
+		return;
 
 	m_pWeapon = pWeapon;
 
@@ -640,40 +643,6 @@ bool CHudAmmo::MsgFunc_CurWeapon(const char* pszName, int iSize, void* pbuf)
 
 	m_fFade = 200.0f; //!!!
 	m_iFlags |= HUD_ACTIVE;
-
-	return true;
-}
-
-//
-// WeaponList -- Tells the hud about a new weapon type.
-//
-bool CHudAmmo::MsgFunc_WeaponList(const char* pszName, int iSize, void* pbuf)
-{
-	BEGIN_READ(pbuf, iSize);
-
-	WEAPON Weapon;
-
-	strcpy(Weapon.szName, READ_STRING());
-	Weapon.iAmmoType = (int)READ_CHAR();
-
-	Weapon.iMax1 = READ_BYTE();
-	if (Weapon.iMax1 == 255)
-		Weapon.iMax1 = -1;
-
-	Weapon.iAmmo2Type = READ_CHAR();
-	Weapon.iMax2 = READ_BYTE();
-	if (Weapon.iMax2 == 255)
-		Weapon.iMax2 = -1;
-
-	Weapon.iSlot = READ_CHAR();
-	Weapon.iSlotPos = READ_CHAR();
-	Weapon.iId = READ_CHAR();
-	Weapon.iFlags = READ_BYTE();
-	Weapon.iClip = 0;
-
-	gWR.AddWeapon(&Weapon);
-
-	return true;
 }
 
 //------------------------------------------------------------------------
@@ -764,8 +733,8 @@ void CHudAmmo::UserCmd_NextWeapon()
 	int slot = 0;
 	if (gpActiveSel)
 	{
-		pos = gpActiveSel->iSlotPos + 1;
-		slot = gpActiveSel->iSlot;
+		pos = gpActiveSel->Info->Position + 1;
+		slot = gpActiveSel->Info->Slot;
 	}
 
 	for (int loop = 0; loop <= 1; loop++)
@@ -805,8 +774,8 @@ void CHudAmmo::UserCmd_PrevWeapon()
 	int slot = MAX_WEAPON_SLOTS - 1;
 	if (gpActiveSel)
 	{
-		pos = gpActiveSel->iSlotPos - 1;
-		slot = gpActiveSel->iSlot;
+		pos = gpActiveSel->Info->Position - 1;
+		slot = gpActiveSel->Info->Slot;
 	}
 
 	for (int loop = 0; loop <= 1; loop++)
@@ -1019,7 +988,7 @@ bool CHudAmmo::Draw(float flTime)
 	WEAPON* pw = m_pWeapon; // shorthand
 
 	// SPR_Draw Ammo
-	if ((pw->iAmmoType < 0) && (pw->iAmmo2Type < 0))
+	if (!m_pWeapon->AmmoType1 && !m_pWeapon->AmmoType2)
 		return false;
 
 
@@ -1038,16 +1007,16 @@ bool CHudAmmo::Draw(float flTime)
 	y = ScreenHeight - gHUD.m_iFontHeight - gHUD.m_iFontHeight / 2;
 
 	// Does weapon have any ammo at all?
-	if (m_pWeapon->iAmmoType > 0)
+	if (m_pWeapon->AmmoType1)
 	{
 		int iIconWidth = m_pWeapon->rcAmmo.right - m_pWeapon->rcAmmo.left;
 
-		if (pw->iClip >= 0)
+		if (m_pWeapon->AmmoInMagazine >= 0)
 		{
 			// room for the number and the '|' and the current ammo
 
 			x = ScreenWidth - (8 * AmmoWidth) - iIconWidth;
-			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, pw->iClip, color);
+			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, m_pWeapon->AmmoInMagazine, color);
 
 			Rect rc;
 			rc.top = 0;
@@ -1065,13 +1034,13 @@ bool CHudAmmo::Draw(float flTime)
 			x += iBarWidth + AmmoWidth / 2;
 
 			// GL Seems to need the color to be scaled
-			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(pw->iAmmoType), color);
+			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(m_pWeapon->AmmoType1), color);
 		}
 		else
 		{
 			// SPR_Draw a bullets only line
 			x = ScreenWidth - 4 * AmmoWidth - iIconWidth;
-			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(pw->iAmmoType), color);
+			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(m_pWeapon->AmmoType1), color);
 		}
 
 		// Draw the ammo Icon
@@ -1081,16 +1050,16 @@ bool CHudAmmo::Draw(float flTime)
 	}
 
 	// Does weapon have seconday ammo?
-	if (pw->iAmmo2Type > 0)
+	if (m_pWeapon->AmmoType2)
 	{
 		int iIconWidth = m_pWeapon->rcAmmo2.right - m_pWeapon->rcAmmo2.left;
 
 		// Do we have secondary ammo?
-		if ((pw->iAmmo2Type != 0) && (gWR.CountAmmo(pw->iAmmo2Type) > 0))
+		if (gWR.CountAmmo(m_pWeapon->AmmoType2) > 0)
 		{
 			y -= gHUD.m_iFontHeight + gHUD.m_iFontHeight / 4;
 			x = ScreenWidth - 4 * AmmoWidth - iIconWidth;
-			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(pw->iAmmo2Type), color);
+			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(m_pWeapon->AmmoType2), color);
 
 			// Draw the ammo Icon
 			SPR_Set(m_pWeapon->hAmmo2, color);
@@ -1136,21 +1105,21 @@ void DrawAmmoBar(WEAPON* p, int x, int y, int width, int height)
 	if (!p)
 		return;
 
-	if (p->iAmmoType != -1)
+	if (p->AmmoType1)
 	{
-		if (0 == gWR.CountAmmo(p->iAmmoType))
+		if (0 == gWR.CountAmmo(p->AmmoType1))
 			return;
 
-		float f = (float)gWR.CountAmmo(p->iAmmoType) / (float)p->iMax1;
+		float f = (float)gWR.CountAmmo(p->AmmoType1) / (float)p->AmmoType1->MaximumCapacity;
 
 		x = DrawBar(x, y, width, height, f);
 
 
 		// Do we have secondary ammo too?
 
-		if (p->iAmmo2Type != -1)
+		if (p->AmmoType2)
 		{
-			f = (float)gWR.CountAmmo(p->iAmmo2Type) / (float)p->iMax2;
+			f = (float)gWR.CountAmmo(p->AmmoType2) / (float)p->AmmoType2->MaximumCapacity;
 
 			x += 5; //!!!
 
@@ -1177,7 +1146,7 @@ bool CHudAmmo::DrawWList(float flTime)
 	if (gpActiveSel == (WEAPON*)1)
 		iActiveSlot = -1; // current slot has no weapons
 	else
-		iActiveSlot = gpActiveSel->iSlot;
+		iActiveSlot = gpActiveSel->Info->Slot;
 
 	x = 10; //!!!
 	y = 10; //!!!
@@ -1245,7 +1214,7 @@ bool CHudAmmo::DrawWList(float flTime)
 			{
 				p = gWR.GetWeaponSlot(i, iPos);
 
-				if (!p || 0 == p->iId)
+				if (!p || !p->Info)
 					continue;
 
 				const auto color = gHUD.m_HudItemColor;
@@ -1287,7 +1256,7 @@ bool CHudAmmo::DrawWList(float flTime)
 			{
 				WEAPON* p = gWR.GetWeaponSlot(i, iPos);
 
-				if (!p || 0 == p->iId)
+				if (!p || !p->Info)
 					continue;
 
 				RGB24 color;
@@ -1314,31 +1283,4 @@ bool CHudAmmo::DrawWList(float flTime)
 	}
 
 	return true;
-}
-
-
-/* =================================
-	GetSpriteList
-
-Finds and returns the matching
-sprite name 'psz' and resolution 'iRes'
-in the given sprite list 'pList'
-iCount is the number of items in the pList
-================================= */
-client_sprite_t* GetSpriteList(client_sprite_t* pList, const char* psz, int iRes, int iCount)
-{
-	if (!pList)
-		return nullptr;
-
-	int i = iCount;
-	client_sprite_t* p = pList;
-
-	while (0 != i--)
-	{
-		if ((0 == strcmp(psz, p->szName)) && (p->iRes == iRes))
-			return p;
-		p++;
-	}
-
-	return nullptr;
 }

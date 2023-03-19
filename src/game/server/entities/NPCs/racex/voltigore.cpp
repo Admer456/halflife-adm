@@ -91,7 +91,7 @@ void COFChargedBolt::Spawn()
 
 	UTIL_SetOrigin(pev, pev->origin);
 
-	UTIL_SetSize(pev, g_vecZero, g_vecZero);
+	SetSize(g_vecZero, g_vecZero);
 
 	pev->rendermode = kRenderTransAdd;
 	pev->renderamt = 255;
@@ -266,19 +266,19 @@ void COFChargedBolt::ChargedBoltTouch(CBaseEntity* pOther)
 	else
 	{
 		ClearMultiDamage();
-		pOther->TakeDamage(pev, pev, GetSkillFloat("voltigore_dmg_beam"sv), DMG_ALWAYSGIB | DMG_SHOCK);
+		pOther->TakeDamage(this, this, GetSkillFloat("voltigore_dmg_beam"sv), DMG_ALWAYSGIB | DMG_SHOCK);
 	}
 
 	pev->velocity = g_vecZero;
 
-	auto pevOwner = VARS(pev->owner);
+	auto pevOwner = GetOwner();
 
 	// Null out the owner to avoid issues with radius damage
 	pev->owner = nullptr;
 
 	ClearMultiDamage();
 
-	RadiusDamage(pev->origin, pev, pevOwner, GetSkillFloat("voltigore_dmg_beam"sv), 128.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_SHOCK);
+	RadiusDamage(pev->origin, this, pevOwner, GetSkillFloat("voltigore_dmg_beam"sv), 128.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_SHOCK);
 
 	SetThink(&COFChargedBolt::ShutdownChargedBolt);
 	pev->nextthink = gpGlobals->time + 0.5;
@@ -314,7 +314,7 @@ void COFVoltigore::OnCreate()
 //=========================================================
 int COFVoltigore::IRelationship(CBaseEntity* pTarget)
 {
-	if (FClassnameIs(pTarget->pev, "monster_human_grunt"))
+	if (pTarget->ClassnameIs("monster_human_grunt"))
 	{
 		return R_NM;
 	}
@@ -336,7 +336,7 @@ int COFVoltigore::ISoundMask()
 //=========================================================
 // TraceAttack
 //=========================================================
-void COFVoltigore::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void COFVoltigore::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	// Ignore shock damage since we have a shock based attack
 	// TODO: use a filter based on attacker to identify self harm
@@ -344,7 +344,7 @@ void COFVoltigore::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector ve
 	{
 		SpawnBlood(ptr->vecEndPos, BloodColor(), flDamage); // a little surface blood.
 		TraceBleed(flDamage, vecDir, ptr, bitsDamageType);
-		AddMultiDamage(pevAttacker, this, flDamage, bitsDamageType);
+		AddMultiDamage(attacker, this, flDamage, bitsDamageType);
 	}
 }
 
@@ -390,7 +390,7 @@ void COFVoltigore::AlertSound()
 {
 	StopTalking();
 
-	EMIT_SOUND(ENT(pev), CHAN_VOICE, pAlertSounds[RANDOM_LONG(0, std::size(pAlertSounds) - 1)], 1.0, ATTN_NORM);
+	EmitSound(CHAN_VOICE, pAlertSounds[RANDOM_LONG(0, std::size(pAlertSounds) - 1)], 1.0, ATTN_NORM);
 }
 
 //=========================================================
@@ -407,7 +407,7 @@ void COFVoltigore::PainSound()
 
 	StopTalking();
 
-	EMIT_SOUND(ENT(pev), CHAN_VOICE, pPainSounds[RANDOM_LONG(0, std::size(pPainSounds) - 1)], 1.0, ATTN_NORM);
+	EmitSound(CHAN_VOICE, pPainSounds[RANDOM_LONG(0, std::size(pPainSounds) - 1)], 1.0, ATTN_NORM);
 }
 
 //=========================================================
@@ -495,7 +495,7 @@ void COFVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_right * 250;
 			}
 
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, pAttackHitSounds[RANDOM_LONG(0, std::size(pAttackHitSounds) - 1)], 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+			EmitSoundDyn(CHAN_WEAPON, pAttackHitSounds[RANDOM_LONG(0, std::size(pAttackHitSounds) - 1)], 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 
 			Vector vecArmPos, vecArmAng;
 			GetAttachment(0, vecArmPos, vecArmAng);
@@ -504,7 +504,7 @@ void COFVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 		else
 		{
 			// Play a random attack miss sound
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, pAttackMissSounds[RANDOM_LONG(0, std::size(pAttackMissSounds) - 1)], 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+			EmitSoundDyn(CHAN_WEAPON, pAttackMissSounds[RANDOM_LONG(0, std::size(pAttackMissSounds) - 1)], 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 		}
 	}
 	break;
@@ -525,7 +525,7 @@ void COFVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_right * -250;
 			}
 
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, pAttackHitSounds[RANDOM_LONG(0, std::size(pAttackHitSounds) - 1)], 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+			EmitSoundDyn(CHAN_WEAPON, pAttackHitSounds[RANDOM_LONG(0, std::size(pAttackHitSounds) - 1)], 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 
 			Vector vecArmPos, vecArmAng;
 			GetAttachment(0, vecArmPos, vecArmAng);
@@ -534,7 +534,7 @@ void COFVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 		else
 		{
 			// Play a random attack miss sound
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, pAttackMissSounds[RANDOM_LONG(0, std::size(pAttackMissSounds) - 1)], 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+			EmitSoundDyn(CHAN_WEAPON, pAttackMissSounds[RANDOM_LONG(0, std::size(pAttackMissSounds) - 1)], 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 		}
 	}
 	break;
@@ -550,7 +550,7 @@ void COFVoltigore::SpawnCore(const Vector& mins, const Vector& maxs)
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, mins, maxs);
+	SetSize(mins, maxs);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -944,7 +944,7 @@ void COFVoltigore::StartTask(Task_t* pTask)
 			UTIL_SetOrigin(m_pChargedBolt->pev, vecConverge);
 		}
 
-		UTIL_EmitAmbientSound(edict(), pev->origin, "debris/beamstart2.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG(140, 160));
+		EmitAmbientSound(pev->origin, "debris/beamstart2.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG(140, 160));
 		CBaseMonster::StartTask(pTask);
 	}
 	break;
@@ -975,11 +975,11 @@ void COFVoltigore::RunTask(Task_t* pTask)
 				if (BBoxFlat())
 				{
 					const auto maxs = Vector(pev->maxs.x, pev->maxs.y, pev->mins.z + 1);
-					UTIL_SetSize(pev, pev->mins, maxs);
+					SetSize(pev->mins, maxs);
 				}
 				else
 				{
-					UTIL_SetSize(pev, {-4, -4, 0}, {4, 4, 1});
+					SetSize({-4, -4, 0}, {4, 4, 1});
 				}
 
 				if (ShouldFadeOnDeath())
@@ -1226,7 +1226,7 @@ void COFVoltigore::DeathGibThink()
 
 		ClearMultiDamage();
 
-		::RadiusDamage(pev->origin, pev, pev, GetSkillFloat("voltigore_dmg_beam"sv), 160.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_SHOCK);
+		::RadiusDamage(pev->origin, this, this, GetSkillFloat("voltigore_dmg_beam"sv), 160.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_SHOCK);
 	}
 }
 
@@ -1247,7 +1247,7 @@ const GibData VoltigoreGibs = {"models/vgibs.mdl", 0, 9, VoltigoreGibLimits};
 
 void COFVoltigore::GibMonster()
 {
-	EMIT_SOUND(ENT(pev), CHAN_WEAPON, "common/bodysplat.wav", 1, ATTN_NORM);
+	EmitSound(CHAN_WEAPON, "common/bodysplat.wav", 1, ATTN_NORM);
 
 	pev->renderfx = kRenderFxExplode;
 
@@ -1268,9 +1268,9 @@ void COFVoltigore::GibMonster()
 	}
 }
 
-void COFVoltigore::Killed(entvars_t* pevAttacker, int iGib)
+void COFVoltigore::Killed(CBaseEntity* attacker, int iGib)
 {
 	ClearBeams();
 
-	CSquadMonster::Killed(pevAttacker, iGib);
+	CSquadMonster::Killed(attacker, iGib);
 }

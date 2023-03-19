@@ -577,7 +577,7 @@ void CScientist::Spawn()
 		SetBodygroup(ScientistBodygroup::Head, RANDOM_LONG(0, GetBodygroupSubmodelCount(ScientistBodygroup::Head) - 1)); // pick a head, any head
 	}
 
-	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
+	SetSize(VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -671,17 +671,17 @@ void CScientist::TalkInit()
 	m_szGrp[TLK_MORTAL] = "SC_MORTAL";
 }
 
-bool CScientist::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CScientist::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 
-	if (pevInflictor && (pevInflictor->flags & FL_CLIENT) != 0)
+	if (inflictor && (inflictor->pev->flags & FL_CLIENT) != 0)
 	{
 		Remember(bits_MEMORY_PROVOKED);
 		StopFollowing(true);
 	}
 
 	// make sure friends talk about it if player hurts scientist...
-	return CTalkMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	return CTalkMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
 
@@ -715,19 +715,19 @@ void CScientist::PainSound()
 	switch (RANDOM_LONG(0, 4))
 	{
 	case 0:
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "scientist/sci_pain1.wav", 1, ATTN_NORM, 0, GetVoicePitch());
+		EmitSoundDyn(CHAN_VOICE, "scientist/sci_pain1.wav", 1, ATTN_NORM, 0, GetVoicePitch());
 		break;
 	case 1:
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "scientist/sci_pain2.wav", 1, ATTN_NORM, 0, GetVoicePitch());
+		EmitSoundDyn(CHAN_VOICE, "scientist/sci_pain2.wav", 1, ATTN_NORM, 0, GetVoicePitch());
 		break;
 	case 2:
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "scientist/sci_pain3.wav", 1, ATTN_NORM, 0, GetVoicePitch());
+		EmitSoundDyn(CHAN_VOICE, "scientist/sci_pain3.wav", 1, ATTN_NORM, 0, GetVoicePitch());
 		break;
 	case 3:
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "scientist/sci_pain4.wav", 1, ATTN_NORM, 0, GetVoicePitch());
+		EmitSoundDyn(CHAN_VOICE, "scientist/sci_pain4.wav", 1, ATTN_NORM, 0, GetVoicePitch());
 		break;
 	case 4:
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "scientist/sci_pain5.wav", 1, ATTN_NORM, 0, GetVoicePitch());
+		EmitSoundDyn(CHAN_VOICE, "scientist/sci_pain5.wav", 1, ATTN_NORM, 0, GetVoicePitch());
 		break;
 	}
 }
@@ -741,10 +741,10 @@ void CScientist::DeathSound()
 }
 
 
-void CScientist::Killed(entvars_t* pevAttacker, int iGib)
+void CScientist::Killed(CBaseEntity* attacker, int iGib)
 {
 	SetUse(nullptr);
-	CTalkMonster::Killed(pevAttacker, iGib);
+	CTalkMonster::Killed(attacker, iGib);
 }
 
 
@@ -1161,7 +1161,7 @@ void CSittingScientist::Spawn()
 	Precache();
 	InitBoneControllers();
 
-	UTIL_SetSize(pev, Vector(-14, -14, 0), Vector(14, 14, 36));
+	SetSize(Vector(-14, -14, 0), Vector(14, 14, 36));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -1353,7 +1353,7 @@ bool CSittingScientist::FIdleSpeak()
 		pTalkMonster->SetAnswerQuestion(this);
 
 		IdleHeadTurn(pentFriend->pev->origin);
-		sentences::g_Sentences.PlayRndSz(ENT(pev), m_szGrp[TLK_PQUESTION], 1.0, ATTN_IDLE, 0, pitch);
+		sentences::g_Sentences.PlayRndSz(this, m_szGrp[TLK_PQUESTION], 1.0, ATTN_IDLE, 0, pitch);
 		// set global min delay for next conversation
 		CTalkMonster::g_talkWaitTime = gpGlobals->time + RANDOM_FLOAT(4.8, 5.2);
 		return true;
@@ -1362,7 +1362,7 @@ bool CSittingScientist::FIdleSpeak()
 	// otherwise, play an idle statement
 	if (RANDOM_LONG(0, 1))
 	{
-		sentences::g_Sentences.PlayRndSz(ENT(pev), m_szGrp[TLK_PIDLE], 1.0, ATTN_IDLE, 0, pitch);
+		sentences::g_Sentences.PlayRndSz(this, m_szGrp[TLK_PIDLE], 1.0, ATTN_IDLE, 0, pitch);
 		// set global min delay for next conversation
 		CTalkMonster::g_talkWaitTime = gpGlobals->time + RANDOM_FLOAT(4.8, 5.2);
 		return true;

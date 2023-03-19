@@ -23,7 +23,7 @@
 
 
 
-bool ExtractBbox(void* pmodel, int sequence, float* mins, float* maxs)
+bool ExtractBbox(void* pmodel, int sequence, Vector& mins, Vector& maxs)
 {
 	studiohdr_t* pstudiohdr;
 
@@ -104,7 +104,7 @@ int LookupActivityHeaviest(void* pmodel, entvars_t* pev, int activity)
 	return seq;
 }
 
-void GetEyePosition(void* pmodel, float* vecEyePosition)
+void GetEyePosition(void* pmodel, Vector& vecEyePosition)
 {
 	studiohdr_t* pstudiohdr;
 
@@ -116,7 +116,7 @@ void GetEyePosition(void* pmodel, float* vecEyePosition)
 		return;
 	}
 
-	VectorCopy(pstudiohdr->eyeposition, vecEyePosition);
+	vecEyePosition = pstudiohdr->eyeposition;
 }
 
 int LookupSequence(void* pmodel, const char* label)
@@ -190,7 +190,7 @@ void SequencePrecache(CBaseEntity* self, void* pmodel, const char* pSequenceName
 
 
 
-void GetSequenceInfo(void* pmodel, entvars_t* pev, float* pflFrameRate, float* pflGroundSpeed)
+void GetSequenceInfo(void* pmodel, entvars_t* pev, float& flFrameRate, float& flGroundSpeed)
 {
 	studiohdr_t* pstudiohdr;
 
@@ -202,23 +202,23 @@ void GetSequenceInfo(void* pmodel, entvars_t* pev, float* pflFrameRate, float* p
 
 	if (pev->sequence < 0 || pev->sequence >= pstudiohdr->numseq)
 	{
-		*pflFrameRate = 0.0;
-		*pflGroundSpeed = 0.0;
+		flFrameRate = 0.0;
+		flGroundSpeed = 0.0;
 		return;
 	}
 
-	pseqdesc = (mstudioseqdesc_t*)((byte*)pstudiohdr + pstudiohdr->seqindex) + (int)pev->sequence;
+	pseqdesc = (mstudioseqdesc_t*)((byte*)pstudiohdr + pstudiohdr->seqindex) + pev->sequence;
 
 	if (pseqdesc->numframes > 1)
 	{
-		*pflFrameRate = 256 * pseqdesc->fps / (pseqdesc->numframes - 1);
-		*pflGroundSpeed = sqrt(pseqdesc->linearmovement[0] * pseqdesc->linearmovement[0] + pseqdesc->linearmovement[1] * pseqdesc->linearmovement[1] + pseqdesc->linearmovement[2] * pseqdesc->linearmovement[2]);
-		*pflGroundSpeed = *pflGroundSpeed * pseqdesc->fps / (pseqdesc->numframes - 1);
+		flFrameRate = 256 * pseqdesc->fps / (pseqdesc->numframes - 1);
+		flGroundSpeed = sqrt(pseqdesc->linearmovement[0] * pseqdesc->linearmovement[0] + pseqdesc->linearmovement[1] * pseqdesc->linearmovement[1] + pseqdesc->linearmovement[2] * pseqdesc->linearmovement[2]);
+		flGroundSpeed = flGroundSpeed * pseqdesc->fps / (pseqdesc->numframes - 1);
 	}
 	else
 	{
-		*pflFrameRate = 256.0;
-		*pflGroundSpeed = 0.0;
+		flFrameRate = 256.0;
+		flGroundSpeed = 0.0;
 	}
 }
 
@@ -232,7 +232,7 @@ int GetSequenceFlags(void* pmodel, entvars_t* pev)
 		return 0;
 
 	mstudioseqdesc_t* pseqdesc;
-	pseqdesc = (mstudioseqdesc_t*)((byte*)pstudiohdr + pstudiohdr->seqindex) + (int)pev->sequence;
+	pseqdesc = (mstudioseqdesc_t*)((byte*)pstudiohdr + pstudiohdr->seqindex) + pev->sequence;
 
 	return pseqdesc->flags;
 }
@@ -246,12 +246,10 @@ int GetAnimationEvent(void* pmodel, entvars_t* pev, MonsterEvent_t* pMonsterEven
 	if (!pstudiohdr || pev->sequence < 0 || pev->sequence >= pstudiohdr->numseq || !pMonsterEvent)
 		return 0;
 
-	int events = 0;
-
 	mstudioseqdesc_t* pseqdesc;
 	mstudioevent_t* pevent;
 
-	pseqdesc = (mstudioseqdesc_t*)((byte*)pstudiohdr + pstudiohdr->seqindex) + (int)pev->sequence;
+	pseqdesc = (mstudioseqdesc_t*)((byte*)pstudiohdr + pstudiohdr->seqindex) + pev->sequence;
 	pevent = (mstudioevent_t*)((byte*)pstudiohdr + pseqdesc->eventindex);
 
 	if (pseqdesc->numevents == 0 || index > pseqdesc->numevents)
@@ -352,7 +350,7 @@ float SetBlending(void* pmodel, entvars_t* pev, int iBlender, float flValue)
 
 	mstudioseqdesc_t* pseqdesc;
 
-	pseqdesc = (mstudioseqdesc_t*)((byte*)pstudiohdr + pstudiohdr->seqindex) + (int)pev->sequence;
+	pseqdesc = (mstudioseqdesc_t*)((byte*)pstudiohdr + pstudiohdr->seqindex) + pev->sequence;
 
 	if (pseqdesc->blendtype[iBlender] == 0)
 		return flValue;

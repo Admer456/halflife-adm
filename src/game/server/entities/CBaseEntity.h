@@ -24,16 +24,15 @@
 #include "util.h"
 #include "skill.h"
 
-using namespace std::string_view_literals;
-
 class CBaseEntity;
 class CBaseMonster;
-class CBasePlayerItem;
+class CBasePlayerWeapon;
 class CCineMonster;
 class COFSquadTalkMonster;
 class CSound;
 class CSquadMonster;
 class CTalkMonster;
+struct ReplacementMap;
 
 #define MAX_PATH_SIZE 10 // max number of nodes available for a path.
 
@@ -165,6 +164,11 @@ public:
 
 	const char* GetClassname() const { return STRING(pev->classname); }
 
+	inline bool ClassnameIs(const char* szClassname) const
+	{
+		return FStrEq(STRING(pev->classname), szClassname);
+	}
+
 	const char* GetGlobalname() const { return STRING(pev->globalname); }
 
 	const char* GetTargetname() const { return STRING(pev->targetname); }
@@ -182,6 +186,28 @@ public:
 
 	int PrecacheSound(const char* s);
 
+	void SetSize(const Vector& min, const Vector& max);
+
+	CBaseEntity* GetOwner()
+	{
+		return GET_PRIVATE<CBaseEntity>(pev->owner);
+	}
+
+	void SetOwner(CBaseEntity* owner)
+	{
+		pev->owner = owner ? owner->edict() : nullptr;
+	}
+
+	CBaseEntity* GetGroundEntity()
+	{
+		return GET_PRIVATE<CBaseEntity>(pev->groundentity);
+	}
+
+	void SetGroundEntity(CBaseEntity* entity)
+	{
+		pev->groundentity = entity ? entity->edict() : nullptr;
+	}
+
 	// initialization functions
 
 	/**
@@ -198,6 +224,15 @@ public:
 
 	virtual void Spawn() {}
 	virtual void Precache() {}
+
+	/**
+	 *	@brief Handles keyvalues in CBaseEntity that must be handled,
+	 *	even if an entity does not call the base class version of KeyValue.
+	 */
+	bool RequiredKeyValue(KeyValueData* pkvd);
+
+	void LoadReplacementFiles();
+
 	virtual bool KeyValue(KeyValueData* pkvd) { return false; }
 	virtual bool Save(CSave& save);
 	virtual bool Restore(CRestore& restore);
@@ -210,15 +245,15 @@ public:
 	// Classify - returns the type of group (i.e, "houndeye", or "human military" so that monsters with different classnames
 	// still realize that they are teammates. (overridden for monsters that form groups)
 	virtual int Classify() { return CLASS_NONE; }
-	virtual void DeathNotice(entvars_t* pevChild) {} // monster maker children use this to tell the monster maker that they have died.
+	virtual void DeathNotice(CBaseEntity* child) {} // monster maker children use this to tell the monster maker that they have died.
 
 
 	static TYPEDESCRIPTION m_SaveData[];
 
-	virtual void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType);
-	virtual bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType);
+	virtual void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType);
+	virtual bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType);
 	virtual bool TakeHealth(float flHealth, int bitsDamageType);
-	virtual void Killed(entvars_t* pevAttacker, int iGib);
+	virtual void Killed(CBaseEntity* attacker, int iGib);
 	virtual int BloodColor() { return DONT_BLEED; }
 	virtual void TraceBleed(float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType);
 	virtual bool IsTriggered(CBaseEntity* pActivator) { return true; }
@@ -235,7 +270,7 @@ public:
 	virtual void SetToggleState(int state) {}
 	virtual void StartSneaking() {}
 	virtual void StopSneaking() {}
-	virtual bool OnControls(entvars_t* pev) { return false; }
+	virtual bool OnControls(CBaseEntity* controller) { return false; }
 	virtual bool IsSneaking() { return false; }
 	virtual bool IsAlive() { return (pev->deadflag == DEAD_NO) && pev->health > 0; }
 	virtual bool IsBSPModel() { return pev->solid == SOLID_BSP || pev->movetype == MOVETYPE_PUSHSTEP; }
@@ -300,8 +335,8 @@ public:
 	void EXPORT SUB_FadeOut();
 	void EXPORT SUB_CallUseToggle() { this->Use(this, this, USE_TOGGLE, 0); }
 	bool ShouldToggle(USE_TYPE useType, bool currentState);
-	void FireBullets(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, entvars_t* pevAttacker = nullptr);
-	Vector FireBulletsPlayer(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, entvars_t* pevAttacker = nullptr, int shared_rand = 0);
+	void FireBullets(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, CBaseEntity* attacker = nullptr);
+	Vector FireBulletsPlayer(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, CBaseEntity* attacker = nullptr, int shared_rand = 0);
 
 	virtual CBaseEntity* Respawn() { return nullptr; }
 
@@ -327,33 +362,25 @@ public:
 		return Instance(ENT(pev));
 	}
 
+	static CBaseEntity* Instance(CBaseEntity* ent)
+	{
+		if (!ent)
+			return World;
+
+		return ent;
+	}
+
 	template <typename T>
 	static T* Instance(edict_t* pent)
 	{
 		if (!pent)
-			pent = ENT(0);
+			pent = INDEXENT(0);
 		CBaseEntity* pEnt = (CBaseEntity*)GET_PRIVATE(pent);
 		return static_cast<T*>(pEnt);
 	}
 
 	template <typename T>
 	static T* Instance(entvars_t* pev) { return Instance<T>(ENT(pev)); }
-
-	CBaseMonster* GetMonsterPointer(entvars_t* pevMonster)
-	{
-		CBaseEntity* pEntity = Instance(pevMonster);
-		if (pEntity)
-			return pEntity->MyMonsterPointer();
-		return nullptr;
-	}
-	CBaseMonster* GetMonsterPointer(edict_t* pentMonster)
-	{
-		CBaseEntity* pEntity = Instance(pentMonster);
-		if (pEntity)
-			return pEntity->MyMonsterPointer();
-		return nullptr;
-	}
-
 
 	// Ugly technique to override base member functions
 	// Normally it's illegal to cast a pointer to a member function of a derived class to a pointer to a
@@ -471,6 +498,25 @@ public:
 	{
 		return g_Skill.GetValue(name);
 	}
+
+	// Sound playback.
+	void EmitSound(int channel, const char* sample, float volume, float attenuation);
+	void EmitSoundDyn(int channel, const char* sample, float volume, float attenuation, int flags, int pitch);
+	void EmitAmbientSound(const Vector& vecOrigin, const char* samp, float vol, float attenuation, int fFlags, int pitch);
+	void StopSound(int channel, const char* sample);
+
+	string_t m_ModelReplacementFileName;
+	string_t m_SoundReplacementFileName;
+	string_t m_SentenceReplacementFileName;
+
+	const ReplacementMap* m_ModelReplacement{};
+	const ReplacementMap* m_SoundReplacement{};
+	const ReplacementMap* m_SentenceReplacement{};
+
+	Vector m_CustomHullMin{vec3_origin};
+	Vector m_CustomHullMax{vec3_origin};
+	bool m_HasCustomHullMin{false};
+	bool m_HasCustomHullMax{false};
 
 	// We use this variables to store each ammo count.
 	int ammo_9mm;

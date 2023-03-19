@@ -18,7 +18,7 @@
 #include <string>
 
 #include "cdll_dll.h"
-#include "MapState.h"
+#include "ServerConfigContext.h"
 
 #include "config/GameConfig.h"
 
@@ -28,14 +28,16 @@
 /**
  *	@brief Allows a configuration file to specify the player's suit light type.
  */
-class SuitLightTypeSection final : public GameConfigSection<MapState>
+class SuitLightTypeSection final : public GameConfigSection<ServerConfigContext>
 {
 public:
 	explicit SuitLightTypeSection() = default;
 
 	std::string_view GetName() const override final { return "SuitLightType"; }
 
-	std::tuple<std::string, std::string> GetSchema() const override final
+	json::value_t GetType() const override final { return json::value_t::string; }
+
+	std::string GetSchema() const override final
 	{
 		const auto types = []()
 		{
@@ -62,26 +64,18 @@ public:
 			return types;
 		}();
 
-		return {
-			fmt::format(R"(
-"Type": {{
-	"type": "string",
-	"enum": [{}]
-}}
-)",
-				types),
-			{"\"Type\""}};
+		return fmt::format(R"("enum": [{}])", types);
 	}
 
-	bool TryParse(GameConfigContext<MapState>& context) const override final
+	bool TryParse(GameConfigContext<ServerConfigContext>& context) const override final
 	{
-		const auto type = context.Input.value("Type", std::string{});
+		const auto type = context.Input.get<std::string>();
 
 		if (!type.empty())
 		{
 			if (auto value = SuitLightTypeFromString(type); value)
 			{
-				context.Data.m_LightType = *value;
+				context.Data.State.m_LightType = *value;
 			}
 		}
 

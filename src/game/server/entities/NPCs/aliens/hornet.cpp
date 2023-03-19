@@ -40,13 +40,13 @@ IMPLEMENT_SAVERESTORE(CHornet, CBaseMonster);
 //=========================================================
 // don't let hornets gib, ever.
 //=========================================================
-bool CHornet::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CHornet::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	// filter these bits a little.
 	bitsDamageType &= ~(DMG_ALWAYSGIB);
 	bitsDamageType |= DMG_NEVERGIB;
 
-	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
 //=========================================================
@@ -85,7 +85,7 @@ void CHornet::Spawn()
 	}
 
 	SetModel("models/hornet.mdl");
-	UTIL_SetSize(pev, Vector(-4, -4, -4), Vector(4, 4, 4));
+	SetSize(Vector(-4, -4, -4), Vector(4, 4, 4));
 
 	SetTouch(&CHornet::DieTouch);
 	SetThink(&CHornet::StartTrack);
@@ -287,13 +287,13 @@ void CHornet::TrackTarget()
 		switch (RANDOM_LONG(0, 2))
 		{
 		case 0:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "hornet/ag_buzz1.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "hornet/ag_buzz1.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
 			break;
 		case 1:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "hornet/ag_buzz2.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "hornet/ag_buzz2.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
 			break;
 		case 2:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "hornet/ag_buzz3.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "hornet/ag_buzz3.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
 			break;
 		}
 	}
@@ -350,13 +350,13 @@ void CHornet::TrackTarget()
 			switch (RANDOM_LONG(0, 2))
 			{
 			case 0:
-				EMIT_SOUND(ENT(pev), CHAN_VOICE, "hornet/ag_buzz1.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
+				EmitSound(CHAN_VOICE, "hornet/ag_buzz1.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
 				break;
 			case 1:
-				EMIT_SOUND(ENT(pev), CHAN_VOICE, "hornet/ag_buzz2.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
+				EmitSound(CHAN_VOICE, "hornet/ag_buzz2.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
 				break;
 			case 2:
-				EMIT_SOUND(ENT(pev), CHAN_VOICE, "hornet/ag_buzz3.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
+				EmitSound(CHAN_VOICE, "hornet/ag_buzz3.wav", HORNET_BUZZ_VOLUME, ATTN_NORM);
 				break;
 			}
 			pev->velocity = pev->velocity * 2;
@@ -411,17 +411,17 @@ void CHornet::DieTouch(CBaseEntity* pOther)
 		switch (RANDOM_LONG(0, 2))
 		{ // buzz when you plug someone
 		case 0:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "hornet/ag_hornethit1.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "hornet/ag_hornethit1.wav", 1, ATTN_NORM);
 			break;
 		case 1:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "hornet/ag_hornethit2.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "hornet/ag_hornethit2.wav", 1, ATTN_NORM);
 			break;
 		case 2:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "hornet/ag_hornethit3.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "hornet/ag_hornethit3.wav", 1, ATTN_NORM);
 			break;
 		}
 
-		pOther->TakeDamage(pev, VARS(pev->owner), pev->dmg, DMG_BULLET);
+		pOther->TakeDamage(this, GetOwner(), pev->dmg, DMG_BULLET);
 	}
 
 	pev->modelindex = 0; // so will disappear for the 0.1 secs we wait until NEXTTHINK gets rid

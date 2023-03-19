@@ -68,7 +68,7 @@ void COsprey::Spawn()
 	pev->solid = SOLID_BBOX;
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-400, -400, -100), Vector(400, 400, 32));
+	SetSize(Vector(-400, -400, -100), Vector(400, 400, 32));
 	UTIL_SetOrigin(pev, pev->origin);
 
 	// Set FL_FLY so the Osprey model is interpolated.
@@ -398,8 +398,8 @@ void COsprey::Flight()
 
 	if (m_iSoundState == 0)
 	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "apache/ap_rotor4.wav", 1.0, 0.15, 0, 110);
-		// EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "apache/ap_whine1.wav", 0.5, 0.2, 0, 110 );
+		EmitSoundDyn(CHAN_STATIC, "apache/ap_rotor4.wav", 1.0, 0.15, 0, 110);
+		// EmitSoundDyn(CHAN_STATIC, "apache/ap_whine1.wav", 0.5, 0.2, 0, 110 );
 
 		m_iSoundState = SND_CHANGE_PITCH; // hack for going through level transitions
 	}
@@ -426,11 +426,11 @@ void COsprey::Flight()
 			if (pitch != m_iPitch)
 			{
 				m_iPitch = pitch;
-				EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "apache/ap_rotor4.wav", 1.0, 0.15, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
+				EmitSoundDyn(CHAN_STATIC, "apache/ap_rotor4.wav", 1.0, 0.15, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
 				// AILogger->debug("{:.0f}", pitch);
 			}
 		}
-		// EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "apache/ap_whine1.wav", flVol, 0.2, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
+		// EmitSoundDyn(CHAN_STATIC, "apache/ap_whine1.wav", flVol, 0.2, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
 	}
 }
 
@@ -442,7 +442,7 @@ void COsprey::HitTouch(CBaseEntity* pOther)
 
 
 /*
-int COsprey::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
+int COsprey::TakeDamage( entvars_t *inflictor, entvars_t *attacker, float flDamage, int bitsDamageType )
 {
 	if (m_flRotortilt <= -90)
 	{
@@ -459,7 +459,7 @@ int COsprey::TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float 
 
 
 
-void COsprey::Killed(entvars_t* pevAttacker, int iGib)
+void COsprey::Killed(CBaseEntity* attacker, int iGib)
 {
 	ClearShockEffect();
 
@@ -467,9 +467,9 @@ void COsprey::Killed(entvars_t* pevAttacker, int iGib)
 	pev->gravity = 0.3;
 	pev->velocity = m_velocity;
 	pev->avelocity = Vector(RANDOM_FLOAT(-20, 20), 0, RANDOM_FLOAT(-50, 50));
-	STOP_SOUND(ENT(pev), CHAN_STATIC, "apache/ap_rotor4.wav");
+	StopSound(CHAN_STATIC, "apache/ap_rotor4.wav");
 
-	UTIL_SetSize(pev, Vector(-32, -32, -64), Vector(32, 32, 0));
+	SetSize(Vector(-32, -32, -64), Vector(32, 32, 0));
 	SetThink(&COsprey::DyingThink);
 	SetTouch(&COsprey::CrashTouch);
 	pev->nextthink = gpGlobals->time + 0.1;
@@ -509,16 +509,16 @@ void COsprey::DyingThink()
 		Vector vecSpot = pev->origin + pev->velocity * 0.2;
 
 		// random explosions
-		MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, vecSpot);
-		WRITE_BYTE(TE_EXPLOSION); // This just makes a dynamic light now
-		WRITE_COORD(vecSpot.x + RANDOM_FLOAT(-150, 150));
-		WRITE_COORD(vecSpot.y + RANDOM_FLOAT(-150, 150));
-		WRITE_COORD(vecSpot.z + RANDOM_FLOAT(-150, -50));
-		WRITE_SHORT(g_sModelIndexFireball);
-		WRITE_BYTE(RANDOM_LONG(0, 29) + 30); // scale * 10
-		WRITE_BYTE(12);						 // framerate
-		WRITE_BYTE(TE_EXPLFLAG_NONE);
-		MESSAGE_END();
+		// This just makes a dynamic light now
+		Vector explosionOrigin = vecSpot;
+
+		explosionOrigin.x += RANDOM_FLOAT(-150, 150);
+		explosionOrigin.y += RANDOM_FLOAT(-150, 150);
+		explosionOrigin.z += RANDOM_FLOAT(-150, -50);
+
+		UTIL_ExplosionEffect(explosionOrigin, g_sModelIndexFireball,
+			RANDOM_LONG(0, 29) + 30, 12, TE_EXPLFLAG_NONE,
+			MSG_PVS, pev->origin);
 
 		// lots of smoke
 		MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, vecSpot);
@@ -580,15 +580,10 @@ void COsprey::DyingThink()
 		Vector vecSpot = pev->origin + (pev->mins + pev->maxs) * 0.5;
 
 		/*
-		MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
-			WRITE_BYTE( TE_EXPLOSION);		// This just makes a dynamic light now
-			WRITE_COORD( vecSpot.x );
-			WRITE_COORD( vecSpot.y );
-			WRITE_COORD( vecSpot.z + 512 );
-			WRITE_SHORT( m_iExplode );
-			WRITE_BYTE( 250 ); // scale * 10
-			WRITE_BYTE( 10  ); // framerate
-		MESSAGE_END();
+		// This just makes a dynamic light now
+		UTIL_ExplosionEffect(vecSpot + Vector(0, 0, 512), m_iExplode,
+			250, 10, TE_EXPLFLAG_NONE,
+			MSG_BROADCAST);
 		*/
 
 		// gibs
@@ -636,9 +631,9 @@ void COsprey::DyingThink()
 		WRITE_BYTE(0);	 // speed
 		MESSAGE_END();
 
-		EMIT_SOUND(ENT(pev), CHAN_STATIC, "weapons/mortarhit.wav", 1.0, 0.3);
+		EmitSound(CHAN_STATIC, "weapons/mortarhit.wav", 1.0, 0.3);
 
-		RadiusDamage(pev->origin, pev, pev, 300, CLASS_NONE, DMG_BLAST);
+		RadiusDamage(pev->origin, this, this, 300, CLASS_NONE, DMG_BLAST);
 
 		// gibs
 		vecSpot = pev->origin + (pev->mins + pev->maxs) * 0.5;
@@ -728,19 +723,19 @@ void COsprey::Update()
 	FCheckAITrigger();
 }
 
-bool COsprey::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool COsprey::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	// Set enemy to last attacker.
 	// Ospreys are not capable of fighting so they'll get angry at whatever shoots at them, not whatever looks like an enemy.
-	m_hEnemy = Instance(pevAttacker);
+	m_hEnemy = Instance(attacker);
 
 	// It's on now!
 	m_MonsterState = MONSTERSTATE_COMBAT;
 
-	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
-void COsprey::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void COsprey::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	// AILogger->debug("{} {:.0f}", ptr->iHitgroup, flDamage);
 
@@ -767,7 +762,7 @@ void COsprey::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir,
 	if (flDamage > 50 || ptr->iHitgroup == 1 || ptr->iHitgroup == 2 || ptr->iHitgroup == 3)
 	{
 		// AILogger->debug("{:.0f}", flDamage);
-		AddMultiDamage(pevAttacker, this, flDamage, bitsDamageType);
+		AddMultiDamage(attacker, this, flDamage, bitsDamageType);
 	}
 	else
 	{

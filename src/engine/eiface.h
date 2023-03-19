@@ -108,8 +108,8 @@ struct enginefuncs_t
 	edict_t* (*pfnFindEntityInSphere)(edict_t* pEdictStartSearchAfter, const float* org, float rad);
 	edict_t* (*pfnFindClientInPVS)(edict_t* pEdict);
 	edict_t* (*pfnEntitiesInPVS)(edict_t* pplayer);
-	void (*pfnMakeVectors)(const float* rgflVector);
-	void (*pfnAngleVectors)(const float* rgflVector, float* forward, float* right, float* up);
+	[[deprecated("Use UTIL_MakeVectors instead")]] void (*pfnMakeVectors)(const float* rgflVector);
+	[[deprecated("Use AngleVectors instead")]] void (*pfnAngleVectors)(const float* rgflVector, float* forward, float* right, float* up);
 	edict_t* (*pfnCreateEntity)();
 	void (*pfnRemoveEntity)(edict_t* e);
 	edict_t* (*pfnCreateNamedEntity)(string_t_value className);
@@ -158,8 +158,11 @@ struct enginefuncs_t
 	const char* (*pfnSzFromIndex)(int iString);
 	int (*pfnAllocString)(const char* szValue);
 	entvars_t* (*pfnGetVarsOfEnt)(edict_t* pEdict);
+	/**
+	*	@brief Still called by UTIL_GetEntityList so it can't be marked deprecated, but don't use this anywhere else.
+	*/
 	edict_t* (*pfnPEntityOfEntOffset)(int iEntOffset);
-	int (*pfnEntOffsetOfPEntity)(const edict_t* pEdict);
+	[[deprecated("Do not use entity offsets. Use entity indices or handles instead")]]  int (*pfnEntOffsetOfPEntity)(const edict_t* pEdict);
 	int (*pfnIndexOfEdict)(const edict_t* pEdict);
 	edict_t* (*pfnPEntityOfEntIndex)(int iEntIndex);
 	edict_t* (*pfnFindEntityByVars)(entvars_t* pvars);
@@ -176,7 +179,7 @@ struct enginefuncs_t
 	int (*pfnCmd_Argc)();				  // access client 'cmd' strings
 	void (*pfnGetAttachment)(const edict_t* pEdict, int iAttachment, float* rgflOrigin, float* rgflAngles);
 	void (*pfnCRC32_Init)(CRC32_t* pulCRC);
-	void (*pfnCRC32_ProcessBuffer)(CRC32_t* pulCRC, void* p, int len);
+	void (*pfnCRC32_ProcessBuffer)(CRC32_t* pulCRC, const void* p, int len);
 	void (*pfnCRC32_ProcessByte)(CRC32_t* pulCRC, unsigned char ch);
 	CRC32_t (*pfnCRC32_Final)(CRC32_t pulCRC);
 	int32 (*pfnRandomLong)(int32 lLow, int32 lHigh);
@@ -313,7 +316,6 @@ struct ENTITYTABLE
 	int size;			// Byte size of this entity's data
 	int flags;			// This could be a short -- bit mask of transitions that this entity is in the PVS of
 	string_t classname; // entity class name
-
 };
 
 #define FENTTABLE_PLAYER 0x80000000
@@ -342,31 +344,41 @@ struct SAVERESTOREDATA
 	Vector vecLandmarkOffset; // for landmark transitions
 	float time;
 	char szCurrentMapName[32]; // To check global entities
-
 };
 
+/**
+*	@details The Steam version of the engine uses the following types:
+*	FIELD_FLOAT
+*	FIELD_STRING
+*	FIELD_EDICT
+*	FIELD_VECTOR
+*	FIELD_INTEGER
+*	FIELD_CHARACTER
+*	FIELD_TIME
+*	They must remain supported.
+*/
 enum FIELDTYPE
 {
-	FIELD_FLOAT = 0,	   // Any floating point value
-	FIELD_STRING,		   // A string ID (return from ALLOC_STRING)
-	FIELD_ENTITY,		   // An entity offset (EOFFSET)
-	FIELD_CLASSPTR,		   // CBaseEntity *
-	FIELD_EHANDLE,		   // Entity handle
-	FIELD_EVARS,		   // EVARS *
-	FIELD_EDICT,		   // edict_t *, or edict_t *  (same thing)
-	FIELD_VECTOR,		   // Any vector
-	FIELD_POSITION_VECTOR, // A world coordinate (these are fixed up across level transitions automagically)
-	FIELD_POINTER,		   // Arbitrary data pointer... to be removed, use an array of FIELD_CHARACTER
-	FIELD_INTEGER,		   // Any integer or enum
-	FIELD_FUNCTION,		   // A class function pointer (Think, Use, etc)
-	FIELD_BOOLEAN,		   // boolean, implemented as an int, I may use this as a hint for compression
-	FIELD_SHORT,		   // 2 byte integer
-	FIELD_CHARACTER,	   // a byte
-	FIELD_TIME,			   // a floating point time (these are fixed up automatically too!)
-	FIELD_MODELNAME,	   // Engine string that is a model name (needs precache)
-	FIELD_SOUNDNAME,	   // Engine string that is a sound name (needs precache)
+	FIELD_FLOAT = 0,		// Any floating point value
+	FIELD_STRING,			// A string ID (return from ALLOC_STRING)
+	FIELD_DEPRECATED1,		// An entity offset (EOFFSET). Deprecated, do not use.
+	FIELD_CLASSPTR,			// CBaseEntity *
+	FIELD_EHANDLE,			// Entity handle
+	FIELD_EVARS,			// EVARS *
+	FIELD_EDICT,			// edict_t *, or edict_t *  (same thing)
+	FIELD_VECTOR,			// Any vector
+	FIELD_POSITION_VECTOR,	// A world coordinate (these are fixed up across level transitions automagically)
+	FIELD_POINTER,			// Arbitrary data pointer... to be removed, use an array of FIELD_CHARACTER
+	FIELD_INTEGER,			// Any integer or enum
+	FIELD_FUNCTION,			// A class function pointer (Think, Use, etc)
+	FIELD_BOOLEAN,			// boolean, implemented as an int, I may use this as a hint for compression
+	FIELD_SHORT,			// 2 byte integer
+	FIELD_CHARACTER,		// a byte
+	FIELD_TIME,				// a floating point time (these are fixed up automatically too!)
+	FIELD_MODELNAME,		// Engine string that is a model name (needs precache)
+	FIELD_SOUNDNAME,		// Engine string that is a sound name (needs precache)
 
-	FIELD_ENGINETYPECOUNT, // All preceding types are known to the engine and must remain.
+	FIELD_ENGINETYPECOUNT,	// All preceding types are known to the engine and must remain.
 
 	FIELD_INT64 = FIELD_ENGINETYPECOUNT, // 64 bit integer
 
@@ -451,7 +463,7 @@ struct DLL_FUNCTIONS
 
 	void (*pfnPM_Move)(playermove_t* ppmove, qboolean server);
 	void (*pfnPM_Init)(playermove_t* ppmove);
-	char (*pfnPM_FindTextureType)(char* name);
+	char (*pfnPM_FindTextureType)(const char* name);
 	void (*pfnSetupVisibility)(edict_t* pViewEntity, edict_t* pClient, unsigned char** pvs, unsigned char** pas);
 	void (*pfnUpdateClientData)(const edict_t* ent, int sendweapons, clientdata_t* cd);
 	int (*pfnAddToFullPack)(entity_state_t* state, int e, edict_t* ent, edict_t* host, int hostflags, int player, unsigned char* pSet);

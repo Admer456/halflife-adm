@@ -44,15 +44,15 @@ public:
 	bool CheckRangeAttack1(float flDot, float flDist) override;
 	bool CheckRangeAttack2(float flDot, float flDist) override;
 	void CallForHelp(const char* szClassname, float flDist, EHANDLE hEnemy, Vector& vecLocation);
-	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 
 	void DeathSound() override;
 	void PainSound() override;
 	void AlertSound() override;
 	void IdleSound() override;
 
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 
 	void StartTask(Task_t* pTask) override;
 	Schedule_t* GetSchedule() override;
@@ -193,7 +193,7 @@ void CISlave::AlertSound()
 {
 	if (m_hEnemy != nullptr)
 	{
-		sentences::g_Sentences.PlayRndSz(ENT(pev), "SLV_ALERT", 0.85, ATTN_NORM, 0, m_voicePitch);
+		sentences::g_Sentences.PlayRndSz(this, "SLV_ALERT", 0.85, ATTN_NORM, 0, m_voicePitch);
 
 		CallForHelp("monster_alien_slave", 512, m_hEnemy, m_vecEnemyLKP);
 	}
@@ -206,7 +206,7 @@ void CISlave::IdleSound()
 {
 	if (RANDOM_LONG(0, 2) == 0)
 	{
-		sentences::g_Sentences.PlayRndSz(ENT(pev), "SLV_IDLE", 0.85, ATTN_NORM, 0, m_voicePitch);
+		sentences::g_Sentences.PlayRndSz(this, "SLV_IDLE", 0.85, ATTN_NORM, 0, m_voicePitch);
 	}
 
 #if 0
@@ -230,7 +230,7 @@ void CISlave::IdleSound()
 	WRITE_BYTE(0);		// decay * 0.1
 	MESSAGE_END();
 
-	EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "debris/zap1.wav", 1, ATTN_NORM, 0, 100);
+	EmitSound(CHAN_WEAPON, "debris/zap1.wav", 1, ATTN_NORM);
 #endif
 }
 
@@ -241,7 +241,7 @@ void CISlave::PainSound()
 {
 	if (RANDOM_LONG(0, 2) == 0)
 	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pPainSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
+		EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pPainSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
 	}
 }
 
@@ -251,7 +251,7 @@ void CISlave::PainSound()
 
 void CISlave::DeathSound()
 {
-	EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pDeathSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
+	EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pDeathSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
 }
 
 
@@ -268,10 +268,10 @@ int CISlave::ISoundMask()
 }
 
 
-void CISlave::Killed(entvars_t* pevAttacker, int iGib)
+void CISlave::Killed(CBaseEntity* attacker, int iGib)
 {
 	ClearBeams();
-	CSquadMonster::Killed(pevAttacker, iGib);
+	CSquadMonster::Killed(attacker, iGib);
 }
 
 //=========================================================
@@ -324,12 +324,12 @@ void CISlave::HandleAnimEvent(MonsterEvent_t* pEvent)
 				pHurt->pev->punchangle.x = 5;
 			}
 			// Play a random attack hit sound
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
+			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
 		}
 		else
 		{
 			// Play a random attack miss sound
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackMissSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
+			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackMissSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
 		}
 	}
 	break;
@@ -344,11 +344,11 @@ void CISlave::HandleAnimEvent(MonsterEvent_t* pEvent)
 				pHurt->pev->punchangle.z = -18;
 				pHurt->pev->punchangle.x = 5;
 			}
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
+			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
 		}
 		else
 		{
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackMissSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
+			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackMissSounds), 1.0, ATTN_NORM, 0, m_voicePitch);
 		}
 	}
 	break;
@@ -389,7 +389,7 @@ void CISlave::HandleAnimEvent(MonsterEvent_t* pEvent)
 			BeamGlow();
 		}
 
-		EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "debris/zap4.wav", 1, ATTN_NORM, 0, 100 + m_iBeams * 10);
+		EmitSoundDyn(CHAN_WEAPON, "debris/zap4.wav", 1, ATTN_NORM, 0, 100 + m_iBeams * 10);
 		pev->skin = m_iBeams / 2;
 	}
 	break;
@@ -407,12 +407,11 @@ void CISlave::HandleAnimEvent(MonsterEvent_t* pEvent)
 			if (0 == trace.fStartSolid)
 			{
 				CBaseEntity* pNew = Create("monster_alien_slave", m_hDead->pev->origin, m_hDead->pev->angles);
-				CBaseMonster* pNewMonster = pNew->MyMonsterPointer();
 				pNew->pev->spawnflags |= 1;
 				WackBeam(-1, pNew);
 				WackBeam(1, pNew);
 				UTIL_Remove(m_hDead);
-				EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG(130, 160));
+				EmitSoundDyn(CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG(130, 160));
 				break;
 			}
 		}
@@ -423,9 +422,9 @@ void CISlave::HandleAnimEvent(MonsterEvent_t* pEvent)
 		ZapBeam(-1);
 		ZapBeam(1);
 
-		EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG(130, 160));
-		// STOP_SOUND( ENT(pev), CHAN_WEAPON, "debris/zap4.wav" );
-		ApplyMultiDamage(pev, pev);
+		EmitSoundDyn(CHAN_WEAPON, "hassault/hw_shoot1.wav", 1, ATTN_NORM, 0, RANDOM_LONG(130, 160));
+		// StopSound(CHAN_WEAPON, "debris/zap4.wav");
+		ApplyMultiDamage(this, this);
 
 		m_flNextAttack = gpGlobals->time + RANDOM_FLOAT(0.5, 4.0);
 	}
@@ -521,7 +520,7 @@ void CISlave::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
+	SetSize(VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -565,23 +564,23 @@ void CISlave::Precache()
 // TakeDamage - get provoked when injured
 //=========================================================
 
-bool CISlave::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CISlave::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	// don't slash one of your own
-	if ((bitsDamageType & DMG_SLASH) != 0 && pevAttacker && IRelationship(Instance(pevAttacker)) < R_DL)
+	if ((bitsDamageType & DMG_SLASH) != 0 && attacker && IRelationship(Instance(attacker)) < R_DL)
 		return false;
 
 	m_afMemory |= bits_MEMORY_PROVOKED;
-	return CSquadMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	return CSquadMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
 
-void CISlave::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void CISlave::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	if ((bitsDamageType & DMG_SHOCK) != 0)
 		return;
 
-	CSquadMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+	CSquadMonster::TraceAttack(attacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
 
@@ -768,9 +767,6 @@ void CISlave::BeamGlow()
 //=========================================================
 void CISlave::WackBeam(int side, CBaseEntity* pEntity)
 {
-	Vector vecDest;
-	float flDist = 1.0;
-
 	if (m_iBeams >= ISLAVE_MAX_BEAMS)
 		return;
 
@@ -821,9 +817,9 @@ void CISlave::ZapBeam(int side)
 	pEntity = CBaseEntity::Instance(tr.pHit);
 	if (pEntity != nullptr && 0 != pEntity->pev->takedamage)
 	{
-		pEntity->TraceAttack(pev, GetSkillFloat("islave_dmg_zap"sv), vecAim, &tr, DMG_SHOCK);
+		pEntity->TraceAttack(this, GetSkillFloat("islave_dmg_zap"sv), vecAim, &tr, DMG_SHOCK);
 	}
-	UTIL_EmitAmbientSound(ENT(pev), tr.vecEndPos, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG(140, 160));
+	EmitAmbientSound(tr.vecEndPos, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG(140, 160));
 }
 
 
@@ -843,7 +839,7 @@ void CISlave::ClearBeams()
 	m_iBeams = 0;
 	pev->skin = 0;
 
-	STOP_SOUND(ENT(pev), CHAN_WEAPON, "debris/zap4.wav");
+	StopSound(CHAN_WEAPON, "debris/zap4.wav");
 }
 
 //=========================================================

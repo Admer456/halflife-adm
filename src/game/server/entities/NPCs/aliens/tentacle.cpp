@@ -67,9 +67,9 @@ public:
 
 	float HearingSensitivity() override { return 2.0; }
 
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 
 	MONSTERSTATE GetIdealState() override { return MONSTERSTATE_IDLE; }
 	// TODO: should override base, but has different signature
@@ -278,7 +278,7 @@ void CTentacle::Spawn()
 	m_EFlags |= EFLAG_SLERP;
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-32, -32, 0), Vector(32, 32, 64));
+	SetSize(Vector(-32, -32, 0), Vector(32, 32, 64));
 
 	pev->takedamage = DAMAGE_AIM;
 	pev->flags |= FL_MONSTER;
@@ -570,7 +570,7 @@ void CTentacle::Cycle()
 				break;
 			}
 
-			// UTIL_EmitAmbientSound(ENT(pev), pev->origin + Vector( 0, 0, MyHeight()), sound, 1.0, ATTN_NORM, 0, 100);
+			// EmitAmbientSound(pev->origin + Vector( 0, 0, MyHeight()), sound, 1.0, ATTN_NORM, 0, 100);
 		}
 		m_flSoundTime = gpGlobals->time + RANDOM_FLOAT(5.0, 10.0);
 	}
@@ -670,7 +670,7 @@ void CTentacle::Cycle()
 						break;
 					}
 
-					EMIT_SOUND(ENT(pev), CHAN_VOICE, sound, 1.0, ATTN_NORM);
+					EmitSound(CHAN_VOICE, sound, 1.0, ATTN_NORM);
 
 					m_flNextSong = gpGlobals->time + RANDOM_FLOAT(10, 20);
 				}
@@ -879,15 +879,15 @@ void CTentacle::HandleAnimEvent(MonsterEvent_t* pEvent)
 		switch (m_iTapSound)
 		{
 		case TE_SILO:
-			UTIL_EmitAmbientSound(ENT(pev), vecSrc, RANDOM_SOUND_ARRAY(pHitSilo), 1.0, ATTN_NORM, 0, 100);
+			EmitAmbientSound(vecSrc, RANDOM_SOUND_ARRAY(pHitSilo), 1.0, ATTN_NORM, 0, 100);
 			break;
 		case TE_NONE:
 			break;
 		case TE_DIRT:
-			UTIL_EmitAmbientSound(ENT(pev), vecSrc, RANDOM_SOUND_ARRAY(pHitDirt), 1.0, ATTN_NORM, 0, 100);
+			EmitAmbientSound(vecSrc, RANDOM_SOUND_ARRAY(pHitDirt), 1.0, ATTN_NORM, 0, 100);
 			break;
 		case TE_WATER:
-			UTIL_EmitAmbientSound(ENT(pev), vecSrc, RANDOM_SOUND_ARRAY(pHitWater), 1.0, ATTN_NORM, 0, 100);
+			EmitAmbientSound(vecSrc, RANDOM_SOUND_ARRAY(pHitWater), 1.0, ATTN_NORM, 0, 100);
 			break;
 		}
 		gpGlobals->force_retouch++;
@@ -896,7 +896,7 @@ void CTentacle::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case 3: // start killing swing
 		m_iHitDmg = 200;
-		// UTIL_EmitAmbientSound(ENT(pev), pev->origin + Vector( 0, 0, MyHeight()), "tentacle/te_swing1.wav", 1.0, ATTN_NORM, 0, 100);
+		// EmitAmbientSound(pev->origin + Vector( 0, 0, MyHeight()), "tentacle/te_swing1.wav", 1.0, ATTN_NORM, 0, 100);
 		break;
 
 	case 4: // end killing swing
@@ -904,7 +904,7 @@ void CTentacle::HandleAnimEvent(MonsterEvent_t* pEvent)
 		break;
 
 	case 5: // just "whoosh" sound
-		// UTIL_EmitAmbientSound(ENT(pev), pev->origin + Vector( 0, 0, MyHeight()), "tentacle/te_swing2.wav", 1.0, ATTN_NORM, 0, 100);
+		// EmitAmbientSound(pev->origin + Vector( 0, 0, MyHeight()), "tentacle/te_swing2.wav", 1.0, ATTN_NORM, 0, 100);
 		break;
 
 	case 2: // tap scrape
@@ -919,15 +919,15 @@ void CTentacle::HandleAnimEvent(MonsterEvent_t* pEvent)
 		switch (m_iTapSound)
 		{
 		case TE_SILO:
-			UTIL_EmitAmbientSound(ENT(pev), vecSrc, RANDOM_SOUND_ARRAY(pHitSilo), flVol, ATTN_NORM, 0, 100);
+			EmitAmbientSound(vecSrc, RANDOM_SOUND_ARRAY(pHitSilo), flVol, ATTN_NORM, 0, 100);
 			break;
 		case TE_NONE:
 			break;
 		case TE_DIRT:
-			UTIL_EmitAmbientSound(ENT(pev), vecSrc, RANDOM_SOUND_ARRAY(pHitDirt), flVol, ATTN_NORM, 0, 100);
+			EmitAmbientSound(vecSrc, RANDOM_SOUND_ARRAY(pHitDirt), flVol, ATTN_NORM, 0, 100);
 			break;
 		case TE_WATER:
-			UTIL_EmitAmbientSound(ENT(pev), vecSrc, RANDOM_SOUND_ARRAY(pHitWater), flVol, ATTN_NORM, 0, 100);
+			EmitAmbientSound(vecSrc, RANDOM_SOUND_ARRAY(pHitWater), flVol, ATTN_NORM, 0, 100);
 			break;
 		}
 	}
@@ -946,7 +946,7 @@ void CTentacle::HandleAnimEvent(MonsterEvent_t* pEvent)
 			break;
 		}
 
-		UTIL_EmitAmbientSound(ENT(pev), pev->origin + Vector(0, 0, MyHeight()), sound, 1.0, ATTN_NORM, 0, 100);
+		EmitAmbientSound(pev->origin + Vector(0, 0, MyHeight()), sound, 1.0, ATTN_NORM, 0, 100);
 		break;
 
 	case 8: // search
@@ -961,7 +961,7 @@ void CTentacle::HandleAnimEvent(MonsterEvent_t* pEvent)
 			break;
 		}
 
-		UTIL_EmitAmbientSound(ENT(pev), pev->origin + Vector(0, 0, MyHeight()), sound, 1.0, ATTN_NORM, 0, 100);
+		EmitAmbientSound(pev->origin + Vector(0, 0, MyHeight()), sound, 1.0, ATTN_NORM, 0, 100);
 		break;
 
 	case 9: // swing
@@ -976,7 +976,7 @@ void CTentacle::HandleAnimEvent(MonsterEvent_t* pEvent)
 			break;
 		}
 
-		UTIL_EmitAmbientSound(ENT(pev), pev->origin + Vector(0, 0, MyHeight()), sound, 1.0, ATTN_NORM, 0, 100);
+		EmitAmbientSound(pev->origin + Vector(0, 0, MyHeight()), sound, 1.0, ATTN_NORM, 0, 100);
 		break;
 
 	default:
@@ -995,13 +995,13 @@ void CTentacle::Start()
 
 	if (!g_fFlySound)
 	{
-		EMIT_SOUND(ENT(pev), CHAN_BODY, "ambience/flies.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_BODY, "ambience/flies.wav", 1, ATTN_NORM);
 		g_fFlySound = true;
 		//		pev->nextthink = gpGlobals-> time + 0.1;
 	}
 	else if (!g_fSquirmSound)
 	{
-		EMIT_SOUND(ENT(pev), CHAN_BODY, "ambience/squirm2.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_BODY, "ambience/squirm2.wav", 1, ATTN_NORM);
 		g_fSquirmSound = true;
 	}
 
@@ -1027,12 +1027,12 @@ void CTentacle::HitTouch(CBaseEntity* pOther)
 
 	if (tr.iHitgroup >= 3)
 	{
-		pOther->TakeDamage(pev, pev, m_iHitDmg, DMG_CRUSH);
+		pOther->TakeDamage(this, this, m_iHitDmg, DMG_CRUSH);
 		// AILogger->debug("wack {:3d} : ", m_iHitDmg);
 	}
 	else if (tr.iHitgroup != 0)
 	{
-		pOther->TakeDamage(pev, pev, 20, DMG_CRUSH);
+		pOther->TakeDamage(this, this, 20, DMG_CRUSH);
 		// AILogger->debug("tap  {:3d} : ", 20);
 	}
 	else
@@ -1046,7 +1046,7 @@ void CTentacle::HitTouch(CBaseEntity* pOther)
 }
 
 
-bool CTentacle::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CTentacle::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	if (flDamage > pev->health)
 	{
@@ -1062,7 +1062,7 @@ bool CTentacle::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, floa
 
 
 
-void CTentacle::Killed(entvars_t* pevAttacker, int iGib)
+void CTentacle::Killed(CBaseEntity* attacker, int iGib)
 {
 	m_iGoalAnim = TENTACLE_ANIM_Pit_Idle;
 	ClearShockEffect();
@@ -1096,7 +1096,7 @@ void CTentacleMaw::Spawn()
 {
 	Precache();
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-32, -32, 0), Vector(32, 32, 64));
+	SetSize(Vector(-32, -32, 0), Vector(32, 32, 64));
 
 	pev->solid = SOLID_NOT;
 	pev->movetype = MOVETYPE_STEP;

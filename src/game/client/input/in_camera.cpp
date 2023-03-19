@@ -12,7 +12,6 @@
 #include "usercmd.h"
 #include "const.h"
 #include "camera.h"
-#include "in_defs.h"
 #include "Exports.h"
 
 #include "SDL2/SDL_mouse.h"
@@ -70,7 +69,7 @@ Point cam_mouse;
 //-------------------------------------------------- Local Variables
 
 static kbutton_t cam_pitchup, cam_pitchdown, cam_yawleft, cam_yawright;
-static kbutton_t cam_in, cam_out, cam_move;
+static kbutton_t cam_in, cam_out;
 
 //-------------------------------------------------- Prototypes
 
@@ -146,11 +145,6 @@ struct moveclip_t
 
 void DLLEXPORT CAM_Think()
 {
-	//	RecClCamThink();
-
-	Vector origin;
-	Vector ext, pnt, camForward, camRight, camUp;
-	moveclip_t clip;
 	float dist;
 	Vector camAngles;
 	float flSensitivity;
@@ -330,7 +324,7 @@ void DLLEXPORT CAM_Think()
 	if (cam_contain->value)
 	{
 		// check new ideal
-		VectorCopy(origin, pnt);
+		pnt = origin;
 		AngleVectors(camAngles, camForward, camRight, camUp);
 		for (i = 0; i < 3; i++)
 			pnt[i] += -dist * camForward[i];
@@ -356,7 +350,7 @@ void DLLEXPORT CAM_Think()
 	}
 
 	// Move towards ideal
-	VectorCopy(cam_ofs, camAngles);
+	camAngles = cam_ofs;
 
 	gEngfuncs.GetViewAngles(viewangles);
 
@@ -386,7 +380,7 @@ void DLLEXPORT CAM_Think()
 		dist = camAngles[ROLL];
 		camAngles[ROLL] = 0;
 
-		VectorCopy(origin, pnt);
+		pnt = origin;
 		AngleVectors(camAngles, camForward, camRight, camUp);
 		for (i = 0; i < 3; i++)
 			pnt[i] += -dist * camForward[i];
@@ -609,14 +603,10 @@ void CAM_EndDistance()
 
 int DLLEXPORT CL_IsThirdPerson()
 {
-	//	RecClCL_IsThirdPerson();
-
 	return static_cast<int>(cam_thirdperson || (0 != g_iUser1 && (g_iUser2 == gEngfuncs.GetLocalPlayer()->index)));
 }
 
 void DLLEXPORT CL_CameraOffset(float* ofs)
 {
-	//	RecClCL_GetCameraOffsets(ofs);
-
-	VectorCopy(cam_ofs, ofs);
+	ofs = cam_ofs;
 }

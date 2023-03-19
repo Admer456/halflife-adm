@@ -858,7 +858,7 @@ void CBaseTrigger::HurtTouch(CBaseEntity* pOther)
 	if (fldmg < 0)
 		pOther->TakeHealth(-fldmg, m_bitsDamageInflict);
 	else
-		pOther->TakeDamage(pev, pev, fldmg, m_bitsDamageInflict);
+		pOther->TakeDamage(this, this, fldmg, m_bitsDamageInflict);
 
 	// Store pain time so we can get all of the other entities on this frame
 	pev->pain_finished = gpGlobals->time;
@@ -969,21 +969,17 @@ void CTriggerOnce::Spawn()
 
 void CBaseTrigger::MultiTouch(CBaseEntity* pOther)
 {
-	entvars_t* pevToucher;
-
-	pevToucher = pOther->pev;
-
 	// Only touch clients, monsters, or pushables (depending on flags)
-	if (((pevToucher->flags & FL_CLIENT) != 0 && (pev->spawnflags & SF_TRIGGER_NOCLIENTS) == 0) ||
-		((pevToucher->flags & FL_MONSTER) != 0 && (pev->spawnflags & SF_TRIGGER_ALLOWMONSTERS) != 0) ||
-		(pev->spawnflags & SF_TRIGGER_PUSHABLES) != 0 && FClassnameIs(pevToucher, "func_pushable"))
+	if (((pOther->pev->flags & FL_CLIENT) != 0 && (pev->spawnflags & SF_TRIGGER_NOCLIENTS) == 0) ||
+		((pOther->pev->flags & FL_MONSTER) != 0 && (pev->spawnflags & SF_TRIGGER_ALLOWMONSTERS) != 0) ||
+		(pev->spawnflags & SF_TRIGGER_PUSHABLES) != 0 && pOther->ClassnameIs("func_pushable"))
 	{
 
 #if 0
 		// if the trigger has an angles field, check player's facing direction
 		if (pev->movedir != g_vecZero)
 		{
-			UTIL_MakeVectors(pevToucher->angles);
+			UTIL_MakeVectors(pOther->pev->angles);
 			if (DotProduct(gpGlobals->v_forward, pev->movedir) < 0)
 				return;         // not facing the right way
 		}
@@ -1008,7 +1004,7 @@ void CBaseTrigger::ActivateMultiTrigger(CBaseEntity* pActivator)
 		return;
 
 	if (!FStringNull(pev->noise))
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(pev->noise), 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, STRING(pev->noise), 1, ATTN_NORM);
 
 	// don't trigger again until reset
 	// pev->takedamage = DAMAGE_NO;
@@ -1276,15 +1272,12 @@ void CChangeLevel::Spawn()
 	//	Logger->debug("TRANSITION: {} ({})", m_szMapName, m_szLandmarkName);
 }
 
-FILE_GLOBAL char st_szNextMap[cchMapNameMost];
-FILE_GLOBAL char st_szNextSpot[cchMapNameMost];
-
 CBaseEntity* CChangeLevel::FindLandmark(const char* pLandmarkName)
 {
 	for (auto landmark : UTIL_FindEntitiesByTargetname(pLandmarkName))
 	{
 		// Found the landmark
-		if (FClassnameIs(landmark->pev, "info_landmark"))
+		if (landmark->ClassnameIs("info_landmark"))
 			return landmark;
 	}
 
@@ -1305,8 +1298,6 @@ void CChangeLevel::UseChangeLevel(CBaseEntity* pActivator, CBaseEntity* pCaller,
 
 void CChangeLevel::ChangeLevelNow(CBaseEntity* pActivator)
 {
-	LEVELLIST levels[16];
-
 	ASSERT(!FStrEq(m_szMapName, ""));
 
 	// Don't work in deathmatch
@@ -1341,28 +1332,29 @@ void CChangeLevel::ChangeLevelNow(CBaseEntity* pActivator)
 			DispatchSpawn(pFireAndDie->edict());
 		}
 	}
-	// This object will get removed in the call to CHANGE_LEVEL, copy the params into "safe" memory
-	strcpy(st_szNextMap, m_szMapName);
 
 	m_hActivator = pActivator;
 	SUB_UseTargets(pActivator, USE_TOGGLE, 0);
-	st_szNextSpot[0] = 0; // Init landmark to nullptr
+
+	// Init landmark to empty string
+	const char* landmarkNameInNextMap = "";
 
 	// look for a landmark entity
 	auto landmark = FindLandmark(m_szLandmarkName);
 	if (!FNullEnt(landmark))
 	{
-		strcpy(st_szNextSpot, m_szLandmarkName);
+		landmarkNameInNextMap = m_szLandmarkName;
 		gpGlobals->vecLandmarkOffset = landmark->pev->origin;
 	}
 	// Logger->debug("Level touches {} levels", ChangeList(levels, std::size(levels)));
-	Logger->debug("CHANGE LEVEL: {} {}", st_szNextMap, st_szNextSpot);
-	CHANGE_LEVEL(st_szNextMap, st_szNextSpot);
+	Logger->debug("CHANGE LEVEL: {} {}", m_szMapName, landmarkNameInNextMap);
+
+	// Note: passing nullptr for landmark name uses the changelevel console command (entities don't transition);
+	// passing any string uses changelevel2 (entities do transition).
+	// The engine copies the names so they don't need to be stored in global variables.
+	CHANGE_LEVEL(m_szMapName, landmarkNameInNextMap);
 }
 
-//
-// GLOBALS ASSUMED SET:  st_szNextMap
-//
 void CChangeLevel::TouchChangeLevel(CBaseEntity* pOther)
 {
 	if (!pOther->IsPlayer())
@@ -1416,7 +1408,7 @@ bool CChangeLevel::InTransitionVolume(CBaseEntity* pEntity, char* pVolumeName)
 
 	for (auto volume : UTIL_FindEntitiesByTargetname(pVolumeName))
 	{
-		if (volume && FClassnameIs(volume->pev, "trigger_transition"))
+		if (volume && volume->ClassnameIs("trigger_transition"))
 		{
 			if (volume->Intersects(pEntity)) // It touches one, it's in the volume
 				return true;
@@ -2348,7 +2340,7 @@ void CTriggerKillNoGib::Spawn()
 void CTriggerKillNoGib::KillTouch(CBaseEntity* pOther)
 {
 	if (pOther->pev->takedamage != DAMAGE_NO)
-		pOther->TakeDamage(pev, pOther->pev, 500000, DMG_NEVERGIB);
+		pOther->TakeDamage(this, pOther, 500000, DMG_NEVERGIB);
 }
 
 class CTriggerXenReturn : public CBaseTrigger
@@ -2398,7 +2390,7 @@ void CTriggerXenReturn::ReturnTouch(CBaseEntity* pOther)
 		}
 	}
 
-	if (pTarget && !FNullEnt(pTarget->pev))
+	if (!FNullEnt(pTarget))
 	{
 		pPlayer->pev->flags &= ~FL_SKIPLOCALHOST;
 
@@ -2420,7 +2412,7 @@ void CTriggerXenReturn::ReturnTouch(CBaseEntity* pOther)
 
 		pPlayer->m_SndRoomtype = pPlayer->m_DisplacerSndRoomtype;
 
-		EMIT_SOUND(pPlayer->edict(), CHAN_WEAPON, "weapons/displacer_self.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
+		pPlayer->EmitSound(CHAN_WEAPON, "weapons/displacer_self.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 	}
 }
 
@@ -2531,9 +2523,9 @@ void COFTriggerGeneWormHit::GeneWormHitTouch(CBaseEntity* pOther)
 				pev->impulse |= playerBit;
 			}
 
-			pOther->TakeDamage(pev, pev, pev->dmg, DMG_CRUSH);
+			pOther->TakeDamage(this, this, pev->dmg, DMG_CRUSH);
 
-			EMIT_SOUND_DYN(pOther->edict(), CHAN_BODY, pAttackSounds[RANDOM_LONG(0, std::size(pAttackSounds) - 1)], VOL_NORM, 0.1, 0, RANDOM_LONG(-5, 5) + 100);
+			pOther->EmitSoundDyn(CHAN_BODY, pAttackSounds[RANDOM_LONG(0, std::size(pAttackSounds) - 1)], VOL_NORM, 0.1, 0, RANDOM_LONG(-5, 5) + 100);
 
 			pev->pain_finished = gpGlobals->time;
 			m_flLastDamageTime = gpGlobals->time;

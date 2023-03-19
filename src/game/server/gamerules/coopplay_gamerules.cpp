@@ -45,7 +45,7 @@ void CHalfLifeCoopplay::UpdateGameMode(CBasePlayer* pPlayer)
 	g_engfuncs.pfnMessageEnd();
 }
 
-void CHalfLifeCoopplay::MonsterKilled(CBaseMonster* pVictim, entvars_t* pKiller, entvars_t* pInflictor)
+void CHalfLifeCoopplay::MonsterKilled(CBaseMonster* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor)
 {
 	auto killer = CBaseEntity::Instance(pKiller);
 
@@ -124,10 +124,10 @@ int CHalfLifeCoopplay::DeadPlayerWeapons(CBasePlayer* pPlayer)
 	return GR_PLR_DROP_GUN_NO;
 }
 
-void CHalfLifeCoopplay::PlayerKilled(CBasePlayer* pVictim, entvars_t* pKiller, entvars_t* pInflictor)
+void CHalfLifeCoopplay::PlayerKilled(CBasePlayer* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor)
 {
 	if (!m_DisableDeathPenalty)
-		CHalfLifeMultiplay::PlayerKilled(pVictim, pKiller, pInflictor);
+		CHalfLifeMultiplay::PlayerKilled(pVictim, pKiller, inflictor);
 }
 
 void CHalfLifeCoopplay::Think()
@@ -136,7 +136,7 @@ void CHalfLifeCoopplay::Think()
 		CHalfLifeMultiplay::Think();
 }
 
-int CHalfLifeCoopplay::WeaponShouldRespawn(CBasePlayerItem* pWeapon)
+int CHalfLifeCoopplay::WeaponShouldRespawn(CBasePlayerWeapon* pWeapon)
 {
 	if (coopweprespawn.value > 0 && (pWeapon->pev->spawnflags & SF_NORESPAWN) == 0)
 		return GR_WEAPON_RESPAWN_YES;
@@ -188,7 +188,7 @@ bool CHalfLifeCoopplay::FPlayerCanTakeDamage(CBasePlayer* pPlayer, CBaseEntity* 
 	return CHalfLifeMultiplay::FPlayerCanTakeDamage(pPlayer, pAttacker);
 }
 
-float CHalfLifeCoopplay::FlWeaponTryRespawn(CBasePlayerItem* pWeapon)
+float CHalfLifeCoopplay::FlWeaponTryRespawn(CBasePlayerWeapon* pWeapon)
 {
 	if (coopweprespawn.value > 0 && pWeapon && WEAPON_NONE != pWeapon->m_iId && (pWeapon->iFlags() & ITEM_FLAG_LIMITINWORLD) != 0)
 	{
@@ -202,7 +202,7 @@ float CHalfLifeCoopplay::FlWeaponTryRespawn(CBasePlayerItem* pWeapon)
 	return 0;
 }
 
-float CHalfLifeCoopplay::FlWeaponRespawnTime(CBasePlayerItem* pWeapon)
+float CHalfLifeCoopplay::FlWeaponRespawnTime(CBasePlayerWeapon* pWeapon)
 {
 	if (coopweprespawn.value <= 0)
 	{

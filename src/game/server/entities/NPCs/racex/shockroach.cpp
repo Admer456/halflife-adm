@@ -82,7 +82,7 @@ public:
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	bool CheckRangeAttack1(float flDot, float flDist) override;
 	bool CheckRangeAttack2(float flDot, float flDist) override;
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 
 	virtual float GetDamageAmount() { return GetSkillFloat("shockroach_dmg_bite"sv); }
 	virtual int GetVoicePitch() { return 100; }
@@ -264,7 +264,7 @@ void COFShockRoach::HandleAnimEvent(MonsterEvent_t* pEvent)
 		// Not used for Shock Roach
 		// int iSound = RANDOM_LONG(0,2);
 		// if ( iSound != 0 )
-		//	EMIT_SOUND_DYN( edict(), CHAN_VOICE, pAttackSounds[iSound], GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch() );
+		//	EmitSoundDyn(CHAN_VOICE, pAttackSounds[iSound], GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
 
 		pev->velocity = vecJumpDir;
 		m_flNextAttack = gpGlobals->time + 2;
@@ -285,7 +285,7 @@ void COFShockRoach::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-12, -12, 0), Vector(12, 12, 4));
+	SetSize(Vector(-12, -12, 0), Vector(12, 12, 4));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_FLY;
@@ -366,7 +366,7 @@ void COFShockRoach::LeapTouch(CBaseEntity* pOther)
 	{
 		auto pPlayer = static_cast<CBasePlayer*>(pOther);
 
-		if (!pPlayer->HasNamedPlayerItem("weapon_shockrifle"))
+		if (!pPlayer->HasNamedPlayerWeapon("weapon_shockrifle"))
 		{
 			pPlayer->GiveNamedItem("weapon_shockrifle");
 			SetTouch(nullptr);
@@ -378,9 +378,9 @@ void COFShockRoach::LeapTouch(CBaseEntity* pOther)
 	// Don't hit if back on ground
 	if (!FBitSet(pev->flags, FL_ONGROUND))
 	{
-		EMIT_SOUND_DYN(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBiteSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
+		EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBiteSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
 
-		pOther->TakeDamage(pev, pev, GetDamageAmount(), DMG_SLASH);
+		pOther->TakeDamage(this, this, GetDamageAmount(), DMG_SLASH);
 	}
 
 	SetTouch(nullptr);
@@ -406,7 +406,7 @@ void COFShockRoach::StartTask(Task_t* pTask)
 	{
 	case TASK_RANGE_ATTACK1:
 	{
-		EMIT_SOUND_DYN(edict(), CHAN_WEAPON, pAttackSounds[0], GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
+		EmitSoundDyn(CHAN_WEAPON, pAttackSounds[0], GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
 		m_IdealActivity = ACT_RANGE_ATTACK1;
 		SetTouch(&COFShockRoach::LeapTouch);
 		break;
@@ -447,7 +447,7 @@ bool COFShockRoach::CheckRangeAttack2(float flDot, float flDist)
 #endif
 }
 
-bool COFShockRoach::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool COFShockRoach::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	// Don't take any acid damage -- BigMomma's mortar is acid
 	if ((bitsDamageType & DMG_ACID) != 0)
@@ -458,7 +458,7 @@ bool COFShockRoach::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, 
 		flDamage = 0;
 
 	// Never gib the roach
-	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, (bitsDamageType & ~DMG_ALWAYSGIB) | DMG_NEVERGIB);
+	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, (bitsDamageType & ~DMG_ALWAYSGIB) | DMG_NEVERGIB);
 }
 
 //=========================================================
@@ -514,12 +514,12 @@ void COFShockRoach::MonsterThink()
 
 	if (!m_fRoachSolid && lifeTime >= 2.0)
 	{
-		UTIL_SetSize(pev, Vector(-12, -12, 0), Vector(12, 12, 4));
+		SetSize(Vector(-12, -12, 0), Vector(12, 12, 4));
 		m_fRoachSolid = true;
 	}
 
 	if (lifeTime >= GetSkillFloat("shockroach_lifespan"sv))
-		TakeDamage(pev, pev, pev->health, DMG_NEVERGIB);
+		TakeDamage(this, this, pev->health, DMG_NEVERGIB);
 
 	CBaseMonster::MonsterThink();
 }

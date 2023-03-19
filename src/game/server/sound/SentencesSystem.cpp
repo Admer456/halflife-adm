@@ -20,25 +20,45 @@
 #include "cbase.h"
 #include "SentencesSystem.h"
 #include "ServerLibrary.h"
+#include "networking/NetworkDataSystem.h"
 #include "sound/sentence_utils.h"
+#include "sound/ServerSoundSystem.h"
+#include "utils/JSONSystem.h"
 
 namespace sentences
 {
 bool SentencesSystem::Initialize()
 {
 	m_Logger = g_Logging.CreateLogger("sentences");
+	g_NetworkData.RegisterHandler("Sentences", this);
 	return true;
-}
-
-void SentencesSystem::PostInitialize()
-{
-	LoadSentences();
 }
 
 void SentencesSystem::Shutdown()
 {
 	g_Logging.RemoveLogger(m_Logger);
 	m_Logger.reset();
+}
+
+void SentencesSystem::LoadSentences(std::span<const std::string> fileNames)
+{
+	m_Sentences.clear();
+	m_SentenceGroups.clear();
+
+	m_Sentences.reserve(InitialSentencesReserveCount);
+
+	for (const auto& fileName : fileNames)
+	{
+		LoadSentences(fileName);
+	}
+
+	m_Logger->debug("Loaded {} out of max {} sentences with {} sentence groups", m_Sentences.size(), MaxSentencesCount, m_SentenceGroups.size());
+
+	// init lru lists
+	for (auto& group : m_SentenceGroups)
+	{
+		InitLRU(group.rgblru, group.count);
+	}
 }
 
 void SentencesSystem::NewMapStarted()
@@ -48,8 +68,8 @@ void SentencesSystem::NewMapStarted()
 	{
 		const auto isSentence = [this](const auto& name)
 		{
-			return std::find_if(m_SentenceNames.begin(), m_SentenceNames.end(), [&](const auto& candidate)
-					   { return 0 == stricmp(candidate.c_str(), name.c_str()); }) != m_SentenceNames.end();
+			return std::find_if(m_Sentences.begin(), m_Sentences.end(), [&](const auto& candidate)
+					   { return 0 == stricmp(candidate.Name.c_str(), name.c_str()); }) != m_Sentences.end();
 		};
 
 		const auto isGroup = [this](const auto& name)
@@ -73,24 +93,36 @@ void SentencesSystem::NewMapStarted()
 	}
 }
 
+void SentencesSystem::HandleNetworkDataBlock(NetworkDataBlock& block)
+{
+	block.Data = json::array();
+
+	for (const auto& sentence : m_Sentences)
+	{
+		block.Data.push_back(fmt::format("{} {}", sentence.Name.c_str(), sentence.Value));
+	}
+
+	g_NetworkData.GetLogger()->debug("Wrote {} sentences to network data", m_Sentences.size());
+}
+
 const char* SentencesSystem::GetSentenceNameByIndex(int index) const
 {
-	if (index < 0 || static_cast<std::size_t>(index) >= m_SentenceNames.size())
+	if (index < 0 || static_cast<std::size_t>(index) >= m_Sentences.size())
 	{
 		ASSERT(!"Invalid index passed to SentencesSystem::GetSentenceNameByIndex");
 		return nullptr;
 	}
 
-	return m_SentenceNames[index].c_str();
+	return m_Sentences[index].Name.c_str();
 }
 
-int SentencesSystem::GetGroupIndex(const char* szgroupname) const
+int SentencesSystem::GetGroupIndex(CBaseEntity* entity, const char* szgroupname) const
 {
 	if (!szgroupname)
 		return -1;
 
 	// See if the group was replaced.
-	szgroupname = CheckForSentenceReplacement(szgroupname);
+	szgroupname = CheckForSentenceReplacement(entity, szgroupname);
 
 	// search rgsentenceg for match on szgroupname
 	int i = 0;
@@ -105,7 +137,7 @@ int SentencesSystem::GetGroupIndex(const char* szgroupname) const
 	return -1;
 }
 
-int SentencesSystem::LookupSentence(const char* sample, SentenceIndexName* sentencenum) const
+int SentencesSystem::LookupSentence(CBaseEntity* entity, const char* sample, SentenceIndexName* sentencenum) const
 {
 	// this is a sentence name; lookup sentence number
 	// and give to engine as string.
@@ -114,11 +146,11 @@ int SentencesSystem::LookupSentence(const char* sample, SentenceIndexName* sente
 	++sample;
 
 	// Handle sentence replacement.
-	sample = CheckForSentenceReplacement(sample);
+	sample = CheckForSentenceReplacement(entity, sample);
 
-	for (size_t i = 0; i < m_SentenceNames.size(); i++)
+	for (size_t i = 0; i < m_Sentences.size(); i++)
 	{
-		if (!stricmp(m_SentenceNames[i].c_str(), sample))
+		if (!stricmp(m_Sentences[i].Name.c_str(), sample))
 		{
 			if (sentencenum)
 			{
@@ -132,20 +164,20 @@ int SentencesSystem::LookupSentence(const char* sample, SentenceIndexName* sente
 	return -1;
 }
 
-int SentencesSystem::PlayRndI(edict_t* entity, int isentenceg, float volume, float attenuation, int flags, int pitch)
+int SentencesSystem::PlayRndI(CBaseEntity* entity, int isentenceg, float volume, float attenuation, int flags, int pitch)
 {
 	SentenceIndexName name;
 
 	const int ipick = Pick(isentenceg, name);
 	if (ipick > 0 && !name.empty())
-		EMIT_SOUND_DYN(entity, CHAN_VOICE, name.c_str(), volume, attenuation, flags, pitch);
+		sound::g_ServerSound.EmitSound(entity, CHAN_VOICE, name.c_str(), volume, attenuation, flags, pitch);
 	return ipick;
 }
 
-int SentencesSystem::PlayRndSz(edict_t* entity, const char* szgroupname,
+int SentencesSystem::PlayRndSz(CBaseEntity* entity, const char* szgroupname,
 	float volume, float attenuation, int flags, int pitch)
 {
-	const int isentenceg = GetGroupIndex(szgroupname);
+	const int isentenceg = GetGroupIndex(entity, szgroupname);
 	if (isentenceg < 0)
 	{
 		m_Logger->debug("No such sentence group {}", szgroupname);
@@ -156,15 +188,15 @@ int SentencesSystem::PlayRndSz(edict_t* entity, const char* szgroupname,
 
 	const int ipick = Pick(isentenceg, name);
 	if (ipick >= 0 && !name.empty())
-		EMIT_SOUND_DYN(entity, CHAN_VOICE, name.c_str(), volume, attenuation, flags, pitch);
+		sound::g_ServerSound.EmitSound(entity, CHAN_VOICE, name.c_str(), volume, attenuation, flags, pitch);
 
 	return ipick;
 }
 
-int SentencesSystem::PlaySequentialSz(edict_t* entity, const char* szgroupname,
+int SentencesSystem::PlaySequentialSz(CBaseEntity* entity, const char* szgroupname,
 	float volume, float attenuation, int flags, int pitch, int ipick, bool freset)
 {
-	const int isentenceg = GetGroupIndex(szgroupname);
+	const int isentenceg = GetGroupIndex(entity, szgroupname);
 	if (isentenceg < 0)
 		return -1;
 
@@ -172,11 +204,11 @@ int SentencesSystem::PlaySequentialSz(edict_t* entity, const char* szgroupname,
 
 	const int ipicknext = PickSequential(isentenceg, name, ipick, freset);
 	if (ipicknext >= 0 && !name.empty())
-		EMIT_SOUND_DYN(entity, CHAN_VOICE, name.c_str(), volume, attenuation, flags, pitch);
+		sound::g_ServerSound.EmitSound(entity, CHAN_VOICE, name.c_str(), volume, attenuation, flags, pitch);
 	return ipicknext;
 }
 
-void SentencesSystem::Stop(edict_t* entity, int isentenceg, int ipick)
+void SentencesSystem::Stop(CBaseEntity* entity, int isentenceg, int ipick)
 {
 	if (isentenceg < 0 || ipick < 0)
 		return;
@@ -184,19 +216,14 @@ void SentencesSystem::Stop(edict_t* entity, int isentenceg, int ipick)
 	SentenceIndexName name;
 	fmt::format_to(std::back_inserter(name), "!{}{}", m_SentenceGroups[isentenceg].GroupName.c_str(), ipick);
 
-	STOP_SOUND(entity, CHAN_VOICE, name.c_str());
+	entity->StopSound(CHAN_VOICE, name.c_str());
 }
 
-void SentencesSystem::LoadSentences()
+void SentencesSystem::LoadSentences(const std::string& fileName)
 {
-	m_Logger->trace("Loading sentences.txt");
+	m_Logger->trace("Loading {}", fileName);
 
-	m_SentenceNames.clear();
-	m_SentenceGroups.clear();
-
-	m_SentenceNames.reserve(InitialSentencesReserveCount);
-
-	const auto fileContents = FileSystem_LoadFileIntoBuffer("sound/sentences.txt", FileContentFormat::Text);
+	const auto fileContents = FileSystem_LoadFileIntoBuffer(fileName.c_str(), FileContentFormat::Text);
 
 	if (fileContents.empty())
 	{
@@ -214,9 +241,9 @@ void SentencesSystem::LoadSentences()
 	{
 		const std::string_view name = std::get<0>(*sentence);
 
-		if (m_SentenceNames.size() >= MaxSentencesCount)
+		if (m_Sentences.size() >= MaxSentencesCount)
 		{
-			m_Logger->error("Too many sentences in sentences.txt! (maximum {})", MaxSentencesCount);
+			m_Logger->error("Too many sentences in {}! (maximum {})", fileName, MaxSentencesCount);
 			break;
 		}
 
@@ -225,7 +252,7 @@ void SentencesSystem::LoadSentences()
 			m_Logger->warn("Encountered duplicate sentence name \"{}\"", name);
 		}
 
-		m_SentenceNames.push_back(SentenceName{name.data(), name.size()});
+		m_Sentences.emplace_back(SentenceName{name.data(), name.size()}, std::string{std::get<1>(*sentence)});
 
 		const auto groupData = ParseGroupData(name);
 
@@ -236,6 +263,7 @@ void SentencesSystem::LoadSentences()
 
 		const std::string_view groupName = std::get<0>(*groupData);
 
+		// TODO: needs to handle redefining sentences and groups in other files.
 		// if new name doesn't match previous group name,
 		// make a new group.
 
@@ -276,14 +304,6 @@ void SentencesSystem::LoadSentences()
 				groupsWithBadSentenceIndices.insert(groupName);
 			}
 		}
-	}
-
-	m_Logger->debug("Loaded {} out of max {} sentences with {} sentence groups", m_SentenceNames.size(), MaxSentencesCount, m_SentenceGroups.size());
-
-	// init lru lists
-	for (auto& group : m_SentenceGroups)
-	{
-		InitLRU(group.rgblru, group.count);
 	}
 }
 
@@ -360,8 +380,13 @@ int SentencesSystem::PickSequential(int isentenceg, SentenceIndexName& found, in
 	return ipick + 1;
 }
 
-const char* SentencesSystem::CheckForSentenceReplacement(const char* sentenceName) const
+const char* SentencesSystem::CheckForSentenceReplacement(CBaseEntity* entity, const char* sentenceName) const
 {
+	if (entity->m_SentenceReplacement)
+	{
+		sentenceName = entity->m_SentenceReplacement->Lookup(sentenceName);
+	}
+
 	return g_Server.GetMapState()->m_GlobalSentenceReplacement->Lookup(sentenceName);
 }
 }

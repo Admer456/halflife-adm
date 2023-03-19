@@ -94,7 +94,7 @@ std::string ToUpper(std::string_view text)
 	return result;
 }
 
-void UTIL_StringToVector(float* pVector, std::string_view pString)
+void UTIL_StringToVector(Vector& destination, std::string_view pString)
 {
 	std::size_t index = 0;
 
@@ -104,7 +104,7 @@ void UTIL_StringToVector(float* pVector, std::string_view pString)
 
 	for (j = 0; j < 3; j++) // lifted from pr_edict.c
 	{
-		const auto result = std::from_chars(pString.data() + index, end, pVector[j]);
+		const auto result = std::from_chars(pString.data() + index, end, destination[j]);
 
 		if (result.ec != std::errc())
 		{
@@ -127,8 +127,15 @@ void UTIL_StringToVector(float* pVector, std::string_view pString)
 			pkvd->szClassName, pkvd->szKeyName, pkvd->szValue );
 		*/
 		for (j = j + 1; j < 3; j++)
-			pVector[j] = 0;
+			destination[j] = 0;
 	}
+}
+
+int UTIL_StringToInteger(std::string_view str)
+{
+	int value = 0;
+	std::from_chars(str.data(), str.data() + str.size(), value);
+	return value;
 }
 
 IntegerString UTIL_ToString(int iValue)
@@ -203,4 +210,37 @@ std::string_view GetLine(std::string_view& text)
 	text = text.substr(end);
 
 	return line;
+}
+
+std::string_view::const_iterator FindWhitespace(std::string_view text)
+{
+	return std::find_if(text.begin(), text.end(), [](auto c)
+		{ return 0 != std::isspace(c); });
+}
+
+std::string_view SkipWhitespace(std::string_view text)
+{
+	const auto end = text.end();
+
+	const auto it = std::find_if(text.begin(), text.end(), [](auto c)
+		{ return 0 == std::isspace(c); });
+
+	if (it == end)
+	{
+		return {};
+	}
+
+	return {it, end};
+}
+
+std::string_view RemoveComments(std::string_view text)
+{
+	const auto commentStart = text.find("//");
+
+	if (commentStart != text.npos)
+	{
+		text = text.substr(0, commentStart);
+	}
+
+	return text;
 }

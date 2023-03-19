@@ -20,14 +20,12 @@
 #include "entity_state.h"
 #include "cl_entity.h"
 #include "event_api.h"
-
-DECLARE_MESSAGE(m_StatusIcons, StatusIcon);
-DECLARE_MESSAGE(m_StatusIcons, CustomIcon);
+#include "sound/ISoundSystem.h"
 
 bool CHudStatusIcons::Init()
 {
-	HOOK_MESSAGE(StatusIcon);
-	HOOK_MESSAGE(CustomIcon);
+	g_ClientUserMessages.RegisterHandler("StatusIcon", &CHudStatusIcons::MsgFunc_StatusIcon, this);
+	g_ClientUserMessages.RegisterHandler("CustomIcon", &CHudStatusIcons::MsgFunc_CustomIcon, this);
 
 	gHUD.AddHudElem(this);
 
@@ -105,7 +103,7 @@ bool CHudStatusIcons::Draw(float flTime)
 //		byte   : red
 //		byte   : green
 //		byte   : blue
-bool CHudStatusIcons::MsgFunc_StatusIcon(const char* pszName, int iSize, void* pbuf)
+void CHudStatusIcons::MsgFunc_StatusIcon(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 
@@ -124,11 +122,9 @@ bool CHudStatusIcons::MsgFunc_StatusIcon(const char* pszName, int iSize, void* p
 	{
 		DisableIcon(pszIconName);
 	}
-
-	return true;
 }
 
-bool CHudStatusIcons::MsgFunc_CustomIcon(const char* pszName, int iSize, void* pbuf)
+void CHudStatusIcons::MsgFunc_CustomIcon(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 
@@ -156,8 +152,6 @@ bool CHudStatusIcons::MsgFunc_CustomIcon(const char* pszName, int iSize, void* p
 	{
 		DisableCustomIcon(index);
 	}
-
-	return true;
 }
 
 // add the icon to the icon list, and set it's drawing color
@@ -188,7 +182,7 @@ void CHudStatusIcons::EnableIcon(const char* pszIconName, const RGB24& color)
 	}
 
 	// Load the sprite and add it to the list
-	// the sprite must be listed in hud.txt
+	// the sprite must be listed in hud.json
 	int spr_index = gHUD.GetSpriteIndex(pszIconName);
 	m_IconList[i].spr = gHUD.GetSprite(spr_index);
 	m_IconList[i].rc = gHUD.GetSpriteRect(spr_index);
@@ -199,7 +193,7 @@ void CHudStatusIcons::EnableIcon(const char* pszIconName, const RGB24& color)
 	if (strstr(m_IconList[i].szSpriteName, "grenade"))
 	{
 		cl_entity_t* pthisplayer = gEngfuncs.GetLocalPlayer();
-		gEngfuncs.pEventAPI->EV_PlaySound(pthisplayer->index, pthisplayer->origin, CHAN_STATIC, "weapons/timer.wav", 1.0, ATTN_NORM, 0, PITCH_NORM);
+		EV_PlaySound(pthisplayer->index, pthisplayer->origin, CHAN_STATIC, "weapons/timer.wav", 1.0, ATTN_NORM, 0, PITCH_NORM);
 	}
 }
 

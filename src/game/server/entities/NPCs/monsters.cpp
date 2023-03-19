@@ -153,7 +153,7 @@ bool CBaseMonster::FShouldEat()
 // by Barnacle victims when the barnacle pulls their head
 // into its mouth
 //=========================================================
-void CBaseMonster::BarnacleVictimBitten(entvars_t* pevBarnacle)
+void CBaseMonster::BarnacleVictimBitten(CBaseEntity* pevBarnacle)
 {
 	Schedule_t* pNewSchedule;
 
@@ -1409,7 +1409,7 @@ float CBaseMonster::OpenDoorAndWait(entvars_t* pevDoor)
 			{
 				if (target != pcbeDoor)
 				{
-					if (FClassnameIs(target->pev, STRING(pcbeDoor->pev->classname)))
+					if (target->ClassnameIs(STRING(pcbeDoor->pev->classname)))
 					{
 						target->Use(this, this, USE_ON, 0.0);
 					}
@@ -2099,7 +2099,7 @@ void CBaseMonster::StartMonster()
 			// JAY: How important is this error message?  Big Momma doesn't obey this rule, so I took it out.
 #if 0
 			// At this point, we expect only a path_corner as initial goal
-			if (!FClassnameIs(m_pGoalEnt->pev, "path_corner"))
+			if (!m_pGoalEnt->ClassnameIs("path_corner"))
 			{
 				AILogger->warning("ReadyMonster--monster's initial goal '{}' is not a path_corner", STRING(pev->target));
 		}
@@ -2633,23 +2633,23 @@ void CBaseMonster::HandleAnimEvent(MonsterEvent_t* pEvent)
 		break;
 
 	case SCRIPT_EVENT_SOUND: // Play a named wave file
-		EMIT_SOUND(edict(), CHAN_BODY, pEvent->options, 1.0, ATTN_IDLE);
+		EmitSound(CHAN_BODY, pEvent->options, 1.0, ATTN_IDLE);
 		break;
 
 	case SCRIPT_EVENT_SOUND_VOICE:
-		EMIT_SOUND(edict(), CHAN_VOICE, pEvent->options, 1.0, ATTN_IDLE);
+		EmitSound(CHAN_VOICE, pEvent->options, 1.0, ATTN_IDLE);
 		break;
 
 	case SCRIPT_EVENT_SOUND_VOICE_BODY:
-		EMIT_SOUND(edict(), CHAN_BODY, pEvent->options, VOL_NORM, ATTN_NORM);
+		EmitSound(CHAN_BODY, pEvent->options, VOL_NORM, ATTN_NORM);
 		break;
 
 	case SCRIPT_EVENT_SOUND_VOICE_VOICE:
-		EMIT_SOUND(edict(), CHAN_VOICE, pEvent->options, VOL_NORM, ATTN_NORM);
+		EmitSound(CHAN_VOICE, pEvent->options, VOL_NORM, ATTN_NORM);
 		break;
 
 	case SCRIPT_EVENT_SOUND_VOICE_WEAPON:
-		EMIT_SOUND(edict(), CHAN_WEAPON, pEvent->options, VOL_NORM, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, pEvent->options, VOL_NORM, ATTN_NORM);
 		break;
 
 	case SCRIPT_EVENT_SENTENCE_RND1: // Play a named sentence group 33% of the time
@@ -2657,7 +2657,7 @@ void CBaseMonster::HandleAnimEvent(MonsterEvent_t* pEvent)
 			break;
 		[[fallthrough]];
 	case SCRIPT_EVENT_SENTENCE: // Play a named sentence group
-		sentences::g_Sentences.PlayRndSz(edict(), pEvent->options, 1.0, ATTN_IDLE, 0, 100);
+		sentences::g_Sentences.PlayRndSz(this, pEvent->options, 1.0, ATTN_IDLE, 0, 100);
 		break;
 
 	case SCRIPT_EVENT_FIREEVENT: // Fire a trigger
@@ -2685,11 +2685,11 @@ void CBaseMonster::HandleAnimEvent(MonsterEvent_t* pEvent)
 		{
 			if (RANDOM_LONG(0, 1) == 0)
 			{
-				EMIT_SOUND_DYN(ENT(pev), CHAN_BODY, "common/bodydrop3.wav", 1, ATTN_NORM, 0, 90);
+				EmitSoundDyn(CHAN_BODY, "common/bodydrop3.wav", 1, ATTN_NORM, 0, 90);
 			}
 			else
 			{
-				EMIT_SOUND_DYN(ENT(pev), CHAN_BODY, "common/bodydrop4.wav", 1, ATTN_NORM, 0, 90);
+				EmitSoundDyn(CHAN_BODY, "common/bodydrop4.wav", 1, ATTN_NORM, 0, 90);
 			}
 		}
 		break;
@@ -2699,11 +2699,11 @@ void CBaseMonster::HandleAnimEvent(MonsterEvent_t* pEvent)
 		{
 			if (RANDOM_LONG(0, 1) == 0)
 			{
-				EMIT_SOUND(ENT(pev), CHAN_BODY, "common/bodydrop3.wav", 1, ATTN_NORM);
+				EmitSound(CHAN_BODY, "common/bodydrop3.wav", 1, ATTN_NORM);
 			}
 			else
 			{
-				EMIT_SOUND(ENT(pev), CHAN_BODY, "common/bodydrop4.wav", 1, ATTN_NORM);
+				EmitSound(CHAN_BODY, "common/bodydrop4.wav", 1, ATTN_NORM);
 			}
 		}
 		break;
@@ -2711,7 +2711,7 @@ void CBaseMonster::HandleAnimEvent(MonsterEvent_t* pEvent)
 	case MONSTER_EVENT_SWISHSOUND:
 	{
 		// NO MONSTER may use this anim event unless that monster's precache precaches this sound!!!
-		EMIT_SOUND(ENT(pev), CHAN_BODY, "zombie/claw_miss2.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_BODY, "zombie/claw_miss2.wav", 1, ATTN_NORM);
 		break;
 	}
 
@@ -3145,8 +3145,6 @@ bool CBaseMonster::CanPlaySequence(bool fDisregardMonsterState, int interruptLev
 bool CBaseMonster::FindLateralCover(const Vector& vecThreat, const Vector& vecViewOffset)
 {
 	TraceResult tr;
-	Vector vecBestOnLeft;
-	Vector vecBestOnRight;
 	Vector vecLeftTest;
 	Vector vecRightTest;
 	Vector vecStepRight;
@@ -3257,9 +3255,9 @@ void CBaseMonster::PlaySentence(const char* pszSentence, float duration, float v
 void CBaseMonster::PlaySentenceCore(const char* pszSentence, float duration, float volume, float attenuation)
 {
 	if (pszSentence[0] == '!')
-		EMIT_SOUND_DYN(edict(), CHAN_VOICE, pszSentence, volume, attenuation, 0, PITCH_NORM);
+		EmitSound(CHAN_VOICE, pszSentence, volume, attenuation);
 	else
-		sentences::g_Sentences.PlayRndSz(edict(), pszSentence, volume, attenuation, 0, PITCH_NORM);
+		sentences::g_Sentences.PlayRndSz(this, pszSentence, volume, attenuation, 0, PITCH_NORM);
 }
 
 void CBaseMonster::PlayScriptedSentence(const char* pszSentence, float duration, float volume, float attenuation, bool bConcurrent, CBaseEntity* pListener)
@@ -3271,7 +3269,7 @@ void CBaseMonster::PlayScriptedSentence(const char* pszSentence, float duration,
 void CBaseMonster::SentenceStop()
 {
 	// TODO: use common/null.wav here once all sounds are routed through the new sound system.
-	STOP_SOUND(edict(), CHAN_VOICE, "!NULLSENT");
+	StopSound(CHAN_VOICE, "!NULLSENT");
 }
 
 
@@ -3304,7 +3302,7 @@ void CBaseMonster::MonsterInitDead()
 	pev->max_health = pev->health;
 	pev->deadflag = DEAD_DEAD;
 
-	UTIL_SetSize(pev, g_vecZero, g_vecZero);
+	SetSize(g_vecZero, g_vecZero);
 	UTIL_SetOrigin(pev, pev->origin);
 
 	// Setup health counters, etc.
@@ -3399,7 +3397,7 @@ bool CBaseMonster::GetEnemy()
 				// if the new enemy has an owner, take that one as well
 				if (pNewEnemy->pev->owner != nullptr)
 				{
-					CBaseEntity* pOwner = GetMonsterPointer(pNewEnemy->pev->owner);
+					CBaseEntity* pOwner = Instance(pNewEnemy->GetOwner())->MyMonsterPointer();
 					if (pOwner && (pOwner->pev->flags & FL_MONSTER) != 0 && IRelationship(pOwner) != R_NO)
 						PushEnemy(pOwner, m_vecEnemyLKP);
 				}
@@ -3533,15 +3531,15 @@ void CBaseMonster::ClearShockEffect()
 	}
 }
 
-bool IsFacing(entvars_t* pevTest, const Vector& reference)
+bool IsFacing(CBaseEntity* pevTest, const Vector& reference)
 {
-	Vector vecDir = (reference - pevTest->origin);
+	Vector vecDir = (reference - pevTest->pev->origin);
 	vecDir.z = 0;
 	vecDir = vecDir.Normalize();
 	Vector forward, angle;
-	angle = pevTest->v_angle;
+	angle = pevTest->pev->v_angle;
 	angle.x = 0;
-	UTIL_MakeVectorsPrivate(angle, forward, nullptr, nullptr);
+	AngleVectors(angle, &forward, nullptr, nullptr);
 	// He's facing me, he meant it
 	if (DotProduct(forward, vecDir) > 0.96) // +/- 15 degrees or so
 	{

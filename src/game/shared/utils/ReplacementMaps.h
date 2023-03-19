@@ -16,6 +16,7 @@
 #pragma once
 
 #include <memory>
+#include <span>
 #include <string>
 #include <unordered_map>
 
@@ -23,7 +24,7 @@
 
 #include "utils/GameSystem.h"
 #include "utils/heterogeneous_lookup.h"
-#include "utils/json_fwd.h"
+#include "utils/JSONSystem.h"
 
 using Replacements = std::unordered_map<std::string, std::string, TransparentStringHash, TransparentEqual>;
 
@@ -32,8 +33,6 @@ using Replacements = std::unordered_map<std::string, std::string, TransparentStr
  */
 struct ReplacementMap
 {
-	static const ReplacementMap Empty;
-
 	ReplacementMap() = default;
 
 	ReplacementMap(Replacements&& replacements, bool caseSensitive)
@@ -58,8 +57,6 @@ private:
 	Replacements m_Replacements;
 	bool m_CaseSensitive = true;
 };
-
-const inline ReplacementMap ReplacementMap::Empty;
 
 struct ReplacementMapOptions
 {
@@ -93,8 +90,27 @@ public:
 
 	const ReplacementMap* Load(const std::string& fileName, const ReplacementMapOptions& options = {});
 
+	/**
+	 *	@brief Loads multiple replacement files and merges them together. Last occurrence of a replacement wins.
+	 *	Not cached.
+	 */
+	std::unique_ptr<ReplacementMap> LoadMultiple(std::span<const std::string> fileNames, const ReplacementMapOptions& options = {}) const;
+
+	/**
+	 *	@brief Serializes a replacement map into a JSON object.
+	 */
+	json Serialize(const ReplacementMap& map) const;
+
+	/**
+	 *	@brief Deserializes a replacement map from a JSON object.
+	 *	If an error occurs during deserialization an empty map is returned.
+	 */
+	std::unique_ptr<ReplacementMap> Deserialize(const json& input) const;
+
 private:
-	ReplacementMap Parse(const json& input, const ReplacementMapOptions& options) const;
+	Replacements Parse(const json& input, const ReplacementMapOptions& options) const;
+
+	Replacements ParseFile(const char* fileName, const ReplacementMapOptions& options) const;
 
 private:
 	std::shared_ptr<spdlog::logger> m_Logger;

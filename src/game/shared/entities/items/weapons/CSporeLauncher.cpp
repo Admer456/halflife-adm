@@ -147,7 +147,7 @@ void CSporeLauncher::WeaponIdle()
 				iAnim = SPLAUNCHER_FIDGET;
 				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 4;
 
-				EMIT_SOUND(m_pPlayer->edict(), CHAN_ITEM, "weapons/splauncher_pet.wav", 0.7, ATTN_NORM);
+				m_pPlayer->EmitSound(CHAN_ITEM, "weapons/splauncher_pet.wav", 0.7, ATTN_NORM);
 			}
 
 			SendWeaponAnim(iAnim);
@@ -289,7 +289,7 @@ void CSporeLauncher::Reload()
 		// was waiting for gun to move to side
 		m_ReloadState = ReloadState::RELOAD_ONE;
 
-		EMIT_SOUND(m_pPlayer->edict(), CHAN_ITEM, "weapons/splauncher_reload.wav", 0.7, ATTN_NORM);
+		m_pPlayer->EmitSound(CHAN_ITEM, "weapons/splauncher_reload.wav", 0.7, ATTN_NORM);
 
 		SendWeaponAnim(SPLAUNCHER_RELOAD);
 
@@ -305,33 +305,24 @@ void CSporeLauncher::Reload()
 	}
 }
 
-int CSporeLauncher::iItemSlot()
+bool CSporeLauncher::GetWeaponInfo(WeaponInfo& info)
 {
-	return 4;
-}
-
-bool CSporeLauncher::GetItemInfo(ItemInfo* p)
-{
-	p->pszAmmo1 = "spores";
-	p->iMaxAmmo1 = SPORELAUNCHER_MAX_CARRY;
-	p->pszName = STRING(pev->classname);
-	p->pszAmmo2 = nullptr;
-	p->iMaxAmmo2 = WEAPON_NOCLIP;
-	p->iMaxClip = SPORELAUNCHER_MAX_CLIP;
-	p->iSlot = 6;
-	p->iPosition = 0;
-	p->iId = m_iId = WEAPON_SPORELAUNCHER;
-	p->iFlags = 0;
-	p->iWeight = SPORELAUNCHER_WEIGHT;
+	info.AmmoType1 = "spores";
+	info.Name = STRING(pev->classname);
+	info.MagazineSize1 = SPORELAUNCHER_MAX_CLIP;
+	info.Slot = 6;
+	info.Position = 0;
+	info.Id = m_iId = WEAPON_SPORELAUNCHER;
+	info.Weight = SPORELAUNCHER_WEIGHT;
 
 	return true;
 }
 
 void CSporeLauncher::IncrementAmmo(CBasePlayer* pPlayer)
 {
-	if (pPlayer->GiveAmmo(1, "spores", SPORELAUNCHER_MAX_CARRY) >= 0)
+	if (pPlayer->GiveAmmo(1, "spores") >= 0)
 	{
-		EMIT_SOUND(pPlayer->edict(), CHAN_STATIC, "ctf/pow_backpack.wav", 0.5, ATTN_NORM);
+		pPlayer->EmitSound(CHAN_STATIC, "ctf/pow_backpack.wav", 0.5, ATTN_NORM);
 	}
 }
 
@@ -394,7 +385,7 @@ public:
 
 		pev->movetype = MOVETYPE_FLY;
 
-		UTIL_SetSize(pev, Vector(-16, -16, -16), Vector(16, 16, 16));
+		SetSize(Vector(-16, -16, -16), Vector(16, 16, 16));
 
 		pev->origin.z += 16;
 
@@ -423,7 +414,7 @@ public:
 		SetThink(&CSporeAmmo::Idling);
 	}
 
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override
 	{
 		if (pev->body == SPOREAMMOBODY_EMPTY)
 		{
@@ -459,9 +450,9 @@ public:
 
 	bool AddAmmo(CBasePlayer* pOther) override
 	{
-		if (pOther->GiveAmmo(AMMO_SPORE_GIVE, "spores", SPORELAUNCHER_MAX_CARRY) != -1)
+		if (pOther->GiveAmmo(AMMO_SPORE_GIVE, "spores") != -1)
 		{
-			EMIT_SOUND(edict(), CHAN_ITEM, "weapons/spore_ammo.wav", VOL_NORM, ATTN_NORM);
+			EmitSound(CHAN_ITEM, "weapons/spore_ammo.wav", VOL_NORM, ATTN_NORM);
 
 			return true;
 		}

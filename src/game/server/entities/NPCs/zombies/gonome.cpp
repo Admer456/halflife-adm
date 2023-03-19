@@ -92,7 +92,7 @@ void COFGonomeGuts::Spawn()
 	pev->frame = 0;
 	pev->scale = 0.5;
 
-	UTIL_SetSize(pev, g_vecZero, g_vecZero);
+	SetSize(g_vecZero, g_vecZero);
 
 	m_maxFrame = static_cast<int>(MODEL_FRAMES(pev->modelindex) - 1);
 }
@@ -102,15 +102,15 @@ void COFGonomeGuts::Touch(CBaseEntity* pOther)
 	// splat sound
 	const auto iPitch = RANDOM_FLOAT(90, 110);
 
-	EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "bullchicken/bc_acid1.wav", 1, ATTN_NORM, 0, iPitch);
+	EmitSoundDyn(CHAN_VOICE, "bullchicken/bc_acid1.wav", 1, ATTN_NORM, 0, iPitch);
 
 	switch (RANDOM_LONG(0, 1))
 	{
 	case 0:
-		EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "bullchicken/bc_spithit1.wav", 1, ATTN_NORM, 0, iPitch);
+		EmitSoundDyn(CHAN_WEAPON, "bullchicken/bc_spithit1.wav", 1, ATTN_NORM, 0, iPitch);
 		break;
 	case 1:
-		EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "bullchicken/bc_spithit2.wav", 1, ATTN_NORM, 0, iPitch);
+		EmitSoundDyn(CHAN_WEAPON, "bullchicken/bc_spithit2.wav", 1, ATTN_NORM, 0, iPitch);
 		break;
 	}
 
@@ -124,7 +124,7 @@ void COFGonomeGuts::Touch(CBaseEntity* pOther)
 	}
 	else
 	{
-		pOther->TakeDamage(pev, pev, GetSkillFloat("gonome_dmg_guts"sv), DMG_GENERIC);
+		pOther->TakeDamage(this, this, GetSkillFloat("gonome_dmg_guts"sv), DMG_GENERIC);
 	}
 
 	SetThink(&COFGonomeGuts::SUB_Remove);
@@ -226,7 +226,7 @@ public:
 
 	Schedule_t* GetScheduleOfType(int Type) override;
 
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 
 	void StartTask(Task_t* pTask) override;
 
@@ -309,7 +309,7 @@ void COFGonome::PainSound()
 	int pitch = 95 + RANDOM_LONG(0, 9);
 
 	if (RANDOM_LONG(0, 5) < 2)
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, RANDOM_SOUND_ARRAY(pPainSounds), 1.0, ATTN_NORM, 0, pitch);
+		EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pPainSounds), 1.0, ATTN_NORM, 0, pitch);
 }
 
 void COFGonome::IdleSound()
@@ -317,7 +317,7 @@ void COFGonome::IdleSound()
 	int pitch = 100 + RANDOM_LONG(-5, 5);
 
 	// Play a random idle sound
-	EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, RANDOM_SOUND_ARRAY(pIdleSounds), 1.0, ATTN_NORM, 0, pitch);
+	EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pIdleSounds), 1.0, ATTN_NORM, 0, pitch);
 }
 
 //=========================================================
@@ -442,10 +442,10 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 				pHurt->pev->punchangle.x = 9;
 				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 25;
 			}
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 		}
 		else
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackMissSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackMissSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 	}
 	break;
 
@@ -470,10 +470,10 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 				pHurt->pev->punchangle.x = 9;
 				pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 25;
 			}
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackHitSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 		}
 		else
-			EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackMissSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
+			EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pAttackMissSounds), 1.0, ATTN_NORM, 0, 100 + RANDOM_LONG(-5, 5));
 	}
 	break;
 
@@ -609,7 +609,7 @@ Schedule_t* COFGonome::GetScheduleOfType(int Type)
 		return CBaseMonster::GetScheduleOfType(Type);
 }
 
-void COFGonome::Killed(entvars_t* pevAttacker, int iGib)
+void COFGonome::Killed(CBaseEntity* attacker, int iGib)
 {
 	if (m_pGonomeGuts)
 	{
@@ -627,7 +627,7 @@ void COFGonome::Killed(entvars_t* pevAttacker, int iGib)
 		m_PlayerLocked = nullptr;
 	}
 
-	CBaseMonster::Killed(pevAttacker, iGib);
+	CBaseMonster::Killed(attacker, iGib);
 }
 
 void COFGonome::StartTask(Task_t* pTask)
@@ -665,7 +665,6 @@ void COFGonome::StartTask(Task_t* pTask)
 void COFGonome::SetActivity(Activity NewActivity)
 {
 	int iSequence = ACTIVITY_NOT_AVAILABLE;
-	void* pmodel = GET_MODEL_PTR(ENT(pev));
 
 	if (NewActivity != ACT_RANGE_ATTACK1 && m_pGonomeGuts)
 	{

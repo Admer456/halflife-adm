@@ -30,6 +30,8 @@ target_include_directories(SDL2 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../../../e
 
 add_library(client SHARED)
 
+set_target_properties(client PROPERTIES INSTALL_RPATH "$ORIGIN")
+
 set_common_properties(client)
 
 target_include_directories(client PRIVATE
@@ -74,7 +76,7 @@ if (UNIX)
 endif()
 
 target_link_options(client PRIVATE
-	$<$<PLATFORM_ID:Windows>:/DELAYLOAD:OpenAL32.dll>
+	$<$<PLATFORM_ID:Windows>:/DELAYLOAD:openal-hlu.dll>
 	$<$<PLATFORM_ID:Darwin>:-framework Carbon>)
 
 target_sources(client PRIVATE
@@ -85,10 +87,10 @@ target_sources(client PRIVATE
 	ClientLibrary.h
 	com_weapons.cpp
 	com_weapons.h
-	$<$<PLATFORM_ID:Windows>:DelayLoad.cpp>
 	demo.cpp
 	demo.h
 	entity.cpp
+	entity.h
 	events.cpp
 	eventscripts.h
 	ev_common.cpp
@@ -98,7 +100,6 @@ target_sources(client PRIVATE
 	global_consts.h
 	interpolation.cpp
 	interpolation.h
-	in_defs.h
 	player_info.h
 	util.cpp
 	view.cpp
@@ -115,6 +116,9 @@ target_sources(client PRIVATE
 	input/in_camera.cpp
 	input/kbutton.h
 	
+	networking/ClientUserMessages.cpp
+	networking/ClientUserMessages.h
+	
 	particleman/CBaseParticle.cpp
 	particleman/CBaseParticle.h
 	particleman/CFrustum.cpp
@@ -125,17 +129,18 @@ target_sources(client PRIVATE
 	particleman/IParticleMan_Active.h
 	particleman/particleman.h
 	particleman/particleman_internal.h
+	
+	prediction/ClientPredictionSystem.cpp
+	prediction/ClientPredictionSystem.h
 
 	rendering/GameStudioModelRenderer.cpp
 	rendering/GameStudioModelRenderer.h
 	rendering/StudioModelRenderer.cpp
 	rendering/StudioModelRenderer.h
-	rendering/studio_util.cpp
-	rendering/studio_util.h
 	rendering/tri.cpp
 	rendering/tri.h
 	
-	sound/ClientSoundReplacement.h
+	sound/ClientSoundReplacementSystem.h
 	sound/DummySoundSystem.h
 	sound/GameSoundSystem.cpp
 	sound/GameSoundSystem.h
@@ -182,6 +187,8 @@ target_sources(client PRIVATE
 	ui/hud/hud_spectator.cpp
 	ui/hud/hud_spectator.h
 	ui/hud/hud_update.cpp
+	ui/hud/HudSpriteConfigSystem.cpp
+	ui/hud/HudSpriteConfigSystem.h
 	ui/hud/menu.cpp
 	ui/hud/message.cpp
 	ui/hud/saytext.cpp
@@ -288,6 +295,10 @@ target_sources(client PRIVATE
 )
 
 add_game_shared_sources(client)
+
+if (WIN32)
+	target_sources(client PRIVATE DelayLoad.cpp)
+endif()
 
 target_precompile_headers(client PRIVATE ui/hud/hud.h)
 

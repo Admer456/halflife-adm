@@ -16,14 +16,13 @@
 #include "UserMessages.h"
 
 #ifndef CLIENT_DLL
+#include "spawnpoints.h"
 #include "rope/CRope.h"
 
 #include "weapons/CDisplacerBall.h"
 
 #include "ctf/CTFGoal.h"
 #include "ctf/CTFGoalFlag.h"
-
-edict_t* EntSelectSpawnPoint(CBasePlayer* pPlayer);
 #endif
 
 #include "CDisplacer.h"
@@ -59,8 +58,6 @@ void CDisplacer::Precache()
 
 void CDisplacer::Spawn()
 {
-	pev->classname = MAKE_STRING("weapon_displacer");
-
 	Precache();
 
 	m_iId = WEAPON_DISPLACER;
@@ -81,7 +78,7 @@ void CDisplacer::Holster()
 {
 	m_fInReload = false;
 
-	STOP_SOUND(m_pPlayer->edict(), CHAN_WEAPON, "weapons/displacer_spin.wav");
+	m_pPlayer->StopSound(CHAN_WEAPON, "weapons/displacer_spin.wav");
 
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 1.0;
 
@@ -141,13 +138,13 @@ void CDisplacer::PrimaryAttack()
 
 		m_Mode = DisplacerMode::STARTED;
 
-		EMIT_SOUND(m_pPlayer->edict(), CHAN_WEAPON, "weapons/displacer_spin.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
+		m_pPlayer->EmitSound(CHAN_WEAPON, "weapons/displacer_spin.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 
 		m_flTimeWeaponIdle = m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 2.5;
 	}
 	else
 	{
-		EMIT_SOUND(m_pPlayer->edict(), CHAN_WEAPON, "buttons/button11.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
+		m_pPlayer->EmitSound(CHAN_WEAPON, "buttons/button11.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 
 		m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.5;
 	}
@@ -163,13 +160,13 @@ void CDisplacer::SecondaryAttack()
 
 		m_Mode = DisplacerMode::STARTED;
 
-		EMIT_SOUND(m_pPlayer->edict(), CHAN_WEAPON, "weapons/displacer_spin2.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
+		m_pPlayer->EmitSound(CHAN_WEAPON, "weapons/displacer_spin2.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 
 		m_flTimeWeaponIdle = m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 1.5;
 	}
 	else
 	{
-		EMIT_SOUND(m_pPlayer->edict(), CHAN_WEAPON, "buttons/button11.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
+		m_pPlayer->EmitSound(CHAN_WEAPON, "buttons/button11.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 
 		m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.5;
 	}
@@ -283,7 +280,7 @@ void CDisplacer::FireThink()
 
 	m_pPlayer->pev->effects |= EF_MUZZLEFLASH;
 
-	EMIT_SOUND(edict(), CHAN_WEAPON, "weapons/displacer_fire.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
+	EmitSound(CHAN_WEAPON, "weapons/displacer_fire.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 
 	int flags;
 
@@ -332,7 +329,7 @@ void CDisplacer::AltFireThink()
 	}
 #endif
 
-	STOP_SOUND(m_pPlayer->edict(), CHAN_WEAPON, "weapons/displacer_spin.wav");
+	m_pPlayer->StopSound(CHAN_WEAPON, "weapons/displacer_spin.wav");
 
 	m_pPlayer->m_DisplacerReturn = m_pPlayer->pev->origin;
 
@@ -356,7 +353,7 @@ void CDisplacer::AltFireThink()
 	}
 	else
 	{
-		pDestination = GET_PRIVATE<CBaseEntity>(EntSelectSpawnPoint(m_pPlayer));
+		pDestination = EntSelectSpawnPoint(m_pPlayer);
 
 		if (!pDestination)
 			pDestination = g_pLastSpawn;
@@ -372,7 +369,7 @@ void CDisplacer::AltFireThink()
 		UTIL_SetOrigin(m_pPlayer->pev, tr.vecEndPos + Vector(0, 0, 37));
 	}
 
-	if (pDestination && !FNullEnt(pDestination->pev))
+	if (!FNullEnt(pDestination))
 	{
 		m_pPlayer->pev->flags &= ~FL_SKIPLOCALHOST;
 
@@ -426,36 +423,27 @@ void CDisplacer::AltFireThink()
 	}
 	else
 	{
-		EMIT_SOUND(m_pPlayer->edict(), CHAN_WEAPON, "buttons/button11.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
+		m_pPlayer->EmitSound(CHAN_WEAPON, "buttons/button11.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 	}
 #endif
 }
 
-int CDisplacer::iItemSlot()
+bool CDisplacer::GetWeaponInfo(WeaponInfo& info)
 {
-	return 4;
-}
-
-bool CDisplacer::GetItemInfo(ItemInfo* p)
-{
-	p->pszAmmo1 = "uranium";
-	p->iMaxAmmo1 = URANIUM_MAX_CARRY;
-	p->pszName = STRING(pev->classname);
-	p->pszAmmo2 = nullptr;
-	p->iMaxAmmo2 = WEAPON_NOCLIP;
-	p->iMaxClip = WEAPON_NOCLIP;
-	p->iFlags = 0;
-	p->iSlot = 5;
-	p->iPosition = 1;
-	p->iId = m_iId = WEAPON_DISPLACER;
-	p->iWeight = DISPLACER_WEIGHT;
+	info.AmmoType1 = "uranium";
+	info.Name = STRING(pev->classname);
+	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.Slot = 5;
+	info.Position = 1;
+	info.Id = m_iId = WEAPON_DISPLACER;
+	info.Weight = DISPLACER_WEIGHT;
 	return true;
 }
 
 void CDisplacer::IncrementAmmo(CBasePlayer* pPlayer)
 {
-	if (pPlayer->GiveAmmo(1, "uranium", URANIUM_MAX_CARRY) >= 0)
+	if (pPlayer->GiveAmmo(1, "uranium") >= 0)
 	{
-		EMIT_SOUND(pPlayer->edict(), CHAN_STATIC, "ctf/pow_backpack.wav", 0.5, ATTN_NORM);
+		pPlayer->EmitSound(CHAN_STATIC, "ctf/pow_backpack.wav", 0.5, ATTN_NORM);
 	}
 }

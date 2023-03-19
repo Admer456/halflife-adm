@@ -48,7 +48,7 @@ void CShockBeam::Spawn()
 
 	UTIL_SetOrigin(pev, pev->origin);
 
-	UTIL_SetSize(pev, Vector(-4, -4, -4), Vector(4, 4, 4));
+	SetSize(Vector(-4, -4, -4), Vector(4, 4, 4));
 
 	SetTouch(&CShockBeam::BallTouch);
 	SetThink(&CShockBeam::FlyThink);
@@ -128,11 +128,11 @@ void CShockBeam::ExplodeThink()
 
 void CShockBeam::WaterExplodeThink()
 {
-	auto pOwner = VARS(pev->owner);
+	auto pOwner = GetOwner();
 
 	Explode();
 
-	::RadiusDamage(pev->origin, pev, pOwner, 100.0, 150.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_BLAST);
+	::RadiusDamage(pev->origin, this, pOwner, 100.0, 150.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_BLAST);
 
 	UTIL_Remove(this);
 }
@@ -164,14 +164,14 @@ void CShockBeam::BallTouch(CBaseEntity* pOther)
 			}
 		}
 
-		pOther->TraceAttack(VARS(pev->owner), damage, pev->velocity.Normalize(), &tr, bitsDamageTypes);
+		pOther->TraceAttack(GetOwner(), damage, pev->velocity.Normalize(), &tr, bitsDamageTypes);
 
 		if (pMonster)
 		{
 			pMonster->AddShockEffect(63.0, 152.0, 208.0, 16.0, 0.5);
 		}
 
-		ApplyMultiDamage(pev, VARS(pev->owner));
+		ApplyMultiDamage(this, GetOwner());
 
 		pev->velocity = g_vecZero;
 	}
@@ -232,7 +232,7 @@ void CShockBeam::Explode()
 
 	pev->owner = nullptr;
 
-	EMIT_SOUND(edict(), CHAN_WEAPON, "weapons/shock_impact.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
+	EmitSound(CHAN_WEAPON, "weapons/shock_impact.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 }
 
 CShockBeam* CShockBeam::CreateShockBeam(const Vector& vecOrigin, const Vector& vecAngles, CBaseEntity* pOwner)

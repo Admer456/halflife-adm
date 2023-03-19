@@ -15,12 +15,19 @@
 
 #include "cbase.h"
 
+#include "AmmoTypeSystem.h"
 #include "GameLibrary.h"
+#include "ProjectInfoSystem.h"
+#include "WeaponDataSystem.h"
 
 #include "config/ConditionEvaluator.h"
 #include "config/GameConfig.h"
 
+#include "networking/NetworkDataSystem.h"
+
 #include "scripting/AS/ASManager.h"
+
+#include "sound/MaterialSystem.h"
 
 #include "utils/ConCommandSystem.h"
 #include "utils/GameSystem.h"
@@ -44,13 +51,12 @@ bool GameLibrary::Initialize()
 		return false;
 	}
 
-	g_GameSystems.Invoke(&IGameSystem::PostInitialize);
-
 	g_GameLogger = g_Logging.CreateLogger("game");
 	g_AssertLogger = g_Logging.CreateLogger("assert");
-	g_PrecacheLogger = g_Logging.CreateLogger("precache");
 	CBaseEntity::Logger = g_Logging.CreateLogger("ent");
-	CBasePlayerItem::WeaponsLogger = g_Logging.CreateLogger("ent.weapons");
+	CBasePlayerWeapon::WeaponsLogger = g_Logging.CreateLogger("ent.weapons");
+
+	g_GameSystems.Invoke(&IGameSystem::PostInitialize);
 
 	g_ConCommands.CreateCommand("log_setentlevels", [this](const auto& args)
 		{ SetEntLogLevels(args); });
@@ -60,9 +66,8 @@ bool GameLibrary::Initialize()
 
 void GameLibrary::Shutdown()
 {
-	CBasePlayerItem::WeaponsLogger.reset();
+	CBasePlayerWeapon::WeaponsLogger.reset();
 	CBaseEntity::Logger.reset();
-	g_PrecacheLogger.reset();
 	g_AssertLogger.reset();
 	g_GameLogger.reset();
 
@@ -83,18 +88,23 @@ void GameLibrary::AddGameSystems()
 	g_GameSystems.Add(&g_ConCommands);
 	g_GameSystems.Add(&g_JSON);
 	g_GameSystems.Add(&g_Logging);
+	g_GameSystems.Add(&g_NetworkData);
 	g_GameSystems.Add(&g_ASManager);
 	// Depends on Angelscript
 	g_GameSystems.Add(&g_ConditionEvaluator);
 	g_GameSystems.Add(&g_GameConfigSystem);
 	g_GameSystems.Add(&g_ReplacementMaps);
+	g_GameSystems.Add(&g_MaterialSystem);
+	g_GameSystems.Add(&g_ProjectInfo);
+	g_GameSystems.Add(&g_WeaponData);
+	g_GameSystems.Add(&g_AmmoTypes);
 }
 
 void GameLibrary::SetEntLogLevels(spdlog::level::level_enum level)
 {
 	const auto& levelName = spdlog::level::to_string_view(level);
 
-	for (auto& logger : {CBaseEntity::Logger, CBasePlayerItem::WeaponsLogger})
+	for (auto& logger : {CBaseEntity::Logger, CBasePlayerWeapon::WeaponsLogger})
 	{
 		logger->set_level(level);
 		Con_Printf("Set \"%s\" log level to %s\n", logger->name().c_str(), levelName.data());

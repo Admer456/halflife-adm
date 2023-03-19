@@ -121,7 +121,7 @@ public:
 
 	int ObjectCaps() override;
 
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 
 	void MonsterThink() override;
 
@@ -254,7 +254,7 @@ void COFMedicAlly::Shoot()
 
 		const auto pitch = random <= 10 ? random + 95 : 100;
 
-		EMIT_SOUND_DYN(edict(), CHAN_WEAPON, pszSoundName, VOL_NORM, ATTN_NORM, 0, pitch);
+		EmitSoundDyn(CHAN_WEAPON, pszSoundName, VOL_NORM, ATTN_NORM, 0, pitch);
 	}
 
 	pev->effects |= EF_MUZZLEFLASH;
@@ -279,11 +279,11 @@ void COFMedicAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 		if ((pev->weapons & MedicAllyWeaponFlag::DesertEagle) != 0)
 		{
-			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/desert_eagle_reload.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_WEAPON, "weapons/desert_eagle_reload.wav", 1, ATTN_NORM);
 		}
 		else
 		{
-			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "hgrunt/gr_reload1.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_WEAPON, "hgrunt/gr_reload1.wav", 1, ATTN_NORM);
 		}
 
 		m_cAmmoLoaded = m_cClipSize;
@@ -348,8 +348,6 @@ void COFMedicAlly::Spawn()
 	{
 		m_iGruntHead = RANDOM_LONG(0, 99) % 2 == 0 ? MedicAllyHead::White : MedicAllyHead::Black;
 	}
-
-	int weaponIndex = 0;
 
 	if ((pev->weapons & MedicAllyWeaponFlag::Glock) != 0)
 	{
@@ -421,7 +419,7 @@ void COFMedicAlly::StartTask(Task_t* pTask)
 
 		if (!m_fHealAudioPlaying)
 		{
-			EMIT_SOUND(edict(), CHAN_WEAPON, "fgrunt/medic_give_shot.wav", VOL_NORM, ATTN_NORM);
+			EmitSound(CHAN_WEAPON, "fgrunt/medic_give_shot.wav", VOL_NORM, ATTN_NORM);
 			m_fHealAudioPlaying = true;
 		}
 		break;
@@ -443,7 +441,7 @@ void COFMedicAlly::StartTask(Task_t* pTask)
 			m_fHealing = false;
 			m_fUseHealing = false;
 
-			STOP_SOUND(edict(), CHAN_WEAPON, "fgrunt/medic_give_shot.wav");
+			StopSound(CHAN_WEAPON, "fgrunt/medic_give_shot.wav");
 
 			m_fFollowChecked = false;
 			m_fFollowChecking = false;
@@ -461,7 +459,7 @@ void COFMedicAlly::StartTask(Task_t* pTask)
 		m_fHealing = false;
 		m_fUseHealing = false;
 
-		STOP_SOUND(edict(), CHAN_WEAPON, "fgrunt/medic_give_shot.wav");
+		StopSound(CHAN_WEAPON, "fgrunt/medic_give_shot.wav");
 
 		m_fFollowChecked = false;
 		m_fFollowChecking = false;
@@ -683,7 +681,7 @@ int COFMedicAlly::ObjectCaps()
 	return FCAP_ACROSS_TRANSITION | FCAP_CONTINUOUS_USE;
 }
 
-void COFMedicAlly::Killed(entvars_t* pevAttacker, int iGib)
+void COFMedicAlly::Killed(CBaseEntity* attacker, int iGib)
 {
 	// Clear medic handle from patient
 	if (m_hTargetEnt != nullptr)
@@ -694,7 +692,7 @@ void COFMedicAlly::Killed(entvars_t* pevAttacker, int iGib)
 			pSquadMonster->m_hWaitMedic = nullptr;
 	}
 
-	CBaseHGruntAlly::Killed(pevAttacker, iGib);
+	CBaseHGruntAlly::Killed(attacker, iGib);
 }
 
 void COFMedicAlly::MonsterThink()
@@ -813,7 +811,7 @@ void COFMedicAlly::HealerActivate(CBaseMonster* pTarget)
 
 		ClearSchedule();
 
-		EMIT_SOUND(edict(), CHAN_VOICE, "fgrunt/medical.wav", VOL_NORM, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "fgrunt/medical.wav", VOL_NORM, ATTN_NORM);
 
 		ChangeSchedule(slMedicAllyDrawNeedle);
 	}
@@ -876,7 +874,7 @@ void COFMedicAlly::HealerUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_
 				}
 				else
 				{
-					sentences::g_Sentences.PlayRndSz(edict(), "MG_HEAL", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(this, "MG_HEAL", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 					ChangeSchedule(slMedicAllyDrawNeedle);
 				}
 			}
@@ -901,7 +899,7 @@ void COFMedicAlly::HealerUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_
 			if (gpGlobals->time - m_flLastRejectAudio > 4.0 && m_iHealCharge <= 0 && !m_fHealing)
 			{
 				m_flLastRejectAudio = gpGlobals->time;
-				sentences::g_Sentences.PlayRndSz(edict(), "MG_NOTHEAL", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(this, "MG_NOTHEAL", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 			}
 		}
 

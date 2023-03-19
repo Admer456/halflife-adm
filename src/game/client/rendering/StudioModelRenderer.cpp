@@ -10,11 +10,31 @@
 #include "dlight.h"
 #include "triangleapi.h"
 
-#include "studio_util.h"
 #include "r_studioint.h"
 
 #include "StudioModelRenderer.h"
 #include "GameStudioModelRenderer.h"
+
+#define VectorCopy(a, b) \
+	{                    \
+		(b)[0] = (a)[0]; \
+		(b)[1] = (a)[1]; \
+		(b)[2] = (a)[2]; \
+	}
+
+void VectorInverse(float* v)
+{
+	v[0] = -v[0];
+	v[1] = -v[1];
+	v[2] = -v[2];
+}
+
+void VectorScale(const float* in, float scale, float* out)
+{
+	out[0] = in[0] * scale;
+	out[1] = in[1] * scale;
+	out[2] = in[2] * scale;
+}
 
 // team colors for old TFC models
 #define TEAM1_COLOR 150
@@ -236,7 +256,7 @@ void CStudioModelRenderer::StudioCalcBoneQuaterion(int frame, float s, mstudiobo
 		}
 	}
 
-	if (!VectorCompare(angle1, angle2))
+	if (angle1 != angle2)
 	{
 		AngleQuaternion(angle1, q1);
 		AngleQuaternion(angle2, q2);
@@ -428,7 +448,7 @@ void CStudioModelRenderer::StudioSetUpTransform(bool trivial_accept)
 	// for (i = 0; i < 3; i++)
 	//	modelpos[i] = m_pCurrentEntity->origin[i];
 
-	VectorCopy(m_pCurrentEntity->origin, modelpos);
+	modelpos = m_pCurrentEntity->origin;
 
 	// TODO: should really be stored with the entity instead of being reconstructed
 	// TODO: should use a look-up table
@@ -504,7 +524,7 @@ void CStudioModelRenderer::StudioSetUpTransform(bool trivial_accept)
 	}
 	else if (m_pCurrentEntity->curstate.movetype != MOVETYPE_NONE)
 	{
-		VectorCopy(m_pCurrentEntity->angles, angles);
+		angles = m_pCurrentEntity->angles;
 	}
 
 	// Con_DPrintf("%.0f %0.f %0.f\n", modelpos[0], modelpos[1], modelpos[2] );
@@ -1130,8 +1150,8 @@ bool CStudioModelRenderer::StudioDrawModel(int flags)
 		deadplayer.gaitsequence = 0;
 
 		deadplayer.movetype = MOVETYPE_NONE;
-		VectorCopy(m_pCurrentEntity->curstate.angles, deadplayer.angles);
-		VectorCopy(m_pCurrentEntity->curstate.origin, deadplayer.origin);
+		deadplayer.angles = m_pCurrentEntity->curstate.angles;
+		deadplayer.origin = m_pCurrentEntity->curstate.origin;
 
 		save_interp = m_fDoInterp;
 		m_fDoInterp = false;
@@ -1233,12 +1253,12 @@ void CStudioModelRenderer::StudioEstimateGait(entity_state_t* pplayer)
 		return;
 	}
 
-	// VectorAdd( pplayer->velocity, pplayer->prediction_error, est_velocity );
+	// est_velocity = pplayer->velocity + pplayer->prediction_error;
 	if (m_fGaitEstimation)
 	{
-		VectorSubtract(m_pCurrentEntity->origin, m_pPlayerInfo->prevgaitorigin, est_velocity);
-		VectorCopy(m_pCurrentEntity->origin, m_pPlayerInfo->prevgaitorigin);
-		m_flGaitMovement = Length(est_velocity);
+		est_velocity = m_pCurrentEntity->origin - m_pPlayerInfo->prevgaitorigin;
+		m_pPlayerInfo->prevgaitorigin = m_pCurrentEntity->origin;
+		m_flGaitMovement = est_velocity.Length();
 		if (dt <= 0 || m_flGaitMovement / dt < 5)
 		{
 			m_flGaitMovement = 0;
@@ -1248,8 +1268,8 @@ void CStudioModelRenderer::StudioEstimateGait(entity_state_t* pplayer)
 	}
 	else
 	{
-		VectorCopy(pplayer->velocity, est_velocity);
-		m_flGaitMovement = Length(est_velocity) * dt;
+		est_velocity = pplayer->velocity;
+		m_flGaitMovement = est_velocity.Length() * dt;
 	}
 
 	if (est_velocity[1] == 0 && est_velocity[0] == 0)
@@ -1416,7 +1436,7 @@ bool CStudioModelRenderer::StudioDrawPlayer(int flags, entity_state_t* pplayer)
 		Vector orig_angles;
 		m_pPlayerInfo = IEngineStudio.PlayerInfo(m_nPlayerIndex);
 
-		VectorCopy(m_pCurrentEntity->angles, orig_angles);
+		orig_angles = m_pCurrentEntity->angles;
 
 		StudioProcessGait(pplayer);
 
@@ -1424,7 +1444,7 @@ bool CStudioModelRenderer::StudioDrawPlayer(int flags, entity_state_t* pplayer)
 		m_pPlayerInfo = nullptr;
 
 		StudioSetUpTransform(false);
-		VectorCopy(orig_angles, m_pCurrentEntity->angles);
+		m_pCurrentEntity->angles = orig_angles;
 	}
 	else
 	{

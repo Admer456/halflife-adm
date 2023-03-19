@@ -17,6 +17,7 @@
 #include "ServerLibrary.h"
 #include "pm_shared.h"
 #include "world.h"
+#include "sound/ServerSoundSystem.h"
 
 void EntvarsKeyvalue(entvars_t* pev, KeyValueData* pkvd);
 
@@ -74,9 +75,10 @@ static DLL_FUNCTIONS gFunctionTable =
 
 		Sys_Error, // pfnSys_Error				Called when engine has encountered an error
 
-		PM_Move,			// pfnPM_Move
-		PM_Init,			// pfnPM_Init				Server version of player movement initialization
-		PM_FindTextureType, // pfnPM_FindTextureType
+		PM_Move, // pfnPM_Move
+		PM_Init, // pfnPM_Init				Server version of player movement initialization
+		[](const char* name)
+		{ return g_MaterialSystem.FindTextureType(name); }, // pfnPM_FindTextureType
 
 		SetupVisibility,		  // pfnSetupVisibility        Set up PVS and PAS for networking for this client
 		UpdateClientData,		  // pfnUpdateClientData       Set up data sent only to specific client
@@ -212,6 +214,13 @@ void DispatchKeyValue(edict_t* pentKeyvalue, KeyValueData* pkvd)
 	if (!pEntity)
 		return;
 
+	pkvd->fHandled = pEntity->RequiredKeyValue(pkvd);
+
+	if (pkvd->fHandled != 0)
+	{
+		return;
+	}
+
 	pkvd->fHandled = static_cast<int32>(pEntity->KeyValue(pkvd));
 }
 
@@ -298,9 +307,7 @@ void OnFreeEntPrivateData(edict_t* pEdict)
 	{
 		auto entity = reinterpret_cast<CBaseEntity*>(pEdict->pvPrivateData);
 
-		entity->OnDestroy();
-
-		delete entity;
+		g_EntityDictionary->Destroy(entity);
 
 		// Zero this out so the engine doesn't try to free it again.
 		pEdict->pvPrivateData = nullptr;
@@ -315,7 +322,7 @@ CBaseEntity* FindGlobalEntity(string_t classname, string_t globalname)
 
 	if (pReturn)
 	{
-		if (!FClassnameIs(pReturn->pev, STRING(classname)))
+		if (!pReturn->ClassnameIs(STRING(classname)))
 		{
 			CBaseEntity::Logger->debug("Global entity found {}, wrong class {}", STRING(globalname), STRING(pReturn->pev->classname));
 			pReturn = nullptr;
@@ -380,14 +387,17 @@ int DispatchRestore(edict_t* pent, SAVERESTOREDATA* pSaveData, int globalEntity)
 			}
 		}
 
+		pEntity->Restore(restoreHelper);
+
+		// Restore replacement files ahead of setup.
+		pEntity->LoadReplacementFiles();
+
 		if ((pEntity->ObjectCaps() & FCAP_MUST_SPAWN) != 0)
 		{
-			pEntity->Restore(restoreHelper);
 			pEntity->Spawn();
 		}
 		else
 		{
-			pEntity->Restore(restoreHelper);
 			pEntity->Precache();
 		}
 
@@ -484,21 +494,137 @@ void SaveReadFields(SAVERESTOREDATA* pSaveData, const char* pname, void* pBaseDa
 	restoreHelper.ReadFields(pname, pBaseData, pFields, fieldCount);
 }
 
+static void CheckForBackwardsBounds(CBaseEntity* entity)
+{
+	if (UTIL_FixBoundsVectors(entity->m_CustomHullMin, entity->m_CustomHullMax))
+	{
+		// Can't log the targetname because it may not have been set yet.
+		CBaseEntity::Logger->warn("Backwards mins/maxs fixed in custom hull (entity index {})", entity->entindex());
+	}
+}
+
+static const ReplacementMap* LoadReplacementMap(string_t fileName, const ReplacementMapOptions& options)
+{
+	const char* fileNameString = STRING(fileName);
+
+	if (FStrEq(fileNameString, ""))
+	{
+		return nullptr;
+	}
+
+	return g_ReplacementMaps.Load(fileNameString, options);
+}
+
+static const ReplacementMap* LoadFileNameReplacementMap(string_t fileName)
+{
+	return LoadReplacementMap(fileName, {.CaseSensitive = false, .LoadFromAllPaths = true});
+}
+
+static const ReplacementMap* LoadSentenceReplacementMap(string_t fileName)
+{
+	return LoadReplacementMap(fileName, {.CaseSensitive = true, .LoadFromAllPaths = true});
+}
+
+bool CBaseEntity::RequiredKeyValue(KeyValueData* pkvd)
+{
+	// Replacement maps can be changed at runtime using trigger_changekeyvalue.
+	// Note that this may cause host_error or sys_error if files aren't precached.
+	if (FStrEq(pkvd->szKeyName, "model_replacement_filename"))
+	{
+		m_ModelReplacementFileName = ALLOC_STRING(pkvd->szValue);
+		m_ModelReplacement = LoadFileNameReplacementMap(m_ModelReplacementFileName);
+	}
+	else if (FStrEq(pkvd->szKeyName, "sound_replacement_filename"))
+	{
+		m_SoundReplacementFileName = ALLOC_STRING(pkvd->szValue);
+		m_SoundReplacement = LoadFileNameReplacementMap(m_SoundReplacementFileName);
+	}
+	else if (FStrEq(pkvd->szKeyName, "sentence_replacement_filename"))
+	{
+		m_SentenceReplacementFileName = ALLOC_STRING(pkvd->szValue);
+		m_SentenceReplacement = LoadFileNameReplacementMap(m_SentenceReplacementFileName);
+	}
+	// Note: while this code does fix backwards bounds here it will not apply to partial hulls mixing with hard-coded ones.
+	else if (FStrEq(pkvd->szKeyName, "custom_hull_min"))
+	{
+		UTIL_StringToVector(m_CustomHullMin, pkvd->szValue);
+		m_HasCustomHullMin = true;
+
+		if (m_HasCustomHullMax)
+		{
+			CheckForBackwardsBounds(this);
+		}
+
+		return true;
+	}
+	else if (FStrEq(pkvd->szKeyName, "custom_hull_max"))
+	{
+		UTIL_StringToVector(m_CustomHullMax, pkvd->szValue);
+		m_HasCustomHullMax = true;
+
+		if (m_HasCustomHullMin)
+		{
+			CheckForBackwardsBounds(this);
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+void CBaseEntity::LoadReplacementFiles()
+{
+	m_ModelReplacement = LoadFileNameReplacementMap(m_ModelReplacementFileName);
+	m_SoundReplacement = LoadFileNameReplacementMap(m_SoundReplacementFileName);
+	m_SentenceReplacement = LoadSentenceReplacementMap(m_SentenceReplacementFileName);
+}
+
 int CBaseEntity::PrecacheModel(const char* s)
 {
+	if (m_ModelReplacement)
+	{
+		s = m_ModelReplacement->Lookup(s);
+	}
+
 	return UTIL_PrecacheModel(s);
 }
 
 void CBaseEntity::SetModel(const char* s)
 {
+	if (m_ModelReplacement)
+	{
+		s = m_ModelReplacement->Lookup(s);
+	}
+
 	s = UTIL_CheckForGlobalModelReplacement(s);
 
 	g_engfuncs.pfnSetModel(edict(), s);
+
+	if (m_HasCustomHullMin || m_HasCustomHullMax)
+	{
+		SetSize(pev->mins, pev->maxs);
+	}
 }
 
 int CBaseEntity::PrecacheSound(const char* s)
 {
+	if (s[0] == '*')
+	{
+		++s;
+	}
+
+	if (m_SoundReplacement)
+	{
+		s = m_SoundReplacement->Lookup(s);
+	}
+
 	return UTIL_PrecacheSound(s);
+}
+
+void CBaseEntity::SetSize(const Vector& min, const Vector& max)
+{
+	g_engfuncs.pfnSetSize(edict(), m_HasCustomHullMin ? m_CustomHullMin : min, m_HasCustomHullMax ? m_CustomHullMax : max);
 }
 
 void CBaseEntity::OnCreate()
@@ -531,7 +657,7 @@ bool CBaseEntity::TakeHealth(float flHealth, int bitsDamageType)
 
 // inflict damage on this entity.  bitsDamageType indicates type of damage inflicted, ie: DMG_CRUSH
 
-bool CBaseEntity::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CBaseEntity::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	Vector vecTemp;
 
@@ -542,14 +668,14 @@ bool CBaseEntity::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, fl
 
 	// if Attacker == Inflictor, the attack was a melee or other instant-hit attack.
 	// (that is, no actual entity projectile was involved in the attack so use the shooter's origin).
-	if (pevAttacker == pevInflictor)
+	if (attacker == inflictor)
 	{
-		vecTemp = pevInflictor->origin - (VecBModelOrigin(pev));
+		vecTemp = inflictor->pev->origin - (VecBModelOrigin(pev));
 	}
 	else
 	// an actual missile was involved.
 	{
-		vecTemp = pevInflictor->origin - (VecBModelOrigin(pev));
+		vecTemp = inflictor->pev->origin - (VecBModelOrigin(pev));
 	}
 
 	// this global is still used for glass and other non-monster killables, along with decals.
@@ -558,9 +684,9 @@ bool CBaseEntity::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, fl
 	// save damage based on the target's armor level
 
 	// figure momentum add (don't let hurt brushes or other triggers move player)
-	if ((!FNullEnt(pevInflictor)) && (pev->movetype == MOVETYPE_WALK || pev->movetype == MOVETYPE_STEP) && (pevAttacker->solid != SOLID_TRIGGER))
+	if ((!FNullEnt(inflictor)) && (pev->movetype == MOVETYPE_WALK || pev->movetype == MOVETYPE_STEP) && (attacker->pev->solid != SOLID_TRIGGER))
 	{
-		Vector vecDir = pev->origin - (pevInflictor->absmin + pevInflictor->absmax) * 0.5;
+		Vector vecDir = pev->origin - (inflictor->pev->absmin + inflictor->pev->absmax) * 0.5;
 		vecDir = vecDir.Normalize();
 
 		float flForce = flDamage * ((32 * 32 * 72.0) / (pev->size.x * pev->size.y * pev->size.z)) * 5;
@@ -574,7 +700,7 @@ bool CBaseEntity::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, fl
 	pev->health -= flDamage;
 	if (pev->health <= 0)
 	{
-		Killed(pevAttacker, GIB_NORMAL);
+		Killed(attacker, GIB_NORMAL);
 		return false;
 	}
 
@@ -582,7 +708,7 @@ bool CBaseEntity::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, fl
 }
 
 
-void CBaseEntity::Killed(entvars_t* pevAttacker, int iGib)
+void CBaseEntity::Killed(CBaseEntity* attacker, int iGib)
 {
 	pev->takedamage = DAMAGE_NO;
 	pev->deadflag = DEAD_DEAD;
@@ -607,6 +733,15 @@ TYPEDESCRIPTION CBaseEntity::m_SaveData[] =
 		DEFINE_FIELD(CBaseEntity, m_pfnTouch, FIELD_FUNCTION),
 		DEFINE_FIELD(CBaseEntity, m_pfnUse, FIELD_FUNCTION),
 		DEFINE_FIELD(CBaseEntity, m_pfnBlocked, FIELD_FUNCTION),
+
+		DEFINE_FIELD(CBaseEntity, m_ModelReplacementFileName, FIELD_STRING),
+		DEFINE_FIELD(CBaseEntity, m_SoundReplacementFileName, FIELD_STRING),
+		DEFINE_FIELD(CBaseEntity, m_SentenceReplacementFileName, FIELD_STRING),
+
+		DEFINE_FIELD(CBaseEntity, m_CustomHullMin, FIELD_VECTOR),
+		DEFINE_FIELD(CBaseEntity, m_CustomHullMax, FIELD_VECTOR),
+		DEFINE_FIELD(CBaseEntity, m_HasCustomHullMin, FIELD_BOOLEAN),
+		DEFINE_FIELD(CBaseEntity, m_HasCustomHullMax, FIELD_BOOLEAN),
 };
 
 
@@ -635,7 +770,7 @@ bool CBaseEntity::Restore(CRestore& restore)
 		// Don't use UTIL_PrecacheModel here because we're restoring an already-replaced name.
 		UTIL_PrecacheModelDirect(STRING(pev->model));
 		SetModel(STRING(pev->model));
-		UTIL_SetSize(pev, mins, maxs); // Reset them
+		SetSize(mins, maxs); // Reset them
 	}
 
 	return status;
@@ -788,4 +923,24 @@ CBaseEntity* CBaseEntity::Create(const char* szName, const Vector& vecOrigin, co
 	entity->pev->angles = vecAngles;
 	DispatchSpawn(entity->edict());
 	return entity;
+}
+
+void CBaseEntity::EmitSound(int channel, const char* sample, float volume, float attenuation)
+{
+	sound::g_ServerSound.EmitSound(this, channel, sample, volume, attenuation, 0, PITCH_NORM);
+}
+
+void CBaseEntity::EmitSoundDyn(int channel, const char* sample, float volume, float attenuation, int flags, int pitch)
+{
+	sound::g_ServerSound.EmitSound(this, channel, sample, volume, attenuation, flags, pitch);
+}
+
+void CBaseEntity::EmitAmbientSound(const Vector& vecOrigin, const char* samp, float vol, float attenuation, int fFlags, int pitch)
+{
+	sound::g_ServerSound.EmitAmbientSound(this, vecOrigin, samp, vol, attenuation, fFlags, pitch);
+}
+
+void CBaseEntity::StopSound(int channel, const char* sample)
+{
+	sound::g_ServerSound.EmitSound(this, channel, sample, 0, 0, SND_STOP, PITCH_NORM);
 }

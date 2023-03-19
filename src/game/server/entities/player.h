@@ -17,9 +17,9 @@
 
 #include "basemonster.h"
 #include "gamerules.h"
-#include "pm_materials.h"
 #include "ctf/CTFDefs.h"
 #include "palette.h"
+#include "sound/MaterialSystem.h"
 
 class CRope;
 
@@ -146,8 +146,6 @@ public:
 	float m_flFallVelocity;
 
 	int m_rgItems[MAX_ITEMS];
-	bool m_fKnownItem; // True when a new item needs to be added
-	int m_fNewAmmo;	   // True when a new item has been added
 
 	unsigned int m_afPhysicsFlags; // physics flags - set when 'normal' physics should be revisited or overriden
 	float m_fNextSuicideTime;	   // the time after which the player can next use the suicide command
@@ -171,9 +169,9 @@ public:
 	float m_flgeigerRange; // range to nearest radiation source
 	float m_flgeigerDelay; // delay per update of range msg to client
 	int m_igeigerRangePrev;
-	int m_iStepLeft;						// alternate left/right foot stepping sound
-	char m_szTextureName[CBTEXTURENAMEMAX]; // current texture name we're standing on
-	char m_chTextureType;					// current texture type
+	int m_iStepLeft;					  // alternate left/right foot stepping sound
+	char m_szTextureName[TextureNameMax]; // current texture name we're standing on
+	char m_chTextureType;				  // current texture type
 
 	int m_idrowndmg;	  // track drowning damage taken
 	int m_idrownrestored; // track drowning damage restored
@@ -237,11 +235,11 @@ public:
 	float m_flShieldTime;
 	float m_flJumpTime;
 
-	// usable player items
-	CBasePlayerItem* m_rgpPlayerItems[MAX_ITEM_TYPES];
-	CBasePlayerItem* m_pActiveItem;
-	CBasePlayerItem* m_pClientActiveItem; // client version of the active item
-	CBasePlayerItem* m_pLastItem;
+	// usable player weapons
+	CBasePlayerWeapon* m_rgpPlayerWeapons[MAX_WEAPON_SLOTS];
+	CBasePlayerWeapon* m_pActiveWeapon;
+	CBasePlayerWeapon* m_pClientActiveWeapon; // client version of the active weapon
+	CBasePlayerWeapon* m_pLastWeapon;
 
 	std::uint64_t m_WeaponBits;
 
@@ -249,8 +247,8 @@ public:
 	std::uint64_t m_ClientWeaponBits;
 
 	// shared ammo slots
-	int m_rgAmmo[MAX_AMMO_SLOTS];
-	int m_rgAmmoLast[MAX_AMMO_SLOTS];
+	int m_rgAmmo[MAX_AMMO_TYPES];
+	int m_rgAmmoLast[MAX_AMMO_TYPES];
 
 	Vector m_vecAutoAim;
 	bool m_fOnTarget;
@@ -274,9 +272,9 @@ public:
 	virtual void PostThink();
 	Vector GetGunPosition() override;
 	bool TakeHealth(float flHealth, int bitsDamageType) override;
-	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 	Vector BodyTarget(const Vector& posSrc) override { return Center() + pev->view_ofs * RANDOM_FLOAT(0.5, 1.1); } // position to shoot at
 	void StartSneaking() override { m_tSneaking = gpGlobals->time - 1; }
 	void StopSneaking() override { m_tSneaking = gpGlobals->time + 30; }
@@ -294,7 +292,7 @@ public:
 	void RenewItems();
 	void PackDeadPlayerItems();
 	void RemoveAllItems(bool removeSuit);
-	bool SwitchWeapon(CBasePlayerItem* pWeapon);
+	bool SwitchWeapon(CBasePlayerWeapon* weapon);
 
 	/**
 	 *	@brief Equips an appropriate weapon for the player if they don't have one equipped already.
@@ -343,23 +341,28 @@ public:
 
 	void AddPoints(int score, bool bAllowNegativeScore);
 	void AddPointsToTeam(int score, bool bAllowNegativeScore);
-	bool AddPlayerItem(CBasePlayerItem* pItem);
-	bool RemovePlayerItem(CBasePlayerItem* pItem);
-	void DropPlayerItem(const char* pszItemName);
-	bool HasPlayerItem(CBasePlayerItem* pCheckItem);
-	bool HasNamedPlayerItem(const char* pszItemName);
+	bool AddPlayerWeapon(CBasePlayerWeapon* weapon);
+	bool RemovePlayerWeapon(CBasePlayerWeapon* weapon);
+	void DropPlayerWeapon(const char* pszItemName);
+	bool HasPlayerWeapon(CBasePlayerWeapon* checkWeapon);
+	bool HasNamedPlayerWeapon(const char* pszItemName);
 	bool HasWeapons(); // do I have ANY weapons?
 	void SelectPrevItem(int iItem);
 	void SelectNextItem(int iItem);
 	void SelectLastItem();
 	void SelectItem(const char* pstr);
+
+private:
+	void DeployWeapon(CBasePlayerWeapon* weapon);
+
+public:
 	void ItemPreFrame();
 	void ItemPostFrame();
 	void GiveNamedItem(const char* szName);
 	void GiveNamedItem(const char* szName, int defaultAmmo);
 	void EnableControl(bool fControl);
 
-	int GiveAmmo(int iAmount, const char* szName, int iMax);
+	int GiveAmmo(int iAmount, const char* szName);
 	void SendAmmoUpdate();
 	void SendSingleAmmoUpdate(int ammoIndex);
 
@@ -377,7 +380,7 @@ public:
 	void CheckTimeBasedDamage();
 
 	bool FBecomeProne() override;
-	void BarnacleVictimBitten(entvars_t* pevBarnacle) override;
+	void BarnacleVictimBitten(CBaseEntity* pevBarnacle) override;
 	void BarnacleVictimReleased() override;
 	static int GetAmmoIndex(const char* psz);
 	int AmmoInventory(int iAmmoIndex);
@@ -688,5 +691,4 @@ inline bool giPrecacheGrunt = false;
 /**
  *	@brief Display the game title if this key is set
  */
-inline DLL_GLOBAL std::string g_DisplayTitleName;
-inline DLL_GLOBAL CBaseEntity* g_pLastSpawn = nullptr;
+inline std::string g_DisplayTitleName;

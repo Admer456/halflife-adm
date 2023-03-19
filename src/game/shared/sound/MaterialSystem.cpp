@@ -13,195 +13,172 @@
  *
  ****/
 
-#include <cassert>
+#include <algorithm>
 
 #include "cbase.h"
 #include "MaterialSystem.h"
 
-// Texture names
-static bool bTextureTypeInit = false;
+#include "networking/NetworkDataSystem.h"
 
-static int gcTextures = 0;
-static char grgszTextureName[CTEXTURESMAX][CBTEXTURENAMEMAX];
-static char grgchTextureType[CTEXTURESMAX];
+#include "utils/JSONSystem.h"
 
-static char* memfgets(const std::byte* pMemFile, std::size_t fileSize, std::size_t& filePos, char* pBuffer, std::size_t bufferSize)
+constexpr std::size_t MinimumMaterialsCount = 512; // original max number of textures loaded
+
+constexpr std::string_view MaterialsConfigSchemaName{"MaterialsConfig"sv};
+
+static std::string GetMaterialsConfigSchema()
 {
-	// Bullet-proofing
-	if (!pMemFile || !pBuffer)
-		return nullptr;
-
-	if (filePos >= fileSize)
-		return nullptr;
-
-	std::size_t i = filePos;
-	std::size_t last = fileSize;
-
-	// fgets always nullptr terminates, so only read bufferSize-1 characters
-	if (last - filePos > (bufferSize - 1))
-		last = filePos + (bufferSize - 1);
-
-	bool stop = false;
-
-	const auto text = reinterpret_cast<const char*>(pMemFile);
-
-	// Stop at the next newline (inclusive) or end of buffer
-	while (i < last && !stop)
-	{
-		if (text[i] == '\n')
-			stop = true;
-		i++;
-	}
-
-
-	// If we actually advanced the pointer, copy it over
-	if (i != filePos)
-	{
-		// We read in size bytes
-		std::size_t size = i - filePos;
-		// copy it out
-		memcpy(pBuffer, text + filePos, sizeof(byte) * size);
-
-		// If the buffer isn't full, terminate (this is always true)
-		if (size < bufferSize)
-			pBuffer[size] = 0;
-
-		// Update file pointer
-		filePos = i;
-		return pBuffer;
-	}
-
-	// No data read, bail
-	return nullptr;
+	return fmt::format(R"(
+{{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Materials Definition File",
+	"type": "object",
+	"patternProperties": {{
+		"^\\w+$": {{
+			"type": "object",
+			"properties": {{
+				"Type": {{
+					"type": "string"
+				}}
+			}},
+			"required": ["Type"]
+		}}
+	}},
+	"additionalProperties": false
+}}
+)");
 }
 
-void PM_SwapTextures(int i, int j)
+bool MaterialSystem::Initialize()
 {
-	char chTemp;
-	char szTemp[CBTEXTURENAMEMAX];
+	m_Logger = g_Logging.CreateLogger("materials");
 
-	strcpy(szTemp, grgszTextureName[i]);
-	chTemp = grgchTextureType[i];
+	g_JSON.RegisterSchema(MaterialsConfigSchemaName, &GetMaterialsConfigSchema);
 
-	strcpy(grgszTextureName[i], grgszTextureName[j]);
-	grgchTextureType[i] = grgchTextureType[j];
+	g_NetworkData.RegisterHandler("MaterialSystem", this);
 
-	strcpy(grgszTextureName[j], szTemp);
-	grgchTextureType[j] = chTemp;
+	return true;
 }
 
-void PM_SortTextures()
+void MaterialSystem::Shutdown()
 {
-	// Bubble sort, yuck, but this only occurs at startup and it's only 512 elements...
-	//
-	int i, j;
+	g_Logging.RemoveLogger(m_Logger);
+	m_Logger.reset();
+}
 
-	for (i = 0; i < gcTextures; i++)
+void MaterialSystem::HandleNetworkDataBlock(NetworkDataBlock& block)
+{
+	if (block.Mode == NetworkDataMode::Serialize)
 	{
-		for (j = i + 1; j < gcTextures; j++)
+		// This configuration structure must be identical to the one loaded from files!
+		block.Data = json::object();
+
+		for (const auto& material : m_Materials)
 		{
-			if (stricmp(grgszTextureName[i], grgszTextureName[j]) > 0)
-			{
-				// Swap
-				//
-				PM_SwapTextures(i, j);
-			}
+			json mat = json::object();
+
+			mat.emplace("Type", std::string{material.second.Type});
+
+			block.Data.emplace(material.first.c_str(), std::move(mat));
 		}
+
+		g_NetworkData.GetLogger()->debug("Wrote {} materials to network data", m_Materials.size());
+	}
+	else
+	{
+		m_Materials.clear();
+
+		if (!ParseConfiguration(block.Data))
+		{
+			block.ErrorMessage = "Material network data has invalid format";
+			return;
+		}
+
+		g_NetworkData.GetLogger()->debug("Parsed {} materials from network data", m_Materials.size());
 	}
 }
 
-void PM_InitTextureTypes()
+void MaterialSystem::LoadMaterials(std::span<const std::string> fileNames)
 {
-	char buffer[512];
-	int i, j;
+	m_Materials.clear();
+	m_Materials.reserve(MinimumMaterialsCount);
 
-	if (bTextureTypeInit)
-		return;
-
-	memset(&(grgszTextureName[0][0]), 0, CTEXTURESMAX * CBTEXTURENAMEMAX);
-	memset(grgchTextureType, 0, CTEXTURESMAX);
-
-	gcTextures = 0;
-	memset(buffer, 0, 512);
-
-	const auto fileContents = FileSystem_LoadFileIntoBuffer("sound/materials.txt", FileContentFormat::Text);
-
-	if (fileContents.empty())
-		return;
-
-	std::size_t filePos = 0;
-	// for each line in the file...
-	while (memfgets(fileContents.data(), fileContents.size(), filePos, buffer, std::size(buffer) - 1) != nullptr && (gcTextures < CTEXTURESMAX))
+	for (const auto& fileName : fileNames)
 	{
-		// skip whitespace
-		i = 0;
-		while ('\0' != buffer[i] && 0 != isspace(buffer[i]))
-			i++;
+		m_Logger->trace("Loading {}", fileName);
 
-		if ('\0' == buffer[i])
-			continue;
-
-		// skip comment lines
-		if (buffer[i] == '/' || 0 == isalpha(buffer[i]))
-			continue;
-
-		// get texture type
-		grgchTextureType[gcTextures] = toupper(buffer[i++]);
-
-		// skip whitespace
-		while ('\0' != buffer[i] && 0 != isspace(buffer[i]))
-			i++;
-
-		if ('\0' == buffer[i])
-			continue;
-
-		// get sentence name
-		j = i;
-		while ('\0' != buffer[j] && 0 == isspace(buffer[j]))
-			j++;
-
-		if ('\0' == buffer[j])
-			continue;
-
-		// null-terminate name and save in sentences array
-		j = V_min(j, CBTEXTURENAMEMAX - 1 + i);
-		buffer[j] = 0;
-		strcpy(&(grgszTextureName[gcTextures++][0]), &(buffer[i]));
+		if (const auto result = g_JSON.ParseJSONFile(fileName.c_str(),
+				{.SchemaName = MaterialsConfigSchemaName},
+				[this](const json& input)
+				{ return ParseConfiguration(input); });
+			!result.value_or(false))
+		{
+			m_Logger->error("Error loading materials configuration file \"{}\"", fileName);
+		}
 	}
 
-	PM_SortTextures();
-
-	bTextureTypeInit = true;
+	m_Logger->debug("Loaded {} materials", m_Materials.size());
 }
 
-char PM_FindTextureType(char* name)
+const char* MaterialSystem::StripTexturePrefix(const char* name)
 {
-	int left, right, pivot;
-	int val;
-
-	assert(bTextureTypeInit);
-
-	left = 0;
-	right = gcTextures - 1;
-
-	while (left <= right)
+	// strip leading '-0' or '+0~' or '{' or '!'
+	if (*name == '-' || *name == '+')
 	{
-		pivot = (left + right) / 2;
+		name += 2;
+	}
 
-		val = strnicmp(name, grgszTextureName[pivot], CBTEXTURENAMEMAX - 1);
-		if (val == 0)
-		{
-			return grgchTextureType[pivot];
-		}
-		else if (val > 0)
-		{
-			left = pivot + 1;
-		}
-		else if (val < 0)
-		{
-			right = pivot - 1;
-		}
+	if (*name == '{' || *name == '!' || *name == '~' || *name == ' ')
+	{
+		++name;
+	}
+
+	return name;
+}
+
+char MaterialSystem::FindTextureType(const char* name) const
+{
+	TextureName upperName{name};
+
+	std::transform(upperName.begin(), upperName.end(), upperName.begin(), [](char c)
+		{ return std::toupper(c); });
+
+	if (auto it = m_Materials.find(upperName); it != m_Materials.end())
+	{
+		return it->second.Type;
 	}
 
 	return CHAR_TEX_CONCRETE;
+}
+
+bool MaterialSystem::ParseConfiguration(const json& input)
+{
+	if (!input.is_object())
+	{
+		return false;
+	}
+
+	for (const auto& [texture, mat] : input.items())
+	{
+		if (!mat.is_object())
+		{
+			return false;
+		}
+
+		const auto type = mat.value<std::string>("Type", {});
+
+		if (texture.empty() || type.empty())
+		{
+			return false;
+		}
+
+		TextureName name{texture.c_str()};
+
+		std::transform(name.begin(), name.end(), name.begin(), [](char c)
+			{ return std::toupper(c); });
+
+		m_Materials.insert_or_assign(std::move(name), Material{type.front()});
+	}
+
+	return true;
 }

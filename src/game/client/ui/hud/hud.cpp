@@ -25,6 +25,7 @@
 #include "demo.h"
 #include "demo_api.h"
 #include "vgui_ScorePanel.h"
+#include "HudSpriteConfigSystem.h"
 
 class CHLVoiceStatusHelper : public IVoiceStatusHelper
 {
@@ -70,9 +71,6 @@ public:
 };
 static CHLVoiceStatusHelper g_VoiceStatusHelper;
 
-
-extern client_sprite_t* GetSpriteList(client_sprite_t* pList, const char* psz, int iRes, int iCount);
-
 extern cvar_t* sensitivity;
 cvar_t* cl_lw = nullptr;
 cvar_t* cl_rollangle = nullptr;
@@ -80,55 +78,6 @@ cvar_t* cl_rollspeed = nullptr;
 cvar_t* cl_bobtilt = nullptr;
 
 void ShutdownInput();
-
-int __MsgFunc_HudColor(const char* pszName, int iSize, void* pbuf)
-{
-	return static_cast<int>(gHUD.MsgFunc_HudColor(pszName, iSize, pbuf));
-}
-
-// DECLARE_MESSAGE(m_Logo, Logo)
-int __MsgFunc_Logo(const char* pszName, int iSize, void* pbuf)
-{
-	return static_cast<int>(gHUD.MsgFunc_Logo(pszName, iSize, pbuf));
-}
-
-// DECLARE_MESSAGE(m_Logo, Logo)
-int __MsgFunc_ResetHUD(const char* pszName, int iSize, void* pbuf)
-{
-	return static_cast<int>(gHUD.MsgFunc_ResetHUD(pszName, iSize, pbuf));
-}
-
-int __MsgFunc_InitHUD(const char* pszName, int iSize, void* pbuf)
-{
-	gHUD.MsgFunc_InitHUD(pszName, iSize, pbuf);
-	return 1;
-}
-
-int __MsgFunc_ViewMode(const char* pszName, int iSize, void* pbuf)
-{
-	gHUD.MsgFunc_ViewMode(pszName, iSize, pbuf);
-	return 1;
-}
-
-int __MsgFunc_SetFOV(const char* pszName, int iSize, void* pbuf)
-{
-	return static_cast<int>(gHUD.MsgFunc_SetFOV(pszName, iSize, pbuf));
-}
-
-int __MsgFunc_Concuss(const char* pszName, int iSize, void* pbuf)
-{
-	return static_cast<int>(gHUD.MsgFunc_Concuss(pszName, iSize, pbuf));
-}
-
-int __MsgFunc_Weapons(const char* pszName, int iSize, void* pbuf)
-{
-	return static_cast<int>(gHUD.MsgFunc_Weapons(pszName, iSize, pbuf));
-}
-
-int __MsgFunc_GameMode(const char* pszName, int iSize, void* pbuf)
-{
-	return static_cast<int>(gHUD.MsgFunc_GameMode(pszName, iSize, pbuf));
-}
 
 // TFFree Command Menu
 void __CmdFunc_OpenCommandMenu()
@@ -164,161 +113,18 @@ void __CmdFunc_ForceCloseCommandMenu()
 	}
 }
 
-// TFFree Command Menu Message Handlers
-int __MsgFunc_ValClass(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_ValClass(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_TeamNames(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_TeamNames(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_Feign(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_Feign(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_Detpack(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_Detpack(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_VGUIMenu(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_VGUIMenu(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_MOTD(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_MOTD(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_BuildSt(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_BuildSt(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_RandomPC(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_RandomPC(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_ServerName(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_ServerName(pszName, iSize, pbuf));
-	return 0;
-}
-
-/*
-int __MsgFunc_ScoreInfo(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return gViewPort->MsgFunc_ScoreInfo(pszName, iSize, pbuf);
-	return 0;
-}
-
-int __MsgFunc_TeamScore(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return gViewPort->MsgFunc_TeamScore(pszName, iSize, pbuf);
-	return 0;
-}
-
-int __MsgFunc_TeamInfo(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return gViewPort->MsgFunc_TeamInfo(pszName, iSize, pbuf);
-	return 0;
-}
-*/
-
-int __MsgFunc_Spectator(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_Spectator(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_SpecFade(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_SpecFade(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_ResetFade(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_ResetFade(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_AllowSpec(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_AllowSpec(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_TeamFull(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_TeamFull(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_SetMenuTeam(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_SetMenuTeam(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_StatsInfo(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_StatsInfo(pszName, iSize, pbuf));
-	return 0;
-}
-
-int __MsgFunc_StatsPlayer(const char* pszName, int iSize, void* pbuf)
-{
-	if (gViewPort)
-		return static_cast<int>(gViewPort->MsgFunc_StatsPlayer(pszName, iSize, pbuf));
-	return 0;
-}
-
 // This is called every time the DLL is loaded
 void CHud::Init()
 {
-	HOOK_MESSAGE(HudColor);
-	HOOK_MESSAGE(Logo);
-	HOOK_MESSAGE(ResetHUD);
-	HOOK_MESSAGE(GameMode);
-	HOOK_MESSAGE(InitHUD);
-	HOOK_MESSAGE(ViewMode);
-	HOOK_MESSAGE(SetFOV);
-	HOOK_MESSAGE(Concuss);
-	HOOK_MESSAGE(Weapons);
+	g_ClientUserMessages.RegisterHandler("HudColor", &CHud::MsgFunc_HudColor, this);
+	g_ClientUserMessages.RegisterHandler("Logo", &CHud::MsgFunc_Logo, this);
+	g_ClientUserMessages.RegisterHandler("ResetHUD", &CHud::MsgFunc_ResetHUD, this);
+	g_ClientUserMessages.RegisterHandler("GameMode", &CHud::MsgFunc_GameMode, this);
+	g_ClientUserMessages.RegisterHandler("InitHUD", &CHud::MsgFunc_InitHUD, this);
+	g_ClientUserMessages.RegisterHandler("ViewMode", &CHud::MsgFunc_ViewMode, this);
+	g_ClientUserMessages.RegisterHandler("SetFOV", &CHud::MsgFunc_SetFOV, this);
+	g_ClientUserMessages.RegisterHandler("Concuss", &CHud::MsgFunc_Concuss, this);
+	g_ClientUserMessages.RegisterHandler("Weapons", &CHud::MsgFunc_Weapons, this);
 
 	// TFFree CommandMenu
 	HOOK_COMMAND("+commandmenu", OpenCommandMenu);
@@ -326,40 +132,8 @@ void CHud::Init()
 	HOOK_COMMAND("ForceCloseCommandMenu", ForceCloseCommandMenu);
 	HOOK_COMMAND("special", InputPlayerSpecial);
 
-	HOOK_MESSAGE(ValClass);
-	HOOK_MESSAGE(TeamNames);
-	HOOK_MESSAGE(Feign);
-	HOOK_MESSAGE(Detpack);
-	HOOK_MESSAGE(MOTD);
-	HOOK_MESSAGE(BuildSt);
-	HOOK_MESSAGE(RandomPC);
-	HOOK_MESSAGE(ServerName);
-
-	/*
-	HOOK_MESSAGE(ScoreInfo);
-	HOOK_MESSAGE(TeamScore);
-	HOOK_MESSAGE(TeamInfo);
-	*/
-
-	HOOK_MESSAGE(Spectator);
-	HOOK_MESSAGE(AllowSpec);
-	HOOK_MESSAGE(SetMenuTeam);
-	HOOK_MESSAGE(StatsInfo);
-	HOOK_MESSAGE(StatsPlayer);
-
-	HOOK_MESSAGE(SpecFade);
-	HOOK_MESSAGE(ResetFade);
-	HOOK_MESSAGE(TeamFull);
-
-	// VGUI Menus
-	HOOK_MESSAGE(VGUIMenu);
-
 	CVAR_CREATE("hud_classautokill", "1", FCVAR_ARCHIVE | FCVAR_USERINFO); // controls whether or not to suicide immediately on TF class switch
 	CVAR_CREATE("hud_takesshots", "0", FCVAR_ARCHIVE);					   // controls whether or not to automatically take screenshots at the end of a round
-
-
-	m_iLogo = 0;
-	m_iFOV = 0;
 
 	CVAR_CREATE("zoom_sensitivity_ratio", "1.2", 0);
 	CVAR_CREATE("cl_autowepswitch", "1", FCVAR_ARCHIVE | FCVAR_USERINFO);
@@ -372,23 +146,8 @@ void CHud::Init()
 	cl_rollspeed = CVAR_CREATE("cl_rollspeed", "200", FCVAR_ARCHIVE);
 	cl_bobtilt = CVAR_CREATE("cl_bobtilt", "0", FCVAR_ARCHIVE);
 
-	m_pSpriteList = nullptr;
-
 	// Clear any old HUD list
-	if (m_pHudList)
-	{
-		HUDLIST* pList;
-		while (m_pHudList)
-		{
-			pList = m_pHudList;
-			m_pHudList = m_pHudList->pNext;
-			free(pList);
-		}
-		m_pHudList = nullptr;
-	}
-
-	// In case we get messages before the first update -- time will be valid
-	m_flTime = 1.0;
+	m_HudList.clear();
 
 	m_Ammo.Init();
 	m_Health.Init();
@@ -420,38 +179,12 @@ void CHud::Shutdown()
 	GetClientVoiceMgr()->Shutdown();
 }
 
-// CHud destructor
-// cleans up memory allocated for m_rg* arrays
-CHud ::~CHud()
-{
-	delete[] m_rghSprites;
-	delete[] m_rgrcRects;
-	delete[] m_rgszSpriteNames;
-
-	if (m_pHudList)
-	{
-		HUDLIST* pList;
-		while (m_pHudList)
-		{
-			pList = m_pHudList;
-			m_pHudList = m_pHudList->pNext;
-			free(pList);
-		}
-		m_pHudList = nullptr;
-	}
-}
-
-// GetSpriteIndex()
-// searches through the sprite list loaded from hud.txt for a name matching SpriteName
-// returns an index into the gHUD.m_rghSprites[] array
-// returns 0 if sprite not found
 int CHud::GetSpriteIndex(const char* SpriteName)
 {
-	// look through the loaded sprite name list for SpriteName
-	for (int i = 0; i < m_iSpriteCount; i++)
+	for (std::size_t i = 0; i < m_Sprites.size(); ++i)
 	{
-		if (strncmp(SpriteName, m_rgszSpriteNames + (i * MAX_SPRITE_NAME_LENGTH), MAX_SPRITE_NAME_LENGTH) == 0)
-			return i;
+		if (SpriteName == m_Sprites[i].Name)
+			return static_cast<int>(i);
 	}
 
 	return -1; // invalid sprite
@@ -471,100 +204,41 @@ void CHud::VidInit()
 	m_hsprCursor = 0;
 
 	// Only load this once
-	if (!m_pSpriteList)
+	if (m_Sprites.empty())
 	{
-		// we need to load the hud.txt, and all sprites within
-		m_pSpriteList = SPR_GetList("sprites/hud.txt", &m_iSpriteCountAllRes);
-
-		if (m_pSpriteList)
-		{
-			// count the number of sprites of the appropriate res
-			m_iSpriteCount = 0;
-			client_sprite_t* p = m_pSpriteList;
-			int j;
-			for (j = 0; j < m_iSpriteCountAllRes; j++)
-			{
-				if (p->iRes == m_iRes)
-					m_iSpriteCount++;
-				p++;
-			}
-
-			// allocated memory for sprite handle arrays
-			m_rghSprites = new HSPRITE[m_iSpriteCount];
-			m_rgrcRects = new Rect[m_iSpriteCount];
-			m_rgszSpriteNames = new char[m_iSpriteCount * MAX_SPRITE_NAME_LENGTH];
-
-			p = m_pSpriteList;
-			int index = 0;
-			for (j = 0; j < m_iSpriteCountAllRes; j++)
-			{
-				if (p->iRes == m_iRes)
-				{
-					char sz[256];
-					sprintf(sz, "sprites/%s.spr", p->szSprite);
-					m_rghSprites[index] = SPR_Load(sz);
-					m_rgrcRects[index] = p->rc;
-					strncpy(&m_rgszSpriteNames[index * MAX_SPRITE_NAME_LENGTH], p->szName, MAX_SPRITE_NAME_LENGTH);
-
-					index++;
-				}
-
-				p++;
-			}
-		}
-	}
-	else
-	{
-		// we have already have loaded the sprite reference from hud.txt, but
-		// we need to make sure all the sprites have been loaded (we've gone through a transition, or loaded a save game)
-		client_sprite_t* p = m_pSpriteList;
-		int index = 0;
-		for (int j = 0; j < m_iSpriteCountAllRes; j++)
-		{
-			if (p->iRes == m_iRes)
-			{
-				char sz[256];
-				sprintf(sz, "sprites/%s.spr", p->szSprite);
-				m_rghSprites[index] = SPR_Load(sz);
-				index++;
-			}
-
-			p++;
-		}
+		// we need to load the hud.json, and all sprites within
+		m_Sprites = g_HudSpriteConfig.Load("sprites/hud.json");
 	}
 
-	// assumption: number_1, number_2, etc, are all listed and loaded sequentially
+	// we have already have loaded the sprite reference from hud.json, but
+	// we need to make sure all the sprites have been loaded (we've gone through a transition, or loaded a save game)
+	for (auto& hudSprite : m_Sprites)
+	{
+		hudSprite.Handle = SPR_Load(fmt::format("sprites/{}.spr", hudSprite.SpriteName.c_str()).c_str());
+	}
+
 	m_HUD_number_0 = GetSpriteIndex("number_0");
 
-	m_iFontHeight = m_rgrcRects[m_HUD_number_0].bottom - m_rgrcRects[m_HUD_number_0].top;
+	// TODO: make sure these actually exist
+	for (int i = 0; i < 10; ++i)
+	{
+		m_HudNumbers[i] = GetSpriteIndex(fmt::format("number_{}", i).c_str());
+	}
+
+	const auto& numberRect = m_Sprites[m_HUD_number_0].Rectangle;
+	m_iFontHeight = numberRect.bottom - numberRect.top;
 
 	// Reset to default on new map load
 	m_HudColor = RGB_HUD_COLOR;
 	m_HudItemColor = RGB_HUD_COLOR;
 
-	m_Ammo.VidInit();
-	m_Health.VidInit();
-	m_Spectator.VidInit();
-	m_Geiger.VidInit();
-	m_Train.VidInit();
-	m_Battery.VidInit();
-	m_Flash.VidInit();
-	m_Message.VidInit();
-	m_Scoreboard.VidInit();
-	m_StatusBar.VidInit();
-	m_DeathNotice.VidInit();
-	m_SayText.VidInit();
-	m_Menu.VidInit();
-	m_TextMessage.VidInit();
-	m_StatusIcons.VidInit();
-	m_FlagIcons.VidInit();
-	m_PlayerBrowse.VidInit();
-	m_ProjectInfo.VidInit();
-	m_EntityInfo.VidInit();
-	GetClientVoiceMgr()->VidInit();
+	for (auto hudElement : m_HudList)
+	{
+		hudElement->VidInit();
+	}
 }
 
-bool CHud::MsgFunc_HudColor(const char* pszName, int iSize, void* pbuf)
+void CHud::MsgFunc_HudColor(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 
@@ -577,18 +251,14 @@ bool CHud::MsgFunc_HudColor(const char* pszName, int iSize, void* pbuf)
 	{
 		m_HudItemColor = m_HudColor;
 	}
-
-	return true;
 }
 
-bool CHud::MsgFunc_Logo(const char* pszName, int iSize, void* pbuf)
+void CHud::MsgFunc_Logo(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 
 	// update Train data
-	m_iLogo = READ_BYTE();
-
-	return true;
+	m_ShowLogo = READ_BYTE() != 0;
 }
 
 float g_lastFOV = 0.0;
@@ -685,7 +355,7 @@ float HUD_GetFOV()
 	return g_lastFOV;
 }
 
-bool CHud::MsgFunc_SetFOV(const char* pszName, int iSize, void* pbuf)
+void CHud::MsgFunc_SetFOV(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 
@@ -723,39 +393,17 @@ bool CHud::MsgFunc_SetFOV(const char* pszName, int iSize, void* pbuf)
 		// set a new sensitivity that is proportional to the change from the FOV default
 		m_flMouseSensitivity = sensitivity->value * ((float)newfov / (float)def_fov) * CVAR_GET_FLOAT("zoom_sensitivity_ratio");
 	}
-
-	return true;
 }
 
 
 void CHud::AddHudElem(CHudBase* phudelem)
 {
-	HUDLIST *pdl, *ptemp;
-
 	// phudelem->Think();
 
 	if (!phudelem)
 		return;
 
-	pdl = (HUDLIST*)malloc(sizeof(HUDLIST));
-	if (!pdl)
-		return;
-
-	memset(pdl, 0, sizeof(HUDLIST));
-	pdl->p = phudelem;
-
-	if (!m_pHudList)
-	{
-		m_pHudList = pdl;
-		return;
-	}
-
-	ptemp = m_pHudList;
-
-	while (ptemp->pNext)
-		ptemp = ptemp->pNext;
-
-	ptemp->pNext = pdl;
+	m_HudList.push_back(phudelem);
 }
 
 float CHud::GetSensitivity()

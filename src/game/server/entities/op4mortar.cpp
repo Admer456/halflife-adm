@@ -66,7 +66,7 @@ void CMortarShell::Spawn()
 
 	SetModel("models/mortarshell.mdl");
 
-	UTIL_SetSize(pev, g_vecZero, g_vecZero);
+	SetSize(g_vecZero, g_vecZero);
 	UTIL_SetOrigin(pev, pev->origin);
 
 	SetThink(&CMortarShell::BurnThink);
@@ -121,7 +121,7 @@ void CMortarShell::FlyThink()
 	if (pev->velocity.z < 20.0 && !m_iSoundedOff)
 	{
 		m_iSoundedOff = true;
-		EMIT_SOUND(edict(), CHAN_VOICE, "weapons/ofmortar.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NONE);
+		EmitSound(CHAN_VOICE, "weapons/ofmortar.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NONE);
 	}
 
 	pev->nextthink = gpGlobals->time + 0.1;
@@ -150,28 +150,16 @@ void CMortarShell::MortarExplodeTouch(CBaseEntity* pOther)
 
 	const auto contents = UTIL_PointContents(pev->origin);
 
-	MESSAGE_BEGIN(MSG_PAS, SVC_TEMPENTITY, pev->origin);
-	WRITE_BYTE(TE_EXPLOSION);
-	WRITE_COORD(pev->origin.x);
-	WRITE_COORD(pev->origin.y);
-	WRITE_COORD(pev->origin.z);
-
-	if (contents == CONTENTS_WATER)
-		g_engfuncs.pfnWriteShort(g_sModelIndexWExplosion);
-	else
-		g_engfuncs.pfnWriteShort(g_sModelIndexFireball);
-
-	WRITE_BYTE(static_cast<int>((pev->dmg - 50.0) * 5.0));
-	WRITE_BYTE(10);
-	WRITE_BYTE(TE_EXPLFLAG_NONE);
-	MESSAGE_END();
+	UTIL_ExplosionEffect(pev->origin, contents == CONTENTS_WATER ? g_sModelIndexWExplosion : g_sModelIndexFireball,
+		static_cast<int>((pev->dmg - 50.0) * 5.0), 10, TE_EXPLFLAG_NONE,
+		MSG_PAS, pev->origin);
 
 	CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, 1024, 3.0);
 
-	auto pOwner = VARS(pev->owner);
+	auto pOwner = GetOwner();
 	pev->owner = nullptr;
 
-	RadiusDamage(pev, pOwner, pev->dmg, CLASS_NONE, 64);
+	RadiusDamage(this, pOwner, pev->dmg, CLASS_NONE, 64);
 
 	if (RANDOM_FLOAT(0, 1) >= 0.5)
 		UTIL_DecalTrace(&tr, DECAL_SCORCH2);
@@ -184,13 +172,13 @@ void CMortarShell::MortarExplodeTouch(CBaseEntity* pOther)
 	switch (RANDOM_LONG(0, 2))
 	{
 	case 0:
-		EMIT_SOUND(edict(), CHAN_VOICE, "weapons/debris1.wav", 0.55, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "weapons/debris1.wav", 0.55, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(edict(), CHAN_VOICE, "weapons/debris2.wav", 0.55, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "weapons/debris2.wav", 0.55, ATTN_NORM);
 		break;
 	case 2:
-		EMIT_SOUND(edict(), CHAN_VOICE, "weapons/debris3.wav", 0.55, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "weapons/debris3.wav", 0.55, ATTN_NORM);
 		break;
 	}
 
@@ -252,7 +240,7 @@ public:
 
 	void EXPORT MortarThink();
 
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 
 	void PlaySound();
 
@@ -475,7 +463,7 @@ void COp4Mortar::MortarThink()
 				{
 					if (gpGlobals->time - m_fireLast > m_fireDelay)
 					{
-						EMIT_SOUND(edict(), CHAN_VOICE, "weapons/mortarhit.wav", VOL_NORM, ATTN_NORM);
+						EmitSound(CHAN_VOICE, "weapons/mortarhit.wav", VOL_NORM, ATTN_NORM);
 						UTIL_ScreenShake(pev->origin, 12.0, 100.0, 2.0, 1000.0);
 
 						Vector vecPos, vecAngle;
@@ -508,15 +496,15 @@ void COp4Mortar::MortarThink()
 	}
 }
 
-bool COp4Mortar::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool COp4Mortar::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	// Ignore all damage
-	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, 0, bitsDamageType);
+	return CBaseMonster::TakeDamage(inflictor, attacker, 0, bitsDamageType);
 }
 
 void COp4Mortar::PlaySound()
 {
-	EMIT_SOUND(edict(), CHAN_VOICE, "player/pl_grate1.wav", VOL_NORM, ATTN_NORM);
+	EmitSound(CHAN_VOICE, "player/pl_grate1.wav", VOL_NORM, ATTN_NORM);
 }
 
 void COp4Mortar::Off()
@@ -762,7 +750,7 @@ void COp4Mortar::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE use
 		if ((pev->spawnflags & SF_MORTAR_ACTIVE) == 0 && (pev->spawnflags & SF_MORTAR_CONTROLLABLE) != 0)
 		{
 			// Player fired a mortar
-			EMIT_SOUND(edict(), CHAN_VOICE, "weapons/mortarhit.wav", VOL_NORM, ATTN_NONE);
+			EmitSound(CHAN_VOICE, "weapons/mortarhit.wav", VOL_NORM, ATTN_NONE);
 			UTIL_ScreenShake(pev->origin, 12.0, 100.0, 2.0, 1000.0);
 
 			Vector pos, angle;
@@ -862,7 +850,7 @@ void COp4MortarController::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, US
 
 	for (auto pEntity : UTIL_FindEntitiesByTargetname<COp4Mortar>(STRING(pev->target)))
 	{
-		if (FClassnameIs(pEntity->pev, "op4mortar"))
+		if (pEntity->ClassnameIs("op4mortar"))
 		{
 			pEntity->UpdatePosition(m_direction, m_controller);
 		}

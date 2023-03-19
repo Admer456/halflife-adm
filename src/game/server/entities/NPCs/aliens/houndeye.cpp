@@ -302,11 +302,11 @@ void CHoundeye::HandleAnimEvent(MonsterEvent_t* pEvent)
 		break;
 
 	case HOUND_AE_ANGERSOUND1:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_pain3.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_pain3.wav", 1, ATTN_NORM);
 		break;
 
 	case HOUND_AE_ANGERSOUND2:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_pain1.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_pain1.wav", 1, ATTN_NORM);
 		break;
 
 	case HOUND_AE_CLOSE_EYE:
@@ -330,7 +330,7 @@ void CHoundeye::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 36));
+	SetSize(Vector(-16, -16, 0), Vector(16, 16, 36));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -392,13 +392,13 @@ void CHoundeye::IdleSound()
 	switch (RANDOM_LONG(0, 2))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_idle1.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_idle1.wav", 1, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_idle2.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_idle2.wav", 1, ATTN_NORM);
 		break;
 	case 2:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_idle3.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_idle3.wav", 1, ATTN_NORM);
 		break;
 	}
 }
@@ -411,10 +411,10 @@ void CHoundeye::WarmUpSound()
 	switch (RANDOM_LONG(0, 1))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "houndeye/he_attack1.wav", 0.7, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "houndeye/he_attack1.wav", 0.7, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "houndeye/he_attack3.wav", 0.7, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "houndeye/he_attack3.wav", 0.7, ATTN_NORM);
 		break;
 	}
 }
@@ -427,13 +427,13 @@ void CHoundeye::WarnSound()
 	switch (RANDOM_LONG(0, 2))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_hunt1.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_hunt1.wav", 1, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_hunt2.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_hunt2.wav", 1, ATTN_NORM);
 		break;
 	case 2:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_hunt3.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_hunt3.wav", 1, ATTN_NORM);
 		break;
 	}
 }
@@ -452,13 +452,13 @@ void CHoundeye::AlertSound()
 	switch (RANDOM_LONG(0, 2))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_alert1.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_alert1.wav", 1, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_alert2.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_alert2.wav", 1, ATTN_NORM);
 		break;
 	case 2:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_alert3.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_alert3.wav", 1, ATTN_NORM);
 		break;
 	}
 }
@@ -471,13 +471,13 @@ void CHoundeye::DeathSound()
 	switch (RANDOM_LONG(0, 2))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_die1.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_die1.wav", 1, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_die2.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_die2.wav", 1, ATTN_NORM);
 		break;
 	case 2:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_die3.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_die3.wav", 1, ATTN_NORM);
 		break;
 	}
 }
@@ -490,13 +490,13 @@ void CHoundeye::PainSound()
 	switch (RANDOM_LONG(0, 2))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_pain3.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_pain3.wav", 1, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_pain4.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_pain4.wav", 1, ATTN_NORM);
 		break;
 	case 2:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "houndeye/he_pain5.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "houndeye/he_pain5.wav", 1, ATTN_NORM);
 		break;
 	}
 }
@@ -562,13 +562,13 @@ void CHoundeye::SonicAttack()
 	switch (RANDOM_LONG(0, 2))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "houndeye/he_blast1.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "houndeye/he_blast1.wav", 1, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "houndeye/he_blast2.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "houndeye/he_blast2.wav", 1, ATTN_NORM);
 		break;
 	case 2:
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "houndeye/he_blast3.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "houndeye/he_blast3.wav", 1, ATTN_NORM);
 		break;
 	}
 
@@ -622,7 +622,7 @@ void CHoundeye::SonicAttack()
 	{
 		if (pEntity->pev->takedamage != DAMAGE_NO)
 		{
-			if (!FClassnameIs(pEntity->pev, "monster_houndeye"))
+			if (!pEntity->ClassnameIs("monster_houndeye"))
 			{ // houndeyes don't hurt other houndeyes with their attack
 
 				// houndeyes do FULL damage if the ent in question is visible. Half damage otherwise.
@@ -653,7 +653,7 @@ void CHoundeye::SonicAttack()
 						// so that monsters in other parts of the level don't take the damage and get pissed.
 						flAdjustedDamage *= 0.5;
 					}
-					else if (!FClassnameIs(pEntity->pev, "func_breakable") && !FClassnameIs(pEntity->pev, "func_pushable"))
+					else if (!pEntity->ClassnameIs("func_breakable") && !pEntity->ClassnameIs("func_pushable"))
 					{
 						// do not hurt nonclients through walls, but allow damage to be done to breakables
 						flAdjustedDamage = 0;
@@ -664,7 +664,7 @@ void CHoundeye::SonicAttack()
 
 				if (flAdjustedDamage > 0)
 				{
-					pEntity->TakeDamage(pev, pev, flAdjustedDamage, DMG_SONIC | DMG_ALWAYSGIB);
+					pEntity->TakeDamage(this, this, flAdjustedDamage, DMG_SONIC | DMG_ALWAYSGIB);
 				}
 			}
 		}
@@ -731,8 +731,8 @@ void CHoundeye::StartTask(Task_t* pTask)
 								// draw a beam.
 								MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
 									WRITE_BYTE( TE_BEAMENTS );
-									WRITE_SHORT( ENTINDEX( this->edict() ) );
-									WRITE_SHORT( ENTINDEX( pSquad->edict() ) );
+									WRITE_SHORT(entindex());
+									WRITE_SHORT(pSquad->entindex());
 									WRITE_SHORT( m_iSpriteTexture );
 									WRITE_BYTE( 0 ); // framestart
 									WRITE_BYTE( 0 ); // framerate

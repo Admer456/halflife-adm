@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include <bit>
+
 #include "event_flags.h"
 
 // Must be provided by user of this code
@@ -25,7 +27,6 @@ inline enginefuncs_t g_engfuncs;
 #define GETPLAYERUSERID (*g_engfuncs.pfnGetPlayerUserId)
 #define MODEL_INDEX (*g_engfuncs.pfnModelIndex)
 #define MODEL_FRAMES (*g_engfuncs.pfnModelFrames)
-#define SET_SIZE (*g_engfuncs.pfnSetSize)
 #define CHANGE_LEVEL (*g_engfuncs.pfnChangeLevel)
 #define GET_SPAWN_PARMS (*g_engfuncs.pfnGetSpawnParms)
 #define SAVE_SPAWN_PARMS (*g_engfuncs.pfnSaveSpawnParms)
@@ -34,7 +35,6 @@ inline enginefuncs_t g_engfuncs;
 #define MOVE_TO_ORIGIN (*g_engfuncs.pfnMoveToOrigin)
 #define oldCHANGE_YAW (*g_engfuncs.pfnChangeYaw)
 #define CHANGE_PITCH (*g_engfuncs.pfnChangePitch)
-#define MAKE_VECTORS (*g_engfuncs.pfnMakeVectors)
 #define CREATE_ENTITY (*g_engfuncs.pfnCreateEntity)
 #define REMOVE_ENTITY (*g_engfuncs.pfnRemoveEntity)
 #define MAKE_STATIC (*g_engfuncs.pfnMakeStatic)
@@ -83,6 +83,11 @@ inline void WRITE_RGB24(RGB24 color)
 	WRITE_BYTE(color.Red);
 	WRITE_BYTE(color.Green);
 	WRITE_BYTE(color.Blue);
+}
+
+inline void WRITE_FLOAT(float value)
+{
+	WRITE_LONG(std::bit_cast<int>(value));
 }
 
 #define CVAR_REGISTER (*g_engfuncs.pfnCVarRegister)

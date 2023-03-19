@@ -28,7 +28,6 @@ inline int gmsgDamage = 0;
 inline int gmsgBattery = 0;
 inline int gmsgTrain = 0;
 inline int gmsgLogo = 0;
-inline int gmsgWeaponList = 0;
 inline int gmsgAmmoX = 0;
 inline int gmsgHudText = 0;
 inline int gmsgDeathMsg = 0;
@@ -70,10 +69,10 @@ inline int gmsgTeamFull = 0;
 inline int gmsgCustomIcon = 0;
 inline int gmsgWeapons = 0;
 
-inline int gmsgProjectInfo = 0;
 inline int gmsgEntityInfo = 0;
 
 inline int gmsgEmitSound = 0;
-inline int gmsgSoundRpl = 0;
+
+inline int gmsgTempEntity = 0;
 
 void LinkUserMessages();

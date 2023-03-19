@@ -147,8 +147,8 @@ public:
 	CBaseEntity* Kick();
 	Schedule_t* GetSchedule() override;
 	Schedule_t* GetScheduleOfType(int Type) override;
-	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 
 	int IRelationship(CBaseEntity* pTarget) override;
 
@@ -264,7 +264,7 @@ void CShockTrooper::SpeakSentence()
 
 	if (FOkToSpeak())
 	{
-		sentences::g_Sentences.PlayRndSz(ENT(pev), pGruntSentences[m_iSentence], ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+		sentences::g_Sentences.PlayRndSz(this, pGruntSentences[m_iSentence], ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 		JustSpoke();
 	}
 }
@@ -275,7 +275,7 @@ void CShockTrooper::SpeakSentence()
 //=========================================================
 int CShockTrooper::IRelationship(CBaseEntity* pTarget)
 {
-	if (FClassnameIs(pTarget->pev, "monster_alien_grunt") || (FClassnameIs(pTarget->pev, "monster_gargantua")))
+	if (pTarget->ClassnameIs("monster_alien_grunt") || (pTarget->ClassnameIs("monster_gargantua")))
 	{
 		return R_NM;
 	}
@@ -311,7 +311,7 @@ void CShockTrooper::GibMonster()
 		// TODO: change body group
 	}
 
-	EMIT_SOUND(ENT(pev), CHAN_WEAPON, "common/bodysplat.wav", 1, ATTN_NORM);
+	EmitSound(CHAN_WEAPON, "common/bodysplat.wav", 1, ATTN_NORM);
 
 	if (CVAR_GET_FLOAT("violence_agibs") != 0) // Should never get here, but someone might call it directly
 	{
@@ -612,9 +612,9 @@ bool CShockTrooper::CheckRangeAttack2(float flDot, float flDist)
 //=========================================================
 // TraceAttack - make sure we're not taking it in the helmet
 //=========================================================
-void CShockTrooper::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void CShockTrooper::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
-	CSquadMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+	CSquadMonster::TraceAttack(attacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
 
@@ -623,11 +623,11 @@ void CShockTrooper::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector v
 // needs to forget that he is in cover if he's hurt. (Obviously
 // not in a safe place anymore).
 //=========================================================
-bool CShockTrooper::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CShockTrooper::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	Forget(bits_MEMORY_INCOVER);
 
-	return CSquadMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	return CSquadMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
 //=========================================================
@@ -687,15 +687,15 @@ void CShockTrooper::IdleSound()
 			switch (RANDOM_LONG(0, 2))
 			{
 			case 0: // check in
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_CHECK", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(this, "ST_CHECK", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				g_fShockTrooperQuestion = 1;
 				break;
 			case 1: // question
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_QUEST", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(this, "ST_QUEST", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				g_fShockTrooperQuestion = 2;
 				break;
 			case 2: // statement
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_IDLE", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(this, "ST_IDLE", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			}
 		}
@@ -704,10 +704,10 @@ void CShockTrooper::IdleSound()
 			switch (g_fShockTrooperQuestion)
 			{
 			case 1: // check in
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_CLEAR", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(this, "ST_CLEAR", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			case 2: // question
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_ANSWER", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(this, "ST_ANSWER", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			}
 			g_fShockTrooperQuestion = 0;
@@ -818,9 +818,6 @@ void CShockTrooper::Shoot()
 //=========================================================
 void CShockTrooper::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
-	Vector vecShootDir;
-	Vector vecShootOrigin;
-
 	switch (pEvent->event)
 	{
 	case STROOPER_AE_DROP_GUN:
@@ -883,7 +880,7 @@ void CShockTrooper::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 		Shoot();
 
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/shock_fire.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "weapons/shock_fire.wav", 1, ATTN_NORM);
 
 		CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, 384, 0.3);
 	}
@@ -899,7 +896,7 @@ void CShockTrooper::HandleAnimEvent(MonsterEvent_t* pEvent)
 			UTIL_MakeVectors(pev->angles);
 			pHurt->pev->punchangle.x = 15;
 			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 100 + gpGlobals->v_up * 50;
-			pHurt->TakeDamage(pev, pev, GetSkillFloat("shocktrooper_kick"sv), DMG_CLUB);
+			pHurt->TakeDamage(this, this, GetSkillFloat("shocktrooper_kick"sv), DMG_CLUB);
 		}
 	}
 	break;
@@ -908,7 +905,7 @@ void CShockTrooper::HandleAnimEvent(MonsterEvent_t* pEvent)
 	{
 		if (FOkToSpeak())
 		{
-			sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_ALERT", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+			sentences::g_Sentences.PlayRndSz(this, "ST_ALERT", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 			JustSpoke();
 		}
 	}
@@ -927,7 +924,7 @@ void CShockTrooper::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-24, -24, 0), Vector(24, 24, 72));
+	SetSize(Vector(-24, -24, 0), Vector(24, 24, 72));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -1088,7 +1085,7 @@ void CShockTrooper::PainSound()
 			// pain sentences are rare
 			if (FOkToSpeak())
 			{
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_PAIN", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, PITCH_NORM);
+				sentences::g_Sentences.PlayRndSz(this, "ST_PAIN", ShockTrooper_SENTENCE_VOLUME, ATTN_NORM, 0, PITCH_NORM);
 				JustSpoke();
 				return;
 			}
@@ -1098,19 +1095,19 @@ void CShockTrooper::PainSound()
 		{
 		case 0:
 			// TODO: the directory names should be lowercase
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "ShockTrooper/shock_trooper_pain3.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "ShockTrooper/shock_trooper_pain3.wav", 1, ATTN_NORM);
 			break;
 		case 1:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "ShockTrooper/shock_trooper_pain4.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "ShockTrooper/shock_trooper_pain4.wav", 1, ATTN_NORM);
 			break;
 		case 2:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "ShockTrooper/shock_trooper_pain5.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "ShockTrooper/shock_trooper_pain5.wav", 1, ATTN_NORM);
 			break;
 		case 3:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "ShockTrooper/shock_trooper_pain1.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "ShockTrooper/shock_trooper_pain1.wav", 1, ATTN_NORM);
 			break;
 		case 4:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "ShockTrooper/shock_trooper_pain2.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "ShockTrooper/shock_trooper_pain2.wav", 1, ATTN_NORM);
 			break;
 		}
 
@@ -1723,7 +1720,6 @@ IMPLEMENT_CUSTOM_SCHEDULES(CShockTrooper, CSquadMonster);
 void CShockTrooper::SetActivity(Activity NewActivity)
 {
 	int iSequence = ACTIVITY_NOT_AVAILABLE;
-	void* pmodel = GET_MODEL_PTR(ENT(pev));
 
 	switch (NewActivity)
 	{
@@ -1851,7 +1847,7 @@ Schedule_t* CShockTrooper::GetSchedule()
 
 				if (FOkToSpeak())
 				{
-					sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_GREN", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(this, "ST_GREN", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_TAKE_COVER_FROM_BEST_SOUND);
@@ -1900,13 +1896,13 @@ Schedule_t* CShockTrooper::GetSchedule()
 					{
 						if ((m_hEnemy != nullptr) && m_hEnemy->IsPlayer())
 							// player
-							sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_ALERT", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+							sentences::g_Sentences.PlayRndSz(this, "ST_ALERT", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 						else if ((m_hEnemy != nullptr) &&
 								 (m_hEnemy->Classify() != CLASS_PLAYER_ALLY) &&
 								 (m_hEnemy->Classify() != CLASS_HUMAN_PASSIVE) &&
 								 (m_hEnemy->Classify() != CLASS_MACHINE))
 							// monster
-							sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_MONST", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+							sentences::g_Sentences.PlayRndSz(this, "ST_MONST", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 
 						JustSpoke();
 					}
@@ -1946,7 +1942,7 @@ Schedule_t* CShockTrooper::GetSchedule()
 				//!!!KELLY - this grunt was hit and is going to run to cover.
 				if (FOkToSpeak()) // && RANDOM_LONG(0,1))
 				{
-					// sentences::g_Sentences.PlayRndSz( ENT(pev), "ST_COVER", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					// sentences::g_Sentences.PlayRndSz(this, "ST_COVER", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					m_iSentence = ShockTrooper_SENT_COVER;
 					// JustSpoke();
 				}
@@ -2001,7 +1997,7 @@ Schedule_t* CShockTrooper::GetSchedule()
 				//!!!KELLY - this grunt is about to throw or fire a grenade at the player. Great place for "fire in the hole"  "frag out" etc
 				if (FOkToSpeak())
 				{
-					sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_THROW", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(this, "ST_THROW", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_RANGE_ATTACK2);
@@ -2012,7 +2008,7 @@ Schedule_t* CShockTrooper::GetSchedule()
 				// charge the enemy's position.
 				if (FOkToSpeak()) // && RANDOM_LONG(0,1))
 				{
-					// sentences::g_Sentences.PlayRndSz( ENT(pev), "ST_CHARGE", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					// sentences::g_Sentences.PlayRndSz(this, "ST_CHARGE", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					m_iSentence = ShockTrooper_SENT_CHARGE;
 					// JustSpoke();
 				}
@@ -2026,7 +2022,7 @@ Schedule_t* CShockTrooper::GetSchedule()
 				// grunt's covered position. Good place for a taunt, I guess?
 				if (FOkToSpeak() && RANDOM_LONG(0, 1))
 				{
-					sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_TAUNT", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(this, "ST_TAUNT", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_STANDOFF);
@@ -2058,7 +2054,7 @@ Schedule_t* CShockTrooper::GetScheduleOfType(int Type)
 			{
 				if (FOkToSpeak())
 				{
-					sentences::g_Sentences.PlayRndSz(ENT(pev), "ST_THROW", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(this, "ST_THROW", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return slShockTrooperTossGrenadeCover;

@@ -84,7 +84,7 @@ void CBaseHGruntAlly::SpeakSentence()
 
 	if (FOkToSpeak())
 	{
-		sentences::g_Sentences.PlayRndSz(ENT(pev), pGruntSentences[m_iSentence], HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+		sentences::g_Sentences.PlayRndSz(this, pGruntSentences[m_iSentence], HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 		JustSpoke();
 	}
 }
@@ -411,7 +411,7 @@ bool CBaseHGruntAlly::CheckRangeAttack2(float flDot, float flDist)
 //=========================================================
 // TraceAttack - make sure we're not taking it in the helmet
 //=========================================================
-void CBaseHGruntAlly::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void CBaseHGruntAlly::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	// check for helmet shot
 	if (ptr->iHitgroup == 11)
@@ -437,7 +437,7 @@ void CBaseHGruntAlly::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector
 		flDamage *= 0.5;
 	}
 
-	COFSquadTalkMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+	COFSquadTalkMonster::TraceAttack(attacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
 //=========================================================
@@ -445,24 +445,24 @@ void CBaseHGruntAlly::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector
 // needs to forget that he is in cover if he's hurt. (Obviously
 // not in a safe place anymore).
 //=========================================================
-bool CBaseHGruntAlly::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CBaseHGruntAlly::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	// make sure friends talk about it if player hurts talkmonsters...
-	bool ret = COFSquadTalkMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	bool ret = COFSquadTalkMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 
 	if (!IsAlive() || pev->deadflag != DEAD_NO)
 		return ret;
 
 	Forget(bits_MEMORY_INCOVER);
 
-	if (m_MonsterState != MONSTERSTATE_PRONE && (pevAttacker->flags & FL_CLIENT) != 0)
+	if (m_MonsterState != MONSTERSTATE_PRONE && (attacker->pev->flags & FL_CLIENT) != 0)
 	{
 		// This is a heurstic to determine if the player intended to harm me
 		// If I have an enemy, we can't establish intent (may just be crossfire)
 		if (m_hEnemy == nullptr)
 		{
 			// If the player was facing directly at me, or I'm already suspicious, get mad
-			if (gpGlobals->time - m_flLastHitByPlayer < 4.0 && m_iPlayerHits > 2 && ((m_afMemory & bits_MEMORY_SUSPICIOUS) != 0 || IsFacing(pevAttacker, pev->origin)))
+			if (gpGlobals->time - m_flLastHitByPlayer < 4.0 && m_iPlayerHits > 2 && ((m_afMemory & bits_MEMORY_SUSPICIOUS) != 0 || IsFacing(attacker, pev->origin)))
 			{
 				// Alright, now I'm pissed!
 				PlaySentence("FG_MAD", 4, VOL_NORM, ATTN_NORM);
@@ -553,15 +553,15 @@ void CBaseHGruntAlly::IdleSound()
 			switch (RANDOM_LONG(0, 2))
 			{
 			case 0: // check in
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_CHECK", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(this, "FG_CHECK", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				g_fGruntAllyQuestion = 1;
 				break;
 			case 1: // question
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_QUEST", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(this, "FG_QUEST", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				g_fGruntAllyQuestion = 2;
 				break;
 			case 2: // statement
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_IDLE", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(this, "FG_IDLE", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			}
 		}
@@ -570,10 +570,10 @@ void CBaseHGruntAlly::IdleSound()
 			switch (g_fGruntAllyQuestion)
 			{
 			case 1: // check in
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_CLEAR", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(this, "FG_CLEAR", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			case 2: // question
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_ANSWER", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
+				sentences::g_Sentences.PlayRndSz(this, "FG_ANSWER", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, m_voicePitch);
 				break;
 			}
 			g_fGruntAllyQuestion = 0;
@@ -672,7 +672,7 @@ void CBaseHGruntAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 	{
 		if (CanUseGrenadeLauncher())
 		{
-			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/glauncher.wav", 0.8, ATTN_NORM);
+			EmitSound(CHAN_WEAPON, "weapons/glauncher.wav", 0.8, ATTN_NORM);
 			CGrenade::ShootContact(pev, GetGunPosition(), m_vecTossVelocity);
 			m_fThrowGrenade = false;
 			if (g_Skill.GetSkillLevel() == SkillLevel::Hard)
@@ -703,7 +703,7 @@ void CBaseHGruntAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 			UTIL_MakeVectors(pev->angles);
 			pHurt->pev->punchangle.x = 15;
 			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 100 + gpGlobals->v_up * 50;
-			pHurt->TakeDamage(pev, pev, GetSkillFloat("hgrunt_ally_kick"sv), DMG_CLUB);
+			pHurt->TakeDamage(this, this, GetSkillFloat("hgrunt_ally_kick"sv), DMG_CLUB);
 		}
 	}
 	break;
@@ -712,7 +712,7 @@ void CBaseHGruntAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 	{
 		if (FOkToSpeak())
 		{
-			sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+			sentences::g_Sentences.PlayRndSz(this, "FG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 			JustSpoke();
 		}
 		break;
@@ -732,7 +732,7 @@ void CBaseHGruntAlly::SpawnCore()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
+	SetSize(VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -893,7 +893,7 @@ void CBaseHGruntAlly::PainSound()
 			// pain sentences are rare
 			if (FOkToSpeak())
 			{
-				sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_PAIN", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, PITCH_NORM);
+				sentences::g_Sentences.PlayRndSz(this, "FG_PAIN", HGRUNT_SENTENCE_VOLUME, ATTN_NORM, 0, PITCH_NORM);
 				JustSpoke();
 				return;
 			}
@@ -902,22 +902,22 @@ void CBaseHGruntAlly::PainSound()
 		switch (RANDOM_LONG(0, 7))
 		{
 		case 0:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/pain3.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "fgrunt/pain3.wav", 1, ATTN_NORM);
 			break;
 		case 1:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/pain4.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "fgrunt/pain4.wav", 1, ATTN_NORM);
 			break;
 		case 2:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/pain5.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "fgrunt/pain5.wav", 1, ATTN_NORM);
 			break;
 		case 3:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/pain1.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "fgrunt/pain1.wav", 1, ATTN_NORM);
 			break;
 		case 4:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/pain2.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "fgrunt/pain2.wav", 1, ATTN_NORM);
 			break;
 		case 5:
-			EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/pain6.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_VOICE, "fgrunt/pain6.wav", 1, ATTN_NORM);
 			break;
 		}
 
@@ -933,22 +933,22 @@ void CBaseHGruntAlly::DeathSound()
 	switch (RANDOM_LONG(0, 5))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/death1.wav", 1, ATTN_IDLE);
+		EmitSound(CHAN_VOICE, "fgrunt/death1.wav", 1, ATTN_IDLE);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/death2.wav", 1, ATTN_IDLE);
+		EmitSound(CHAN_VOICE, "fgrunt/death2.wav", 1, ATTN_IDLE);
 		break;
 	case 2:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/death3.wav", 1, ATTN_IDLE);
+		EmitSound(CHAN_VOICE, "fgrunt/death3.wav", 1, ATTN_IDLE);
 		break;
 	case 3:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/death4.wav", 1, ATTN_IDLE);
+		EmitSound(CHAN_VOICE, "fgrunt/death4.wav", 1, ATTN_IDLE);
 		break;
 	case 4:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/death5.wav", 1, ATTN_IDLE);
+		EmitSound(CHAN_VOICE, "fgrunt/death5.wav", 1, ATTN_IDLE);
 		break;
 	case 5:
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "fgrunt/death6.wav", 1, ATTN_IDLE);
+		EmitSound(CHAN_VOICE, "fgrunt/death6.wav", 1, ATTN_IDLE);
 		break;
 	}
 }
@@ -1765,7 +1765,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 
 				if (FOkToSpeak())
 				{
-					sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_GREN", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(this, "FG_GREN", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_TAKE_COVER_FROM_BEST_SOUND);
@@ -1837,13 +1837,13 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 					{
 						if ((m_hEnemy != nullptr) && m_hEnemy->IsPlayer())
 							// player
-							sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+							sentences::g_Sentences.PlayRndSz(this, "FG_ALERT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 						else if ((m_hEnemy != nullptr) &&
 								 (m_hEnemy->Classify() != CLASS_PLAYER_ALLY) &&
 								 (m_hEnemy->Classify() != CLASS_HUMAN_PASSIVE) &&
 								 (m_hEnemy->Classify() != CLASS_MACHINE))
 							// monster
-							sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_MONST", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+							sentences::g_Sentences.PlayRndSz(this, "FG_MONST", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 
 						JustSpoke();
 					}
@@ -1889,7 +1889,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 				//!!!KELLY - this grunt was hit and is going to run to cover.
 				if (FOkToSpeak()) // && RANDOM_LONG(0,1))
 				{
-					// sentences::g_Sentences.PlayRndSz( ENT(pev), "FG_COVER", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					// sentences::g_Sentences.PlayRndSz(this, "FG_COVER", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					m_iSentence = HGRUNT_SENT_COVER;
 					// JustSpoke();
 				}
@@ -1951,7 +1951,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 				//!!!KELLY - this grunt is about to throw or fire a grenade at the player. Great place for "fire in the hole"  "frag out" etc
 				if (FOkToSpeak())
 				{
-					sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(this, "FG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_RANGE_ATTACK2);
@@ -1962,7 +1962,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 				// charge the enemy's position.
 				if (FOkToSpeak()) // && RANDOM_LONG(0,1))
 				{
-					// sentences::g_Sentences.PlayRndSz( ENT(pev), "FG_CHARGE", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					// sentences::g_Sentences.PlayRndSz(this, "FG_CHARGE", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					m_iSentence = HGRUNT_SENT_CHARGE;
 					// JustSpoke();
 				}
@@ -1976,7 +1976,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 				// grunt's covered position. Good place for a taunt, I guess?
 				if (FOkToSpeak() && RANDOM_LONG(0, 1))
 				{
-					sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_TAUNT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(this, "FG_TAUNT", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return GetScheduleOfType(SCHED_STANDOFF);
@@ -2024,7 +2024,7 @@ Schedule_t* CBaseHGruntAlly::GetSchedule()
 					{
 						AILogger->debug("Injured Grunt called for Medic");
 
-						EMIT_SOUND_DYN(edict(), CHAN_VOICE, "fgrunt/medic.wav", VOL_NORM, ATTN_NORM, 0, PITCH_NORM);
+						EmitSound(CHAN_VOICE, "fgrunt/medic.wav", VOL_NORM, ATTN_NORM);
 
 						JustSpoke();
 						m_flMedicWaitTime = gpGlobals->time + 5.0;
@@ -2079,7 +2079,7 @@ Schedule_t* CBaseHGruntAlly::GetScheduleOfType(int Type)
 			{
 				if (FOkToSpeak())
 				{
-					sentences::g_Sentences.PlayRndSz(ENT(pev), "FG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+					sentences::g_Sentences.PlayRndSz(this, "FG_THROW", HGRUNT_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
 					JustSpoke();
 				}
 				return slGruntAllyTossGrenadeCover;
@@ -2315,11 +2315,11 @@ bool CBaseHGruntAlly::KeyValue(KeyValueData* pkvd)
 	return COFSquadTalkMonster::KeyValue(pkvd);
 }
 
-void CBaseHGruntAlly::Killed(entvars_t* pevAttacker, int iGib)
+void CBaseHGruntAlly::Killed(CBaseEntity* attacker, int iGib)
 {
 	if (m_MonsterState != MONSTERSTATE_DEAD)
 	{
-		if (HasMemory(bits_MEMORY_SUSPICIOUS) || IsFacing(pevAttacker, pev->origin))
+		if (HasMemory(bits_MEMORY_SUSPICIOUS) || IsFacing(attacker, pev->origin))
 		{
 			Remember(bits_MEMORY_PROVOKED);
 
@@ -2337,7 +2337,7 @@ void CBaseHGruntAlly::Killed(entvars_t* pevAttacker, int iGib)
 	}
 
 	SetUse(nullptr);
-	COFSquadTalkMonster::Killed(pevAttacker, iGib);
+	COFSquadTalkMonster::Killed(attacker, iGib);
 }
 
 bool CBaseHGruntAllyRepel::KeyValue(KeyValueData* pkvd)

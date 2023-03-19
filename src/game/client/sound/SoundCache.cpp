@@ -43,7 +43,12 @@ SoundIndex SoundCache::FindName(const RelativeFilename& fileName)
 		return {};
 	}
 
-	m_Sounds.emplace_back(fileName);
+	// Store as lowercase to ensure that extension-based lookups succeed.
+	RelativeFilename copy = fileName;
+
+	copy.make_lower();
+
+	m_Sounds.emplace_back(std::move(copy));
 
 	return MakeSoundIndex(&m_Sounds.back());
 }
@@ -151,6 +156,11 @@ void SoundCache::ClearBuffers()
 		sound.Samples.clear();
 		sound.Buffer.Delete();
 	}
+}
+
+void SoundCache::Clear()
+{
+	m_Sounds.clear();
 }
 
 SoundIndex SoundCache::MakeSoundIndex(const Sound* sound) const

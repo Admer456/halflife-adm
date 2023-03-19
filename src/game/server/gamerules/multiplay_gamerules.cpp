@@ -215,7 +215,7 @@ bool CHalfLifeMultiplay::IsCoOp()
 
 //=========================================================
 //=========================================================
-bool CHalfLifeMultiplay::FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon)
+bool CHalfLifeMultiplay::FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pWeapon)
 {
 	if (!pWeapon->CanDeploy())
 	{
@@ -223,13 +223,13 @@ bool CHalfLifeMultiplay::FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerIt
 		return false;
 	}
 
-	if (!pPlayer->m_pActiveItem)
+	if (!pPlayer->m_pActiveWeapon)
 	{
 		// player doesn't have an active item!
 		return true;
 	}
 
-	if (!pPlayer->m_pActiveItem->CanHolster())
+	if (!pPlayer->m_pActiveWeapon->CanHolster())
 	{
 		// can't put away the active item.
 		return false;
@@ -247,7 +247,7 @@ bool CHalfLifeMultiplay::FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerIt
 		return false;
 	}
 
-	if (pWeapon->iWeight() > pPlayer->m_pActiveItem->iWeight())
+	if (pWeapon->iWeight() > pPlayer->m_pActiveWeapon->iWeight())
 	{
 		return true;
 	}
@@ -373,7 +373,7 @@ void CHalfLifeMultiplay::ClientDisconnected(edict_t* pClient)
 
 			Logger->trace("{} disconnected", PlayerLogInfo{*pPlayer});
 
-			const int playerIndex = ENTINDEX(pClient);
+			const int playerIndex = pPlayer->entindex();
 
 			free(pszPlayerIPs[playerIndex]);
 			pszPlayerIPs[playerIndex] = nullptr;
@@ -381,7 +381,7 @@ void CHalfLifeMultiplay::ClientDisconnected(edict_t* pClient)
 			pPlayer->RemoveAllItems(true); // destroy all of the players weapons and items
 
 			g_engfuncs.pfnMessageBegin(MSG_ALL, gmsgSpectator, nullptr, nullptr);
-			g_engfuncs.pfnWriteByte(ENTINDEX(pClient));
+			g_engfuncs.pfnWriteByte(pPlayer->entindex());
 			g_engfuncs.pfnWriteByte(0);
 			g_engfuncs.pfnMessageEnd();
 
@@ -439,13 +439,13 @@ void CHalfLifeMultiplay::PlayerThink(CBasePlayer* pPlayer)
 
 				if (!pPlayer->m_fPlayingAChargeSound)
 				{
-					EMIT_SOUND(pPlayer->edict(), CHAN_STATIC, "ctf/pow_armor_charge.wav", VOL_NORM, ATTN_NORM);
+					pPlayer->EmitSound(CHAN_STATIC, "ctf/pow_armor_charge.wav", VOL_NORM, ATTN_NORM);
 					pPlayer->m_fPlayingAChargeSound = true;
 				}
 			}
 			else if (pPlayer->m_fPlayingAChargeSound)
 			{
-				STOP_SOUND(pPlayer->edict(), CHAN_STATIC, "ctf/pow_armor_charge.wav");
+				pPlayer->StopSound(CHAN_STATIC, "ctf/pow_armor_charge.wav");
 				pPlayer->m_fPlayingAChargeSound = false;
 			}
 
@@ -468,13 +468,13 @@ void CHalfLifeMultiplay::PlayerThink(CBasePlayer* pPlayer)
 
 				if (!pPlayer->m_fPlayingHChargeSound)
 				{
-					EMIT_SOUND(pPlayer->edict(), CHAN_STATIC, "ctf/pow_health_charge.wav", VOL_NORM, ATTN_NORM);
+					pPlayer->EmitSound(CHAN_STATIC, "ctf/pow_health_charge.wav", VOL_NORM, ATTN_NORM);
 					pPlayer->m_fPlayingHChargeSound = true;
 				}
 			}
 			else if (pPlayer->m_fPlayingHChargeSound)
 			{
-				STOP_SOUND(pPlayer->edict(), CHAN_STATIC, "ctf/pow_health_charge.wav");
+				pPlayer->StopSound(CHAN_STATIC, "ctf/pow_health_charge.wav");
 				pPlayer->m_fPlayingHChargeSound = false;
 			}
 
@@ -487,9 +487,9 @@ void CHalfLifeMultiplay::PlayerThink(CBasePlayer* pPlayer)
 		pPlayer->m_flNextHealthCharge = gpGlobals->time + 0.5;
 	}
 
-	if (pPlayer->m_pActiveItem && pPlayer->m_flNextAmmoCharge <= gpGlobals->time && (pPlayer->m_iItems & CTFItem::Backpack) != 0)
+	if (pPlayer->m_pActiveWeapon && pPlayer->m_flNextAmmoCharge <= gpGlobals->time && (pPlayer->m_iItems & CTFItem::Backpack) != 0)
 	{
-		pPlayer->m_pActiveItem->IncrementAmmo(pPlayer);
+		pPlayer->m_pActiveWeapon->IncrementAmmo(pPlayer);
 		pPlayer->m_flNextAmmoCharge = gpGlobals->time + 0.75;
 	}
 
@@ -540,7 +540,7 @@ void CHalfLifeMultiplay::PlayerSpawn(CBasePlayer* pPlayer)
 	{
 		pPlayer->GiveNamedItem("weapon_crowbar");
 		pPlayer->GiveNamedItem("weapon_9mmhandgun");
-		pPlayer->GiveAmmo(68, "9mm", _9MM_MAX_CARRY); // 4 full reloads
+		pPlayer->GiveAmmo(68, "9mm"); // 4 full reloads
 	}
 
 	InitItemsForPlayer(pPlayer);
@@ -580,9 +580,9 @@ int CHalfLifeMultiplay::IPointsForKill(CBasePlayer* pAttacker, CBasePlayer* pKil
 //=========================================================
 // PlayerKilled - someone/something killed this player
 //=========================================================
-void CHalfLifeMultiplay::PlayerKilled(CBasePlayer* pVictim, entvars_t* pKiller, entvars_t* pInflictor)
+void CHalfLifeMultiplay::PlayerKilled(CBasePlayer* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor)
 {
-	DeathNotice(pVictim, pKiller, pInflictor);
+	DeathNotice(pVictim, pKiller, inflictor);
 
 	pVictim->m_iDeaths += 1;
 
@@ -593,20 +593,20 @@ void CHalfLifeMultiplay::PlayerKilled(CBasePlayer* pVictim, entvars_t* pKiller, 
 	if (ktmp && ktmp->IsPlayer())
 		peKiller = (CBasePlayer*)ktmp;
 
-	if (pVictim->pev == pKiller)
+	if (pVictim == pKiller)
 	{ // killed self
-		pKiller->frags -= 1;
+		pKiller->pev->frags -= 1;
 	}
 	else if (ktmp && ktmp->IsPlayer())
 	{
 		// if a player dies in a deathmatch game and the killer is a client, award the killer some points
-		pKiller->frags += IPointsForKill(peKiller, pVictim);
+		pKiller->pev->frags += IPointsForKill(peKiller, pVictim);
 
 		FireTargets("game_playerkill", ktmp, ktmp, USE_TOGGLE, 0);
 	}
 	else
 	{ // killed by the world
-		pKiller->frags -= 1;
+		pKiller->pev->frags -= 1;
 	}
 
 	// update the scores
@@ -625,7 +625,7 @@ void CHalfLifeMultiplay::PlayerKilled(CBasePlayer* pVictim, entvars_t* pKiller, 
 		PK->m_flNextDecalTime = gpGlobals->time;
 	}
 
-	if (pVictim->HasNamedPlayerItem("weapon_satchel"))
+	if (pVictim->HasNamedPlayerWeapon("weapon_satchel"))
 	{
 		DeactivateSatchels(pVictim);
 	}
@@ -639,7 +639,7 @@ void CHalfLifeMultiplay::PlayerKilled(CBasePlayer* pVictim, entvars_t* pKiller, 
 //=========================================================
 // Deathnotice.
 //=========================================================
-void CHalfLifeMultiplay::DeathNotice(CBasePlayer* pVictim, entvars_t* pKiller, entvars_t* pevInflictor)
+void CHalfLifeMultiplay::DeathNotice(CBasePlayer* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor)
 {
 	// Work out what killed the player, and send a message to all clients about it
 	CBasePlayer* Killer = static_cast<CBasePlayer*>(CBaseEntity::Instance(pKiller));
@@ -651,31 +651,31 @@ void CHalfLifeMultiplay::DeathNotice(CBasePlayer* pVictim, entvars_t* pKiller, e
 	const char* tau = "tau_cannon";
 	const char* gluon = "gluon gun";
 
-	if ((pKiller->flags & FL_CLIENT) != 0)
+	if ((pKiller->pev->flags & FL_CLIENT) != 0)
 	{
-		killer_index = ENTINDEX(ENT(pKiller));
+		killer_index = pKiller->entindex();
 
-		if (pevInflictor)
+		if (inflictor)
 		{
-			if (pevInflictor == pKiller)
+			if (inflictor == pKiller)
 			{
 				// If the inflictor is the killer,  then it must be their current weapon doing the damage
 				CBasePlayer* pPlayer = (CBasePlayer*)CBaseEntity::Instance(pKiller);
 
-				if (pPlayer->m_pActiveItem)
+				if (pPlayer->m_pActiveWeapon)
 				{
-					killer_weapon_name = pPlayer->m_pActiveItem->pszName();
+					killer_weapon_name = pPlayer->m_pActiveWeapon->pszName();
 				}
 			}
 			else
 			{
-				killer_weapon_name = STRING(pevInflictor->classname); // it's just that easy
+				killer_weapon_name = STRING(inflictor->pev->classname); // it's just that easy
 			}
 		}
 	}
 	else
 	{
-		killer_weapon_name = STRING(pevInflictor->classname);
+		killer_weapon_name = STRING(inflictor->pev->classname);
 	}
 
 	// strip the monster_* or weapon_* from the inflictor's classname
@@ -690,7 +690,7 @@ void CHalfLifeMultiplay::DeathNotice(CBasePlayer* pVictim, entvars_t* pKiller, e
 
 	MESSAGE_BEGIN(MSG_ALL, gmsgDeathMsg);
 	WRITE_BYTE(killer_index);				// the killer
-	WRITE_BYTE(ENTINDEX(pVictim->edict())); // the victim
+	WRITE_BYTE(pVictim->entindex());		// the victim
 	WRITE_STRING(killer_weapon_name);		// what they were killed by (should this be a string?)
 	MESSAGE_END();
 
@@ -700,12 +700,12 @@ void CHalfLifeMultiplay::DeathNotice(CBasePlayer* pVictim, entvars_t* pKiller, e
 	else if (0 == strcmp(killer_weapon_name, "gauss"))
 		killer_weapon_name = tau;
 
-	if (pVictim->pev == pKiller)
+	if (pVictim == pKiller)
 	{
 		// killed self
 		Logger->trace("{} committed suicide with \"{}\"", PlayerLogInfo{*pVictim}, killer_weapon_name);
 	}
-	else if ((pKiller->flags & FL_CLIENT) != 0)
+	else if ((pKiller->pev->flags & FL_CLIENT) != 0)
 	{
 		Logger->trace("{} killed {} with \"{}\"", PlayerLogInfo{*Killer}, PlayerLogInfo{*pVictim}, killer_weapon_name);
 	}
@@ -716,14 +716,14 @@ void CHalfLifeMultiplay::DeathNotice(CBasePlayer* pVictim, entvars_t* pKiller, e
 	}
 
 	MESSAGE_BEGIN(MSG_SPEC, SVC_DIRECTOR);
-	WRITE_BYTE(9);							 // command length in bytes
-	WRITE_BYTE(DRC_CMD_EVENT);				 // player killed
-	WRITE_SHORT(ENTINDEX(pVictim->edict())); // index number of primary entity
-	if (pevInflictor)
-		WRITE_SHORT(ENTINDEX(ENT(pevInflictor))); // index number of secondary entity
+	WRITE_BYTE(9);							// command length in bytes
+	WRITE_BYTE(DRC_CMD_EVENT);				// player killed
+	WRITE_SHORT(pVictim->entindex());		// index number of primary entity
+	if (inflictor)
+		WRITE_SHORT(inflictor->entindex()); // index number of secondary entity
 	else
-		WRITE_SHORT(ENTINDEX(ENT(pKiller))); // index number of secondary entity
-	WRITE_LONG(7 | DRC_FLAG_DRAMATIC);		 // eventflags (priority and flags)
+		WRITE_SHORT(pKiller->entindex());	// index number of secondary entity
+	WRITE_LONG(7 | DRC_FLAG_DRAMATIC);		// eventflags (priority and flags)
 	MESSAGE_END();
 
 	//  Print a standard message
@@ -756,7 +756,7 @@ void CHalfLifeMultiplay::DeathNotice(CBasePlayer* pVictim, entvars_t* pKiller, e
 		strcat ( szText, STRING( pVictim->pev->netname ) );
 		strcat ( szText, "\n" );
 	}
-	else if ( FClassnameIs ( pKiller, "worldspawn" ) )
+	else if (pKiller->ClassnameIs("worldspawn"))
 	{
 		strcpy ( szText, STRING( pVictim->pev->netname ) );
 		strcat ( szText, " fell or drowned or something.\n" );
@@ -780,7 +780,7 @@ void CHalfLifeMultiplay::DeathNotice(CBasePlayer* pVictim, entvars_t* pKiller, e
 // PlayerGotWeapon - player has grabbed a weapon that was
 // sitting in the world
 //=========================================================
-void CHalfLifeMultiplay::PlayerGotWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon)
+void CHalfLifeMultiplay::PlayerGotWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pWeapon)
 {
 }
 
@@ -788,7 +788,7 @@ void CHalfLifeMultiplay::PlayerGotWeapon(CBasePlayer* pPlayer, CBasePlayerItem* 
 // FlWeaponRespawnTime - what is the time in the future
 // at which this weapon may spawn?
 //=========================================================
-float CHalfLifeMultiplay::FlWeaponRespawnTime(CBasePlayerItem* pWeapon)
+float CHalfLifeMultiplay::FlWeaponRespawnTime(CBasePlayerWeapon* pWeapon)
 {
 	if (weaponstay.value > 0)
 	{
@@ -807,7 +807,7 @@ float CHalfLifeMultiplay::FlWeaponRespawnTime(CBasePlayerItem* pWeapon)
 // now,  otherwise it returns the time at which it can try
 // to spawn again.
 //=========================================================
-float CHalfLifeMultiplay::FlWeaponTryRespawn(CBasePlayerItem* pWeapon)
+float CHalfLifeMultiplay::FlWeaponTryRespawn(CBasePlayerWeapon* pWeapon)
 {
 	if (pWeapon && WEAPON_NONE != pWeapon->m_iId && (pWeapon->iFlags() & ITEM_FLAG_LIMITINWORLD) != 0)
 	{
@@ -825,7 +825,7 @@ float CHalfLifeMultiplay::FlWeaponTryRespawn(CBasePlayerItem* pWeapon)
 // VecWeaponRespawnSpot - where should this weapon spawn?
 // Some game variations may choose to randomize spawn locations
 //=========================================================
-Vector CHalfLifeMultiplay::VecWeaponRespawnSpot(CBasePlayerItem* pWeapon)
+Vector CHalfLifeMultiplay::VecWeaponRespawnSpot(CBasePlayerWeapon* pWeapon)
 {
 	return pWeapon->pev->origin;
 }
@@ -834,7 +834,7 @@ Vector CHalfLifeMultiplay::VecWeaponRespawnSpot(CBasePlayerItem* pWeapon)
 // WeaponShouldRespawn - any conditions inhibiting the
 // respawning of this weapon?
 //=========================================================
-int CHalfLifeMultiplay::WeaponShouldRespawn(CBasePlayerItem* pWeapon)
+int CHalfLifeMultiplay::WeaponShouldRespawn(CBasePlayerWeapon* pWeapon)
 {
 	if ((pWeapon->pev->spawnflags & SF_NORESPAWN) != 0)
 	{
@@ -848,17 +848,17 @@ int CHalfLifeMultiplay::WeaponShouldRespawn(CBasePlayerItem* pWeapon)
 // CanHaveWeapon - returns false if the player is not allowed
 // to pick up this weapon
 //=========================================================
-bool CHalfLifeMultiplay::CanHavePlayerItem(CBasePlayer* pPlayer, CBasePlayerItem* pItem)
+bool CHalfLifeMultiplay::CanHavePlayerWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pItem)
 {
 	if (weaponstay.value > 0)
 	{
 		if ((pItem->iFlags() & ITEM_FLAG_LIMITINWORLD) != 0)
-			return CGameRules::CanHavePlayerItem(pPlayer, pItem);
+			return CGameRules::CanHavePlayerWeapon(pPlayer, pItem);
 
 		// check if the player already has this weapon
-		for (int i = 0; i < MAX_ITEM_TYPES; i++)
+		for (int i = 0; i < MAX_WEAPON_SLOTS; i++)
 		{
-			CBasePlayerItem* it = pPlayer->m_rgpPlayerItems[i];
+			CBasePlayerWeapon* it = pPlayer->m_rgpPlayerWeapons[i];
 
 			while (it != nullptr)
 			{
@@ -872,7 +872,7 @@ bool CHalfLifeMultiplay::CanHavePlayerItem(CBasePlayer* pPlayer, CBasePlayerItem
 		}
 	}
 
-	return CGameRules::CanHavePlayerItem(pPlayer, pItem);
+	return CGameRules::CanHavePlayerWeapon(pPlayer, pItem);
 }
 
 //=========================================================
@@ -987,15 +987,15 @@ int CHalfLifeMultiplay::DeadPlayerAmmo(CBasePlayer* pPlayer)
 	return GR_PLR_DROP_AMMO_ACTIVE;
 }
 
-edict_t* CHalfLifeMultiplay::GetPlayerSpawnSpot(CBasePlayer* pPlayer)
+CBaseEntity* CHalfLifeMultiplay::GetPlayerSpawnSpot(CBasePlayer* pPlayer)
 {
-	edict_t* pentSpawnSpot = CGameRules::GetPlayerSpawnSpot(pPlayer);
-	if (IsMultiplayer() && !FStringNull(pentSpawnSpot->v.target))
+	CBaseEntity* pSpawnSpot = CGameRules::GetPlayerSpawnSpot(pPlayer);
+	if (IsMultiplayer() && !FStringNull(pSpawnSpot->pev->target))
 	{
-		FireTargets(STRING(pentSpawnSpot->v.target), pPlayer, pPlayer, USE_TOGGLE, 0);
+		FireTargets(STRING(pSpawnSpot->pev->target), pPlayer, pPlayer, USE_TOGGLE, 0);
 	}
 
-	return pentSpawnSpot;
+	return pSpawnSpot;
 }
 
 

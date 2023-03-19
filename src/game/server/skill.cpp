@@ -34,7 +34,6 @@
 using namespace std::literals;
 
 constexpr std::string_view SkillConfigSchemaName{"SkillConfig"sv};
-constexpr const char* const SkillConfigName = "cfg/skill.json";
 
 constexpr std::string_view SkillVariableNameRegexPattern{"^([a-zA-Z_](?:[a-zA-Z_0-9]*[a-zA-Z_]))([123]?)$"};
 const std::regex SkillVariableNameRegex{SkillVariableNameRegexPattern.data(), SkillVariableNameRegexPattern.length()};
@@ -72,7 +71,7 @@ static std::string GetSkillConfigSchema()
 		SkillVariableNameRegexPattern);
 }
 
-static std::optional<std::tuple<std::string_view, std::optional<int>>> TryParseSkillVariableName(std::string_view key, spdlog::logger& logger)
+static std::optional<std::tuple<std::string_view, std::optional<SkillLevel>>> TryParseSkillVariableName(std::string_view key, spdlog::logger& logger)
 {
 	std::match_results<std::string_view::const_iterator> matches;
 
@@ -103,7 +102,7 @@ static std::optional<std::tuple<std::string_view, std::optional<int>>> TryParseS
 		return {};
 	}
 
-	return {{baseName, skillLevel}};
+	return {{baseName, static_cast<SkillLevel>(skillLevel)}};
 }
 
 bool SkillSystem::Initialize()
@@ -198,11 +197,6 @@ bool SkillSystem::Initialize()
 			m_SkillVariables.clear(); },
 		CommandLibraryPrefix::No);
 
-	g_ConCommands.CreateCommand(
-		"sk_reload", [this](const auto& args)
-		{ LoadSkillConfigFile(); },
-		CommandLibraryPrefix::No);
-
 	return true;
 }
 
@@ -211,32 +205,30 @@ void SkillSystem::Shutdown()
 	m_Logger.reset();
 }
 
-void SkillSystem::NewMapStarted()
+void SkillSystem::LoadSkillConfigFiles(std::span<const std::string> fileNames)
 {
-	LoadSkillConfigFile();
-}
-
-void SkillSystem::LoadSkillConfigFile()
-{
-	g_GameLogger->trace("Loading skill config file");
-
 	// Refresh skill level setting first.
 	int iSkill = (int)CVAR_GET_FLOAT("skill");
 
 	iSkill = std::clamp(iSkill, static_cast<int>(SkillLevel::Easy), static_cast<int>(SkillLevel::Hard));
 
-	SetSkillLevel(iSkill);
+	SetSkillLevel(static_cast<SkillLevel>(iSkill));
 
 	// Erase all previous data.
 	m_SkillVariables.clear();
 
-	if (const auto result = g_JSON.ParseJSONFile(SkillConfigName,
-			{.SchemaName = SkillConfigSchemaName, .PathID = "GAMECONFIG"},
-			[this](const json& input)
-			{ return ParseConfiguration(input); });
-		!result.value_or(false))
+	for (const auto& fileName : fileNames)
 	{
-		m_Logger->error("Error loading skill configuration file \"{}\"", SkillConfigName);
+		m_Logger->trace("Loading {}", fileName);
+
+		if (const auto result = g_JSON.ParseJSONFile(fileName.c_str(),
+				{.SchemaName = SkillConfigSchemaName, .PathID = "GAMECONFIG"},
+				[this](const json& input)
+				{ return ParseConfiguration(input); });
+			!result.value_or(false))
+		{
+			m_Logger->error("Error loading skill configuration file \"{}\"", fileName);
+		}
 	}
 }
 
@@ -358,35 +350,32 @@ bool SkillSystem::ParseConfiguration(const json& input)
 
 		for (const auto& item : variables.items())
 		{
-			[&]()
+			const json value = item.value();
+
+			if (!value.is_number())
 			{
-				const json value = item.value();
+				// Already validated by schema.
+				continue;
+			}
 
-				if (!value.is_number())
-				{
-					// Already validated by schema.
-					return;
-				}
+			// Get the skill variable base name and skill level.
+			const auto maybeVariableName = TryParseSkillVariableName(item.key(), *m_Logger);
 
-				// Get the skill variable base name and skill level.
-				const auto maybeVariableName = TryParseSkillVariableName(item.key(), *m_Logger);
+			if (!maybeVariableName.has_value())
+			{
+				continue;
+			}
 
-				if (!maybeVariableName.has_value())
-				{
-					return;
-				}
+			const auto& variableName = maybeVariableName.value();
 
-				const auto& variableName = maybeVariableName.value();
+			const auto valueFloat = value.get<float>();
 
-				const auto valueFloat = value.get<float>();
+			const auto& skillLevel = std::get<1>(variableName);
 
-				const auto& skillLevel = std::get<1>(variableName);
-
-				if (!skillLevel.has_value() || skillLevel.value() == GetSkillLevel())
-				{
-					SetValue(std::get<0>(variableName), valueFloat);
-				}
-			}();
+			if (!skillLevel.has_value() || skillLevel.value() == GetSkillLevel())
+			{
+				SetValue(std::get<0>(variableName), valueFloat);
+			}
 		}
 	}
 

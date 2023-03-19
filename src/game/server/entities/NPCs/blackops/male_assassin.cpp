@@ -89,7 +89,7 @@ public:
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
 
-	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
+	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 
 	// Male Assassin never speaks
 	bool FOkToSpeak() override { return false; }
@@ -204,7 +204,7 @@ bool CMOFAssassin::CheckRangeAttack2(float flDot, float flDist)
 //=========================================================
 // TraceAttack - make sure we're not taking it in the helmet
 //=========================================================
-void CMOFAssassin::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void CMOFAssassin::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	// check for helmet shot
 	if (ptr->iHitgroup == 11)
@@ -213,7 +213,7 @@ void CMOFAssassin::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector ve
 		ptr->iHitgroup = HITGROUP_HEAD;
 	}
 
-	CSquadMonster::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+	CSquadMonster::TraceAttack(attacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
 void CMOFAssassin::IdleSound()
@@ -238,60 +238,55 @@ void CMOFAssassin::CheckAmmo()
 //=========================================================
 void CMOFAssassin::Shoot(bool firstShotInBurst)
 {
-	if (m_hEnemy == nullptr)
+	if (m_hEnemy)
 	{
-		return;
+		if (!(FBitSet(pev->weapons, MAssassinWeaponFlag::SniperRifle) && gpGlobals->time - m_flLastShot <= 0.11))
+		{
+			Vector vecShootOrigin = GetGunPosition();
+			Vector vecShootDir = ShootAtEnemy(vecShootOrigin);
+
+			UTIL_MakeVectors(pev->angles);
+
+			if (FBitSet(pev->weapons, HGRUNT_9MMAR))
+			{
+				Vector vecShellVelocity = gpGlobals->v_right * RANDOM_FLOAT(40, 90) + gpGlobals->v_up * RANDOM_FLOAT(75, 200) + gpGlobals->v_forward * RANDOM_FLOAT(-40, 40);
+				EjectBrass(vecShootOrigin - vecShootDir * 24, vecShellVelocity, pev->angles.y, m_iBrassShell, TE_BOUNCE_SHELL);
+				FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_10DEGREES, 2048, BULLET_MONSTER_MP5); // shoot +-5 degrees
+			}
+			else
+			{
+				// TODO: why is this 556? is 762 too damaging?
+				FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_1DEGREES, 2048, BULLET_PLAYER_556);
+			}
+
+			pev->effects |= EF_MUZZLEFLASH;
+
+			m_cAmmoLoaded--; // take away a bullet!
+
+			Vector angDir = UTIL_VecToAngles(vecShootDir);
+			SetBlending(0, angDir.x);
+		}
 	}
 
-	if (FBitSet(pev->weapons, MAssassinWeaponFlag::SniperRifle) && gpGlobals->time - m_flLastShot <= 0.11)
+	if (firstShotInBurst)
 	{
-		return;
-	}
-
-	Vector vecShootOrigin = GetGunPosition();
-	Vector vecShootDir = ShootAtEnemy(vecShootOrigin);
-
-	UTIL_MakeVectors(pev->angles);
-
-	if (FBitSet(pev->weapons, HGRUNT_9MMAR))
-	{
-		Vector vecShellVelocity = gpGlobals->v_right * RANDOM_FLOAT(40, 90) + gpGlobals->v_up * RANDOM_FLOAT(75, 200) + gpGlobals->v_forward * RANDOM_FLOAT(-40, 40);
-		EjectBrass(vecShootOrigin - vecShootDir * 24, vecShellVelocity, pev->angles.y, m_iBrassShell, TE_BOUNCE_SHELL);
-		FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_10DEGREES, 2048, BULLET_MONSTER_MP5); // shoot +-5 degrees
-
-		if (firstShotInBurst)
+		if (FBitSet(pev->weapons, HGRUNT_9MMAR))
 		{
 			// the first round of the three round burst plays the sound and puts a sound in the world sound list.
 			if (RANDOM_LONG(0, 1))
 			{
-				EMIT_SOUND(ENT(pev), CHAN_WEAPON, "hgrunt/gr_mgun1.wav", 1, ATTN_NORM);
+				EmitSound(CHAN_WEAPON, "hgrunt/gr_mgun1.wav", 1, ATTN_NORM);
 			}
 			else
 			{
-				EMIT_SOUND(ENT(pev), CHAN_WEAPON, "hgrunt/gr_mgun2.wav", 1, ATTN_NORM);
+				EmitSound(CHAN_WEAPON, "hgrunt/gr_mgun2.wav", 1, ATTN_NORM);
 			}
 		}
-	}
-	else
-	{
-		// TODO: why is this 556? is 762 too damaging?
-		FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_1DEGREES, 2048, BULLET_PLAYER_556);
-
-		if (firstShotInBurst)
+		else
 		{
-			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/sniper_fire.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_WEAPON, "weapons/sniper_fire.wav", 1, ATTN_NORM);
 		}
-	}
 
-	pev->effects |= EF_MUZZLEFLASH;
-
-	m_cAmmoLoaded--; // take away a bullet!
-
-	Vector angDir = UTIL_VecToAngles(vecShootDir);
-	SetBlending(0, angDir.x);
-
-	if (firstShotInBurst)
-	{
 		CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, 384, 0.3);
 	}
 }
@@ -341,7 +336,7 @@ void CMOFAssassin::HandleAnimEvent(MonsterEvent_t* pEvent)
 			UTIL_MakeVectors(pev->angles);
 			pHurt->pev->punchangle.x = 15;
 			pHurt->pev->velocity = pHurt->pev->velocity + gpGlobals->v_forward * 100 + gpGlobals->v_up * 50;
-			pHurt->TakeDamage(pev, pev, GetSkillFloat("massassin_kick"sv), DMG_CLUB);
+			pHurt->TakeDamage(this, this, GetSkillFloat("massassin_kick"sv), DMG_CLUB);
 		}
 	}
 	break;
@@ -360,7 +355,7 @@ void CMOFAssassin::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
+	SetSize(VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -435,7 +430,6 @@ void CMOFAssassin::PainSound()
 std::tuple<int, Activity> CMOFAssassin::GetSequenceForActivity(Activity NewActivity)
 {
 	int iSequence = ACTIVITY_NOT_AVAILABLE;
-	void* pmodel = GET_MODEL_PTR(ENT(pev));
 
 	switch (NewActivity)
 	{

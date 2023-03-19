@@ -32,7 +32,6 @@ IMPLEMENT_SAVERESTORE(CShockRifle, CShockRifle::BaseClass);
 #endif
 
 LINK_ENTITY_TO_CLASS(weapon_shockrifle, CShockRifle);
-LINK_ENTITY_TO_CLASS(weapon_shockroach, CShockRifle);
 
 void CShockRifle::OnCreate()
 {
@@ -63,9 +62,6 @@ void CShockRifle::Precache()
 
 void CShockRifle::Spawn()
 {
-	// Hack to allow for old names.
-	pev->classname = MAKE_STRING("weapon_shockrifle");
-
 	m_iId = WEAPON_SHOCKRIFLE;
 
 	Precache();
@@ -168,12 +164,12 @@ void CShockRifle::PrimaryAttack()
 		// Water goes zap.
 		const float flVolume = RANDOM_FLOAT(0.8, 0.9);
 
-		EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_ITEM, "weapons/shock_discharge.wav", flVolume, ATTN_NONE, 0, PITCH_NORM);
+		m_pPlayer->EmitSound(CHAN_ITEM, "weapons/shock_discharge.wav", flVolume, ATTN_NONE);
 
 		RadiusDamage(
 			pev->origin,
-			m_pPlayer->pev,
-			m_pPlayer->pev,
+			m_pPlayer,
+			m_pPlayer,
 			m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] * 100.0,
 			m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] * 150.0,
 			CLASS_NONE,
@@ -273,7 +269,7 @@ void CShockRifle::RechargeAmmo(bool bLoud)
 
 		if (bLoud)
 		{
-			EMIT_SOUND(m_pPlayer->edict(), CHAN_WEAPON, "weapons/shock_recharge.wav", VOL_NORM, ATTN_NORM);
+			m_pPlayer->EmitSound(CHAN_WEAPON, "weapons/shock_recharge.wav", VOL_NORM, ATTN_NORM);
 		}
 
 		if (UTIL_IsMultiplayer())
@@ -287,23 +283,15 @@ void CShockRifle::RechargeAmmo(bool bLoud)
 	}
 }
 
-int CShockRifle::iItemSlot()
+bool CShockRifle::GetWeaponInfo(WeaponInfo& info)
 {
-	return 4;
-}
-
-bool CShockRifle::GetItemInfo(ItemInfo* p)
-{
-	p->pszAmmo1 = "shock";
-	p->iMaxAmmo1 = SHOCKRIFLE_MAX_CLIP;
-	p->pszName = STRING(pev->classname);
-	p->pszAmmo2 = nullptr;
-	p->iMaxAmmo2 = WEAPON_NOCLIP;
-	p->iMaxClip = WEAPON_NOCLIP;
-	p->iFlags = ITEM_FLAG_NOAUTORELOAD | ITEM_FLAG_NOAUTOSWITCHEMPTY;
-	p->iSlot = 6;
-	p->iPosition = 1;
-	p->iId = m_iId = WEAPON_SHOCKRIFLE;
-	p->iWeight = SHOCKRIFLE_WEIGHT;
+	info.AmmoType1 = "shock";
+	info.Name = STRING(pev->classname);
+	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.Flags = ITEM_FLAG_NOAUTORELOAD | ITEM_FLAG_NOAUTOSWITCHEMPTY;
+	info.Slot = 6;
+	info.Position = 1;
+	info.Id = m_iId = WEAPON_SHOCKRIFLE;
+	info.Weight = SHOCKRIFLE_WEIGHT;
 	return true;
 }

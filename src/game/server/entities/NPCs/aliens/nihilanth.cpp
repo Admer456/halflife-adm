@@ -31,7 +31,7 @@ public:
 	void Precache() override;
 	int Classify() override { return CLASS_ALIEN_MILITARY; }
 	int BloodColor() override { return BLOOD_COLOR_YELLOW; }
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 	void GibMonster() override;
 
 	void SetObjectCollisionBox() override
@@ -62,8 +62,8 @@ public:
 	void ShootBalls();
 	void MakeFriend(Vector vecPos);
 
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
-	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
+	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 
 	void PainSound() override;
 	void DeathSound() override;
@@ -283,8 +283,8 @@ void CNihilanth::Spawn()
 	pev->solid = SOLID_BBOX;
 
 	SetModel(STRING(pev->model));
-	// UTIL_SetSize(pev, Vector( -300, -300, 0), Vector(300, 300, 512));
-	UTIL_SetSize(pev, Vector(-32, -32, 0), Vector(32, 32, 64));
+	// SetSize(Vector( -300, -300, 0), Vector(300, 300, 512));
+	SetSize(Vector(-32, -32, 0), Vector(32, 32, 64));
 	UTIL_SetOrigin(pev, pev->origin);
 
 	pev->flags |= FL_MONSTER | FL_FLY;
@@ -359,17 +359,17 @@ void CNihilanth::PainSound()
 
 	if (pev->health > pev->max_health / 2)
 	{
-		EMIT_SOUND(edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pLaughSounds), 1.0, 0.2);
+		EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pLaughSounds), 1.0, 0.2);
 	}
 	else if (m_irritation >= 2)
 	{
-		EMIT_SOUND(edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pPainSounds), 1.0, 0.2);
+		EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pPainSounds), 1.0, 0.2);
 	}
 }
 
 void CNihilanth::DeathSound()
 {
-	EMIT_SOUND(edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pDeathSounds), 1.0, 0.1);
+	EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pDeathSounds), 1.0, 0.1);
 }
 
 
@@ -420,9 +420,9 @@ void CNihilanth::StartupThink()
 }
 
 
-void CNihilanth::Killed(entvars_t* pevAttacker, int iGib)
+void CNihilanth::Killed(CBaseEntity* attacker, int iGib)
 {
-	CBaseMonster::Killed(pevAttacker, iGib);
+	CBaseMonster::Killed(attacker, iGib);
 }
 
 void CNihilanth::DyingThink()
@@ -558,7 +558,7 @@ void CNihilanth::CrashTouch(CBaseEntity* pOther)
 
 void CNihilanth::GibMonster()
 {
-	// EMIT_SOUND_DYN(edict(), CHAN_VOICE, "common/bodysplat.wav", 0.75, ATTN_NORM, 0, 200);
+	// EmitSoundDyn(CHAN_VOICE, "common/bodysplat.wav", 0.75, ATTN_NORM, 0, 200);
 }
 
 
@@ -670,7 +670,7 @@ void CNihilanth::MakeFriend(Vector vecStart)
 			}
 			if (m_hFriend[i] != nullptr)
 			{
-				EMIT_SOUND(m_hFriend[i]->edict(), CHAN_WEAPON, "debris/beamstart7.wav", 1.0, ATTN_NORM);
+				m_hFriend[i]->EmitSound(CHAN_WEAPON, "debris/beamstart7.wav", 1.0, ATTN_NORM);
 			}
 
 			return;
@@ -942,14 +942,6 @@ void CNihilanth::Flight()
 	m_velocity.y += gpGlobals->v_up.y * m_flForce;
 	m_velocity.z += gpGlobals->v_up.z * m_flForce;
 
-
-	float flSpeed = m_velocity.Length();
-	float flDir = DotProduct(Vector(gpGlobals->v_forward.x, gpGlobals->v_forward.y, 0), Vector(m_velocity.x, m_velocity.y, 0));
-	if (flDir < 0)
-		flSpeed = -flSpeed;
-
-	float flDist = DotProduct(m_posDesired - vecEst, gpGlobals->v_forward);
-
 	// sideways drag
 	m_velocity.x = m_velocity.x * (1.0 - fabs(gpGlobals->v_right.x) * 0.05);
 	m_velocity.y = m_velocity.y * (1.0 - fabs(gpGlobals->v_right.y) * 0.05);
@@ -1060,9 +1052,9 @@ void CNihilanth::HandleAnimEvent(MonsterEvent_t* pEvent)
 		if (m_hEnemy != nullptr)
 		{
 			if (RANDOM_LONG(0, 4) == 0)
-				EMIT_SOUND(edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), 1.0, 0.2);
+				EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), 1.0, 0.2);
 
-			EMIT_SOUND(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBallSounds), 1.0, 0.2);
+			EmitSound(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBallSounds), 1.0, 0.2);
 
 			MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);
 			WRITE_BYTE(TE_ELIGHT);
@@ -1109,7 +1101,7 @@ void CNihilanth::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 			if (pTrigger != nullptr || pTouch != nullptr)
 			{
-				EMIT_SOUND(edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), 1.0, 0.2);
+				EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), 1.0, 0.2);
 
 				Vector vecSrc, vecAngles;
 				GetAttachment(2, vecSrc, vecAngles);
@@ -1121,7 +1113,7 @@ void CNihilanth::HandleAnimEvent(MonsterEvent_t* pEvent)
 			{
 				m_iTeleport++; // unexpected failure
 
-				EMIT_SOUND(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBallSounds), 1.0, 0.2);
+				EmitSound(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBallSounds), 1.0, 0.2);
 
 				AILogger->debug("nihilanth can't target {}", szText);
 
@@ -1171,7 +1163,7 @@ void CNihilanth::HandleAnimEvent(MonsterEvent_t* pEvent)
 	break;
 	case 5: // start up sphere machine
 	{
-		EMIT_SOUND(edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pRechargeSounds), 1.0, 0.2);
+		EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pRechargeSounds), 1.0, 0.2);
 	}
 	break;
 	case 6:
@@ -1238,9 +1230,9 @@ void CNihilanth::CommandUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_T
 }
 
 
-bool CNihilanth::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CNihilanth::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
-	if (pevInflictor->owner == edict())
+	if (inflictor->pev->owner == edict())
 		return false;
 
 	if (flDamage >= pev->health)
@@ -1258,7 +1250,7 @@ bool CNihilanth::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, flo
 
 
 
-void CNihilanth::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void CNihilanth::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	if (m_irritation == 3)
 		m_irritation = 2;
@@ -1274,7 +1266,7 @@ void CNihilanth::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecD
 	}
 
 	// SpawnBlood(ptr->vecEndPos, BloodColor(), flDamage * 5.0);// a little surface blood.
-	AddMultiDamage(pevAttacker, this, flDamage, bitsDamageType);
+	AddMultiDamage(attacker, this, flDamage, bitsDamageType);
 }
 
 
@@ -1350,7 +1342,7 @@ void CNihilanthHVR::CircleInit(CBaseEntity* pTarget)
 	m_nFrames = 1;
 	pev->renderamt = 255;
 
-	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
+	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
 	UTIL_SetOrigin(pev, pev->origin);
 
 	SetThink(&CNihilanthHVR::HoverThink);
@@ -1460,7 +1452,7 @@ void CNihilanthHVR::ZapInit(CBaseEntity* pEnemy)
 	SetTouch(&CNihilanthHVR::ZapTouch);
 	pev->nextthink = gpGlobals->time + 0.1;
 
-	EMIT_SOUND_DYN(edict(), CHAN_WEAPON, "debris/zap4.wav", 1, ATTN_NORM, 0, 100);
+	EmitSound(CHAN_WEAPON, "debris/zap4.wav", 1, ATTN_NORM);
 }
 
 void CNihilanthHVR::ZapThink()
@@ -1493,8 +1485,8 @@ void CNihilanthHVR::ZapThink()
 		if (pEntity != nullptr && 0 != pEntity->pev->takedamage)
 		{
 			ClearMultiDamage();
-			pEntity->TraceAttack(pev, GetSkillFloat("nihilanth_zap"sv), pev->velocity, &tr, DMG_SHOCK);
-			ApplyMultiDamage(pev, pev);
+			pEntity->TraceAttack(this, GetSkillFloat("nihilanth_zap"sv), pev->velocity, &tr, DMG_SHOCK);
+			ApplyMultiDamage(this, this);
 		}
 
 		MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);
@@ -1516,7 +1508,7 @@ void CNihilanthHVR::ZapThink()
 		WRITE_BYTE(10);	 // speed
 		MESSAGE_END();
 
-		UTIL_EmitAmbientSound(edict(), tr.vecEndPos, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG(140, 160));
+		EmitAmbientSound(tr.vecEndPos, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG(140, 160));
 
 		SetTouch(nullptr);
 		UTIL_Remove(this);
@@ -1546,9 +1538,9 @@ void CNihilanthHVR::ZapThink()
 
 void CNihilanthHVR::ZapTouch(CBaseEntity* pOther)
 {
-	UTIL_EmitAmbientSound(edict(), pev->origin, "weapons/electro4.wav", 1.0, ATTN_NORM, 0, RANDOM_LONG(90, 95));
+	EmitAmbientSound(pev->origin, "weapons/electro4.wav", 1.0, ATTN_NORM, 0, RANDOM_LONG(90, 95));
 
-	RadiusDamage(pev, pev, 50, CLASS_NONE, DMG_SHOCK);
+	RadiusDamage(this, this, 50, CLASS_NONE, DMG_SHOCK);
 	pev->velocity = pev->velocity * 0;
 
 	/*
@@ -1586,7 +1578,7 @@ void CNihilanthHVR::TeleportInit(CNihilanth* pOwner, CBaseEntity* pEnemy, CBaseE
 	SetTouch(&CNihilanthHVR::TeleportTouch);
 	pev->nextthink = gpGlobals->time + 0.1;
 
-	EMIT_SOUND_DYN(edict(), CHAN_WEAPON, "x/x_teleattack1.wav", 1, 0.2, 0, 100);
+	EmitSound(CHAN_WEAPON, "x/x_teleattack1.wav", 1, 0.2);
 }
 
 
@@ -1613,14 +1605,14 @@ void CNihilanthHVR::TeleportThink()
 	// check world boundaries
 	if (m_hEnemy == nullptr || !m_hEnemy->IsAlive() || pev->origin.x < -4096 || pev->origin.x > 4096 || pev->origin.y < -4096 || pev->origin.y > 4096 || pev->origin.z < -4096 || pev->origin.z > 4096)
 	{
-		STOP_SOUND(edict(), CHAN_WEAPON, "x/x_teleattack1.wav");
+		StopSound(CHAN_WEAPON, "x/x_teleattack1.wav");
 		UTIL_Remove(this);
 		return;
 	}
 
 	if ((m_hEnemy->Center() - pev->origin).Length() < 128)
 	{
-		STOP_SOUND(edict(), CHAN_WEAPON, "x/x_teleattack1.wav");
+		StopSound(CHAN_WEAPON, "x/x_teleattack1.wav");
 		UTIL_Remove(this);
 
 		if (m_hTargetEnt != nullptr)
@@ -1693,7 +1685,7 @@ void CNihilanthHVR::TeleportTouch(CBaseEntity* pOther)
 	}
 
 	SetTouch(nullptr);
-	STOP_SOUND(edict(), CHAN_WEAPON, "x/x_teleattack1.wav");
+	StopSound(CHAN_WEAPON, "x/x_teleattack1.wav");
 	UTIL_Remove(this);
 }
 
@@ -1837,7 +1829,7 @@ void CNihilanthHVR::Crawl()
 
 void CNihilanthHVR::RemoveTouch(CBaseEntity* pOther)
 {
-	STOP_SOUND(edict(), CHAN_WEAPON, "x/x_teleattack1.wav");
+	StopSound(CHAN_WEAPON, "x/x_teleattack1.wav");
 	UTIL_Remove(this);
 }
 

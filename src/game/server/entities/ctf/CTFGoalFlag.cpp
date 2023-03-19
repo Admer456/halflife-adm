@@ -215,7 +215,7 @@ void CTFGoalFlag::Spawn()
 		vecMin.x = -16;
 		vecMin.y = -16;
 		vecMin.z = 0;
-		UTIL_SetSize(pev, vecMin, vecMax);
+		SetSize(vecMin, vecMax);
 
 		if (0 == g_engfuncs.pfnDropToFloor(edict()))
 		{
@@ -536,11 +536,11 @@ void CTFGoalFlag::GiveFlagToPlayer(CBasePlayer* pPlayer)
 
 	if (pPlayer->m_iTeamNum == CTFTeam::BlackMesa)
 	{
-		EMIT_SOUND_DYN(edict(), CHAN_STATIC, "ctf/bm_flagtaken.wav", VOL_NORM, ATTN_NONE, 0, PITCH_NORM);
+		EmitSound(CHAN_STATIC, "ctf/bm_flagtaken.wav", VOL_NORM, ATTN_NONE);
 	}
 	else if (pPlayer->m_iTeamNum == CTFTeam::OpposingForce)
 	{
-		EMIT_SOUND_DYN(edict(), CHAN_STATIC, "ctf/soldier_flagtaken.wav", VOL_NORM, ATTN_NONE, 0, PITCH_NORM);
+		EmitSound(CHAN_STATIC, "ctf/soldier_flagtaken.wav", VOL_NORM, ATTN_NONE);
 	}
 
 	ScoreFlagTouch(pPlayer);
@@ -600,11 +600,11 @@ void CTFGoalFlag::goal_item_touch(CBaseEntity* pOther)
 
 		if (pPlayer->m_iTeamNum == CTFTeam::BlackMesa)
 		{
-			EMIT_SOUND_DYN(edict(), CHAN_STATIC, "ctf/civ_flag_capture.wav", VOL_NORM, ATTN_NONE, 0, PITCH_NORM);
+			EmitSound(CHAN_STATIC, "ctf/civ_flag_capture.wav", VOL_NORM, ATTN_NONE);
 		}
 		else if (pPlayer->m_iTeamNum == CTFTeam::OpposingForce)
 		{
-			EMIT_SOUND_DYN(edict(), CHAN_STATIC, "ctf/marine_flag_capture.wav", VOL_NORM, ATTN_NONE, 0, PITCH_NORM);
+			EmitSound(CHAN_STATIC, "ctf/marine_flag_capture.wav", VOL_NORM, ATTN_NONE);
 		}
 
 		ScoreFlagTouch(pPlayer);

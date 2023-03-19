@@ -53,7 +53,7 @@ void CSpore::Spawn()
 
 	SetModel("models/spore.mdl");
 
-	UTIL_SetSize(pev, g_vecZero, g_vecZero);
+	SetSize(g_vecZero, g_vecZero);
 
 	UTIL_SetOrigin(pev, pev->origin);
 
@@ -125,7 +125,7 @@ void CSpore::IgniteThink()
 		m_hSprite = nullptr;
 	}
 
-	EMIT_SOUND(edict(), CHAN_WEAPON, "weapons/splauncher_impact.wav", VOL_NORM, ATTN_NORM);
+	EmitSound(CHAN_WEAPON, "weapons/splauncher_impact.wav", VOL_NORM, ATTN_NORM);
 
 	const auto vecDir = pev->velocity.Normalize();
 
@@ -178,7 +178,7 @@ void CSpore::IgniteThink()
 	WRITE_BYTE(80);
 	MESSAGE_END();
 
-	::RadiusDamage(pev->origin, pev, VARS(pev->owner), pev->dmg, 200, CLASS_NONE, DMG_ALWAYSGIB | DMG_BLAST);
+	::RadiusDamage(pev->origin, this, GetOwner(), pev->dmg, 200, CLASS_NONE, DMG_ALWAYSGIB | DMG_BLAST);
 
 	SetThink(&CSpore::SUB_Remove);
 
@@ -218,7 +218,7 @@ void CSpore::RocketTouch(CBaseEntity* pOther)
 {
 	if (pOther->pev->takedamage != DAMAGE_NO)
 	{
-		pOther->TakeDamage(pev, VARS(pev->owner), GetSkillFloat("plr_spore"sv), DMG_GENERIC);
+		pOther->TakeDamage(this, GetOwner(), GetSkillFloat("plr_spore"sv), DMG_GENERIC);
 	}
 
 	IgniteThink();
@@ -243,13 +243,13 @@ void CSpore::MyBounceTouch(CBaseEntity* pOther)
 			}
 			else
 			{
-				EMIT_SOUND_DYN(edict(), CHAN_VOICE, "weapons/splauncher_bounce.wav", 0.25, ATTN_NORM, 0, PITCH_NORM);
+				EmitSound(CHAN_VOICE, "weapons/splauncher_bounce.wav", 0.25, ATTN_NORM);
 			}
 		}
 	}
 	else
 	{
-		pOther->TakeDamage(pev, VARS(pev->owner), GetSkillFloat("plr_spore"sv), DMG_GENERIC);
+		pOther->TakeDamage(this, GetOwner(), GetSkillFloat("plr_spore"sv), DMG_GENERIC);
 
 		IgniteThink();
 	}

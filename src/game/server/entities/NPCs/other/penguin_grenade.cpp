@@ -40,7 +40,7 @@ public:
 
 	int Classify() override;
 	int IRelationship(CBaseEntity* pTarget) override;
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 	void EXPORT HuntThink();
 	void Smoke();
 	int BloodColor() override;
@@ -93,7 +93,7 @@ void CPenguinGrenade::Precache()
 
 void CPenguinGrenade::GibMonster()
 {
-	EMIT_SOUND_DYN(edict(), CHAN_VOICE, "common/bodysplat.wav", 0.75, ATTN_NORM, 0, 200);
+	EmitSoundDyn(CHAN_VOICE, "common/bodysplat.wav", 0.75, ATTN_NORM, 0, 200);
 }
 
 void CPenguinGrenade::SuperBounceTouch(CBaseEntity* pOther)
@@ -153,11 +153,11 @@ void CPenguinGrenade::SuperBounceTouch(CBaseEntity* pOther)
 			{
 				// AILogger->debug("hit enemy");
 				ClearMultiDamage();
-				pOther->TraceAttack(pev, GetSkillFloat("snark_dmg_bite"sv), gpGlobals->v_forward, &tr, DMG_SLASH);
+				pOther->TraceAttack(this, GetSkillFloat("snark_dmg_bite"sv), gpGlobals->v_forward, &tr, DMG_SLASH);
 				if (m_hOwner != nullptr)
-					ApplyMultiDamage(pev, m_hOwner->pev);
+					ApplyMultiDamage(this, m_hOwner);
 				else
-					ApplyMultiDamage(pev, pev);
+					ApplyMultiDamage(this, this);
 
 				// add more explosion damage
 				if (hurtTarget)
@@ -173,7 +173,7 @@ void CPenguinGrenade::SuperBounceTouch(CBaseEntity* pOther)
 				// m_flDie += 2.0; // add more life
 
 				// make bite sound
-				EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "squeek/sqk_deploy1.wav", 1.0, ATTN_NORM, 0, (int)flpitch);
+				EmitSoundDyn(CHAN_WEAPON, "squeek/sqk_deploy1.wav", 1.0, ATTN_NORM, 0, (int)flpitch);
 				m_flNextAttack = gpGlobals->time + 0.5;
 			}
 		}
@@ -202,11 +202,11 @@ void CPenguinGrenade::SuperBounceTouch(CBaseEntity* pOther)
 		float flRndSound = RANDOM_FLOAT(0, 1);
 
 		if (flRndSound <= 0.33)
-			EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "squeek/sqk_hunt1.wav", 1, ATTN_NORM, 0, (int)flpitch);
+			EmitSoundDyn(CHAN_VOICE, "squeek/sqk_hunt1.wav", 1, ATTN_NORM, 0, (int)flpitch);
 		else if (flRndSound <= 0.66)
-			EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "squeek/sqk_hunt2.wav", 1, ATTN_NORM, 0, (int)flpitch);
+			EmitSoundDyn(CHAN_VOICE, "squeek/sqk_hunt2.wav", 1, ATTN_NORM, 0, (int)flpitch);
 		else
-			EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "squeek/sqk_hunt3.wav", 1, ATTN_NORM, 0, (int)flpitch);
+			EmitSoundDyn(CHAN_VOICE, "squeek/sqk_hunt3.wav", 1, ATTN_NORM, 0, (int)flpitch);
 		CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, 256, 0.25);
 	}
 	else
@@ -226,7 +226,7 @@ void CPenguinGrenade::Spawn()
 	pev->solid = SOLID_BBOX;
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-4, -4, 0), Vector(4, 4, 8));
+	SetSize(Vector(-4, -4, 0), Vector(4, 4, 8));
 	UTIL_SetOrigin(pev, pev->origin);
 
 	SetTouch(&CPenguinGrenade::SuperBounceTouch);
@@ -293,7 +293,7 @@ int CPenguinGrenade::IRelationship(CBaseEntity* pTarget)
 	}
 }
 
-void CPenguinGrenade::Killed(entvars_t* pevAttacker, int iGib)
+void CPenguinGrenade::Killed(CBaseEntity* attacker, int iGib)
 {
 	if (m_hOwner != nullptr)
 		pev->owner = m_hOwner->edict();
@@ -326,7 +326,7 @@ void CPenguinGrenade::HuntThink()
 	{
 		g_vecAttackDir = pev->velocity.Normalize();
 		pev->health = -1;
-		Killed(pev, 0);
+		Killed(this, 0);
 		return;
 	}
 
@@ -351,10 +351,7 @@ void CPenguinGrenade::HuntThink()
 
 	m_flNextHunt = gpGlobals->time + 2.0;
 
-	CBaseEntity* pOther = nullptr;
 	Vector vecDir;
-	TraceResult tr;
-
 	Vector vecFlat = pev->velocity;
 	vecFlat.z = 0;
 	vecFlat = vecFlat.Normalize();
@@ -371,7 +368,7 @@ void CPenguinGrenade::HuntThink()
 	// squeek if it's about time blow up
 	if ((m_flDie - gpGlobals->time <= 0.5) && (m_flDie - gpGlobals->time >= 0.3))
 	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "squeek/sqk_die1.wav", 1, ATTN_NORM, 0, 100 + RANDOM_LONG(0, 0x3F));
+		EmitSoundDyn(CHAN_VOICE, "squeek/sqk_die1.wav", 1, ATTN_NORM, 0, 100 + RANDOM_LONG(0, 0x3F));
 		CSoundEnt::InsertSound(bits_SOUND_COMBAT, pev->origin, 256, 0.25);
 	}
 

@@ -23,7 +23,7 @@ public:
 	void EXPORT TankThink();
 	void EXPORT TankTouch(CBaseEntity* pOther);
 	int BloodColor() override { return DONT_BLEED; }
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
@@ -58,7 +58,7 @@ void CAirtank::Spawn()
 	pev->solid = SOLID_BBOX;
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 36));
+	SetSize(Vector(-16, -16, 0), Vector(16, 16, 36));
 	UTIL_SetOrigin(pev, pev->origin);
 
 	SetTouch(&CAirtank::TankTouch);
@@ -77,9 +77,9 @@ void CAirtank::Precache()
 }
 
 
-void CAirtank::Killed(entvars_t* pevAttacker, int iGib)
+void CAirtank::Killed(CBaseEntity* attacker, int iGib)
 {
-	pev->owner = ENT(pevAttacker);
+	SetOwner(attacker);
 
 	// UNDONE: this should make a big bubble cloud, not an explosion
 
@@ -103,7 +103,7 @@ void CAirtank::TankTouch(CBaseEntity* pOther)
 	if (!m_state)
 	{
 		// "no oxygen" sound
-		EMIT_SOUND(ENT(pev), CHAN_BODY, "player/pl_swim2.wav", 1.0, ATTN_NORM);
+		EmitSound(CHAN_BODY, "player/pl_swim2.wav", 1.0, ATTN_NORM);
 		return;
 	}
 
@@ -111,7 +111,7 @@ void CAirtank::TankTouch(CBaseEntity* pOther)
 	pOther->pev->air_finished = gpGlobals->time + 12;
 
 	// suit recharge sound
-	EMIT_SOUND(ENT(pev), CHAN_VOICE, "doors/aliendoor3.wav", 1.0, ATTN_NORM);
+	EmitSound(CHAN_VOICE, "doors/aliendoor3.wav", 1.0, ATTN_NORM);
 
 	// recharge airtank in 30 seconds
 	pev->nextthink = gpGlobals->time + 30;

@@ -22,6 +22,8 @@
 
 #include "vgui_TeamFortressViewport.h"
 
+#include "sound/ISoundSystem.h"
+
 Vector* GetClientColor(int clientIndex);
 
 #define MAX_LINES 5
@@ -30,7 +32,6 @@ Vector* GetClientColor(int clientIndex);
 // allow 20 pixels on either side of the text
 #define MAX_LINE_WIDTH (ScreenWidth - 40)
 #define LINE_START 10
-static float SCROLL_SPEED = 5;
 
 static char g_szLineBuffer[MAX_LINES + 1][MAX_CHARS_PER_LINE];
 static Vector* g_pflNameColors[MAX_LINES + 1];
@@ -40,13 +41,11 @@ static float flScrollTime = 0; // the time at which the lines next scroll up
 static int Y_START = 0;
 static int line_height = 0;
 
-DECLARE_MESSAGE(m_SayText, SayText);
-
 bool CHudSayText::Init()
 {
 	gHUD.AddHudElem(this);
 
-	HOOK_MESSAGE(SayText);
+	g_ClientUserMessages.RegisterHandler("SayText", &CHudSayText::MsgFunc_SayText, this);
 
 	InitHUDData();
 
@@ -167,14 +166,12 @@ bool CHudSayText::Draw(float flTime)
 	return true;
 }
 
-bool CHudSayText::MsgFunc_SayText(const char* pszName, int iSize, void* pbuf)
+void CHudSayText::MsgFunc_SayText(const char* pszName, int iSize, void* pbuf)
 {
 	BEGIN_READ(pbuf, iSize);
 
 	int client_index = READ_BYTE(); // the client who spoke the message
 	SayTextPrint(READ_STRING(), iSize - 1, client_index);
-
-	return true;
 }
 
 void CHudSayText::SayTextPrint(const char* pszBuf, int iBufSize, int clientIndex)

@@ -63,9 +63,9 @@ void CPenguin::Spawn()
 bool CPenguin::Deploy()
 {
 	if (g_engfuncs.pfnRandomFloat(0.0, 1.0) <= 0.5)
-		EMIT_SOUND(edict(), CHAN_VOICE, "squeek/sqk_hunt2.wav", VOL_NORM, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "squeek/sqk_hunt2.wav", VOL_NORM, ATTN_NORM);
 	else
-		EMIT_SOUND(edict(), CHAN_VOICE, "squeek/sqk_hunt3.wav", VOL_NORM, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "squeek/sqk_hunt3.wav", VOL_NORM, ATTN_NORM);
 
 	m_pPlayer->m_iWeaponVolume = QUIET_GUN_VOLUME;
 
@@ -76,18 +76,16 @@ void CPenguin::Holster()
 {
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
 
-	if (0 != m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+	if (0 == m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
 	{
-		SendWeaponAnim(PENGUIN_DOWN);
-
-		EMIT_SOUND(edict(), CHAN_WEAPON, "common/null.wav", VOL_NORM, ATTN_NORM);
-	}
-	else
-	{
-		m_pPlayer->pev->weapons &= ~(1 << WEAPON_PENGUIN);
+		m_pPlayer->ClearWeaponBit(m_iId);
 		SetThink(&CPenguin::DestroyItem);
 		pev->nextthink = gpGlobals->time + 0.1;
+		return;
 	}
+
+	SendWeaponAnim(PENGUIN_DOWN);
+	m_pPlayer->EmitSound(CHAN_WEAPON, "common/null.wav", VOL_NORM, ATTN_NORM);
 }
 
 void CPenguin::WeaponIdle()
@@ -174,9 +172,9 @@ void CPenguin::PrimaryAttack()
 #endif
 
 			if (g_engfuncs.pfnRandomFloat(0, 1) <= 0.5)
-				EMIT_SOUND_DYN(edict(), CHAN_VOICE, "squeek/sqk_hunt2.wav", VOL_NORM, ATTN_NORM, 0, 105);
+				EmitSoundDyn(CHAN_VOICE, "squeek/sqk_hunt2.wav", VOL_NORM, ATTN_NORM, 0, 105);
 			else
-				EMIT_SOUND_DYN(edict(), CHAN_VOICE, "squeek/sqk_hunt3.wav", VOL_NORM, ATTN_NORM, 0, 105);
+				EmitSoundDyn(CHAN_VOICE, "squeek/sqk_hunt3.wav", VOL_NORM, ATTN_NORM, 0, 105);
 
 			m_pPlayer->m_iWeaponVolume = QUIET_GUN_VOLUME;
 			--m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType];
@@ -193,24 +191,16 @@ void CPenguin::SecondaryAttack()
 	// Nothing
 }
 
-int CPenguin::iItemSlot()
+bool CPenguin::GetWeaponInfo(WeaponInfo& info)
 {
-	return 5;
-}
-
-bool CPenguin::GetItemInfo(ItemInfo* p)
-{
-	p->pszAmmo1 = "Penguins";
-	p->iMaxAmmo1 = PENGUIN_MAX_CARRY;
-	p->pszName = STRING(pev->classname);
-	p->pszAmmo2 = nullptr;
-	p->iMaxAmmo2 = WEAPON_NOCLIP;
-	p->iMaxClip = WEAPON_NOCLIP;
-	p->iSlot = 4;
-	p->iPosition = 4;
-	p->iId = m_iId = WEAPON_PENGUIN;
-	p->iWeight = PENGUIN_WEIGHT;
-	p->iFlags = ITEM_FLAG_LIMITINWORLD | ITEM_FLAG_EXHAUSTIBLE;
+	info.AmmoType1 = "Penguins";
+	info.Name = STRING(pev->classname);
+	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.Slot = 4;
+	info.Position = 4;
+	info.Id = m_iId = WEAPON_PENGUIN;
+	info.Weight = PENGUIN_WEIGHT;
+	info.Flags = ITEM_FLAG_LIMITINWORLD | ITEM_FLAG_EXHAUSTIBLE;
 
 	return true;
 }

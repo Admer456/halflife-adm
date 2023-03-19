@@ -13,6 +13,8 @@
  *
  ****/
 
+#include <iterator>
+
 #include <fmt/format.h>
 
 #include "cbase.h"
@@ -106,7 +108,7 @@ void ReplacementMapSystem::Clear()
 	m_ReplacementMaps.clear();
 }
 
-ReplacementMap ReplacementMapSystem::Parse(const json& input, const ReplacementMapOptions& options) const
+Replacements ReplacementMapSystem::Parse(const json& input, const ReplacementMapOptions& options) const
 {
 	m_Logger->trace("Parsing replacement map with options:\n{}", options);
 
@@ -142,7 +144,19 @@ ReplacementMap ReplacementMapSystem::Parse(const json& input, const ReplacementM
 		}
 	}
 
-	return ReplacementMap{std::move(map), options.CaseSensitive};
+	return map;
+}
+
+Replacements ReplacementMapSystem::ParseFile(const char* fileName, const ReplacementMapOptions& options) const
+{
+	const auto pathID = options.LoadFromAllPaths ? nullptr : "GAMECONFIG";
+
+	return g_JSON.ParseJSONFile(
+					 fileName,
+					 {.SchemaName = ReplacementMapSchemaName, .PathID = pathID},
+					 [&, this](const json& input)
+					 { return Parse(input, options); })
+		.value_or(Replacements{});
 }
 
 const ReplacementMap* ReplacementMapSystem::Load(const std::string& fileName, const ReplacementMapOptions& options)
@@ -163,16 +177,83 @@ const ReplacementMap* ReplacementMapSystem::Load(const std::string& fileName, co
 		return it->second.get();
 	}
 
-	const auto pathID = options.LoadFromAllPaths ? nullptr : "GAMECONFIG";
+	auto map = ParseFile(fileName.c_str(), options);
 
-	auto map = g_JSON.ParseJSONFile(
-						 fileName.c_str(),
-						 {.SchemaName = ReplacementMapSchemaName, .PathID = pathID},
-						 [&, this](const json& input)
-						 { return Parse(input, options); })
-				   .value_or(ReplacementMap{});
+	if (map.empty())
+	{
+		// Don't waste memory and cpu time on this.
+		return nullptr;
+	}
 
-	const auto result = m_ReplacementMaps.emplace(std::move(normalizedFileName), std::make_unique<ReplacementMap>(std::move(map)));
+	auto replacementMap = std::make_unique<ReplacementMap>(std::move(map), options.CaseSensitive);
+
+	const auto result = m_ReplacementMaps.emplace(std::move(normalizedFileName), std::move(replacementMap));
 
 	return result.first->second.get();
+}
+
+std::unique_ptr<ReplacementMap> ReplacementMapSystem::LoadMultiple(std::span<const std::string> fileNames, const ReplacementMapOptions& options) const
+{
+	Replacements map;
+
+	// Load each file and insert existing entries into the new map.
+	// Only entries not in the new map will be added.
+	for (const auto& fileName : fileNames)
+	{
+		auto next = ParseFile(fileName.c_str(), options);
+
+		next.insert(std::make_move_iterator(map.begin()), std::make_move_iterator(map.end()));
+
+		map = std::move(next);
+	}
+
+	return std::make_unique<ReplacementMap>(std::move(map), options.CaseSensitive);
+}
+
+json ReplacementMapSystem::Serialize(const ReplacementMap& map) const
+{
+	json keyValues = json::object();
+
+	for (const auto& [key, value] : map.GetAll())
+	{
+		keyValues.emplace(key, value);
+	}
+
+	json result = json::object();
+
+	result.emplace("CaseSensitive", map.IsCaseSensitive());
+	result.emplace("KeyValues", std::move(keyValues));
+
+	return result;
+}
+
+std::unique_ptr<ReplacementMap> ReplacementMapSystem::Deserialize(const json& input) const
+{
+	bool caseSensitive = false;
+	Replacements map;
+
+	try
+	{
+		caseSensitive = input.value("CaseSensitive", false);
+
+		if (const auto keyValues = input.find("KeyValues"); keyValues != input.end())
+		{
+			map.reserve(keyValues->size());
+
+			for (const auto& [key, value] : keyValues->items())
+			{
+				map.insert_or_assign(key, value.get<std::string>());
+			}
+		}
+	}
+	catch (const std::exception& e)
+	{
+		m_Logger->error("Error deserializing replacement map:\n\tReason: {}", e.what());
+
+		// Don't leave the map in a half-initialized state.
+		map.clear();
+	}
+
+	// Always return a valid replacement map object.
+	return std::make_unique<ReplacementMap>(std::move(map), caseSensitive);
 }

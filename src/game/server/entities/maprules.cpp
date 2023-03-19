@@ -654,7 +654,7 @@ void CGamePlayerHurt::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYP
 		if (pev->dmg < 0)
 			pActivator->TakeHealth(-pev->dmg, DMG_GENERIC);
 		else
-			pActivator->TakeDamage(pev, pev, pev->dmg, DMG_GENERIC);
+			pActivator->TakeDamage(this, this, pev->dmg, DMG_GENERIC);
 	}
 
 	SUB_UseTargets(pActivator, useType, value);
@@ -792,12 +792,25 @@ public:
 
 	inline bool UseOnly() { return (pev->spawnflags & SF_PLAYEREQUIP_USEONLY) != 0; }
 
+	bool Save(CSave& save) override;
+	bool Restore(CRestore& restore) override;
+
+	static TYPEDESCRIPTION m_SaveData[];
+
 private:
 	void EquipPlayer(CBaseEntity* pPlayer);
 
 	string_t m_weaponNames[MAX_EQUIP];
 	int m_weaponCount[MAX_EQUIP];
 };
+
+TYPEDESCRIPTION CGamePlayerEquip::m_SaveData[] =
+	{
+		DEFINE_ARRAY(CGamePlayerEquip, m_weaponNames, FIELD_STRING, MAX_EQUIP),
+		DEFINE_ARRAY(CGamePlayerEquip, m_weaponCount, FIELD_INTEGER, MAX_EQUIP),
+};
+
+IMPLEMENT_SAVERESTORE(CGamePlayerEquip, CRulePointEntity);
 
 LINK_ENTITY_TO_CLASS(game_player_equip, CGamePlayerEquip);
 
@@ -841,15 +854,12 @@ void CGamePlayerEquip::Touch(CBaseEntity* pOther)
 
 void CGamePlayerEquip::EquipPlayer(CBaseEntity* pEntity)
 {
-	CBasePlayer* pPlayer = nullptr;
-
-	if (pEntity->IsPlayer())
+	if (!pEntity || !pEntity->IsPlayer())
 	{
-		pPlayer = (CBasePlayer*)pEntity;
+		return;
 	}
 
-	if (!pPlayer)
-		return;
+	CBasePlayer* pPlayer = (CBasePlayer*)pEntity;
 
 	for (int i = 0; i < MAX_EQUIP; i++)
 	{
@@ -901,7 +911,7 @@ const char* CGamePlayerTeam::TargetTeamName(const char* pszTargetName)
 
 	while ((pTeamEntity = UTIL_FindEntityByTargetname(pTeamEntity, pszTargetName)) != nullptr)
 	{
-		if (FClassnameIs(pTeamEntity->pev, "game_team_master"))
+		if (pTeamEntity->ClassnameIs("game_team_master"))
 			return pTeamEntity->TeamID();
 	}
 

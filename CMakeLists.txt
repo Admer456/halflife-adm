@@ -73,17 +73,8 @@ function(set_common_properties TARGET_NAME)
 		$<$<CONFIG:DEBUG>:_DEBUG>
 		CLIENT_WEAPONS
 		# These are defined for OSX as well
-		$<$<PLATFORM_ID:Linux, Darwin>:
-			POSIX
-			_POSIX
-			LINUX
-			_LINUX
-			GNUC
-		>
-		$<$<PLATFORM_ID:Darwin>:
-			OSX
-			_OSX
-		>
+		$<$<PLATFORM_ID:Linux, Darwin>:POSIX _POSIX LINUX _LINUX GNUC>
+		$<$<PLATFORM_ID:Darwin>:OSX _OSX>
 		UNIFIED_SDK_CONFIG="$<CONFIG>")
 		
 	target_link_libraries(${TARGET_NAME} PRIVATE
@@ -105,12 +96,35 @@ function(set_common_properties TARGET_NAME)
 		# Since the arch settings used are i686 this means including the setting ensures original settings are used,
 		# but it could cause problems for AMD targets
 		$<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fpermissive -fno-strict-aliasing -Wno-invalid-offsetof -march=pentium-m -mfpmath=387>
-			
+		
+		# flifetime-dse=1 is needed to disable a compiler optimization that optimizes out std::memset calls in CBaseEntity::operator new
+		# See https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html#index-flifetime-dse for more information about the flifetime-dse flag
+		$<$<CXX_COMPILER_ID:GNU>:-flifetime-dse=1>
+		
 		$<$<CXX_COMPILER_ID:MSVC>:/W3 /MP>
 			
 		# These are all from the original Makefile
 		# They have not been tested with CMake since there is no Mac system available to test on, so this might not work
 		$<$<PLATFORM_ID:Darwin>:-Qunused-arguments -mmacosx-version-min=10.5 -fasm-blocks -arch i386 -march=prescott -momit-leaf-frame-pointer -mtune=core2>)
+
+	# Disable certain compiler warnings.
+	if (MSVC)
+		target_compile_options(${TARGET_NAME} PRIVATE
+			# int or float down-conversion
+			/wd4244
+			# int or float data truncation
+			/wd4305
+			# unreferenced inline function removed
+			/wd4514
+			# unreferenced formal parameter
+			/wd4100
+			# Variable is uninitialized
+			/wd26495
+			# Arithmetic overflow
+			/wd26451
+			# The enum type is unscoped
+			/wd26812)
+	endif()
 
 	target_link_options(${TARGET_NAME} PRIVATE
 		$<$<PLATFORM_ID:Linux>:-static-libstdc++ -Wl,-Map,${TARGET_NAME}_map.txt>)
@@ -204,18 +218,25 @@ install(FILES
 	${CMAKE_BINARY_DIR}/liblist.gam
 	DESTINATION .)
 
+# CMake doesn't currently support installing imported libraries of type UNKNOWN.
+# See https://gitlab.kitware.com/cmake/cmake/-/issues/22406
+#install(IMPORTED_RUNTIME_ARTIFACTS OpenAL::OpenAL
+#	RUNTIME DESTINATION cl_dlls)
+install(FILES $<TARGET_FILE:OpenAL::OpenAL> DESTINATION cl_dlls)
+
+if (UNIX)
+	# Create a symbolic link to the OpenAL library so the dependency can be located at runtime.
+	INSTALL(CODE "execute_process( \
+		COMMAND ${CMAKE_COMMAND} -E create_symlink \
+		\"./libopenal-hlu.so.1.22.2\" \
+		\"${CMAKE_INSTALL_PREFIX}/cl_dlls/libopenal-hlu.so.1\"   \
+		)"
+	)
+endif()
+
 if (MSVC)
 	install(FILES $<TARGET_PDB_FILE:client> DESTINATION cl_dlls OPTIONAL)
 	install(FILES $<TARGET_PDB_FILE:server> DESTINATION dlls OPTIONAL)
-	
-	# Copy the OpenAL library on Windows only.
-	# On Linux OpenAL is loaded by Miles Sound System, and the Steam runtime provides this library.
-	# CMake doesn't currently support installing imported libraries of type UNKNOWN.
-	# See https://gitlab.kitware.com/cmake/cmake/-/issues/22406
-	#install(IMPORTED_RUNTIME_ARTIFACTS OpenAL::OpenAL
-	#	RUNTIME DESTINATION cl_dlls)
-	
-	install(FILES $<TARGET_FILE:OpenAL::OpenAL> DESTINATION cl_dlls)
 endif()
 
 # Set up the script that will copy the mod libraries to the HLDS directory

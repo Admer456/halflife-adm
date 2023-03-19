@@ -15,6 +15,7 @@
 #include "hud.h"
 #include "demo.h"
 
+#include "com_weapons.h"
 #include "demo_api.h"
 #include "const.h"
 #include "entity_state.h"
@@ -28,12 +29,10 @@
 extern BEAM* pBeam;
 extern BEAM* pBeam2;
 extern TEMPENTITY* pFlare; // Vit_amiN: egon's energy flare
-Vector HUD_GetLastOrg();
 
 void UpdateBeams()
 {
 	Vector forward, vecSrc, vecEnd, angles, right, up;
-	Vector view_ofs;
 	pmtrace_t tr;
 	cl_entity_t* pthisplayer = gEngfuncs.GetLocalPlayer();
 	int idx = pthisplayer->index;
@@ -46,9 +45,9 @@ void UpdateBeams()
 
 	AngleVectors(angles, forward, right, up);
 
-	VectorCopy(origin, vecSrc);
+	vecSrc = origin;
 
-	VectorMA(vecSrc, 2048, forward, vecEnd);
+	vecEnd = vecSrc + (2048 * forward);
 
 	gEngfuncs.pEventAPI->EV_SetUpPlayerPrediction(0, 1);
 

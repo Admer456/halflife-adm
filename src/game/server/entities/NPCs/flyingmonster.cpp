@@ -114,13 +114,13 @@ float CFlyingMonster::ChangeYaw(int speed)
 }
 
 
-void CFlyingMonster::Killed(entvars_t* pevAttacker, int iGib)
+void CFlyingMonster::Killed(CBaseEntity* attacker, int iGib)
 {
 	pev->movetype = MOVETYPE_STEP;
 	ClearBits(pev->flags, FL_ONGROUND);
 	pev->angles.z = 0;
 	pev->angles.x = 0;
-	CBaseMonster::Killed(pevAttacker, iGib);
+	CBaseMonster::Killed(attacker, iGib);
 }
 
 
@@ -134,7 +134,7 @@ void CFlyingMonster::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case FLYING_AE_FLAPSOUND:
 		if (m_pFlapSound)
-			EMIT_SOUND(edict(), CHAN_BODY, m_pFlapSound, 1, ATTN_NORM);
+			EmitSound(CHAN_BODY, m_pFlapSound, 1, ATTN_NORM);
 		break;
 
 	default:

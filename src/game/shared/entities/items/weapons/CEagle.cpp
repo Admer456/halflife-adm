@@ -55,8 +55,6 @@ void CEagle::Precache()
 
 void CEagle::Spawn()
 {
-	pev->classname = MAKE_STRING("weapon_eagle");
-
 	Precache();
 
 	m_iId = WEAPON_EAGLE;
@@ -214,7 +212,7 @@ void CEagle::PrimaryAttack()
 		1,
 		vecSrc, vecAiming, Vector(flSpread, flSpread, flSpread),
 		8192.0, BULLET_PLAYER_EAGLE, 0, 0,
-		m_pPlayer->pev, m_pPlayer->random_seed);
+		m_pPlayer, m_pPlayer->random_seed);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + (m_bLaserActive ? 0.5 : 0.22);
 
@@ -258,7 +256,7 @@ void CEagle::SecondaryAttack()
 
 			m_pLaser = nullptr;
 
-			EMIT_SOUND_DYN(edict(), CHAN_WEAPON, "weapons/desert_eagle_sight2.wav", VOL_NORM, ATTN_NORM, 0, PITCH_NORM);
+			EmitSound(CHAN_WEAPON, "weapons/desert_eagle_sight2.wav", VOL_NORM, ATTN_NORM);
 		}
 	}
 #endif
@@ -300,7 +298,7 @@ void CEagle::UpdateLaser()
 		{
 			m_pLaser = CEagleLaser::CreateSpot();
 
-			EMIT_SOUND_DYN(edict(), CHAN_WEAPON, "weapons/desert_eagle_sight.wav", VOL_NORM, ATTN_NORM, 0, PITCH_NORM);
+			EmitSound(CHAN_WEAPON, "weapons/desert_eagle_sight.wav", VOL_NORM, ATTN_NORM);
 		}
 
 		UTIL_MakeVectors(m_pPlayer->pev->v_angle);
@@ -318,32 +316,23 @@ void CEagle::UpdateLaser()
 #endif
 }
 
-int CEagle::iItemSlot()
+bool CEagle::GetWeaponInfo(WeaponInfo& info)
 {
-	return 2;
-}
-
-bool CEagle::GetItemInfo(ItemInfo* p)
-{
-	p->pszAmmo1 = "357";
-	p->iMaxAmmo1 = _357_MAX_CARRY;
-	p->pszName = STRING(pev->classname);
-	p->pszAmmo2 = nullptr;
-	p->iMaxAmmo2 = WEAPON_NOCLIP;
-	p->iMaxClip = EAGLE_MAX_CLIP;
-	p->iSlot = 1;
-	p->iPosition = 2;
-	p->iFlags = 0;
-	p->iId = m_iId = WEAPON_EAGLE;
-	p->iWeight = EAGLE_WEIGHT;
+	info.AmmoType1 = "357";
+	info.Name = STRING(pev->classname);
+	info.MagazineSize1 = EAGLE_MAX_CLIP;
+	info.Slot = 1;
+	info.Position = 2;
+	info.Id = m_iId = WEAPON_EAGLE;
+	info.Weight = EAGLE_WEIGHT;
 	return true;
 }
 
 void CEagle::IncrementAmmo(CBasePlayer* pPlayer)
 {
-	if (pPlayer->GiveAmmo(1, "357", _357_MAX_CARRY) >= 0)
+	if (pPlayer->GiveAmmo(1, "357") >= 0)
 	{
-		EMIT_SOUND(pPlayer->edict(), CHAN_STATIC, "ctf/pow_backpack.wav", 0.5, ATTN_NORM);
+		pPlayer->EmitSound(CHAN_STATIC, "ctf/pow_backpack.wav", 0.5, ATTN_NORM);
 	}
 }
 
@@ -380,9 +369,9 @@ public:
 
 	bool AddAmmo(CBasePlayer* pOther) override
 	{
-		if (pOther->GiveAmmo(AMMO_EAGLE_GIVE, "357", _357_MAX_CARRY) != -1)
+		if (pOther->GiveAmmo(AMMO_EAGLE_GIVE, "357") != -1)
 		{
-			EMIT_SOUND(ENT(pev), CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM);
 			return true;
 		}
 		return false;

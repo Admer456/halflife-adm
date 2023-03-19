@@ -12,32 +12,42 @@
  *   without written permission from Valve LLC.
  *
  ****/
+
 #include "cbase.h"
+#include "AmmoTypeSystem.h"
 
-// Precaches the ammo and queues the ammo info for sending to clients
-void AddAmmoNameToAmmoRegistry(const char* szAmmoname, const char* weaponName)
+#ifdef CLIENT_DLL
+#include "com_weapons.h"
+#endif
+
+void Weapons_RegisterAmmoTypes()
 {
-	// make sure it's not already in the registry
-	for (int i = 0; i < MAX_AMMO_SLOTS; i++)
-	{
-		if (!CBasePlayerItem::AmmoInfoArray[i].pszName)
-			continue;
+	g_AmmoTypes.Clear();
 
-		if (stricmp(CBasePlayerItem::AmmoInfoArray[i].pszName, szAmmoname) == 0)
-			return; // ammo already in registry, just quite
-	}
+	g_AmmoTypes.Register("9mm", _9MM_MAX_CARRY);
+	g_AmmoTypes.Register("357", _357_MAX_CARRY);
 
+	g_AmmoTypes.Register("ARgrenades", M203_GRENADE_MAX_CARRY);
+	g_AmmoTypes.Register("buckshot", BUCKSHOT_MAX_CARRY);
+	g_AmmoTypes.Register("bolts", BOLT_MAX_CARRY);
 
-	giAmmoIndex++;
-	ASSERT(giAmmoIndex < MAX_AMMO_SLOTS);
-	if (giAmmoIndex >= MAX_AMMO_SLOTS)
-		giAmmoIndex = 0;
+	g_AmmoTypes.Register("rockets", ROCKET_MAX_CARRY);
+	g_AmmoTypes.Register("uranium", URANIUM_MAX_CARRY);
+	g_AmmoTypes.Register("Hornets", HORNET_MAX_CARRY);
 
-	auto& ammoType = CBasePlayerItem::AmmoInfoArray[giAmmoIndex];
+	g_AmmoTypes.Register("Hand Grenade", HANDGRENADE_MAX_CARRY, "weapon_handgrenade");
+	g_AmmoTypes.Register("Satchel Charge", SATCHEL_MAX_CARRY, "weapon_satchel");
+	g_AmmoTypes.Register("Trip Mine", TRIPMINE_MAX_CARRY, "weapon_tripmine");
+	g_AmmoTypes.Register("Snarks", SNARK_MAX_CARRY, "weapon_snark");
+	g_AmmoTypes.Register("Penguins", PENGUIN_MAX_CARRY, "weapon_penguin");
+	
+	g_AmmoTypes.Register("556", M249_MAX_CARRY);
+	g_AmmoTypes.Register("762", SNIPERRIFLE_MAX_CARRY);
 
-	ammoType.pszName = szAmmoname;
-	ammoType.iId = giAmmoIndex; // yes, this info is redundant
-	ammoType.WeaponName = weaponName;
+	g_AmmoTypes.Register("spores", SPORELAUNCHER_MAX_CARRY);
+	g_AmmoTypes.Register("shock", SHOCKRIFLE_MAX_CLIP);
+
+	CBasePlayerWeapon::WeaponsLogger->debug("Registered {} ammo types", g_AmmoTypes.GetCount());
 }
 
 void FindHullIntersection(const Vector& vecSrc, TraceResult& tr, const Vector& mins, const Vector& maxs, edict_t* pEntity)
@@ -84,6 +94,27 @@ void FindHullIntersection(const Vector& vecSrc, TraceResult& tr, const Vector& m
 	}
 }
 
+void CBasePlayerWeapon::SendWeaponAnim(int iAnim, int body)
+{
+	m_pPlayer->pev->weaponanim = iAnim;
+
+#ifndef CLIENT_DLL
+#if defined(CLIENT_WEAPONS)
+	const bool skiplocal = !m_ForceSendAnimations && UseDecrement();
+
+	if (skiplocal && ENGINE_CANSKIP(m_pPlayer->edict()))
+		return;
+#endif
+
+	MESSAGE_BEGIN(MSG_ONE, SVC_WEAPONANIM, nullptr, m_pPlayer->pev);
+	WRITE_BYTE(iAnim);	   // sequence number
+	WRITE_BYTE(pev->body); // weaponmodel bodygroup.
+	MESSAGE_END();
+#else
+	HUD_SendWeaponAnim(iAnim, body, false);
+#endif
+}
+
 bool CBasePlayerWeapon::CanDeploy()
 {
 	bool bHasAmmo = false;
@@ -112,6 +143,40 @@ bool CBasePlayerWeapon::CanDeploy()
 	}
 
 	return true;
+}
+
+bool CBasePlayerWeapon::DefaultDeploy(const char* szViewModel, const char* szWeaponModel, int iAnim, const char* szAnimExt, int body)
+{
+	if (!CanDeploy())
+		return false;
+
+#ifndef CLIENT_DLL
+	m_pPlayer->TabulateAmmo();
+	SetWeaponModels(szViewModel, szWeaponModel);
+	strcpy(m_pPlayer->m_szAnimExtention, szAnimExt);
+#else
+	LoadVModel(szViewModel, m_pPlayer);
+	g_irunninggausspred = false;
+#endif
+
+	SendWeaponAnim(iAnim, body);
+
+	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
+	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 1.0;
+	m_flLastFireTime = 0.0;
+
+	return true;
+}
+
+void CBasePlayerWeapon::Holster()
+{
+	m_fInReload = false; // cancel any reload in progress.
+	m_pPlayer->pev->viewmodel = string_t::Null;
+	m_pPlayer->pev->weaponmodel = string_t::Null;
+
+#ifdef CLIENT_DLL
+	g_irunninggausspred = false;
+#endif
 }
 
 bool CBasePlayerWeapon::DefaultReload(int iClipSize, int iAnim, float fDelay, int body)
@@ -145,6 +210,17 @@ void CBasePlayerWeapon::ResetEmptySound()
 	m_iPlayEmptySound = true;
 }
 
+bool CBasePlayerWeapon::PlayEmptySound()
+{
+	if (m_iPlayEmptySound)
+	{
+		EMIT_SOUND_PREDICTED(m_pPlayer, CHAN_WEAPON, "weapons/357_cock1.wav", 0.8, ATTN_NORM, 0, PITCH_NORM);
+		m_iPlayEmptySound = false;
+		return false;
+	}
+	return false;
+}
+
 bool CanAttack(float attack_time, float curtime, bool isPredicted)
 {
 #if defined(CLIENT_WEAPONS)
@@ -173,9 +249,13 @@ void CBasePlayerWeapon::ItemPostFrame()
 		{
 			m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] += m_iClip - iMaxClip();
 
-			if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] > iMaxAmmo1())
+			const auto type = g_AmmoTypes.GetByIndex(m_iPrimaryAmmoType);
+
+			assert(type);
+
+			if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] > type->MaximumCapacity)
 			{
-				m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] = iMaxAmmo1();
+				m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] = type->MaximumCapacity;
 			}
 
 			m_iClip = iMaxClip();
@@ -271,43 +351,4 @@ void CBasePlayerWeapon::ItemPostFrame()
 	{
 		WeaponIdle();
 	}
-}
-
-void CBasePlayer::SelectLastItem()
-{
-	if (!m_pLastItem)
-	{
-		return;
-	}
-
-	if (m_pActiveItem && !m_pActiveItem->CanHolster())
-	{
-		return;
-	}
-
-	ResetAutoaim();
-
-	// FIX, this needs to queue them up and delay
-	if (m_pActiveItem)
-		m_pActiveItem->Holster();
-
-	CBasePlayerItem* pTemp = m_pActiveItem;
-	m_pActiveItem = m_pLastItem;
-	m_pLastItem = pTemp;
-
-	auto weapon = m_pActiveItem->GetWeaponPtr();
-
-	if (weapon)
-	{
-		weapon->m_ForceSendAnimations = true;
-	}
-
-	m_pActiveItem->Deploy();
-
-	if (weapon)
-	{
-		weapon->m_ForceSendAnimations = false;
-	}
-
-	m_pActiveItem->UpdateItemInfo();
 }

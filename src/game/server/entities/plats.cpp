@@ -187,7 +187,7 @@ void CFuncPlat::Setup()
 	pev->movetype = MOVETYPE_PUSH;
 
 	UTIL_SetOrigin(pev, pev->origin); // set size and link into world
-	UTIL_SetSize(pev, pev->mins, pev->maxs);
+	SetSize(pev->mins, pev->maxs);
 	SetModel(STRING(pev->model));
 
 	// vecPosition1 is the top position, vecPosition2 is the bottom
@@ -269,7 +269,7 @@ void CPlatTrigger::SpawnInsideTrigger(CFuncPlat* pPlatform)
 		vecTMin.y = (pPlatform->pev->mins.y + pPlatform->pev->maxs.y) / 2;
 		vecTMax.y = vecTMin.y + 1;
 	}
-	UTIL_SetSize(pev, vecTMin, vecTMax);
+	SetSize(vecTMin, vecTMax);
 }
 
 
@@ -337,7 +337,7 @@ void CFuncPlat::PlatUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE 
 //
 void CFuncPlat::GoDown()
 {
-	EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound), m_volume, ATTN_NORM);
+	EmitSound(CHAN_STATIC, STRING(m_MoveSound), m_volume, ATTN_NORM);
 
 	ASSERT(m_toggle_state == TS_AT_TOP || m_toggle_state == TS_GOING_UP);
 	m_toggle_state = TS_GOING_DOWN;
@@ -351,8 +351,8 @@ void CFuncPlat::GoDown()
 //
 void CFuncPlat::HitBottom()
 {
-	STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound));
-	EMIT_SOUND(ENT(pev), CHAN_WEAPON, STRING(m_StopSound), m_volume, ATTN_NORM);
+	StopSound(CHAN_STATIC, STRING(m_MoveSound));
+	EmitSound(CHAN_WEAPON, STRING(m_StopSound), m_volume, ATTN_NORM);
 
 	ASSERT(m_toggle_state == TS_GOING_DOWN);
 	m_toggle_state = TS_AT_BOTTOM;
@@ -364,7 +364,7 @@ void CFuncPlat::HitBottom()
 //
 void CFuncPlat::GoUp()
 {
-	EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound), m_volume, ATTN_NORM);
+	EmitSound(CHAN_STATIC, STRING(m_MoveSound), m_volume, ATTN_NORM);
 
 	ASSERT(m_toggle_state == TS_AT_BOTTOM || m_toggle_state == TS_GOING_DOWN);
 	m_toggle_state = TS_GOING_UP;
@@ -378,8 +378,8 @@ void CFuncPlat::GoUp()
 //
 void CFuncPlat::HitTop()
 {
-	STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound));
-	EMIT_SOUND(ENT(pev), CHAN_WEAPON, STRING(m_StopSound), m_volume, ATTN_NORM);
+	StopSound(CHAN_STATIC, STRING(m_MoveSound));
+	EmitSound(CHAN_WEAPON, STRING(m_StopSound), m_volume, ATTN_NORM);
 
 	ASSERT(m_toggle_state == TS_GOING_UP);
 	m_toggle_state = TS_AT_TOP;
@@ -397,9 +397,9 @@ void CFuncPlat::Blocked(CBaseEntity* pOther)
 {
 	Logger->trace("{} Blocked by {}", STRING(pev->classname), STRING(pOther->pev->classname));
 	// Hurt the blocker a little
-	pOther->TakeDamage(pev, pev, 1, DMG_CRUSH);
+	pOther->TakeDamage(this, this, 1, DMG_CRUSH);
 
-	STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound));
+	StopSound(CHAN_STATIC, STRING(m_MoveSound));
 
 	// Send the platform back where it came from
 	ASSERT(m_toggle_state == TS_GOING_UP || m_toggle_state == TS_GOING_DOWN);
@@ -577,7 +577,7 @@ void CFuncTrain::Blocked(CBaseEntity* pOther)
 
 	m_flActivateFinished = gpGlobals->time + 0.5;
 
-	pOther->TakeDamage(pev, pev, pev->dmg, DMG_CRUSH);
+	pOther->TakeDamage(this, this, pev->dmg, DMG_CRUSH);
 }
 
 
@@ -597,7 +597,7 @@ void CFuncTrain::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE use
 			pev->target = pev->enemy->v.targetname;
 		pev->nextthink = 0;
 		pev->velocity = g_vecZero;
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
+		EmitSound(CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
 	}
 }
 
@@ -617,8 +617,8 @@ void CFuncTrain::Wait()
 	{
 		pev->spawnflags |= SF_TRAIN_WAIT_RETRIGGER;
 		// clear the sound channel.
-		STOP_SOUND(edict(), CHAN_STATIC, STRING(m_MoveSound));
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
+		StopSound(CHAN_STATIC, STRING(m_MoveSound));
+		EmitSound(CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
 		pev->nextthink = 0;
 		return;
 	}
@@ -628,8 +628,8 @@ void CFuncTrain::Wait()
 	if (m_flWait != 0)
 	{ // -1 wait will wait forever!
 		pev->nextthink = pev->ltime + m_flWait;
-		STOP_SOUND(edict(), CHAN_STATIC, STRING(m_MoveSound));
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
+		StopSound(CHAN_STATIC, STRING(m_MoveSound));
+		EmitSound(CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
 		SetThink(&CFuncTrain::Next);
 	}
 	else
@@ -652,9 +652,9 @@ void CFuncTrain::Next()
 
 	if (!pTarg)
 	{
-		STOP_SOUND(edict(), CHAN_STATIC, STRING(m_MoveSound));
+		StopSound(CHAN_STATIC, STRING(m_MoveSound));
 		// Play stop sound
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
+		EmitSound(CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
 		return;
 	}
 
@@ -687,8 +687,8 @@ void CFuncTrain::Next()
 		// CHANGED this from CHAN_VOICE to CHAN_STATIC around OEM beta time because trains should
 		// use CHAN_STATIC for their movement sounds to prevent sound field problems.
 		// this is not a hack or temporary fix, this is how things should be. (sjb).
-		STOP_SOUND(edict(), CHAN_STATIC, STRING(m_MoveSound));
-		EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound), m_volume, ATTN_NORM);
+		StopSound(CHAN_STATIC, STRING(m_MoveSound));
+		EmitSound(CHAN_STATIC, STRING(m_MoveSound), m_volume, ATTN_NORM);
 		ClearBits(pev->effects, EF_NOINTERP);
 		SetMoveDone(&CFuncTrain::Wait);
 		LinearMove(pTarg->pev->origin - (pev->mins + pev->maxs) * 0.5, pev->speed);
@@ -755,7 +755,7 @@ void CFuncTrain::Spawn()
 		pev->solid = SOLID_BSP;
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, pev->mins, pev->maxs);
+	SetSize(pev->mins, pev->maxs);
 	UTIL_SetOrigin(pev, pev->origin);
 
 	m_activated = false;
@@ -891,7 +891,7 @@ void CSpriteTrain::Blocked(CBaseEntity* pOther)
 
 	m_flActivateFinished = pev->ltime + 0.5;
 
-	pOther->TakeDamage(pev, pev, pev->dmg, DMG_CRUSH);
+	pOther->TakeDamage(this, this, pev->dmg, DMG_CRUSH);
 }
 
 
@@ -911,7 +911,7 @@ void CSpriteTrain::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE u
 			pev->target = pev->enemy->v.targetname;
 
 		pev->velocity = g_vecZero;
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
+		EmitSound(CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
 
 		m_nexting = true;
 		m_nextTime = pev->ltime + m_flWait;
@@ -934,8 +934,8 @@ void CSpriteTrain::Wait()
 	{
 		pev->spawnflags |= SF_TRAIN_WAIT_RETRIGGER;
 		// clear the sound channel.
-		STOP_SOUND(edict(), CHAN_STATIC, STRING(m_MoveSound));
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
+		StopSound(CHAN_STATIC, STRING(m_MoveSound));
+		EmitSound(CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
 		return;
 	}
 
@@ -944,8 +944,8 @@ void CSpriteTrain::Wait()
 	if (m_flWait != 0)
 	{ // -1 wait will wait forever!
 		pev->nextthink = pev->ltime + m_flWait;
-		STOP_SOUND(edict(), CHAN_STATIC, STRING(m_MoveSound));
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
+		StopSound(CHAN_STATIC, STRING(m_MoveSound));
+		EmitSound(CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
 
 		m_nexting = true;
 		m_nextTime = pev->ltime + m_flWait;
@@ -970,9 +970,9 @@ void CSpriteTrain::Next()
 
 	if (!pTarg)
 	{
-		STOP_SOUND(edict(), CHAN_STATIC, STRING(m_MoveSound));
+		StopSound(CHAN_STATIC, STRING(m_MoveSound));
 		// Play stop sound
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
+		EmitSound(CHAN_VOICE, STRING(m_StopSound), m_volume, ATTN_NORM);
 		return;
 	}
 
@@ -1005,8 +1005,8 @@ void CSpriteTrain::Next()
 		// CHANGED this from CHAN_VOICE to CHAN_STATIC around OEM beta time because trains should
 		// use CHAN_STATIC for their movement sounds to prevent sound field problems.
 		// this is not a hack or temporary fix, this is how things should be. (sjb).
-		STOP_SOUND(edict(), CHAN_STATIC, STRING(m_MoveSound));
-		EMIT_SOUND(ENT(pev), CHAN_STATIC, STRING(m_MoveSound), m_volume, ATTN_NORM);
+		StopSound(CHAN_STATIC, STRING(m_MoveSound));
+		EmitSound(CHAN_STATIC, STRING(m_MoveSound), m_volume, ATTN_NORM);
 		ClearBits(pev->effects, EF_NOINTERP);
 
 		LinearMove(pTarg->pev->origin - (pev->mins + pev->maxs) * 0.5, pev->speed);
@@ -1074,7 +1074,7 @@ void CSpriteTrain::Spawn()
 	pev->solid = SOLID_NOT;
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, pev->mins, pev->maxs);
+	SetSize(pev->mins, pev->maxs);
 	UTIL_SetOrigin(pev, pev->origin);
 
 	m_activated = false;
@@ -1259,7 +1259,7 @@ void CFuncTrackTrain::Blocked(CBaseEntity* pOther)
 	if (pev->dmg <= 0)
 		return;
 	// we can't hurt this thing, so we're not concerned with it
-	pOther->TakeDamage(pev, pev, pev->dmg, DMG_CRUSH);
+	pOther->TakeDamage(this, this, pev->dmg, DMG_CRUSH);
 }
 
 
@@ -1281,7 +1281,7 @@ void CFuncTrackTrain::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYP
 			pev->speed = 0;
 			pev->velocity = g_vecZero;
 			pev->avelocity = g_vecZero;
-			StopSound();
+			StopTrainSound();
 			SetThink(nullptr);
 		}
 	}
@@ -1328,13 +1328,13 @@ static void FixupAngles(Vector& v)
 #define TRAIN_MAXPITCH 200
 #define TRAIN_MAXSPEED 1000 // approx max speed for sound pitch calculation
 
-void CFuncTrackTrain::StopSound()
+void CFuncTrackTrain::StopTrainSound()
 {
 	// if sound playing, stop it
 	if (m_soundPlaying && !FStringNull(m_sounds))
 	{
-		STOP_SOUND(ENT(pev), CHAN_STATIC, STRING(m_sounds));
-		EMIT_SOUND_DYN(ENT(pev), CHAN_ITEM, "plats/ttrain_brake1.wav", m_flVolume, ATTN_NORM, 0, 100);
+		StopSound(CHAN_STATIC, STRING(m_sounds));
+		EmitSound(CHAN_ITEM, "plats/ttrain_brake1.wav", m_flVolume, ATTN_NORM);
 	}
 
 	m_soundPlaying = false;
@@ -1344,7 +1344,7 @@ void CFuncTrackTrain::StopSound()
 // NOTE: when train goes through transition, m_soundPlaying should go to 0,
 // which will cause the looped sound to restart.
 
-void CFuncTrackTrain::UpdateSound()
+void CFuncTrackTrain::UpdateTrainSound()
 {
 	if (FStringNull(m_sounds))
 		return;
@@ -1357,16 +1357,16 @@ void CFuncTrackTrain::UpdateSound()
 		if (!m_soundPlaying)
 		{
 			// play startup sound for train
-			EMIT_SOUND_DYN(ENT(pev), CHAN_ITEM, "plats/ttrain_start1.wav", m_flVolume, ATTN_NORM, 0, 100);
+			EmitSound(CHAN_ITEM, "plats/ttrain_start1.wav", m_flVolume, ATTN_NORM);
 		}
 
-		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds), m_flVolume, ATTN_NORM, 0, (int)flpitch);
+		EmitSoundDyn(CHAN_STATIC, STRING(m_sounds), m_flVolume, ATTN_NORM, 0, (int)flpitch);
 		m_soundPlaying = true;
 	}
 	else if (flpitch != m_CachedPitch)
 	{
 		// update pitch
-		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds), m_flVolume, ATTN_NORM, SND_CHANGE_PITCH, (int)flpitch);
+		EmitSoundDyn(CHAN_STATIC, STRING(m_sounds), m_flVolume, ATTN_NORM, SND_CHANGE_PITCH, (int)flpitch);
 	}
 
 	m_CachedPitch = flpitch;
@@ -1381,7 +1381,7 @@ void CFuncTrackTrain::Next()
 	if (0 == pev->speed)
 	{
 		Logger->trace("TRAIN({}): Speed is 0", STRING(pev->targetname));
-		StopSound();
+		StopTrainSound();
 		return;
 	}
 
@@ -1390,11 +1390,11 @@ void CFuncTrackTrain::Next()
 	if (!m_ppath)
 	{
 		Logger->trace("TRAIN({}): Lost path", STRING(pev->targetname));
-		StopSound();
+		StopTrainSound();
 		return;
 	}
 
-	UpdateSound();
+	UpdateTrainSound();
 
 	Vector nextPos = pev->origin;
 
@@ -1481,7 +1481,7 @@ void CFuncTrackTrain::Next()
 	}
 	else // end of path, stop
 	{
-		StopSound();
+		StopTrainSound();
 		pev->velocity = (nextPos - pev->origin);
 		pev->avelocity = g_vecZero;
 		float distance = pev->velocity.Length();
@@ -1557,18 +1557,18 @@ void CFuncTrackTrain::DeadEnd()
 }
 
 
-void CFuncTrackTrain::SetControls(entvars_t* pevControls)
+void CFuncTrackTrain::SetControls(CBaseEntity* controls)
 {
-	Vector offset = pevControls->origin - pev->oldorigin;
+	Vector offset = controls->pev->origin - pev->oldorigin;
 
-	m_controlMins = pevControls->mins + offset;
-	m_controlMaxs = pevControls->maxs + offset;
+	m_controlMins = controls->pev->mins + offset;
+	m_controlMaxs = controls->pev->maxs + offset;
 }
 
 
-bool CFuncTrackTrain::OnControls(entvars_t* pevTest)
+bool CFuncTrackTrain::OnControls(CBaseEntity* controller)
 {
-	Vector offset = pevTest->origin - pev->origin;
+	Vector offset = controller->pev->origin - pev->origin;
 
 	if ((pev->spawnflags & SF_TRACKTRAIN_NOCONTROL) != 0)
 		return false;
@@ -1594,15 +1594,14 @@ void CFuncTrackTrain::Find()
 	if (!m_ppath)
 		return;
 
-	entvars_t* pevTarget = m_ppath->pev;
-	if (!FClassnameIs(pevTarget, "path_track"))
+	if (!m_ppath->ClassnameIs("path_track"))
 	{
 		Logger->error("func_tracktrain must be on a path of path_track");
 		m_ppath = nullptr;
 		return;
 	}
 
-	Vector nextPos = pevTarget->origin;
+	Vector nextPos = m_ppath->pev->origin;
 	nextPos.z += m_height;
 
 	Vector look = nextPos;
@@ -1621,7 +1620,7 @@ void CFuncTrackTrain::Find()
 	SetThink(&CFuncTrackTrain::Next);
 	pev->speed = m_startSpeed;
 
-	UpdateSound();
+	UpdateTrainSound();
 }
 
 
@@ -1636,7 +1635,7 @@ void CFuncTrackTrain::NearestPath()
 	while ((pTrack = UTIL_FindEntityInSphere(pTrack, pev->origin, 1024)) != nullptr)
 	{
 		// filter out non-tracks
-		if ((pTrack->pev->flags & (FL_CLIENT | FL_MONSTER)) == 0 && FClassnameIs(pTrack->pev, "path_track"))
+		if ((pTrack->pev->flags & (FL_CLIENT | FL_MONSTER)) == 0 && pTrack->ClassnameIs("path_track"))
 		{
 			dist = (pev->origin - pTrack->pev->origin).Length();
 			if (dist < closest)
@@ -1682,7 +1681,7 @@ void CFuncTrackTrain::OverrideReset()
 
 CFuncTrackTrain* CFuncTrackTrain::Instance(CBaseEntity* pent)
 {
-	if (pent && FClassnameIs(pent->pev, "func_tracktrain"))
+	if (pent && pent->ClassnameIs("func_tracktrain"))
 		return static_cast<CFuncTrackTrain*>(pent);
 	return nullptr;
 }
@@ -1723,7 +1722,7 @@ void CFuncTrackTrain::Spawn()
 
 	SetModel(STRING(pev->model));
 
-	UTIL_SetSize(pev, pev->mins, pev->maxs);
+	SetSize(pev->mins, pev->maxs);
 	UTIL_SetOrigin(pev, pev->origin);
 
 	// Cache off placed origin for train controls
@@ -1775,7 +1774,7 @@ void CFuncTrainControls::Find()
 	do
 	{
 		target = UTIL_FindEntityByTargetname(target, STRING(pev->target));
-	} while (!FNullEnt(target) && !FClassnameIs(target->pev, "func_tracktrain"));
+	} while (!FNullEnt(target) && !target->ClassnameIs("func_tracktrain"));
 
 	if (FNullEnt(target))
 	{
@@ -1784,7 +1783,7 @@ void CFuncTrainControls::Find()
 	}
 
 	CFuncTrackTrain* ptrain = CFuncTrackTrain::Instance(target);
-	ptrain->SetControls(pev);
+	ptrain->SetControls(this);
 	UTIL_Remove(this);
 }
 
@@ -1795,7 +1794,7 @@ void CFuncTrainControls::Spawn()
 	pev->movetype = MOVETYPE_NONE;
 	SetModel(STRING(pev->model));
 
-	UTIL_SetSize(pev, pev->mins, pev->maxs);
+	SetSize(pev->mins, pev->maxs);
 	UTIL_SetOrigin(pev, pev->origin);
 
 	SetThink(&CFuncTrainControls::Find);
@@ -2165,7 +2164,7 @@ void CFuncTrackChange::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TY
 	if (m_code == TRAIN_BLOCKING)
 	{
 		// Play alarm and return
-		EMIT_SOUND(ENT(pev), CHAN_VOICE, "buttons/button11.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_VOICE, "buttons/button11.wav", 1, ATTN_NORM);
 		return;
 	}
 
@@ -2275,7 +2274,7 @@ void CFuncTrackAuto::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE
 	else
 		pTarget = nullptr;
 
-	if (FClassnameIs(pActivator->pev, "func_tracktrain"))
+	if (pActivator->ClassnameIs("func_tracktrain"))
 	{
 		m_code = EvaluateTrain(pTarget);
 		// Safe to fire?
@@ -2326,7 +2325,7 @@ public:
 
 	int BloodColor() override { return DONT_BLEED; }
 	int Classify() override { return CLASS_MACHINE; }
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
 	Vector BodyTarget(const Vector& posSrc) override { return pev->origin; }
 
@@ -2455,7 +2454,7 @@ void CGunTarget::Stop()
 }
 
 
-bool CGunTarget::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CGunTarget::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	if (pev->health > 0)
 	{

@@ -469,7 +469,7 @@ void CFuncRotating::HurtTouch(CBaseEntity* pOther)
 	// calculate damage based on rotation speed
 	pev->dmg = pev->avelocity.Length() / 10;
 
-	pOther->TakeDamage(pev, pev, pev->dmg, DMG_CRUSH);
+	pOther->TakeDamage(this, this, pev->dmg, DMG_CRUSH);
 
 	pevOther->velocity = (pevOther->origin - VecBModelOrigin(pev)).Normalize() * pev->dmg;
 }
@@ -518,7 +518,7 @@ void CFuncRotating::RampPitchVol(bool fUp)
 
 	// change the fan's vol and pitch
 
-	EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds),
+	EmitSoundDyn(CHAN_STATIC, STRING(m_sounds),
 		fvol, m_flAttenuation, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
 }
 
@@ -540,7 +540,7 @@ void CFuncRotating::SpinUp()
 		fabs(vecAVel.z) >= fabs(pev->movedir.z * pev->speed))
 	{
 		pev->avelocity = pev->movedir * pev->speed; // set speed in case we overshot
-		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds),
+		EmitSoundDyn(CHAN_STATIC, STRING(m_sounds),
 			m_flVolume, m_flAttenuation, SND_CHANGE_PITCH | SND_CHANGE_VOL, FANPITCHMAX);
 
 		SetThink(&CFuncRotating::Rotate);
@@ -581,7 +581,7 @@ void CFuncRotating::SpinDown()
 		pev->avelocity = g_vecZero; // set speed in case we overshot
 
 		// stop sound, we're done
-		EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds /* Stop */),
+		EmitSoundDyn(CHAN_STATIC, STRING(m_sounds /* Stop */),
 			0, 0, SND_STOP, m_pitch);
 
 		SetThink(&CFuncRotating::Rotate);
@@ -610,7 +610,7 @@ void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 		if (pev->avelocity != g_vecZero)
 		{
 			SetThink(&CFuncRotating::SpinDown);
-			// EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, (char *)STRING(pev->noise2),
+			// EmitSoundDyn(CHAN_WEAPON, (char *)STRING(pev->noise2),
 			//	m_flVolume, m_flAttenuation, 0, m_pitch);
 
 			pev->nextthink = pev->ltime + 0.1;
@@ -618,7 +618,7 @@ void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 		else // fan is not moving, so start it
 		{
 			SetThink(&CFuncRotating::SpinUp);
-			EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds),
+			EmitSoundDyn(CHAN_STATIC, STRING(m_sounds),
 				0.01, m_flAttenuation, 0, FANPITCHMIN);
 
 			pev->nextthink = pev->ltime + 0.1;
@@ -631,7 +631,7 @@ void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 			// play stopping sound here
 			SetThink(&CFuncRotating::SpinDown);
 
-			// EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, (char *)STRING(pev->noise2),
+			// EmitSoundDyn(CHAN_WEAPON, (char *)STRING(pev->noise2),
 			//	m_flVolume, m_flAttenuation, 0, m_pitch);
 
 			pev->nextthink = pev->ltime + 0.1;
@@ -639,7 +639,7 @@ void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 		}
 		else
 		{
-			EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, STRING(m_sounds),
+			EmitSoundDyn(CHAN_STATIC, STRING(m_sounds),
 				m_flVolume, m_flAttenuation, 0, FANPITCHMAX);
 			pev->avelocity = pev->movedir * pev->speed;
 
@@ -656,7 +656,7 @@ void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 void CFuncRotating::Blocked(CBaseEntity* pOther)
 
 {
-	pOther->TakeDamage(pev, pev, pev->dmg, DMG_CRUSH);
+	pOther->TakeDamage(this, this, pev->dmg, DMG_CRUSH);
 }
 
 
@@ -872,7 +872,7 @@ void CPendulum::Touch(CBaseEntity* pOther)
 	if (damage < 0)
 		damage = -damage;
 
-	pOther->TakeDamage(pev, pev, damage, DMG_CRUSH);
+	pOther->TakeDamage(this, this, damage, DMG_CRUSH);
 
 	pevOther->velocity = (pevOther->origin - VecBModelOrigin(pev)).Normalize() * damage;
 }

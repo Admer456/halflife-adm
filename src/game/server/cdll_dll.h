@@ -28,7 +28,6 @@
 constexpr int MAX_PLAYERS = 32;
 
 #define MAX_WEAPON_SLOTS 7 // hud item selection slots
-#define MAX_ITEM_TYPES 7   // hud item selection slots
 
 #define MAX_ITEMS 5 // hard coded item types
 
@@ -37,8 +36,7 @@ constexpr int MAX_PLAYERS = 32;
 #define HIDEHUD_ALL (1 << 2)
 #define HIDEHUD_HEALTH (1 << 3)
 
-#define MAX_AMMO_TYPES 32 // ???
-#define MAX_AMMO_SLOTS 32 // not really slots
+#define MAX_AMMO_TYPES 32
 
 #define HUD_PRINTNOTIFY 1
 #define HUD_PRINTCONSOLE 2
@@ -77,6 +75,10 @@ enum WeaponId
 	WEAPON_SUIT = 31
 };
 
+/**
+*	@brief Indicates that a weapon does not use magazines.
+*/
+constexpr int WEAPON_NOCLIP = -1;
 
 enum class SuitLightType
 {

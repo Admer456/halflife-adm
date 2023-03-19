@@ -140,7 +140,7 @@ void CBubbling::FizzThink()
 {
 	MESSAGE_BEGIN(MSG_PAS, SVC_TEMPENTITY, VecBModelOrigin(pev));
 	WRITE_BYTE(TE_FIZZ);
-	WRITE_SHORT((short)ENTINDEX(edict()));
+	WRITE_SHORT((short)entindex());
 	WRITE_SHORT((short)m_bubbleModel);
 	WRITE_BYTE(m_density);
 	MESSAGE_END();
@@ -297,7 +297,7 @@ void CBeam::RelinkBeam()
 	pev->mins = pev->mins - pev->origin;
 	pev->maxs = pev->maxs - pev->origin;
 
-	UTIL_SetSize(pev, pev->mins, pev->maxs);
+	SetSize(pev->mins, pev->maxs);
 	UTIL_SetOrigin(pev, pev->origin);
 }
 
@@ -632,7 +632,7 @@ bool IsPointEntity(CBaseEntity* pEnt)
 {
 	if (0 == pEnt->pev->modelindex)
 		return true;
-	if (FClassnameIs(pEnt->pev, "info_target") || FClassnameIs(pEnt->pev, "info_landmark") || FClassnameIs(pEnt->pev, "path_corner"))
+	if (pEnt->ClassnameIs("info_target") || pEnt->ClassnameIs("info_landmark") || pEnt->ClassnameIs("path_corner"))
 		return true;
 
 	return false;
@@ -752,8 +752,8 @@ void CBeam::BeamDamage(TraceResult* ptr)
 		if (pHit)
 		{
 			ClearMultiDamage();
-			pHit->TraceAttack(pev, pev->dmg * (gpGlobals->time - pev->dmgtime), (ptr->vecEndPos - pev->origin).Normalize(), ptr, DMG_ENERGYBEAM);
-			ApplyMultiDamage(pev, pev);
+			pHit->TraceAttack(this, pev->dmg * (gpGlobals->time - pev->dmgtime), (ptr->vecEndPos - pev->origin).Normalize(), ptr, DMG_ENERGYBEAM);
+			ApplyMultiDamage(this, this);
 			if ((pev->spawnflags & SF_BEAM_DECALS) != 0)
 			{
 				if (pHit->IsBSPModel())
@@ -1976,7 +1976,7 @@ void CMessage::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useTy
 	}
 	if (!FStringNull(pev->noise))
 	{
-		EMIT_SOUND(edict(), CHAN_BODY, STRING(pev->noise), pev->scale, pev->speed);
+		EmitSound(CHAN_BODY, STRING(pev->noise), pev->scale, pev->speed);
 	}
 	if ((pev->spawnflags & SF_MESSAGE_ONCE) != 0)
 		UTIL_Remove(this);
@@ -2133,7 +2133,7 @@ void CItemSoda::Spawn()
 	pev->movetype = MOVETYPE_TOSS;
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
+	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
 
 	SetThink(&CItemSoda::CanThink);
 	pev->nextthink = gpGlobals->time + 0.5;
@@ -2141,10 +2141,10 @@ void CItemSoda::Spawn()
 
 void CItemSoda::CanThink()
 {
-	EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/g_bounce3.wav", 1, ATTN_NORM);
+	EmitSound(CHAN_WEAPON, "weapons/g_bounce3.wav", 1, ATTN_NORM);
 
 	pev->solid = SOLID_TRIGGER;
-	UTIL_SetSize(pev, Vector(-8, -8, 0), Vector(8, 8, 8));
+	SetSize(Vector(-8, -8, 0), Vector(8, 8, 8));
 	SetThink(nullptr);
 	SetTouch(&CItemSoda::CanTouch);
 }
@@ -2282,7 +2282,7 @@ void CWarpBall::Spawn()
 	pev->solid = SOLID_NOT;
 
 	UTIL_SetOrigin(pev, pev->origin);
-	UTIL_SetSize(pev, g_vecZero, g_vecZero);
+	SetSize(g_vecZero, g_vecZero);
 
 	pev->rendermode = kRenderGlow;
 	pev->renderamt = 255;
@@ -2373,7 +2373,7 @@ void CWarpBall::WarpBallUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_T
 
 		if (m_flDamageDelay == 0)
 		{
-			::RadiusDamage(pev->origin, pev, pev, 300, 48, CLASS_NONE, DMG_SHOCK);
+			::RadiusDamage(pev->origin, this, this, 300, 48, CLASS_NONE, DMG_SHOCK);
 			m_fDamageApplied = true;
 		}
 		else
@@ -2387,7 +2387,7 @@ void CWarpBall::WarpBallUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_T
 
 		m_flWarpStart = gpGlobals->time;
 
-		EMIT_SOUND(edict(), CHAN_WEAPON, "debris/alien_teleport.wav", VOL_NORM, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "debris/alien_teleport.wav", VOL_NORM, ATTN_NORM);
 	}
 }
 
@@ -2414,7 +2414,7 @@ void CWarpBall::BallThink()
 		// TODO: this flag is probably supposed to be a "do radius damage" flag, but it isn't used in the Use method
 		if ((pev->spawnflags & SF_WARPBALL_DELAYED_DAMAGE) != 0 && !m_fDamageApplied && (gpGlobals->time - m_flWarpStart) >= m_flDamageDelay)
 		{
-			::RadiusDamage(pev->origin, pev, pev, 300, 48, CLASS_NONE, DMG_SHOCK);
+			::RadiusDamage(pev->origin, this, this, 300, 48, CLASS_NONE, DMG_SHOCK);
 			m_fDamageApplied = true;
 		}
 

@@ -24,7 +24,7 @@
 
 #include "ClientCommandRegistry.h"
 
-class CBasePlayerItem;
+class CBasePlayerWeapon;
 class CBasePlayer;
 class CItem;
 class CBasePlayerAmmo;
@@ -83,8 +83,8 @@ public:
 	virtual bool IsAllowedToSpawn(CBaseEntity* pEntity) = 0; // Can this item spawn (eg monsters don't spawn in deathmatch).
 
 	virtual bool FAllowFlashlight() = 0;																			  // Are players allowed to switch on their flashlight?
-	virtual bool FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon) = 0;							  // should the player switch to this weapon?
-	virtual bool GetNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pCurrentWeapon, bool alwaysSearch = false); // I can't use this weapon anymore, get me the next best one.
+	virtual bool FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pWeapon) = 0;								// should the player switch to this weapon?
+	virtual bool GetNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pCurrentWeapon, bool alwaysSearch = false); // I can't use this weapon anymore, get me the next best one.
 
 	// Functions to verify the single/multiplayer status of a game
 	virtual bool IsMultiplayer() = 0;								 // is this a multiplayer game? (either coop or deathmatch)
@@ -110,7 +110,7 @@ public:
 	virtual void PlayerThink(CBasePlayer* pPlayer) = 0;		   // called by CBasePlayer::PreThink every frame, before physics are run and after keys are accepted
 	virtual bool FPlayerCanRespawn(CBasePlayer* pPlayer) = 0;  // is this player allowed to respawn now?
 	virtual float FlPlayerSpawnTime(CBasePlayer* pPlayer) = 0; // When in the future will this player be able to spawn?
-	virtual edict_t* GetPlayerSpawnSpot(CBasePlayer* pPlayer); // Place this player on their spawnspot and face them the proper direction.
+	virtual CBaseEntity* GetPlayerSpawnSpot(CBasePlayer* pPlayer); // Place this player on their spawnspot and face them the proper direction.
 
 	virtual bool AllowAutoTargetCrosshair() { return true; }
 	virtual void ClientUserInfoChanged(CBasePlayer* pPlayer, char* infobuffer) {} // the player has changed userinfo;  can change it now
@@ -118,18 +118,18 @@ public:
 	// Client kills/scoring
 	virtual int IPointsForKill(CBasePlayer* pAttacker, CBasePlayer* pKilled) = 0; // how many points do I award whoever kills this player?
 	virtual int IPointsForMonsterKill(CBasePlayer* pAttacker, CBaseMonster* pKiller) { return 0; }
-	virtual void PlayerKilled(CBasePlayer* pVictim, entvars_t* pKiller, entvars_t* pInflictor) = 0; // Called each time a player dies
-	virtual void DeathNotice(CBasePlayer* pVictim, entvars_t* pKiller, entvars_t* pInflictor) = 0;	// Call this from within a GameRules class to report an obituary.
-	virtual void MonsterKilled(CBaseMonster* pVictim, entvars_t* pKiller, entvars_t* pInflictor) {}
+	virtual void PlayerKilled(CBasePlayer* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor) = 0; // Called each time a player dies
+	virtual void DeathNotice(CBasePlayer* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor) = 0;  // Call this from within a GameRules class to report an obituary.
+	virtual void MonsterKilled(CBaseMonster* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor) {}
 	// Weapon retrieval
-	virtual bool CanHavePlayerItem(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon);	  // The player is touching an CBasePlayerItem, do I give it to him?
-	virtual void PlayerGotWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon) = 0; // Called each time a player picks up a weapon from the ground
+	virtual bool CanHavePlayerWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pWeapon); // The player is touching an CBasePlayerWeapon, do I give it to him?
+	virtual void PlayerGotWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pWeapon) = 0; // Called each time a player picks up a weapon from the ground
 
 	// Weapon spawn/respawn control
-	virtual int WeaponShouldRespawn(CBasePlayerItem* pWeapon) = 0;	   // should this weapon respawn?
-	virtual float FlWeaponRespawnTime(CBasePlayerItem* pWeapon) = 0;   // when may this weapon respawn?
-	virtual float FlWeaponTryRespawn(CBasePlayerItem* pWeapon) = 0;	   // can i respawn now,  and if not, when should i try again?
-	virtual Vector VecWeaponRespawnSpot(CBasePlayerItem* pWeapon) = 0; // where in the world should this weapon respawn?
+	virtual int WeaponShouldRespawn(CBasePlayerWeapon* pWeapon) = 0;   // should this weapon respawn?
+	virtual float FlWeaponRespawnTime(CBasePlayerWeapon* pWeapon) = 0; // when may this weapon respawn?
+	virtual float FlWeaponTryRespawn(CBasePlayerWeapon* pWeapon) = 0;  // can i respawn now,  and if not, when should i try again?
+	virtual Vector VecWeaponRespawnSpot(CBasePlayerWeapon* pWeapon) = 0; // where in the world should this weapon respawn?
 
 	// Item retrieval
 	virtual bool CanHaveItem(CBasePlayer* pPlayer, CItem* pItem) = 0;	// is this player allowed to take this item?
@@ -141,7 +141,7 @@ public:
 	virtual Vector VecItemRespawnSpot(CItem* pItem) = 0; // where in the world should this item respawn?
 
 	// Ammo retrieval
-	virtual bool CanHaveAmmo(CBasePlayer* pPlayer, const char* pszAmmoName, int iMaxCarry); // can this player take more of this ammo?
+	virtual bool CanHaveAmmo(CBasePlayer* pPlayer, const char* pszAmmoName); // can this player take more of this ammo?
 	virtual void PlayerGotAmmo(CBasePlayer* pPlayer, char* szName, int iCount) = 0;			// called each time a player picks up some ammo in the world
 
 	// Ammo spawn/respawn control
@@ -185,7 +185,7 @@ public:
 	virtual void EndMultiplayerGame() {}
 
 protected:
-	CBasePlayerItem* FindNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pCurrentWeapon);
+	CBasePlayerWeapon* FindNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pCurrentWeapon);
 
 	virtual void BecomeSpectator(CBasePlayer* player, const CommandArgs& args);
 
@@ -211,8 +211,8 @@ public:
 	bool IsAllowedToSpawn(CBaseEntity* pEntity) override;
 	bool FAllowFlashlight() override { return true; }
 
-	bool FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon) override;
-	bool GetNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pCurrentWeapon, bool alwaysSearch = false) override;
+	bool FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pWeapon) override;
+	bool GetNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pCurrentWeapon, bool alwaysSearch = false) override;
 
 	// Functions to verify the single/multiplayer status of a game
 	bool IsMultiplayer() override;
@@ -238,17 +238,17 @@ public:
 
 	// Client kills/scoring
 	int IPointsForKill(CBasePlayer* pAttacker, CBasePlayer* pKilled) override;
-	void PlayerKilled(CBasePlayer* pVictim, entvars_t* pKiller, entvars_t* pInflictor) override;
-	void DeathNotice(CBasePlayer* pVictim, entvars_t* pKiller, entvars_t* pInflictor) override;
+	void PlayerKilled(CBasePlayer* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor) override;
+	void DeathNotice(CBasePlayer* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor) override;
 
 	// Weapon retrieval
-	void PlayerGotWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon) override;
+	void PlayerGotWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pWeapon) override;
 
 	// Weapon spawn/respawn control
-	int WeaponShouldRespawn(CBasePlayerItem* pWeapon) override;
-	float FlWeaponRespawnTime(CBasePlayerItem* pWeapon) override;
-	float FlWeaponTryRespawn(CBasePlayerItem* pWeapon) override;
-	Vector VecWeaponRespawnSpot(CBasePlayerItem* pWeapon) override;
+	int WeaponShouldRespawn(CBasePlayerWeapon* pWeapon) override;
+	float FlWeaponRespawnTime(CBasePlayerWeapon* pWeapon) override;
+	float FlWeaponTryRespawn(CBasePlayerWeapon* pWeapon) override;
+	Vector VecWeaponRespawnSpot(CBasePlayerWeapon* pWeapon) override;
 
 	// Item retrieval
 	bool CanHaveItem(CBasePlayer* pPlayer, CItem* pItem) override;
@@ -302,7 +302,7 @@ public:
 	bool IsAllowedToSpawn(CBaseEntity* pEntity) override;
 	bool FAllowFlashlight() override;
 
-	bool FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon) override;
+	bool FShouldSwitchWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pWeapon) override;
 
 	// Functions to verify the single/multiplayer status of a game
 	bool IsMultiplayer() override;
@@ -328,25 +328,25 @@ public:
 	void PlayerThink(CBasePlayer* pPlayer) override;
 	bool FPlayerCanRespawn(CBasePlayer* pPlayer) override;
 	float FlPlayerSpawnTime(CBasePlayer* pPlayer) override;
-	edict_t* GetPlayerSpawnSpot(CBasePlayer* pPlayer) override;
+	CBaseEntity* GetPlayerSpawnSpot(CBasePlayer* pPlayer) override;
 
 	bool AllowAutoTargetCrosshair() override;
 	void ClientUserInfoChanged(CBasePlayer* pPlayer, char* infobuffer) override;
 
 	// Client kills/scoring
 	int IPointsForKill(CBasePlayer* pAttacker, CBasePlayer* pKilled) override;
-	void PlayerKilled(CBasePlayer* pVictim, entvars_t* pKiller, entvars_t* pInflictor) override;
-	void DeathNotice(CBasePlayer* pVictim, entvars_t* pKiller, entvars_t* pInflictor) override;
+	void PlayerKilled(CBasePlayer* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor) override;
+	void DeathNotice(CBasePlayer* pVictim, CBaseEntity* pKiller, CBaseEntity* inflictor) override;
 
 	// Weapon retrieval
-	void PlayerGotWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon) override;
-	bool CanHavePlayerItem(CBasePlayer* pPlayer, CBasePlayerItem* pWeapon) override; // The player is touching an CBasePlayerItem, do I give it to him?
+	void PlayerGotWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pWeapon) override;
+	bool CanHavePlayerWeapon(CBasePlayer* pPlayer, CBasePlayerWeapon* pWeapon) override; // The player is touching an CBasePlayerWeapon, do I give it to him?
 
 	// Weapon spawn/respawn control
-	int WeaponShouldRespawn(CBasePlayerItem* pWeapon) override;
-	float FlWeaponRespawnTime(CBasePlayerItem* pWeapon) override;
-	float FlWeaponTryRespawn(CBasePlayerItem* pWeapon) override;
-	Vector VecWeaponRespawnSpot(CBasePlayerItem* pWeapon) override;
+	int WeaponShouldRespawn(CBasePlayerWeapon* pWeapon) override;
+	float FlWeaponRespawnTime(CBasePlayerWeapon* pWeapon) override;
+	float FlWeaponTryRespawn(CBasePlayerWeapon* pWeapon) override;
+	Vector VecWeaponRespawnSpot(CBasePlayerWeapon* pWeapon) override;
 
 	// Item retrieval
 	bool CanHaveItem(CBasePlayer* pPlayer, CItem* pItem) override;
@@ -397,8 +397,8 @@ protected:
 	void SendMOTDToClient(edict_t* client);
 };
 
-inline DLL_GLOBAL CGameRules* g_pGameRules = nullptr;
-inline DLL_GLOBAL bool g_fGameOver;
+inline CGameRules* g_pGameRules = nullptr;
+inline bool g_fGameOver;
 inline bool g_teamplay = false;
 
 const char* GetTeamName(edict_t* pEntity);

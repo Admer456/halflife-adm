@@ -9,8 +9,8 @@
 
 // TODO: could just make a copy of ref_params_t when it gets passed in instead.
 inline bool g_Paused = false;
-inline int g_MaxEntities = 0;
 inline WaterLevel g_WaterLevel = WaterLevel::Dry;
+inline int g_ViewEntity = 0;
 
 inline Vector v_origin;
 inline Vector v_angles;
@@ -21,3 +21,7 @@ inline Vector v_crosshairangle;
 
 void V_StartPitchDrift();
 void V_StopPitchDrift();
+
+void V_GetInEyePos(int entity, Vector& origin, Vector& angles);
+void V_ResetChaseCam();
+void V_GetChasePos(int target, Vector* cl_angles, Vector& origin, Vector& angles);

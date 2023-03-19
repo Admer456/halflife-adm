@@ -15,7 +15,6 @@
 #include "usercmd.h"
 #include "const.h"
 #include "camera.h"
-#include "in_defs.h"
 #include "view.h"
 #include "Exports.h"
 
@@ -26,14 +25,10 @@ extern bool g_iAlive;
 
 extern int g_weaponselect;
 
-// Defined in pm_math.c
-float anglemod(float a);
-
 void IN_Init();
 void IN_Move(float frametime, usercmd_t* cmd);
 void IN_Shutdown();
 void V_Init();
-void VectorAngles(const float* forward, float* angles);
 int CL_ButtonBits(bool);
 
 // xxx need client dll function to get and clear impuse
@@ -193,8 +188,6 @@ Allows the engine to get a kbutton_t directly ( so it can check +mlook state, et
 */
 kbutton_t DLLEXPORT* KB_Find(const char* name)
 {
-	//	RecClFindKey(name);
-
 	kblist_t* p;
 	p = g_kbkeys;
 	while (p)
@@ -352,8 +345,6 @@ Return 1 to allow engine to process the key, otherwise, act on it as needed
 */
 int DLLEXPORT HUD_Key_Event(int down, int keynum, const char* pszCurrentBinding)
 {
-	//	RecClKeyEvent(down, keynum, pszCurrentBinding);
-
 	if (gViewPort)
 		return static_cast<int>(gViewPort->KeyInput(0 != down, keynum, pszCurrentBinding));
 
@@ -586,7 +577,7 @@ CL_AdjustAngles
 Moves the local angle positions
 ================
 */
-void CL_AdjustAngles(float frametime, float* viewangles)
+void CL_AdjustAngles(float frametime, Vector& viewangles)
 {
 	float speed;
 	float up, down;
@@ -644,8 +635,6 @@ if active == 1 then we are 1) not playing back demos ( where our commands are ig
 */
 void DLLEXPORT CL_CreateMove(float frametime, usercmd_t* cmd, int active)
 {
-	//	RecClCL_CreateMove(frametime, cmd, active);
-
 	float spd;
 	Vector viewangles;
 	static Vector oldangles;
@@ -740,12 +729,12 @@ void DLLEXPORT CL_CreateMove(float frametime, usercmd_t* cmd, int active)
 
 	if (g_iAlive)
 	{
-		VectorCopy(viewangles, cmd->viewangles);
-		VectorCopy(viewangles, oldangles);
+		cmd->viewangles = viewangles;
+		oldangles = viewangles;
 	}
 	else
 	{
-		VectorCopy(oldangles, cmd->viewangles);
+		cmd->viewangles = oldangles;
 	}
 }
 
@@ -1009,8 +998,6 @@ void CL_UnloadParticleMan();
 
 void DLLEXPORT HUD_Shutdown()
 {
-	//	RecClShutdown();
-
 	gHUD.Shutdown();
 
 	ShutdownInput();

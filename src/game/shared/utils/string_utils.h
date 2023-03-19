@@ -51,7 +51,8 @@ void ToUpper(std::string& text);
 [[nodiscard]] std::string ToLower(std::string_view text);
 [[nodiscard]] std::string ToUpper(std::string_view text);
 
-void UTIL_StringToVector(float* pVector, std::string_view pString);
+void UTIL_StringToVector(Vector& destination, std::string_view pString);
+int UTIL_StringToInteger(std::string_view str);
 
 // for handy use with ClientPrint params
 IntegerString UTIL_ToString(int iValue);
@@ -64,3 +65,9 @@ IntegerString UTIL_ToString(int iValue);
 bool UTIL_ParseStringWithArrayIndex(std::string_view input, std::string_view& name, int& index);
 
 std::string_view GetLine(std::string_view& text);
+
+std::string_view::const_iterator FindWhitespace(std::string_view text);
+
+std::string_view SkipWhitespace(std::string_view text);
+
+std::string_view RemoveComments(std::string_view text);

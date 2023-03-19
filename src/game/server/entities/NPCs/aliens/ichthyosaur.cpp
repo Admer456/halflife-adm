@@ -56,7 +56,7 @@ public:
 	Schedule_t* GetSchedule() override;
 	Schedule_t* GetScheduleOfType(int Type) override;
 
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 	void BecomeDead() override;
 
 	void EXPORT CombatUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
@@ -182,7 +182,7 @@ void CIchthyosaur::OnCreate()
 }
 
 #define EMIT_ICKY_SOUND(chan, array) \
-	EMIT_SOUND_DYN(ENT(pev), chan, array[RANDOM_LONG(0, std::size(array) - 1)], 1.0, 0.6, 0, RANDOM_LONG(95, 105));
+	EmitSoundDyn(chan, array[RANDOM_LONG(0, std::size(array) - 1)], 1.0, 0.6, 0, RANDOM_LONG(95, 105));
 
 
 void CIchthyosaur::IdleSound()
@@ -393,9 +393,9 @@ void CIchthyosaur::SetYawSpeed()
 //=========================================================
 // Killed - overrides CFlyingMonster.
 //
-void CIchthyosaur::Killed(entvars_t* pevAttacker, int iGib)
+void CIchthyosaur::Killed(CBaseEntity* attacker, int iGib)
 {
-	CBaseMonster::Killed(pevAttacker, iGib);
+	CBaseMonster::Killed(attacker, iGib);
 	pev->velocity = Vector(0, 0, 0);
 }
 
@@ -447,7 +447,7 @@ void CIchthyosaur::HandleAnimEvent(MonsterEvent_t* pEvent)
 					pHurt->pev->angles.z = 0;
 					pHurt->pev->fixangle = 1;
 				}
-				pHurt->TakeDamage(pev, pev, GetSkillFloat("ichthyosaur_shake"sv), DMG_SLASH);
+				pHurt->TakeDamage(this, this, GetSkillFloat("ichthyosaur_shake"sv), DMG_SLASH);
 			}
 		}
 		BiteSound();
@@ -475,7 +475,7 @@ void CIchthyosaur::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-32, -32, -32), Vector(32, 32, 32));
+	SetSize(Vector(-32, -32, -32), Vector(32, 32, 32));
 
 	pev->solid = SOLID_BBOX;
 	pev->movetype = MOVETYPE_FLY;
@@ -500,7 +500,7 @@ void CIchthyosaur::Spawn()
 	m_flMaxDist = 384;
 
 	Vector Forward;
-	UTIL_MakeVectorsPrivate(pev->angles, Forward, nullptr, nullptr);
+	AngleVectors(pev->angles, &Forward, nullptr, nullptr);
 	pev->velocity = m_flightSpeed * Forward.Normalize();
 	m_SaveVelocity = pev->velocity;
 }
@@ -936,8 +936,6 @@ void CIchthyosaur::Stop()
 
 void CIchthyosaur::Swim()
 {
-	int retValue = 0;
-
 	Vector start = pev->origin;
 
 	Vector Angles;
@@ -950,7 +948,7 @@ void CIchthyosaur::Swim()
 		ClearBits(pev->flags, FL_ONGROUND);
 
 		Angles = Vector(-pev->angles.x, pev->angles.y, pev->angles.z);
-		UTIL_MakeVectorsPrivate(Angles, Forward, Right, Up);
+		AngleVectors(Angles, Forward, Right, Up);
 
 		pev->velocity = Forward * 200 + Up * 200;
 
@@ -991,7 +989,7 @@ void CIchthyosaur::Swim()
 #define PROBE_LENGTH 150
 	Angles = UTIL_VecToAngles(m_SaveVelocity);
 	Angles.x = -Angles.x;
-	UTIL_MakeVectorsPrivate(Angles, Forward, Right, Up);
+	AngleVectors(Angles, Forward, Right, Up);
 
 	Vector f, u, l, r, d;
 	f = DoProbe(start + PROBE_LENGTH * Forward);
@@ -1004,7 +1002,7 @@ void CIchthyosaur::Swim()
 	m_SaveVelocity = (m_SaveVelocity + SteeringVector / 2).Normalize();
 
 	Angles = Vector(-pev->angles.x, pev->angles.y, pev->angles.z);
-	UTIL_MakeVectorsPrivate(Angles, Forward, Right, Up);
+	AngleVectors(Angles, Forward, Right, Up);
 	// AILogger->debug("{} : {}", Angles.x, Forward.z);
 
 	float flDot = DotProduct(Forward, m_SaveVelocity);
@@ -1119,7 +1117,7 @@ void CIchthyosaur::Swim()
 	if (pev->angles.z > 20)
 		pev->angles.z = 20;
 
-	UTIL_MakeVectorsPrivate(Vector(-Angles.x, Angles.y, Angles.z), Forward, Right, Up);
+	AngleVectors(Vector(-Angles.x, Angles.y, Angles.z), Forward, Right, Up);
 
 	// UTIL_MoveToOrigin ( ENT(pev), pev->origin + Forward * speed, speed, MOVE_STRAFE );
 }

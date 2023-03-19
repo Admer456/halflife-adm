@@ -33,7 +33,7 @@ struct locksound_t // sounds that doors and buttons make when locked/unlocked
 	byte bEOFUnlocked;	  // true if hit end of list of unlocked sentences
 };
 
-void PlayLockSounds(entvars_t* pev, locksound_t* pls, bool flocked, bool fbutton);
+void PlayLockSounds(CBaseEntity* entity, locksound_t* pls, bool flocked, bool fbutton);
 
 //
 // Generic Button
@@ -53,7 +53,7 @@ public:
 	void EXPORT ButtonReturn();
 	void EXPORT ButtonBackHome();
 	void EXPORT ButtonUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
 

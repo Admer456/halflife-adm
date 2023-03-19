@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "cvardef.h"
 
 #include "Platform.h"
@@ -25,15 +27,6 @@
 #include "utils/shared_utils.h"
 
 // Macros to hook function calls into the HUD object
-#define HOOK_MESSAGE(x) gEngfuncs.pfnHookUserMsg(#x, __MsgFunc_##x);
-
-#define DECLARE_MESSAGE(y, x)                                     \
-	int __MsgFunc_##x(const char* pszName, int iSize, void* pbuf) \
-	{                                                             \
-		return gHUD.y.MsgFunc_##x(pszName, iSize, pbuf);          \
-	}
-
-
 #define HOOK_COMMAND(x, y) gEngfuncs.pfnAddCommand(x, __CmdFunc_##y);
 #define DECLARE_COMMAND(y, x) \
 	void __CmdFunc_##x()      \
@@ -43,7 +36,15 @@
 
 inline cvar_t* CVAR_CREATE(const char* cv, const char* val, const int flags) { return gEngfuncs.pfnRegisterVariable(cv, val, flags); }
 
-#define SPR_Load (*gEngfuncs.pfnSPR_Load)
+inline HSPRITE SPR_Load(const char* spriteName)
+{
+	return gEngfuncs.pfnSPR_Load(spriteName);
+}
+
+inline HSPRITE SPR_Load(const std::string& spriteName)
+{
+	return gEngfuncs.pfnSPR_Load(spriteName.c_str());
+}
 
 inline void SPR_Set(HSPRITE hPic, const RGB24& color)
 {
@@ -51,7 +52,6 @@ inline void SPR_Set(HSPRITE hPic, const RGB24& color)
 }
 
 #define SPR_Frames (*gEngfuncs.pfnSPR_Frames)
-#define SPR_GetList (*gEngfuncs.pfnSPR_GetList)
 
 // SPR_Draw  draws a the current sprite as solid
 #define SPR_Draw (*gEngfuncs.pfnSPR_Draw)
@@ -159,16 +159,6 @@ inline int safe_sprintf(char* dst, int len_dst, const char* format, ...)
 
 	return 0;
 }
-
-// sound functions
-inline void PlaySound(const char* szSound, float vol) { gEngfuncs.pfnPlaySoundByName(szSound, vol); }
-inline void PlaySound(int iSound, float vol) { gEngfuncs.pfnPlaySoundByIndex(iSound, vol); }
-
-float Length(const float* v);
-void VectorMA(const float* veca, float scale, const float* vecb, float* vecc);
-void VectorScale(const float* in, float scale, float* out);
-float VectorNormalize(float* v);
-void VectorInverse(float* v);
 
 HSPRITE LoadSprite(const char* pszName);
 

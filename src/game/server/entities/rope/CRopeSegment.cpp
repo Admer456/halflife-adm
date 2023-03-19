@@ -57,7 +57,7 @@ void CRopeSegment::Spawn()
 	pev->effects = EF_NODRAW;
 	UTIL_SetOrigin(pev, pev->origin);
 
-	UTIL_SetSize(pev, Vector(-30, -30, -30), Vector(30, 30, 30));
+	SetSize(Vector(-30, -30, -30), Vector(30, 30, 30));
 
 	pev->nextthink = gpGlobals->time + 0.5;
 }
@@ -76,7 +76,7 @@ void CRopeSegment::Touch(CBaseEntity* pOther)
 		// Electrified wires deal damage. - Solokiller
 		if (m_bCauseDamage)
 		{
-			pOther->TakeDamage(pev, pev, 1, DMG_SHOCK);
+			pOther->TakeDamage(this, this, 1, DMG_SHOCK);
 		}
 
 		if (m_pSample->GetMasterRope()->IsAcceptingAttachment() && !pPlayer->IsOnRope())
@@ -103,7 +103,7 @@ void CRopeSegment::Touch(CBaseEntity* pOther)
 
 				if (m_pSample->GetMasterRope()->IsSoundAllowed())
 				{
-					EMIT_SOUND(edict(), CHAN_BODY, "items/grab_rope.wav", 1.0, ATTN_NORM);
+					EmitSound(CHAN_BODY, "items/grab_rope.wav", 1.0, ATTN_NORM);
 				}
 			}
 			else

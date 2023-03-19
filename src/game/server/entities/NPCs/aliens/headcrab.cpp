@@ -82,7 +82,7 @@ public:
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	bool CheckRangeAttack1(float flDot, float flDist) override;
 	bool CheckRangeAttack2(float flDot, float flDist) override;
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 
 	virtual float GetDamageAmount() { return GetSkillFloat("headcrab_dmg_bite"sv); }
 	virtual int GetVoicePitch() { return 100; }
@@ -258,7 +258,7 @@ void CHeadCrab::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 		int iSound = RANDOM_LONG(0, 2);
 		if (iSound != 0)
-			EMIT_SOUND_DYN(edict(), CHAN_VOICE, pAttackSounds[iSound], GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
+			EmitSoundDyn(CHAN_VOICE, pAttackSounds[iSound], GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
 
 		pev->velocity = vecJumpDir;
 		m_flNextAttack = gpGlobals->time + 2;
@@ -279,7 +279,7 @@ void CHeadCrab::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-12, -12, 0), Vector(12, 12, 24));
+	SetSize(Vector(-12, -12, 0), Vector(12, 12, 24));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_STEP;
@@ -353,9 +353,9 @@ void CHeadCrab::LeapTouch(CBaseEntity* pOther)
 	// Don't hit if back on ground
 	if (!FBitSet(pev->flags, FL_ONGROUND))
 	{
-		EMIT_SOUND_DYN(edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBiteSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
+		EmitSoundDyn(CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBiteSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
 
-		pOther->TakeDamage(pev, pev, GetDamageAmount(), DMG_SLASH);
+		pOther->TakeDamage(this, this, GetDamageAmount(), DMG_SLASH);
 	}
 
 	SetTouch(nullptr);
@@ -381,7 +381,7 @@ void CHeadCrab::StartTask(Task_t* pTask)
 	{
 	case TASK_RANGE_ATTACK1:
 	{
-		EMIT_SOUND_DYN(edict(), CHAN_WEAPON, pAttackSounds[0], GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
+		EmitSoundDyn(CHAN_WEAPON, pAttackSounds[0], GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
 		m_IdealActivity = ACT_RANGE_ATTACK1;
 		SetTouch(&CHeadCrab::LeapTouch);
 		break;
@@ -422,13 +422,13 @@ bool CHeadCrab::CheckRangeAttack2(float flDot, float flDist)
 #endif
 }
 
-bool CHeadCrab::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CHeadCrab::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	// Don't take any acid damage -- BigMomma's mortar is acid
 	if ((bitsDamageType & DMG_ACID) != 0)
 		flDamage = 0;
 
-	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
 //=========================================================
@@ -437,7 +437,7 @@ bool CHeadCrab::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, floa
 #define CRAB_ATTN_IDLE (float)1.5
 void CHeadCrab::IdleSound()
 {
-	EMIT_SOUND_DYN(edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pIdleSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
+	EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pIdleSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
 }
 
 //=========================================================
@@ -445,7 +445,7 @@ void CHeadCrab::IdleSound()
 //=========================================================
 void CHeadCrab::AlertSound()
 {
-	EMIT_SOUND_DYN(edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pAlertSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
+	EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pAlertSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
 }
 
 //=========================================================
@@ -453,7 +453,7 @@ void CHeadCrab::AlertSound()
 //=========================================================
 void CHeadCrab::PainSound()
 {
-	EMIT_SOUND_DYN(edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pPainSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
+	EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pPainSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
 }
 
 //=========================================================
@@ -461,7 +461,7 @@ void CHeadCrab::PainSound()
 //=========================================================
 void CHeadCrab::DeathSound()
 {
-	EMIT_SOUND_DYN(edict(), CHAN_VOICE, RANDOM_SOUND_ARRAY(pDeathSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
+	EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pDeathSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch());
 }
 
 Schedule_t* CHeadCrab::GetScheduleOfType(int Type)
@@ -506,7 +506,7 @@ void CBabyCrab::Spawn()
 	CHeadCrab::Spawn();
 	pev->rendermode = kRenderTransTexture;
 	pev->renderamt = 192;
-	UTIL_SetSize(pev, Vector(-12, -12, 0), Vector(12, 12, 24));
+	SetSize(Vector(-12, -12, 0), Vector(12, 12, 24));
 }
 
 void CBabyCrab::SetYawSpeed()

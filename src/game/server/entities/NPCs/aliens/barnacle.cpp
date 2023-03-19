@@ -33,13 +33,13 @@ public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
-	CBaseEntity* TongueTouchEnt(float* pflLength);
+	CBaseEntity* TongueTouchEnt(float& flLength);
 	int Classify() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	void EXPORT BarnacleThink();
 	void EXPORT WaitTillDead();
-	void Killed(entvars_t* pevAttacker, int iGib) override;
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
 	static TYPEDESCRIPTION m_SaveData[];
@@ -109,7 +109,7 @@ void CBarnacle::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-16, -16, -32), Vector(16, 16, 0));
+	SetSize(Vector(-16, -16, -32), Vector(16, 16, 0));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_NONE;
@@ -133,14 +133,14 @@ void CBarnacle::Spawn()
 	UTIL_SetOrigin(pev, pev->origin);
 }
 
-bool CBarnacle::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CBarnacle::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	if ((bitsDamageType & DMG_CLUB) != 0)
 	{
 		flDamage = pev->health;
 	}
 
-	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
 //=========================================================
@@ -194,7 +194,7 @@ void CBarnacle::BarnacleThink()
 				// prey has just been lifted into position ( if the victim origin + eye height + 8 is higher than the bottom of the barnacle, it is assumed that the head is within barnacle's body )
 				m_fLiftingPrey = false;
 
-				EMIT_SOUND(ENT(pev), CHAN_WEAPON, "barnacle/bcl_bite3.wav", 1, ATTN_NORM);
+				EmitSound(CHAN_WEAPON, "barnacle/bcl_bite3.wav", 1, ATTN_NORM);
 
 				pVictim = m_hEnemy->MyMonsterPointer();
 
@@ -202,7 +202,7 @@ void CBarnacle::BarnacleThink()
 
 				if (pVictim)
 				{
-					pVictim->BarnacleVictimBitten(pev);
+					pVictim->BarnacleVictimBitten(this);
 					SetActivity(ACT_EAT);
 				}
 			}
@@ -220,7 +220,7 @@ void CBarnacle::BarnacleThink()
 				// kill!
 				if (pVictim)
 				{
-					pVictim->TakeDamage(pev, pev, pVictim->pev->health, DMG_SLASH | DMG_ALWAYSGIB);
+					pVictim->TakeDamage(this, this, pVictim->pev->health, DMG_SLASH | DMG_ALWAYSGIB);
 					m_cGibs = 3;
 				}
 
@@ -233,17 +233,17 @@ void CBarnacle::BarnacleThink()
 				switch (RANDOM_LONG(0, 2))
 				{
 				case 0:
-					EMIT_SOUND(ENT(pev), CHAN_WEAPON, "barnacle/bcl_chew1.wav", 1, ATTN_NORM);
+					EmitSound(CHAN_WEAPON, "barnacle/bcl_chew1.wav", 1, ATTN_NORM);
 					break;
 				case 1:
-					EMIT_SOUND(ENT(pev), CHAN_WEAPON, "barnacle/bcl_chew2.wav", 1, ATTN_NORM);
+					EmitSound(CHAN_WEAPON, "barnacle/bcl_chew2.wav", 1, ATTN_NORM);
 					break;
 				case 2:
-					EMIT_SOUND(ENT(pev), CHAN_WEAPON, "barnacle/bcl_chew3.wav", 1, ATTN_NORM);
+					EmitSound(CHAN_WEAPON, "barnacle/bcl_chew3.wav", 1, ATTN_NORM);
 					break;
 				}
 
-				pVictim->BarnacleVictimBitten(pev);
+				pVictim->BarnacleVictimBitten(this);
 			}
 		}
 	}
@@ -270,25 +270,25 @@ void CBarnacle::BarnacleThink()
 			switch (RANDOM_LONG(0, 2))
 			{
 			case 0:
-				EMIT_SOUND(ENT(pev), CHAN_WEAPON, "barnacle/bcl_chew1.wav", 1, ATTN_NORM);
+				EmitSound(CHAN_WEAPON, "barnacle/bcl_chew1.wav", 1, ATTN_NORM);
 				break;
 			case 1:
-				EMIT_SOUND(ENT(pev), CHAN_WEAPON, "barnacle/bcl_chew2.wav", 1, ATTN_NORM);
+				EmitSound(CHAN_WEAPON, "barnacle/bcl_chew2.wav", 1, ATTN_NORM);
 				break;
 			case 2:
-				EMIT_SOUND(ENT(pev), CHAN_WEAPON, "barnacle/bcl_chew3.wav", 1, ATTN_NORM);
+				EmitSound(CHAN_WEAPON, "barnacle/bcl_chew3.wav", 1, ATTN_NORM);
 				break;
 			}
 		}
 
-		pTouchEnt = TongueTouchEnt(&flLength);
+		pTouchEnt = TongueTouchEnt(flLength);
 
 		if (pTouchEnt != nullptr && m_fTongueExtended)
 		{
 			// tongue is fully extended, and is touching someone.
 			if (pTouchEnt->FBecomeProne())
 			{
-				EMIT_SOUND(ENT(pev), CHAN_WEAPON, "barnacle/bcl_alert2.wav", 1, ATTN_NORM);
+				EmitSound(CHAN_WEAPON, "barnacle/bcl_alert2.wav", 1, ATTN_NORM);
 
 				SetSequenceByName("attack1");
 				m_flTongueAdj = -20;
@@ -332,7 +332,7 @@ void CBarnacle::BarnacleThink()
 //=========================================================
 // Killed.
 //=========================================================
-void CBarnacle::Killed(entvars_t* pevAttacker, int iGib)
+void CBarnacle::Killed(CBaseEntity* attacker, int iGib)
 {
 	CBaseMonster* pVictim;
 
@@ -359,10 +359,10 @@ void CBarnacle::Killed(entvars_t* pevAttacker, int iGib)
 	switch (RANDOM_LONG(0, 1))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "barnacle/bcl_die1.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "barnacle/bcl_die1.wav", 1, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "barnacle/bcl_die3.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "barnacle/bcl_die3.wav", 1, ATTN_NORM);
 		break;
 	}
 
@@ -414,18 +414,14 @@ void CBarnacle::Precache()
 // of the trace in the int pointer provided.
 //=========================================================
 #define BARNACLE_CHECK_SPACING 8
-CBaseEntity* CBarnacle::TongueTouchEnt(float* pflLength)
+CBaseEntity* CBarnacle::TongueTouchEnt(float& flLength)
 {
 	TraceResult tr;
-	float length;
 
 	// trace once to hit architecture and see if the tongue needs to change position.
 	UTIL_TraceLine(pev->origin, pev->origin - Vector(0, 0, 2048), ignore_monsters, ENT(pev), &tr);
-	length = fabs(pev->origin.z - tr.vecEndPos.z);
-	if (pflLength)
-	{
-		*pflLength = length;
-	}
+	const float length = fabs(pev->origin.z - tr.vecEndPos.z);
+	flLength = length;
 
 	Vector delta = Vector(BARNACLE_CHECK_SPACING, BARNACLE_CHECK_SPACING, 0);
 	Vector mins = pev->origin - delta;

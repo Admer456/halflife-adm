@@ -16,11 +16,11 @@
 #include "hud.h"
 #include "camera.h"
 #include "kbutton.h"
+#include "ClientLibrary.h"
 #include "cvardef.h"
 #include "usercmd.h"
 #include "const.h"
 #include "camera.h"
-#include "in_defs.h"
 #include "../public/keydefs.h"
 #include "view.h"
 #include "Exports.h"
@@ -67,6 +67,8 @@ static bool IN_UseRawInput()
 
 static bool m_bMouseThread = false;
 
+static bool g_ReceivedFirstMouseActivate = false;
+
 // mouse variables
 cvar_t* m_filter;
 cvar_t* sensitivity;
@@ -95,7 +97,6 @@ static int originalmouseparms[3], newmouseparms[3] = {0, 0, 1};
 static bool mouseactive = false;
 bool mouseinitialized;
 static bool mouseparmsvalid;
-static bool mouseshowtoggle = true;
 
 // joystick defines and variables
 // where should defines be moved?
@@ -244,6 +245,13 @@ IN_ActivateMouse
 */
 void DLLEXPORT IN_ActivateMouse()
 {
+	// This is the first function called after the engine has initialized itself, allowing us to do some post-init work.
+	if (!g_ReceivedFirstMouseActivate)
+	{
+		g_ReceivedFirstMouseActivate = true;
+		g_Client.PostInitialize();
+	}
+
 	if (mouseinitialized)
 	{
 #ifdef WIN32
@@ -343,6 +351,9 @@ IN_Shutdown
 */
 void IN_Shutdown()
 {
+	// Reset flag in case we're reloading due to video setting change.
+	g_ReceivedFirstMouseActivate = false;
+
 	IN_DeactivateMouse();
 
 #ifdef WIN32
@@ -436,10 +447,10 @@ void DLLEXPORT IN_MouseEvent(int mstate)
 // Input  : *x -
 //			*y -
 //-----------------------------------------------------------------------------
-void IN_ScaleMouse(float* x, float* y)
+void IN_ScaleMouse(float& x, float& y)
 {
-	float mx = *x;
-	float my = *y;
+	float mx = x;
+	float my = y;
 
 	// This is the default sensitivity
 	float mouse_senstivity = (gHUD.GetSensitivity() != 0) ? gHUD.GetSensitivity() : sensitivity->value;
@@ -459,23 +470,23 @@ void IN_ScaleMouse(float* x, float* y)
 			accelerated_sensitivity = accelerated_sensitivity_max;
 		}
 
-		*x *= accelerated_sensitivity;
-		*y *= accelerated_sensitivity;
+		x *= accelerated_sensitivity;
+		y *= accelerated_sensitivity;
 
 		// Further re-scale by yaw and pitch magnitude if user requests alternate mode 2
 		// This means that they will need to up their value for m_customaccel_scale greatly (>40x) since m_pitch/yaw default
 		//  to 0.022
 		if (m_customaccel->value == 2)
 		{
-			*x *= m_yaw->value;
-			*y *= m_pitch->value;
+			x *= m_yaw->value;
+			y *= m_pitch->value;
 		}
 	}
 	else
 	{
 		// Just apply the default
-		*x *= mouse_senstivity;
-		*y *= mouse_senstivity;
+		x *= mouse_senstivity;
+		y *= mouse_senstivity;
 	}
 }
 
@@ -559,7 +570,7 @@ void IN_MouseMove(float frametime, usercmd_t* cmd)
 		old_mouse_y = pos.y;
 
 		// Apply custom mouse scaling/acceleration
-		IN_ScaleMouse(&mouse_x, &mouse_y);
+		IN_ScaleMouse(mouse_x, mouse_y);
 
 		// add mouse X/Y movement to cmd
 		if ((in_strafe.state & 1) != 0 || (0 != lookstrafe->value && (in_mlook.state & 1) != 0))

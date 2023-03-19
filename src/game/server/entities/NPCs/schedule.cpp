@@ -96,7 +96,7 @@ void CBaseMonster::ChangeSchedule(Schedule_t* pNewSchedule)
 	// this is very useful code if you can isolate a test case in a level with a single monster. It will notify
 	// you of every schedule selection the monster makes.
 #if 0
-	if (FClassnameIs(pev, "monster_human_grunt"))
+	if (ClassnameIs("monster_human_grunt"))
 	{
 		Task_t* pTask = GetTask();
 
@@ -454,10 +454,10 @@ void CBaseMonster::RunTask(Task_t* pTask)
 				// a bit of a hack. If a corpses' bbox is positioned such that being left solid so that it can be attacked will
 				// block the player on a slope or stairs, the corpse is made nonsolid.
 				//					pev->solid = SOLID_NOT;
-				UTIL_SetSize(pev, Vector(-4, -4, 0), Vector(4, 4, 1));
+				SetSize(Vector(-4, -4, 0), Vector(4, 4, 1));
 			}
 			else // !!!HACKHACK - put monster in a thin, wide bounding box until we fix the solid type/bounding volume problem
-				UTIL_SetSize(pev, Vector(pev->mins.x, pev->mins.y, pev->mins.z), Vector(pev->maxs.x, pev->maxs.y, pev->mins.z + 1));
+				SetSize(Vector(pev->mins.x, pev->mins.y, pev->mins.z), Vector(pev->maxs.x, pev->maxs.y, pev->mins.z + 1));
 
 			if (ShouldFadeOnDeath())
 			{
@@ -516,7 +516,7 @@ void CBaseMonster::RunTask(Task_t* pTask)
 		if (m_pCine->m_iDelay <= 0 && gpGlobals->time >= m_pCine->m_startTime)
 		{
 			TaskComplete();
-			m_pCine->StartSequence((CBaseMonster*)this, m_pCine->m_iszPlay, true);
+			m_pCine->StartSequence(this, m_pCine->m_iszPlay, true);
 			if (m_fSequenceFinished)
 				ClearSchedule();
 			pev->framerate = 1.0;
@@ -1287,7 +1287,7 @@ void CBaseMonster::StartTask(Task_t* pTask)
 	{
 		if (!FStringNull(m_pCine->m_iszIdle))
 		{
-			m_pCine->StartSequence((CBaseMonster*)this, m_pCine->m_iszIdle, false);
+			m_pCine->StartSequence(this, m_pCine->m_iszIdle, false);
 			if (FStrEq(STRING(m_pCine->m_iszIdle), STRING(m_pCine->m_iszPlay)))
 			{
 				pev->framerate = 0;

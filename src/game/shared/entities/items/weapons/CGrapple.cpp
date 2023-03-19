@@ -122,7 +122,7 @@ void CGrapple::WeaponIdle()
 		}
 		else if (flNextIdle > 0.95)
 		{
-			EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_STATIC, "weapons/bgrapple_cough.wav", VOL_NORM, ATTN_NORM, 0, PITCH_NORM);
+			m_pPlayer->EmitSound(CHAN_STATIC, "weapons/bgrapple_cough.wav", VOL_NORM, ATTN_NORM);
 
 			iAnim = BGRAPPLE_COUGH;
 			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 4.6;
@@ -171,11 +171,11 @@ void CGrapple::PrimaryAttack()
 			{
 				SendWeaponAnim(BGRAPPLE_FIRETRAVEL);
 
-				EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_STATIC, "weapons/bgrapple_impact.wav", 0.98, ATTN_NORM, 0, 125);
+				m_pPlayer->EmitSoundDyn(CHAN_STATIC, "weapons/bgrapple_impact.wav", 0.98, ATTN_NORM, 0, 125);
 
 				if (pTarget->IsPlayer())
 				{
-					EMIT_SOUND_DYN(pTarget->edict(), CHAN_STATIC, "weapons/bgrapple_impact.wav", 0.98, ATTN_NORM, 0, 125);
+					pTarget->EmitSoundDyn(CHAN_STATIC, "weapons/bgrapple_impact.wav", 0.98, ATTN_NORM, 0, 125);
 				}
 
 				m_bMomentaryStuck = false;
@@ -237,7 +237,7 @@ void CGrapple::PrimaryAttack()
 
 		if (m_pTip->HasMissed())
 		{
-			EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_STATIC, "weapons/bgrapple_release.wav", 0.98, ATTN_NORM, 0, 125);
+			m_pPlayer->EmitSoundDyn(CHAN_STATIC, "weapons/bgrapple_release.wav", 0.98, ATTN_NORM, 0, 125);
 
 			EndAttack();
 			return;
@@ -257,7 +257,7 @@ void CGrapple::PrimaryAttack()
 
 			Fire(m_pPlayer->GetGunPosition(), gpGlobals->v_forward);
 
-			EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_STATIC, "weapons/bgrapple_pull.wav", 0.98, ATTN_NORM, 0, 125);
+			m_pPlayer->EmitSoundDyn(CHAN_STATIC, "weapons/bgrapple_pull.wav", 0.98, ATTN_NORM, 0, 125);
 
 			m_flShootTime = 0;
 		}
@@ -281,7 +281,7 @@ void CGrapple::PrimaryAttack()
 			m_flShootTime = gpGlobals->time + 0.35;
 		}
 
-		EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_WEAPON, "weapons/bgrapple_fire.wav", 0.98, ATTN_NORM, 0, 125);
+		m_pPlayer->EmitSoundDyn(CHAN_WEAPON, "weapons/bgrapple_fire.wav", 0.98, ATTN_NORM, 0, 125);
 
 		m_FireState = FireState::CHARGE;
 	}
@@ -356,9 +356,9 @@ void CGrapple::PrimaryAttack()
 							flDamage *= 2;
 						}
 
-						pHit->TraceAttack(pev, flDamage, gpGlobals->v_forward, &tr, DMG_ALWAYSGIB | DMG_CLUB);
+						pHit->TraceAttack(this, flDamage, gpGlobals->v_forward, &tr, DMG_ALWAYSGIB | DMG_CLUB);
 
-						ApplyMultiDamage(m_pPlayer->pev, m_pPlayer->pev);
+						ApplyMultiDamage(m_pPlayer, m_pPlayer);
 #endif
 
 						m_flDamageTime = gpGlobals->time;
@@ -379,7 +379,7 @@ void CGrapple::PrimaryAttack()
 							break;
 						}
 
-						EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_VOICE, pszSample, VOL_NORM, ATTN_NORM, 0, 125);
+						m_pPlayer->EmitSoundDyn(CHAN_VOICE, pszSample, VOL_NORM, ATTN_NORM, 0, 125);
 					}
 				}
 			}
@@ -455,9 +455,9 @@ void CGrapple::EndAttack()
 
 	SendWeaponAnim(BGRAPPLE_FIREREACHED);
 
-	EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_STATIC, "weapons/bgrapple_release.wav", 0.98, ATTN_NORM, 0, 125);
+	m_pPlayer->EmitSoundDyn(CHAN_STATIC, "weapons/bgrapple_release.wav", 0.98, ATTN_NORM, 0, 125);
 
-	EMIT_SOUND_DYN(m_pPlayer->edict(), CHAN_STATIC, "weapons/bgrapple_pull.wav", 0.0, ATTN_NONE, SND_STOP, 100);
+	m_pPlayer->EmitSoundDyn(CHAN_STATIC, "weapons/bgrapple_pull.wav", 0.0, ATTN_NONE, SND_STOP, 100);
 
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase();
 
@@ -554,24 +554,14 @@ void CGrapple::DestroyEffect()
 #endif
 }
 
-int CGrapple::iItemSlot()
+bool CGrapple::GetWeaponInfo(WeaponInfo& info)
 {
-	return 1;
-}
-
-bool CGrapple::GetItemInfo(ItemInfo* p)
-{
-	p->pszAmmo1 = nullptr;
-	p->iMaxAmmo1 = WEAPON_NOCLIP;
-	p->pszName = STRING(pev->classname);
-	p->pszAmmo2 = nullptr;
-	p->iMaxAmmo2 = WEAPON_NOCLIP;
-	p->iMaxClip = WEAPON_NOCLIP;
-	p->iSlot = 0;
-	p->iPosition = 3;
-	p->iId = m_iId = WEAPON_GRAPPLE;
-	p->iFlags = 0;
-	p->iWeight = 21;
+	info.Name = STRING(pev->classname);
+	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.Slot = 0;
+	info.Position = 3;
+	info.Id = m_iId = WEAPON_GRAPPLE;
+	info.Weight = 21;
 
 	return true;
 }

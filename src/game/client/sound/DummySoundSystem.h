@@ -25,7 +25,7 @@ struct DummyGameSoundSystem final : public IGameSoundSystem
 {
 	~DummyGameSoundSystem() override = default;
 
-	void LoadSentences() override {}
+	void HandleNetworkDataBlock(NetworkDataBlock& block) override {}
 
 	void StartSound(
 		int entnum, int entchannel,
@@ -33,9 +33,7 @@ struct DummyGameSoundSystem final : public IGameSoundSystem
 
 	void StopAllSounds() override {}
 
-	void ClearCaches() override {}
-
-	void UserMsg_EmitSound(const char* pszName, int iSize, void* pbuf) override {}
+	void MsgFunc_EmitSound(const char* pszName, int iSize, void* pbuf) override {}
 };
 
 struct DummyMusicSystem final : public IMusicSystem

@@ -75,7 +75,7 @@ public:
 	void MakeSound();
 	void SpreadFlock();
 	void SpreadFlock2();
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 	bool FPathBlocked();
 	// void KeyValue( KeyValueData *pkvd ) override;
 
@@ -267,10 +267,10 @@ void CFlockingFlyer::MakeSound()
 		switch (RANDOM_LONG(0, 1))
 		{
 		case 0:
-			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "boid/boid_alert1.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_WEAPON, "boid/boid_alert1.wav", 1, ATTN_NORM);
 			break;
 		case 1:
-			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "boid/boid_alert2.wav", 1, ATTN_NORM);
+			EmitSound(CHAN_WEAPON, "boid/boid_alert2.wav", 1, ATTN_NORM);
 			break;
 		}
 
@@ -281,26 +281,24 @@ void CFlockingFlyer::MakeSound()
 	switch (RANDOM_LONG(0, 1))
 	{
 	case 0:
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "boid/boid_idle1.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "boid/boid_idle1.wav", 1, ATTN_NORM);
 		break;
 	case 1:
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "boid/boid_idle2.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "boid/boid_idle2.wav", 1, ATTN_NORM);
 		break;
 	}
 }
 
 //=========================================================
 //=========================================================
-void CFlockingFlyer::Killed(entvars_t* pevAttacker, int iGib)
+void CFlockingFlyer::Killed(CBaseEntity* attacker, int iGib)
 {
-	CFlockingFlyer* pSquad;
-
-	pSquad = (CFlockingFlyer*)m_pSquadLeader;
+	CFlockingFlyer* pSquad = m_pSquadLeader;
 
 	while (pSquad)
 	{
 		pSquad->m_flAlertTime = gpGlobals->time + 15;
-		pSquad = (CFlockingFlyer*)pSquad->m_pSquadNext;
+		pSquad = pSquad->m_pSquadNext;
 	}
 
 	if (m_pSquadLeader)
@@ -313,7 +311,7 @@ void CFlockingFlyer::Killed(entvars_t* pevAttacker, int iGib)
 	pev->framerate = 0;
 	pev->effects = EF_NOINTERP;
 
-	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
+	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
 	pev->movetype = MOVETYPE_TOSS;
 
 	ClearShockEffect();
@@ -326,7 +324,7 @@ void CFlockingFlyer::FallHack()
 {
 	if ((pev->flags & FL_ONGROUND) != 0)
 	{
-		if (!FClassnameIs(pev->groundentity, "worldspawn"))
+		if (auto groundEntity = GetGroundEntity(); !groundEntity || !groundEntity->ClassnameIs("worldspawn"))
 		{
 			pev->flags &= ~FL_ONGROUND;
 			pev->nextthink = gpGlobals->time + 0.1;
@@ -355,8 +353,8 @@ void CFlockingFlyer::SpawnCommonCode()
 
 	SetModel(STRING(pev->model));
 
-	//	UTIL_SetSize(pev, Vector(0,0,0), Vector(0,0,0));
-	UTIL_SetSize(pev, Vector(-5, -5, 0), Vector(5, 5, 2));
+	//	SetSize(Vector(0,0,0), Vector(0,0,0));
+	SetSize(Vector(-5, -5, 0), Vector(5, 5, 2));
 }
 
 //=========================================================
@@ -457,7 +455,7 @@ void CFlockingFlyer::FormFlock()
 			if (pRecruit && pRecruit != this && pRecruit->IsAlive() && !pRecruit->m_pCine)
 			{
 				// Can we recruit this guy?
-				if (FClassnameIs(pRecruit->pev, "monster_flyer"))
+				if (pRecruit->ClassnameIs("monster_flyer"))
 				{
 					squadCount++;
 					SquadAdd((CFlockingFlyer*)pRecruit);
@@ -529,8 +527,6 @@ void CFlockingFlyer::SpreadFlock2()
 bool CFlockingFlyer::FPathBlocked()
 {
 	TraceResult tr;
-	Vector vecDist; // used for general measurements
-	Vector vecDir;	// used for general measurements
 	bool fBlocked;
 
 	if (m_flFakeBlockedTime > gpGlobals->time)
@@ -584,12 +580,9 @@ bool CFlockingFlyer::FPathBlocked()
 void CFlockingFlyer::FlockLeaderThink()
 {
 	TraceResult tr;
-	Vector vecDist;		// used for general measurements
-	Vector vecDir;		// used for general measurements
-	int cProcessed = 0; // keep track of how many other boids we've processed
+	Vector vecDist; // used for general measurements
 	float flLeftSide;
 	float flRightSide;
-
 
 	pev->nextthink = gpGlobals->time + 0.1;
 
@@ -690,9 +683,6 @@ void CFlockingFlyer::FlockLeaderThink()
 //=========================================================
 void CFlockingFlyer::FlockFollowerThink()
 {
-	TraceResult tr;
-	Vector vecDist;
-	Vector vecDir;
 	Vector vecDirToLeader;
 	float flDistToLeader;
 

@@ -80,8 +80,8 @@ public:
 	static const char* pPainSounds[];
 	static const char* pDeathSounds[];
 
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 	void GibMonster() override;
 
 	CSprite* m_pBall[2];   // hand balls
@@ -180,16 +180,16 @@ void CController::SetYawSpeed()
 	pev->yaw_speed = ys;
 }
 
-bool CController::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CController::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	// HACK HACK -- until we fix this.
 	if (IsAlive())
 		PainSound();
-	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
 
-void CController::Killed(entvars_t* pevAttacker, int iGib)
+void CController::Killed(CBaseEntity* attacker, int iGib)
 {
 	// shut off balls
 	/*
@@ -211,7 +211,7 @@ void CController::Killed(entvars_t* pevAttacker, int iGib)
 		m_pBall[1] = nullptr;
 	}
 
-	CSquadMonster::Killed(pevAttacker, iGib);
+	CSquadMonster::Killed(attacker, iGib);
 }
 
 
@@ -362,7 +362,7 @@ void CController::Spawn()
 	Precache();
 
 	SetModel(STRING(pev->model));
-	UTIL_SetSize(pev, Vector(-32, -32, 0), Vector(32, 32, 64));
+	SetSize(Vector(-32, -32, 0), Vector(32, 32, 64));
 
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_FLY;
@@ -732,8 +732,6 @@ Schedule_t* CController::GetSchedule()
 
 	case MONSTERSTATE_COMBAT:
 	{
-		Vector vecTmp = Intersect(Vector(0, 0, 0), Vector(100, 4, 7), Vector(2, 10, -3), 20.0);
-
 		// dead enemy
 		if (HasConditions(bits_COND_LIGHT_DAMAGE))
 		{
@@ -1158,7 +1156,7 @@ void CControllerHeadBall::Spawn()
 	pev->renderamt = 255;
 	pev->scale = 2.0;
 
-	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
+	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
 	UTIL_SetOrigin(pev, pev->origin);
 
 	SetThink(&CControllerHeadBall::HuntThink);
@@ -1221,8 +1219,8 @@ void CControllerHeadBall::HuntThink()
 		if (pEntity != nullptr && 0 != pEntity->pev->takedamage)
 		{
 			ClearMultiDamage();
-			pEntity->TraceAttack(m_hOwner->pev, GetSkillFloat("controller_dmgzap"sv), pev->velocity, &tr, DMG_SHOCK);
-			ApplyMultiDamage(pev, m_hOwner->pev);
+			pEntity->TraceAttack(m_hOwner, GetSkillFloat("controller_dmgzap"sv), pev->velocity, &tr, DMG_SHOCK);
+			ApplyMultiDamage(this, m_hOwner);
 		}
 
 		MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);
@@ -1244,7 +1242,7 @@ void CControllerHeadBall::HuntThink()
 		WRITE_BYTE(10);	 // speed
 		MESSAGE_END();
 
-		UTIL_EmitAmbientSound(ENT(pev), tr.vecEndPos, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG(140, 160));
+		EmitAmbientSound(tr.vecEndPos, "weapons/electro4.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG(140, 160));
 
 		m_flNextAttack = gpGlobals->time + 3.0;
 
@@ -1352,7 +1350,7 @@ void CControllerZapBall::Spawn()
 	pev->renderamt = 255;
 	pev->scale = 0.5;
 
-	UTIL_SetSize(pev, Vector(0, 0, 0), Vector(0, 0, 0));
+	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
 	UTIL_SetOrigin(pev, pev->origin);
 
 	SetThink(&CControllerZapBall::AnimateThink);
@@ -1392,21 +1390,17 @@ void CControllerZapBall::ExplodeTouch(CBaseEntity* pOther)
 	{
 		TraceResult tr = UTIL_GetGlobalTrace();
 
-		entvars_t* pevOwner;
-		if (m_hOwner != nullptr)
+		auto owner = m_hOwner.Entity<CBaseEntity>();
+		if (!owner)
 		{
-			pevOwner = m_hOwner->pev;
-		}
-		else
-		{
-			pevOwner = pev;
+			owner = this;
 		}
 
 		ClearMultiDamage();
-		pOther->TraceAttack(pevOwner, GetSkillFloat("controller_dmgball"sv), pev->velocity.Normalize(), &tr, DMG_ENERGYBEAM);
-		ApplyMultiDamage(pevOwner, pevOwner);
+		pOther->TraceAttack(owner, GetSkillFloat("controller_dmgball"sv), pev->velocity.Normalize(), &tr, DMG_ENERGYBEAM);
+		ApplyMultiDamage(owner, owner);
 
-		UTIL_EmitAmbientSound(ENT(pev), tr.vecEndPos, "weapons/electro4.wav", 0.3, ATTN_NORM, 0, RANDOM_LONG(90, 99));
+		EmitAmbientSound(tr.vecEndPos, "weapons/electro4.wav", 0.3, ATTN_NORM, 0, RANDOM_LONG(90, 99));
 	}
 
 	UTIL_Remove(this);

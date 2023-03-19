@@ -1,7 +1,11 @@
 // Client side entity management functions
 
+#include <limits>
+
 #include "hud.h"
+#include "ClientLibrary.h"
 #include "const.h"
+#include "entity.h"
 #include "entity_types.h"
 #include "studio.h" // def. of mstudioevent_t
 #include "r_efx.h"
@@ -14,7 +18,12 @@
 #include "particleman.h"
 #include "view.h"
 
-#include "sound/ClientSoundReplacement.h"
+#include "networking/ClientUserMessages.h"
+
+#include "sound/ClientSoundReplacementSystem.h"
+#include "sound/ISoundSystem.h"
+
+#include "utils/ConCommandSystem.h"
 
 void Game_AddObjects();
 
@@ -28,8 +37,6 @@ HUD_AddEntity
 */
 int DLLEXPORT HUD_AddEntity(int type, cl_entity_t* ent, const char* modelname)
 {
-	//	RecClAddEntity(type, ent, modelname);
-
 	switch (type)
 	{
 	case ET_NORMAL:
@@ -69,9 +76,7 @@ structure, we need to copy them into the state structure at this point.
 */
 void DLLEXPORT HUD_TxferLocalOverrides(entity_state_t* state, const clientdata_t* client)
 {
-	//	RecClTxferLocalOverrides(state, client);
-
-	VectorCopy(client->origin, state->origin);
+	state->origin = client->origin;
 
 	// Spectator
 	state->iuser1 = client->iuser1;
@@ -94,13 +99,11 @@ playerstate structure
 */
 void DLLEXPORT HUD_ProcessPlayerState(entity_state_t* dst, const entity_state_t* src)
 {
-	//	RecClProcessPlayerState(dst, src);
-
 	// Copy in network data
-	VectorCopy(src->origin, dst->origin);
-	VectorCopy(src->angles, dst->angles);
+	dst->origin = src->origin;
+	dst->angles = src->angles;
 
-	VectorCopy(src->velocity, dst->velocity);
+	dst->velocity = src->velocity;
 
 	dst->frame = src->frame;
 	dst->modelindex = src->modelindex;
@@ -126,7 +129,7 @@ void DLLEXPORT HUD_ProcessPlayerState(entity_state_t* dst, const entity_state_t*
 	memcpy(&dst->controller[0], &src->controller[0], 4 * sizeof(byte));
 	memcpy(&dst->blending[0], &src->blending[0], 2 * sizeof(byte));
 
-	VectorCopy(src->basevelocity, dst->basevelocity);
+	dst->basevelocity = src->basevelocity;
 
 	dst->friction = src->friction;
 	dst->gravity = src->gravity;
@@ -163,8 +166,6 @@ Because we can predict an arbitrary number of frames before the server responds 
 */
 void DLLEXPORT HUD_TxferPredictionData(entity_state_t* ps, const entity_state_t* pps, clientdata_t* pcd, const clientdata_t* ppcd, weapon_data_t* wd, const weapon_data_t* pwd)
 {
-	//	RecClTxferPredictionData(ps, pps, pcd, ppcd, wd, pwd);
-
 	ps->oldbuttons = pps->oldbuttons;
 	ps->flFallVelocity = pps->flFallVelocity;
 	ps->iStepLeft = pps->iStepLeft;
@@ -209,10 +210,10 @@ void DLLEXPORT HUD_TxferPredictionData(entity_state_t* ps, const entity_state_t*
 	pcd->fuser2 = ppcd->fuser2;
 	pcd->fuser3 = ppcd->fuser3;
 
-	VectorCopy(ppcd->vuser1, pcd->vuser1);
-	VectorCopy(ppcd->vuser2, pcd->vuser2);
-	VectorCopy(ppcd->vuser3, pcd->vuser3);
-	VectorCopy(ppcd->vuser4, pcd->vuser4);
+	pcd->vuser1 = ppcd->vuser1;
+	pcd->vuser2 = ppcd->vuser2;
+	pcd->vuser3 = ppcd->vuser3;
+	pcd->vuser4 = ppcd->vuser4;
 
 	memcpy(wd, pwd, MAX_WEAPONS * sizeof(weapon_data_t));
 }
@@ -297,8 +298,6 @@ Gives us a chance to add additional entities to the render this frame
 */
 void DLLEXPORT HUD_CreateEntities()
 {
-	//	RecClCreateEntities();
-
 #if defined(BEAM_TEST)
 	Beams();
 #endif
@@ -320,8 +319,6 @@ fired during this frame, handle the event by it's tag ( e.g., muzzleflash, sound
 */
 void DLLEXPORT HUD_StudioEvent(const mstudioevent_t* event, const cl_entity_t* entity)
 {
-	//	RecClStudioEvent(event, entity);
-
 	bool iMuzzleFlash = true;
 
 
@@ -349,8 +346,8 @@ void DLLEXPORT HUD_StudioEvent(const mstudioevent_t* event, const cl_entity_t* e
 		// Client side sound
 	case 5004:
 	{
-		auto sample = sound::g_ClientSoundReplacement->Lookup(event->options);
-		gEngfuncs.pfnPlaySoundByNameAtLocation(sample, 1.0, entity->attachment[0]);
+		auto sample = sound::g_ClientSoundReplacement.Lookup(event->options);
+		PlaySoundByNameAtLocation(sample, 1.0, entity->attachment[0]);
 		break;
 	}
 	default:
@@ -358,13 +355,10 @@ void DLLEXPORT HUD_StudioEvent(const mstudioevent_t* event, const cl_entity_t* e
 	}
 }
 
-/*
-=================
-CL_UpdateTEnts
-
-Simulation and cleanup of temporary entities
-=================
-*/
+/**
+ *	@brief Simulation and cleanup of temporary entities
+ *	@param Callback_TempEntPlaySound Obsolete. Use CL_TempEntPlaySound instead.
+ */
 void DLLEXPORT HUD_TempEntUpdate(
 	double frametime,			  // Simulation time
 	double client_time,			  // Absolute time on client
@@ -374,8 +368,6 @@ void DLLEXPORT HUD_TempEntUpdate(
 	int (*Callback_AddVisibleEntity)(cl_entity_t* pEntity),
 	void (*Callback_TempEntPlaySound)(TEMPENTITY* pTemp, float damp))
 {
-	//	RecClTempEntUpdate(frametime, client_time, cl_gravity, ppTempEntFree, ppTempEntActive, Callback_AddVisibleEntity, Callback_TempEntPlaySound);
-
 	static int gTempEntFrame = 0;
 	int i;
 	TEMPENTITY *pTemp, *pnext, *pprev;
@@ -463,7 +455,7 @@ void DLLEXPORT HUD_TempEntUpdate(
 		{
 			pprev = pTemp;
 
-			VectorCopy(pTemp->entity.origin, pTemp->entity.prevstate.origin);
+			pTemp->entity.prevstate.origin = pTemp->entity.origin;
 
 			if ((pTemp->flags & FTENT_SPARKSHOWER) != 0)
 			{
@@ -497,7 +489,7 @@ void DLLEXPORT HUD_TempEntUpdate(
 
 				pClient = gEngfuncs.GetEntityByIndex(pTemp->clientIndex);
 
-				VectorAdd(pClient->origin, pTemp->tentOffset, pTemp->entity.origin);
+				pTemp->entity.origin = pClient->origin + pTemp->tentOffset;
 			}
 			else if ((pTemp->flags & FTENT_SINEWAVE) != 0)
 			{
@@ -561,7 +553,7 @@ void DLLEXPORT HUD_TempEntUpdate(
 				pTemp->entity.angles[1] += pTemp->entity.baseline.angles[1] * frametime;
 				pTemp->entity.angles[2] += pTemp->entity.baseline.angles[2] * frametime;
 
-				VectorCopy(pTemp->entity.angles, pTemp->entity.latched.prevangles);
+				pTemp->entity.latched.prevangles = pTemp->entity.angles;
 			}
 
 			if ((pTemp->flags & (FTENT_COLLIDEALL | FTENT_COLLIDEWORLD)) != 0)
@@ -586,7 +578,7 @@ void DLLEXPORT HUD_TempEntUpdate(
 						if (0 == pmtrace.ent || (pe->info != pTemp->clientIndex))
 						{
 							traceFraction = pmtrace.fraction;
-							VectorCopy(pmtrace.plane.normal, traceNormal);
+							traceNormal = pmtrace.plane.normal;
 
 							if (pTemp->hitcallback)
 							{
@@ -606,15 +598,15 @@ void DLLEXPORT HUD_TempEntUpdate(
 					if (pmtrace.fraction != 1)
 					{
 						traceFraction = pmtrace.fraction;
-						VectorCopy(pmtrace.plane.normal, traceNormal);
+						traceNormal = pmtrace.plane.normal;
 
 						if ((pTemp->flags & FTENT_SPARKSHOWER) != 0)
 						{
 							// Chop spark speeds a bit more
 							//
-							VectorScale(pTemp->entity.baseline.origin, 0.6, pTemp->entity.baseline.origin);
+							pTemp->entity.baseline.origin = pTemp->entity.baseline.origin * 0.6;
 
-							if (Length(pTemp->entity.baseline.origin) < 10)
+							if (pTemp->entity.baseline.origin.Length() < 10)
 							{
 								pTemp->entity.baseline.framerate = 0.0;
 							}
@@ -632,7 +624,7 @@ void DLLEXPORT HUD_TempEntUpdate(
 					float proj, damp;
 
 					// Place at contact point
-					VectorMA(pTemp->entity.prevstate.origin, traceFraction * frametime, pTemp->entity.baseline.origin, pTemp->entity.origin);
+					pTemp->entity.origin = pTemp->entity.prevstate.origin + ((traceFraction * frametime) * pTemp->entity.baseline.origin);
 					// Damp velocity
 					damp = pTemp->bounceFactor;
 					if ((pTemp->flags & (FTENT_GRAVITY | FTENT_SLOWGRAVITY)) != 0)
@@ -652,7 +644,7 @@ void DLLEXPORT HUD_TempEntUpdate(
 
 					if (0 != pTemp->hitSound)
 					{
-						Callback_TempEntPlaySound(pTemp, damp);
+						CL_TempEntPlaySound(pTemp, damp);
 					}
 
 					if ((pTemp->flags & FTENT_COLLIDEKILL) != 0)
@@ -667,7 +659,7 @@ void DLLEXPORT HUD_TempEntUpdate(
 						if (damp != 0)
 						{
 							proj = DotProduct(pTemp->entity.baseline.origin, traceNormal);
-							VectorMA(pTemp->entity.baseline.origin, -proj * 2, traceNormal, pTemp->entity.baseline.origin);
+							pTemp->entity.baseline.origin = pTemp->entity.baseline.origin + ((-proj * 2) * traceNormal);
 							// Reflect rotation (fake)
 
 							pTemp->entity.angles[1] = -pTemp->entity.angles[1];
@@ -676,8 +668,8 @@ void DLLEXPORT HUD_TempEntUpdate(
 						if (damp != 1)
 						{
 
-							VectorScale(pTemp->entity.baseline.origin, damp, pTemp->entity.baseline.origin);
-							VectorScale(pTemp->entity.angles, 0.9, pTemp->entity.angles);
+							pTemp->entity.baseline.origin = pTemp->entity.baseline.origin * damp;
+							pTemp->entity.angles = pTemp->entity.angles * 0.9;
 						}
 					}
 				}
@@ -687,7 +679,7 @@ void DLLEXPORT HUD_TempEntUpdate(
 			if ((pTemp->flags & FTENT_FLICKER) != 0 && gTempEntFrame == pTemp->entity.curstate.effects)
 			{
 				dlight_t* dl = gEngfuncs.pEfxAPI->CL_AllocDlight(0);
-				VectorCopy(pTemp->entity.origin, dl->origin);
+				dl->origin = pTemp->entity.origin;
 				dl->radius = 60;
 				dl->color.r = 255;
 				dl->color.g = 120;
@@ -747,8 +739,6 @@ Indices must start at 1, not zero.
 */
 cl_entity_t DLLEXPORT* HUD_GetUserEntity(int index)
 {
-	//	RecClGetUserEntity(index);
-
 #if defined(BEAM_TEST)
 	// None by default, you would return a valic pointer if you create a client side
 	//  beam and attach it to a client side entity.
@@ -763,4 +753,129 @@ cl_entity_t DLLEXPORT* HUD_GetUserEntity(int index)
 #else
 	return nullptr;
 #endif
+}
+
+static void CL_ParseGunshot()
+{
+	const Vector pos = READ_COORDVECTOR();
+	gEngfuncs.pEfxAPI->R_RunParticleEffect(pos, vec3_origin, 0, 20);
+	R_RicochetSound(pos);
+}
+
+static void CL_ParseExplosion()
+{
+	const Vector pos = READ_COORDVECTOR();
+	const int spriteIndex = READ_SHORT();
+
+	const float scale = READ_BYTE() * 0.1f;
+	const float framerate = READ_BYTE();
+	const int flags = READ_BYTE();
+
+	R_Explosion(pos, spriteIndex, scale, framerate, flags);
+}
+
+static void CL_ParseTarExplosion()
+{
+	const Vector pos = READ_COORDVECTOR();
+	gEngfuncs.pEfxAPI->R_BlobExplosion(pos);
+	CL_StartSound(-1, CHAN_AUTO, "weapons/explode3.wav", pos, VOL_NORM, 1.0f, PITCH_NORM, 0);
+}
+
+static void CL_ParseExplosion2()
+{
+	const Vector pos = READ_COORDVECTOR();
+	const int colorStart = READ_BYTE();
+	const int colorLength = READ_BYTE();
+
+	gEngfuncs.pEfxAPI->R_ParticleExplosion2(pos, colorStart, colorLength);
+
+	auto light = gEngfuncs.pEfxAPI->CL_AllocDlight(0);
+	light->origin = pos;
+	light->radius = 350;
+	light->die = gEngfuncs.GetClientTime() + 0.5;
+	light->decay = 300;
+
+	CL_StartSound(-1, CHAN_AUTO, "weapons/explode3.wav", pos, VOL_NORM, 0.6f, PITCH_NORM, 0);
+}
+
+static void CL_ParseGunshotDecal()
+{
+	const Vector pos = READ_COORDVECTOR();
+	const int entityIndex = READ_SHORT();
+	const int decalId = READ_BYTE();
+
+	gEngfuncs.pEfxAPI->R_BulletImpactParticles(pos);
+
+	if (const int random = gEngfuncs.pfnRandomLong(0, std::numeric_limits<short>::max());
+		random < (std::numeric_limits<short>::max() / 2))
+	{
+		R_RicochetSound(pos, random);
+	}
+
+	if (entityIndex < 0 || !gEngfuncs.GetEntityByIndex(entityIndex))
+	{
+		Con_DPrintf("Decal: entity = %d\n", entityIndex);
+		return;
+	}
+
+	if (r_decals->value)
+	{
+		const int decalIndex = gEngfuncs.pEfxAPI->Draw_DecalIndex(decalId);
+		gEngfuncs.pEfxAPI->R_DecalShoot(decalIndex, entityIndex, 0, pos, 0);
+	}
+}
+
+static void CL_ParseArmorRicochet()
+{
+	const Vector pos = READ_COORDVECTOR();
+	const float life = READ_BYTE() * 0.1f;
+
+	const auto model = gEngfuncs.CL_LoadModel("sprites/richo1.spr", nullptr);
+
+	gEngfuncs.pEfxAPI->R_RicochetSprite(pos, model, 0.1, life);
+
+	R_RicochetSound(pos);
+}
+
+static void MsgFunc_TempEntity(const char* name, int size, void* buf)
+{
+	BEGIN_READ(buf, size);
+
+	const int type = READ_BYTE();
+
+	switch (type)
+	{
+	default:
+		Con_DPrintf("Unsupported custom temp entity %d\n", type);
+		return;
+
+	case TE_GUNSHOT:
+		CL_ParseGunshot();
+		break;
+
+	case TE_EXPLOSION:
+		CL_ParseExplosion();
+		break;
+
+	case TE_TAREXPLOSION:
+		CL_ParseTarExplosion();
+		break;
+
+	case TE_EXPLOSION2:
+		CL_ParseExplosion2();
+		break;
+
+	case TE_GUNSHOTDECAL:
+		CL_ParseGunshotDecal();
+		break;
+
+	case TE_ARMOR_RICOCHET:
+		CL_ParseArmorRicochet();
+		break;
+	}
+}
+
+void TempEntity_Initialize()
+{
+	g_ClientUserMessages.RegisterHandler("TempEntity", &MsgFunc_TempEntity);
 }

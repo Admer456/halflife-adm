@@ -16,25 +16,41 @@
 #pragma once
 
 #include <memory>
+#include <span>
+#include <string>
 #include <vector>
 
 #include <spdlog/logger.h>
 
+#include "networking/NetworkDataSystem.h"
 #include "sound/sentence_utils.h"
+#include "utils/json_fwd.h"
 #include "utils/GameSystem.h"
+
+class CBaseEntity;
 
 namespace sentences
 {
-class SentencesSystem final : public IGameSystem
+struct Sentence
+{
+	SentenceName Name;
+	std::string Value;
+};
+
+class SentencesSystem final : public IGameSystem, public INetworkDataBlockHandler
 {
 public:
 	const char* GetName() const override { return "Sentences"; }
 
 	bool Initialize() override;
-	void PostInitialize() override;
+	void PostInitialize() override {}
 	void Shutdown() override;
 
+	void LoadSentences(std::span<const std::string> fileNames);
+
 	void NewMapStarted();
+
+	void HandleNetworkDataBlock(NetworkDataBlock& block) override;
 
 	const char* GetSentenceNameByIndex(int index) const;
 
@@ -42,38 +58,38 @@ public:
 	 *	@brief Given sentence group rootname (name without number suffix), get sentence group index (isentenceg).
 	 *	@return -1 if no such name.
 	 */
-	int GetGroupIndex(const char* szrootname) const;
+	int GetGroupIndex(CBaseEntity* entity, const char* szrootname) const;
 
 	/**
 	 *	@brief convert sentence (sample) name to !sentencenum.
 	 *	@return Sentence index, or -1 if the sentence could not be found.
 	 */
-	int LookupSentence(const char* sample, SentenceIndexName* sentencenum) const;
+	int LookupSentence(CBaseEntity* entity, const char* sample, SentenceIndexName* sentencenum) const;
 
 	/**
 	 *	@brief given sentence group index, play random sentence for given entity.
 	 *	@return ipick - which sentence was picked to play from the group.
 	 *		Ipick is only needed if you plan on stopping the sound before playback is done (@see Stop).
 	 */
-	int PlayRndI(edict_t* entity, int isentenceg, float volume, float attenuation, int flags, int pitch);
+	int PlayRndI(CBaseEntity* entity, int isentenceg, float volume, float attenuation, int flags, int pitch);
 
 	/**
 	 *	@brief same as PlayRndI, but takes sentence group name instead of index.
 	 */
-	int PlayRndSz(edict_t* entity, const char* szrootname, float volume, float attenuation, int flags, int pitch);
+	int PlayRndSz(CBaseEntity* entity, const char* szrootname, float volume, float attenuation, int flags, int pitch);
 
 	/**
 	 *	@brief play sentences in sequential order from sentence group. Reset after last sentence.
 	 */
-	int PlaySequentialSz(edict_t* entity, const char* szrootname, float volume, float attenuation, int flags, int pitch, int ipick, bool freset);
+	int PlaySequentialSz(CBaseEntity* entity, const char* szrootname, float volume, float attenuation, int flags, int pitch, int ipick, bool freset);
 
 	/**
 	 *	@brief for this entity, for the given sentence within the sentence group, stop the sentence.
 	 */
-	void Stop(edict_t* entity, int isentenceg, int ipick);
+	void Stop(CBaseEntity* entity, int isentenceg, int ipick);
 
 private:
-	void LoadSentences();
+	void LoadSentences(const std::string& fileName);
 
 	/**
 	 *	@brief randomize list of sentence name indices
@@ -99,12 +115,12 @@ private:
 	 */
 	int PickSequential(int isentenceg, SentenceIndexName& found, int ipick, bool freset) const;
 
-	const char* CheckForSentenceReplacement(const char* sentenceName) const;
+	const char* CheckForSentenceReplacement(CBaseEntity* entity, const char* sentenceName) const;
 
 private:
 	std::shared_ptr<spdlog::logger> m_Logger;
 
-	std::vector<SentenceName> m_SentenceNames;
+	std::vector<Sentence> m_Sentences;
 	std::vector<SENTENCEG> m_SentenceGroups;
 };
 

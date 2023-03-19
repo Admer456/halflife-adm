@@ -25,6 +25,9 @@ namespace sound
 bool ServerSoundSystem::Initialize()
 {
 	m_Logger = g_Logging.CreateLogger("sound");
+	m_UseOpenAl = g_ConCommands.CreateCVar("snd_openal", "1", FCVAR_ARCHIVE);
+	g_NetworkData.RegisterHandler("SoundList", this);
+	g_NetworkData.RegisterHandler("GlobalSoundReplacement", this);
 	return true;
 }
 
@@ -38,35 +41,90 @@ void ServerSoundSystem::Shutdown()
 	m_Logger.reset();
 }
 
-void ServerSoundSystem::EmitSound(edict_t* entity, int channel, const char* sample, float volume, float attenuation, int flags, int pitch)
+void ServerSoundSystem::HandleNetworkDataBlock(NetworkDataBlock& block)
 {
-	if (sample && *sample == '!')
+	if (block.Name == "SoundList")
 	{
-		sentences::SentenceIndexName name;
-		if (sentences::g_Sentences.LookupSentence(sample, &name) >= 0)
-			EmitSoundSentence(entity, channel, name.c_str(), volume, attenuation, flags, pitch);
-		else
-			m_Logger->debug("Unable to find {} in sentences.txt", sample);
+		block.Data = json::array();
+
+		for (std::size_t i = 1; i < g_SoundPrecache->GetCount(); ++i)
+		{
+			block.Data.push_back(g_SoundPrecache->GetString(i));
+		}
 	}
-	else
+	else if (block.Name == "GlobalSoundReplacement")
 	{
-		sample = CheckForSoundReplacement(sample);
-		EMIT_SOUND_DYN2(entity, channel, sample, volume, attenuation, flags, pitch);
+		block.Data = g_ReplacementMaps.Serialize(*g_Server.GetMapState()->m_GlobalSoundReplacement);
 	}
 }
 
-void ServerSoundSystem::EmitAmbientSound(edict_t* entity, const Vector& vecOrigin, const char* samp, float vol, float attenuation, int fFlags, int pitch)
+void ServerSoundSystem::EmitSound(CBaseEntity* entity, int channel, const char* sample, float volume, float attenuation, int flags, int pitch)
 {
-	if (samp && *samp == '!')
+	if (m_UseOpenAl->value != 0)
 	{
-		sentences::SentenceIndexName name;
-		if (sentences::g_Sentences.LookupSentence(samp, &name) >= 0)
-			EmitSoundCore(entity, CHAN_STATIC, name.c_str(), vol, attenuation, fFlags, pitch, vecOrigin, true);
+		if (sample && *sample == '!')
+		{
+			sentences::SentenceIndexName name;
+			if (sentences::g_Sentences.LookupSentence(entity, sample, &name) >= 0)
+				EmitSoundSentence(entity, channel, name.c_str(), volume, attenuation, flags, pitch);
+			else
+				m_Logger->debug("Unable to find {} in sentences", sample);
+		}
+		else
+		{
+			sample = CheckForSoundReplacement(entity, sample);
+
+			const Vector origin = entity->pev->origin + (entity->pev->mins + entity->pev->maxs) * 0.5f;
+			EmitSoundCore(entity, channel, sample, volume, attenuation, flags, pitch, origin, false);
+		}
 	}
 	else
 	{
-		samp = CheckForSoundReplacement(samp);
-		EMIT_AMBIENT_SOUND(entity, vecOrigin, samp, vol, attenuation, fFlags, pitch);
+		if (sample && *sample == '!')
+		{
+			sentences::SentenceIndexName name;
+			if (sentences::g_Sentences.LookupSentence(entity, sample, &name) >= 0)
+				EMIT_SOUND_DYN2(entity->edict(), channel, name.c_str(), volume, attenuation, flags, pitch);
+			else
+				m_Logger->debug("Unable to find {} in sentences", sample);
+		}
+		else
+		{
+			sample = CheckForSoundReplacement(entity, sample);
+			EMIT_SOUND_DYN2(entity->edict(), channel, sample, volume, attenuation, flags, pitch);
+		}
+	}
+}
+
+void ServerSoundSystem::EmitAmbientSound(CBaseEntity* entity, const Vector& vecOrigin, const char* samp, float vol, float attenuation, int fFlags, int pitch)
+{
+	if (m_UseOpenAl->value != 0)
+	{
+		if (samp && *samp == '!')
+		{
+			sentences::SentenceIndexName name;
+			if (sentences::g_Sentences.LookupSentence(entity, samp, &name) >= 0)
+				EmitSoundCore(entity, CHAN_STATIC, name.c_str(), vol, attenuation, fFlags, pitch, vecOrigin, true);
+		}
+		else
+		{
+			samp = CheckForSoundReplacement(entity, samp);
+			EmitSoundCore(entity, CHAN_STATIC, samp, vol, attenuation, fFlags, pitch, vecOrigin, true);
+		}
+	}
+	else
+	{
+		if (samp && *samp == '!')
+		{
+			sentences::SentenceIndexName name;
+			if (sentences::g_Sentences.LookupSentence(entity, samp, &name) >= 0)
+				EMIT_AMBIENT_SOUND(entity->edict(), vecOrigin, name.c_str(), vol, attenuation, fFlags, pitch);
+		}
+		else
+		{
+			samp = CheckForSoundReplacement(entity, samp);
+			EMIT_AMBIENT_SOUND(entity->edict(), vecOrigin, samp, vol, attenuation, fFlags, pitch);
+		}
 	}
 }
 
@@ -82,7 +140,22 @@ const char* ServerSoundSystem::CheckForSoundReplacement(const char* soundName) c
 	return g_Server.GetMapState()->m_GlobalSoundReplacement->Lookup(soundName);
 }
 
-void ServerSoundSystem::EmitSoundCore(edict_t* entity, int channel, const char* sample, float volume, float attenuation,
+const char* ServerSoundSystem::CheckForSoundReplacement(CBaseEntity* entity, const char* soundName) const
+{
+	if (soundName[0] == '*')
+	{
+		++soundName;
+	}
+
+	if (entity->m_SoundReplacement)
+	{
+		soundName = entity->m_SoundReplacement->Lookup(soundName);
+	}
+
+	return CheckForSoundReplacement(soundName);
+}
+
+void ServerSoundSystem::EmitSoundCore(CBaseEntity* entity, int channel, const char* sample, float volume, float attenuation,
 	int flags, int pitch, const Vector& origin, bool alwaysBroadcast)
 {
 	if (volume < 0 || volume > 1)
@@ -120,11 +193,16 @@ void ServerSoundSystem::EmitSoundCore(edict_t* entity, int channel, const char* 
 	}
 	else
 	{
-		m_Logger->error("EmitSound: regular sounds not supported");
-		return;
+		soundIndex = g_SoundPrecache->IndexOf(sample);
+
+		if (soundIndex <= 0)
+		{
+			m_Logger->error("EmitSound: {} not precached ({})", sample, soundIndex);
+			return;
+		}
 	}
 
-	const int entityIndex = ENTINDEX(entity);
+	const int entityIndex = entity->entindex();
 
 	if (volumeInt != 255)
 	{
@@ -204,41 +282,35 @@ void ServerSoundSystem::EmitSoundCore(edict_t* entity, int channel, const char* 
 	MESSAGE_END();
 }
 
-void ServerSoundSystem::EmitSoundSentence(edict_t* entity, int channel, const char* sample, float volume, float attenuation,
+void ServerSoundSystem::EmitSoundSentence(CBaseEntity* entity, int channel, const char* sample, float volume, float attenuation,
 	int flags, int pitch)
 {
-	const Vector origin = entity->v.origin + (entity->v.mins + entity->v.maxs) * 0.5f;
+	const Vector origin = entity->pev->origin + (entity->pev->mins + entity->pev->maxs) * 0.5f;
 
 	EmitSoundCore(entity, channel, sample, volume, attenuation, flags, pitch, origin, false);
 }
 }
 
-void EMIT_SOUND_DYN(edict_t* entity, int channel, const char* sample, float volume, float attenuation,
+void EMIT_SOUND_PREDICTED(CBaseEntity* entity, int channel, const char* sample, float volume, float attenuation,
 	int flags, int pitch)
 {
-	sound::g_ServerSound.EmitSound(entity, channel, sample, volume, attenuation, flags, pitch);
-}
+	if (!entity)
+	{
+		return;
+	}
 
-void UTIL_EmitAmbientSound(edict_t* entity, const Vector& vecOrigin, const char* samp, float vol, float attenuation, int fFlags, int pitch)
-{
-	sound::g_ServerSound.EmitAmbientSound(entity, vecOrigin, samp, vol, attenuation, fFlags, pitch);
-}
-
-void EMIT_SOUND_PREDICTED(edict_t* entity, int channel, const char* sample, float volume, float attenuation,
-	int flags, int pitch)
-{
 	// If entity is not a player this will return false.
-	if (0 != g_engfuncs.pfnCanSkipPlayer(entity))
+	if (0 != g_engfuncs.pfnCanSkipPlayer(entity->edict()))
 	{
 		pmove->PM_PlaySound(channel, sample, volume, attenuation, flags, pitch);
 	}
 	else
 	{
-		EMIT_SOUND_DYN(entity, channel, sample, volume, attenuation, flags, pitch);
+		sound::g_ServerSound.EmitSound(entity, channel, sample, volume, attenuation, flags, pitch);
 	}
 }
 
-void EMIT_SOUND_SUIT(edict_t* entity, const char* sample)
+void EMIT_SOUND_SUIT(CBaseEntity* entity, const char* sample)
 {
 	float fvol;
 	int pitch = PITCH_NORM;
@@ -248,10 +320,10 @@ void EMIT_SOUND_SUIT(edict_t* entity, const char* sample)
 		pitch = RANDOM_LONG(0, 6) + 98;
 
 	if (fvol > 0.05)
-		EMIT_SOUND_DYN(entity, CHAN_STATIC, sample, fvol, ATTN_NORM, 0, pitch);
+		sound::g_ServerSound.EmitSound(entity, CHAN_STATIC, sample, fvol, ATTN_NORM, 0, pitch);
 }
 
-void EMIT_GROUPID_SUIT(edict_t* entity, int isentenceg)
+void EMIT_GROUPID_SUIT(CBaseEntity* entity, int isentenceg)
 {
 	float fvol;
 	int pitch = PITCH_NORM;
@@ -264,7 +336,7 @@ void EMIT_GROUPID_SUIT(edict_t* entity, int isentenceg)
 		sentences::g_Sentences.PlayRndI(entity, isentenceg, fvol, ATTN_NORM, 0, pitch);
 }
 
-void EMIT_GROUPNAME_SUIT(edict_t* entity, const char* groupname)
+void EMIT_GROUPNAME_SUIT(CBaseEntity* entity, const char* groupname)
 {
 	float fvol;
 	int pitch = PITCH_NORM;

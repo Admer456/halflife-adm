@@ -82,9 +82,9 @@ public:
 	bool Save(CSave& save) override;
 	bool Restore(CRestore& restore) override;
 
-	void TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
+	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 
 	void MonsterThink() override;
 
@@ -166,7 +166,7 @@ void COFTorchAlly::GibMonster()
 //=========================================================
 // TraceAttack - make sure we're not taking it in the helmet
 //=========================================================
-void COFTorchAlly::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
+void COFTorchAlly::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	// check for Torch fuel tank hit
 	if (ptr->iHitgroup == 8)
@@ -177,7 +177,7 @@ void COFTorchAlly::TraceAttack(entvars_t* pevAttacker, float flDamage, Vector ve
 		ExplosionCreate(ptr->vecEndPos, pev->angles, edict(), 100, true);
 	}
 
-	CBaseHGruntAlly::TraceAttack(pevAttacker, flDamage, vecDir, ptr, bitsDamageType);
+	CBaseHGruntAlly::TraceAttack(attacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
 //=========================================================
@@ -202,7 +202,7 @@ void COFTorchAlly::Shoot()
 
 	const auto pitch = random <= 10 ? random + 95 : 100;
 
-	EMIT_SOUND_DYN(edict(), CHAN_WEAPON, "weapons/desert_eagle_fire.wav", VOL_NORM, ATTN_NORM, 0, pitch);
+	EmitSoundDyn(CHAN_WEAPON, "weapons/desert_eagle_fire.wav", VOL_NORM, ATTN_NORM, 0, pitch);
 
 	pev->effects |= EF_MUZZLEFLASH;
 
@@ -223,7 +223,7 @@ void COFTorchAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 	switch (pEvent->event)
 	{
 	case HGRUNT_AE_RELOAD:
-		EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/desert_eagle_reload.wav", 1, ATTN_NORM);
+		EmitSound(CHAN_WEAPON, "weapons/desert_eagle_reload.wav", 1, ATTN_NORM);
 
 		m_cAmmoLoaded = m_cClipSize;
 		ClearConditions(bits_COND_NO_AMMO_LOADED);
@@ -382,7 +382,7 @@ Schedule_t* COFTorchAlly::GetTorchSchedule()
 	return nullptr;
 }
 
-void COFTorchAlly::Killed(entvars_t* pevAttacker, int iGib)
+void COFTorchAlly::Killed(CBaseEntity* attacker, int iGib)
 {
 	// TODO: is this even correct? Torch grunts have no medic capabilities
 	if (m_hTargetEnt != nullptr)
@@ -397,7 +397,7 @@ void COFTorchAlly::Killed(entvars_t* pevAttacker, int iGib)
 		m_pTorchBeam = nullptr;
 	}
 
-	CBaseHGruntAlly::Killed(pevAttacker, iGib);
+	CBaseHGruntAlly::Killed(attacker, iGib);
 }
 
 void COFTorchAlly::MonsterThink()

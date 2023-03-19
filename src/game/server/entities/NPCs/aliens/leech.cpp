@@ -100,9 +100,9 @@ public:
 	// Base entity functions
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	int BloodColor() override { return DONT_BLEED; }
-	void Killed(entvars_t* pevAttacker, int iGib) override;
+	void Killed(CBaseEntity* attacker, int iGib) override;
 	void Activate() override;
-	bool TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType) override;
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 	int Classify() override { return CLASS_INSECT; }
 	int IRelationship(CBaseEntity* pTarget) override;
 
@@ -186,8 +186,8 @@ void CLeech::Spawn()
 	Precache();
 	SetModel(STRING(pev->model));
 
-	//	UTIL_SetSize( pev, g_vecZero, g_vecZero );
-	UTIL_SetSize(pev, Vector(-1, -1, 0), Vector(1, 1, 2));
+	//	SetSize(g_vecZero, g_vecZero);
+	SetSize(Vector(-1, -1, 0), Vector(1, 1, 2));
 	// Don't push the minz down too much or the water check will fail because this entity is really point-sized
 	pev->solid = SOLID_SLIDEBOX;
 	pev->movetype = MOVETYPE_FLY;
@@ -278,7 +278,7 @@ void CLeech::AttackSound()
 {
 	if (gpGlobals->time > m_attackSoundTime)
 	{
-		EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), 1.0, ATTN_NORM, 0, PITCH_NORM);
+		EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), 1.0, ATTN_NORM);
 		m_attackSoundTime = gpGlobals->time + 0.5;
 	}
 }
@@ -286,7 +286,7 @@ void CLeech::AttackSound()
 
 void CLeech::AlertSound()
 {
-	EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, RANDOM_SOUND_ARRAY(pAlertSounds), 1.0, ATTN_NORM * 0.5, 0, PITCH_NORM);
+	EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pAlertSounds), 1.0, ATTN_NORM * 0.5);
 }
 
 
@@ -299,17 +299,17 @@ void CLeech::Precache()
 }
 
 
-bool CLeech::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, float flDamage, int bitsDamageType)
+bool CLeech::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	pev->velocity = g_vecZero;
 
 	// Nudge the leech away from the damage
-	if (pevInflictor)
+	if (inflictor)
 	{
-		pev->velocity = (pev->origin - pevInflictor->origin).Normalize() * 25;
+		pev->velocity = (pev->origin - inflictor->pev->origin).Normalize() * 25;
 	}
 
-	return CBaseMonster::TakeDamage(pevInflictor, pevAttacker, flDamage, bitsDamageType);
+	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
 
@@ -326,7 +326,7 @@ void CLeech::HandleAnimEvent(MonsterEvent_t* pEvent)
 		{
 			Vector dir, face;
 
-			UTIL_MakeVectorsPrivate(pev->angles, face, nullptr, nullptr);
+			AngleVectors(pev->angles, &face, nullptr, nullptr);
 			face.z = 0;
 			dir = (pEnemy->pev->origin - pev->origin);
 			dir.z = 0;
@@ -335,7 +335,7 @@ void CLeech::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 
 			if (DotProduct(dir, face) > 0.9) // Only take damage if the leech is facing the prey
-				pEnemy->TakeDamage(pev, pev, GetSkillFloat("leech_dmg_bite"sv), DMG_SLASH);
+				pEnemy->TakeDamage(this, this, GetSkillFloat("leech_dmg_bite"sv), DMG_SLASH);
 		}
 		m_stateTime -= 2;
 		break;
@@ -683,16 +683,13 @@ void CLeech::SwimThink()
 }
 
 
-void CLeech::Killed(entvars_t* pevAttacker, int iGib)
+void CLeech::Killed(CBaseEntity* attacker, int iGib)
 {
-	Vector vecSplatDir;
-	TraceResult tr;
-
 	// AILogger->debug("Leech: killed");
 	//  tell owner ( if any ) that we're dead.This is mostly for MonsterMaker functionality.
 	CBaseEntity* pOwner = CBaseEntity::Instance(pev->owner);
 	if (pOwner)
-		pOwner->DeathNotice(pev);
+		pOwner->DeathNotice(this);
 
 	// When we hit the ground, play the "death_end" activity
 	if (WaterLevel::Dry != pev->waterlevel)

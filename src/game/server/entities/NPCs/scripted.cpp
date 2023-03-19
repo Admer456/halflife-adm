@@ -114,7 +114,7 @@ LINK_ENTITY_TO_CLASS(aiscripted_sequence, CCineAI);
 void CCineMonster::Spawn()
 {
 	// pev->solid = SOLID_TRIGGER;
-	// UTIL_SetSize(pev, Vector(-8, -8, -8), Vector(8, 8, 8));
+	// SetSize(Vector(-8, -8, -8), Vector(8, 8, 8));
 	pev->solid = SOLID_NOT;
 
 	// if no targetname, start now
@@ -236,7 +236,7 @@ bool CCineMonster::FindEntity()
 		CBaseEntity* pEntity = nullptr;
 		while ((pEntity = UTIL_FindEntityInSphere(pEntity, pev->origin, m_flRadius)) != nullptr)
 		{
-			if (FClassnameIs(pEntity->pev, STRING(m_iszEntity)))
+			if (pEntity->ClassnameIs(STRING(m_iszEntity)))
 			{
 				if (FBitSet(pEntity->pev->flags, FL_MONSTER))
 				{
@@ -614,7 +614,7 @@ int CCineMonster::IgnoreConditions()
 void ScriptEntityCancel(CBaseEntity* cine)
 {
 	// make sure they are a scripted_sequence
-	if (FClassnameIs(cine->pev, CLASSNAME))
+	if (cine->ClassnameIs(CLASSNAME))
 	{
 		CCineMonster* pCineTarget = static_cast<CCineMonster*>(cine);
 		// make sure they have a monster in mind for the script
@@ -661,7 +661,7 @@ void CCineMonster::DelayStart(bool state)
 {
 	for (auto cine : UTIL_FindEntitiesByTargetname(STRING(pev->targetname)))
 	{
-		if (FClassnameIs(cine->pev, "scripted_sequence"))
+		if (cine->ClassnameIs("scripted_sequence"))
 		{
 			CCineMonster* pTarget = static_cast<CCineMonster*>(cine);
 			if (state)
@@ -758,7 +758,7 @@ bool CBaseMonster::CineCleanup()
 		pev->solid = SOLID_NOT;
 		SetState(MONSTERSTATE_DEAD);
 		pev->deadflag = DEAD_DEAD;
-		UTIL_SetSize(pev, pev->mins, Vector(pev->maxs.x, pev->maxs.y, pev->mins.z + 2));
+		SetSize(pev->mins, Vector(pev->maxs.x, pev->maxs.y, pev->mins.z + 2));
 
 		if (pOldCine && FBitSet(pOldCine->pev->spawnflags, SF_SCRIPT_LEAVECORPSE))
 		{
@@ -1077,7 +1077,7 @@ CBaseMonster* CScriptedSentence::FindEntity()
 	CBaseEntity* pEntity = nullptr;
 	while ((pEntity = UTIL_FindEntityInSphere(pEntity, pev->origin, m_flRadius)) != nullptr)
 	{
-		if (FClassnameIs(pEntity->pev, STRING(m_iszEntity)))
+		if (pEntity->ClassnameIs(STRING(m_iszEntity)))
 		{
 			if (FBitSet(pEntity->pev->flags, FL_MONSTER))
 			{

@@ -228,20 +228,6 @@ CBasePlayer* UTIL_GetLocalPlayer()
 	return static_cast<CBasePlayer*>(UTIL_PlayerByIndex(1));
 }
 
-#ifdef DEBUG
-edict_t* DBG_EntOfVars(const entvars_t* pev)
-{
-	if (pev->pContainingEntity != nullptr)
-		return pev->pContainingEntity;
-	CBaseEntity::Logger->debug("entvars_t pContainingEntity is nullptr, calling into engine");
-	edict_t* pent = (*g_engfuncs.pfnFindEntityByVars)((entvars_t*)pev);
-	if (pent == nullptr)
-		CBaseEntity::Logger->debug("DAMN!  Even the engine couldn't FindEntityByVars!");
-	((entvars_t*)pev)->pContainingEntity = pent;
-	return pent;
-}
-#endif // DEBUG
-
 // ripped this out of the engine
 float UTIL_AngleMod(float a)
 {
@@ -511,7 +497,7 @@ CBasePlayer* UTIL_FindNearestPlayer(const Vector& origin)
 
 void UTIL_MakeVectors(const Vector& vecAngles)
 {
-	MAKE_VECTORS(vecAngles);
+	AngleVectors(vecAngles, gpGlobals->v_forward, gpGlobals->v_right, gpGlobals->v_up);
 }
 
 
@@ -519,12 +505,12 @@ void UTIL_MakeAimVectors(const Vector& vecAngles)
 {
 	Vector rgflVec = vecAngles;
 	rgflVec[0] = -rgflVec[0];
-	MAKE_VECTORS(rgflVec);
+	UTIL_MakeVectors(rgflVec);
 }
 
 void UTIL_MakeInvVectors(const Vector& vec, globalvars_t* pgv)
 {
-	MAKE_VECTORS(vec);
+	UTIL_MakeVectors(vec);
 
 	pgv->v_right = pgv->v_right * -1;
 
@@ -852,13 +838,6 @@ TraceResult UTIL_GetGlobalTrace()
 	tr.iHitgroup = gpGlobals->trace_hitgroup;
 	return tr;
 }
-
-
-void UTIL_SetSize(entvars_t* pev, const Vector& vecMin, const Vector& vecMax)
-{
-	SET_SIZE(ENT(pev), vecMin, vecMax);
-}
-
 
 float UTIL_VecToYaw(const Vector& vec)
 {
@@ -1192,7 +1171,7 @@ void UTIL_GunshotDecalTrace(TraceResult* pTrace, int decalNumber)
 	if (pTrace->flFraction == 1.0)
 		return;
 
-	MESSAGE_BEGIN(MSG_PAS, SVC_TEMPENTITY, pTrace->vecEndPos);
+	MESSAGE_BEGIN(MSG_PAS, gmsgTempEntity, pTrace->vecEndPos);
 	WRITE_BYTE(TE_GUNSHOTDECAL);
 	WRITE_COORD(pTrace->vecEndPos.x);
 	WRITE_COORD(pTrace->vecEndPos.y);
@@ -1202,6 +1181,18 @@ void UTIL_GunshotDecalTrace(TraceResult* pTrace, int decalNumber)
 	MESSAGE_END();
 }
 
+void UTIL_ExplosionEffect(const Vector& explosionOrigin, int modelIndex, byte scale, int framerate, int flags,
+	int msg_dest, const float* pOrigin, edict_t* ed)
+{
+	MESSAGE_BEGIN(msg_dest, gmsgTempEntity, pOrigin, ed);
+	WRITE_BYTE(TE_EXPLOSION);
+	WRITE_COORD_VECTOR(explosionOrigin);
+	WRITE_SHORT(modelIndex);
+	WRITE_BYTE(scale);
+	WRITE_BYTE(framerate);
+	WRITE_BYTE(flags);
+	MESSAGE_END();
+}
 
 void UTIL_Sparks(const Vector& position)
 {
@@ -1455,29 +1446,29 @@ void UTIL_StripToken(const char* pKey, char* pDest)
 // --------------------------------------------------------------
 static int gSizes[FIELD_TYPECOUNT] =
 	{
-		sizeof(float),	   // FIELD_FLOAT
-		sizeof(int),	   // FIELD_STRING
-		sizeof(int),	   // FIELD_ENTITY
-		sizeof(int),	   // FIELD_CLASSPTR
-		sizeof(int),	   // FIELD_EHANDLE
-		sizeof(int),	   // FIELD_entvars_t
-		sizeof(int),	   // FIELD_EDICT
-		sizeof(float) * 3, // FIELD_VECTOR
-		sizeof(float) * 3, // FIELD_POSITION_VECTOR
-		sizeof(int*),	   // FIELD_POINTER
-		sizeof(int),	   // FIELD_INTEGER
+		sizeof(float),			// FIELD_FLOAT
+		sizeof(int),			// FIELD_STRING
+		0,						// FIELD_DEPRECATED1
+		sizeof(int),			// FIELD_CLASSPTR
+		sizeof(int),			// FIELD_EHANDLE
+		sizeof(int),			// FIELD_entvars_t
+		sizeof(int),			// FIELD_EDICT
+		sizeof(float) * 3,		// FIELD_VECTOR
+		sizeof(float) * 3,		// FIELD_POSITION_VECTOR
+		sizeof(int*),			// FIELD_POINTER
+		sizeof(int),			// FIELD_INTEGER
 #ifdef GNUC
-		sizeof(int*) * 2, // FIELD_FUNCTION
+		sizeof(int*) * 2,		// FIELD_FUNCTION
 #else
-		sizeof(int*), // FIELD_FUNCTION
+		sizeof(int*),			// FIELD_FUNCTION
 #endif
-		sizeof(byte),		   // FIELD_BOOLEAN
-		sizeof(short),		   // FIELD_SHORT
-		sizeof(char),		   // FIELD_CHARACTER
-		sizeof(float),		   // FIELD_TIME
-		sizeof(int),		   // FIELD_MODELNAME
-		sizeof(int),		   // FIELD_SOUNDNAME
-		sizeof(std::uint64_t), // FIELD_INT64
+		sizeof(byte),			// FIELD_BOOLEAN
+		sizeof(short),			// FIELD_SHORT
+		sizeof(char),			// FIELD_CHARACTER
+		sizeof(float),			// FIELD_TIME
+		sizeof(int),			// FIELD_MODELNAME
+		sizeof(int),			// FIELD_SOUNDNAME
+		sizeof(std::uint64_t),	// FIELD_INT64
 };
 
 
@@ -1503,12 +1494,6 @@ int CSaveRestoreBuffer::EntityIndex(entvars_t* pevLookup)
 		return -1;
 	return EntityIndex(ENT(pevLookup));
 }
-
-int CSaveRestoreBuffer::EntityIndex(EOFFSET eoLookup)
-{
-	return EntityIndex(ENT(eoLookup));
-}
-
 
 int CSaveRestoreBuffer::EntityIndex(edict_t* pentLookup)
 {
@@ -1648,7 +1633,6 @@ void CSave::WriteFloat(const char* pname, const float* data, int count)
 void CSave::WriteTime(const char* pname, const float* data, int count)
 {
 	int i;
-	Vector tmp, input;
 
 	BufferHeader(pname, sizeof(float) * count);
 	for (i = 0; i < count; i++)
@@ -1733,7 +1717,6 @@ void CSave::WritePositionVector(const char* pname, const Vector& value)
 void CSave::WritePositionVector(const char* pname, const float* value, int count)
 {
 	int i;
-	Vector tmp, input;
 
 	BufferHeader(pname, sizeof(float) * 3 * count);
 	for (i = 0; i < count; i++)
@@ -1790,14 +1773,14 @@ void EntvarsKeyvalue(entvars_t* pev, KeyValueData* pkvd)
 
 			case FIELD_POSITION_VECTOR:
 			case FIELD_VECTOR:
-				UTIL_StringToVector((float*)((char*)pev + pField->fieldOffset), pkvd->szValue);
+				UTIL_StringToVector(*((Vector*)((char*)pev + pField->fieldOffset)), pkvd->szValue);
 				break;
 
 			default:
 			case FIELD_EVARS:
 			case FIELD_CLASSPTR:
 			case FIELD_EDICT:
-			case FIELD_ENTITY:
+			case FIELD_DEPRECATED1:
 			case FIELD_POINTER:
 				CBaseEntity::Logger->error("Bad field in entity!!");
 				break;
@@ -1864,7 +1847,6 @@ bool CSave::WriteFields(const char* pname, void* pBaseData, TYPEDESCRIPTION* pFi
 		case FIELD_CLASSPTR:
 		case FIELD_EVARS:
 		case FIELD_EDICT:
-		case FIELD_ENTITY:
 		case FIELD_EHANDLE:
 			if (pTest->fieldSize > MAX_ENTITYARRAY)
 				Logger->error("Can't save more than {} entities in an array!!!", MAX_ENTITYARRAY);
@@ -1880,9 +1862,6 @@ bool CSave::WriteFields(const char* pname, void* pBaseData, TYPEDESCRIPTION* pFi
 					break;
 				case FIELD_EDICT:
 					entityArray[j] = EntityIndex(((edict_t**)pOutputData)[j]);
-					break;
-				case FIELD_ENTITY:
-					entityArray[j] = EntityIndex(((EOFFSET*)pOutputData)[j]);
 					break;
 				case FIELD_EHANDLE:
 					entityArray[j] = EntityIndex((CBaseEntity*)(((EHANDLE*)pOutputData)[j]));
@@ -1935,6 +1914,8 @@ bool CSave::WriteFields(const char* pname, void* pBaseData, TYPEDESCRIPTION* pFi
 		case FIELD_FUNCTION:
 			WriteFunction(pTest->fieldName, (void**)pOutputData, pTest->fieldSize);
 			break;
+
+		case FIELD_DEPRECATED1:
 		default:
 			Logger->error("Bad field type");
 		}
@@ -2102,14 +2083,6 @@ int CRestore::ReadField(void* pBaseData, TYPEDESCRIPTION* pFields, int fieldCoun
 						else
 							*((EHANDLE*)pOutputData) = nullptr;
 						break;
-					case FIELD_ENTITY:
-						entityIndex = *(int*)pInputData;
-						pent = EntityFromIndex(entityIndex);
-						if (pent)
-							*((EOFFSET*)pOutputData) = OFFSET(pent);
-						else
-							*((EOFFSET*)pOutputData) = 0;
-						break;
 					case FIELD_VECTOR:
 						((float*)pOutputData)[0] = ((float*)pInputData)[0];
 						((float*)pOutputData)[1] = ((float*)pInputData)[1];
@@ -2157,6 +2130,7 @@ int CRestore::ReadField(void* pBaseData, TYPEDESCRIPTION* pFields, int fieldCoun
 							*((int*)pOutputData) = FUNCTION_FROM_NAME((char*)pInputData);
 						break;
 
+					case FIELD_DEPRECATED1:
 					default:
 						Logger->error("Bad field type");
 					}
