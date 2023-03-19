@@ -1,8 +1,5 @@
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-
 #include "TriggerTimer.h"
 
 LINK_ENTITY_TO_CLASS(trigger_timer, TriggerTimer);

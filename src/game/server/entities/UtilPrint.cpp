@@ -1,8 +1,5 @@
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-
 #include "UtilPrint.h"
 
 LINK_ENTITY_TO_CLASS(util_print, UtilPrint);

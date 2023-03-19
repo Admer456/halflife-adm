@@ -1,15 +1,12 @@
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-
 #include "FilterDifficulty.h"
 
 LINK_ENTITY_TO_CLASS(filter_difficulty, FilterDifficulty);
 
 TYPEDESCRIPTION FilterDifficulty::m_SaveData[] =
 {
-		DEFINE_FIELD(FilterDifficulty, m_SkillFlags, FIELD_INTEGER)
+	DEFINE_FIELD(FilterDifficulty, m_SkillFlags, FIELD_INTEGER)
 };
 
 IMPLEMENT_SAVERESTORE(FilterDifficulty, CPointEntity);

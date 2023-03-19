@@ -1,10 +1,6 @@
 
-#include "extdll.h"
-#include "util.h"
 #include "cbase.h"
-
 #include "FilterDateHMS.h"
-
 #include "utils/CTimeUtils.h"
 
 LINK_ENTITY_TO_CLASS(filter_date_hms, FilterDateHMS);
