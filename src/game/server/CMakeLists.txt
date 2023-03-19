@@ -77,6 +77,8 @@ target_sources(server PRIVATE
 	entities/doors.h
 	entities/effects.cpp
 	entities/effects.h
+	entities/EnvModel.cpp
+	entities/EnvModel.h
 	entities/explode.cpp
 	entities/explode.h
 	entities/FilterDateHMS.cpp
