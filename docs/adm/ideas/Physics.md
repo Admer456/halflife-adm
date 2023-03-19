@@ -12,7 +12,7 @@ Only basic rigid bodies. No ragdolls nor soft bodies.
 ## Implementation
 
 ### Phase 1 - Clientside physics
-- Likely Bullet3 or PhysX
+- Likely JoltPhysics
 - Simple debris
 - Debug visualisation
 - Debris can be scattered around by the player
