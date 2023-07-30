@@ -36,8 +36,6 @@ void RenderFog()
  */
 void DLLEXPORT HUD_DrawNormalTriangles()
 {
-	GLRenderer::GetInstance()->RenderFrame();
-
 	gHUD.m_Spectator.DrawOverview();
 }
 
@@ -48,6 +46,11 @@ void DLLEXPORT HUD_DrawTransparentTriangles()
 {
 	if (g_pParticleMan)
 		g_pParticleMan->Update();
+
+	if (GLRenderer::GetInstance()->Okay())
+	{
+		GLRenderer::GetInstance()->RenderFrame();
+	}
 
 	// Handled in V_CalcRefdef.
 	// RenderFog();

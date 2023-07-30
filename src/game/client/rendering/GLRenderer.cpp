@@ -188,6 +188,13 @@ void GLRenderer::RenderFrame()
 
 	PushAttributes();
 
+	glEnable(GL_BLEND);
+	// color = src * alpha + dest * (1 - alpha)
+	// dest = scene
+	// src = water
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBlendEquation(GL_FUNC_ADD);
+
 	glUseProgram(waterShaderHandle);
 	glBindVertexArray(vertexArrayHandle);
 
@@ -204,7 +211,7 @@ void GLRenderer::RenderFrame()
 	glBindTexture(GL_TEXTURE_2D, waterTextureHandle);
 
 	RenderQuad quad;
-	quad.position = Vector(0.0f, 0.0f, 1.0f);
+	quad.position = Vector(0.0f, 0.0f, 8.0f);
 	quad.angle = 0.0f;
 	quad.normal = Vector(0.0f, 0.0f, 1.0f);
 	quad.scale = 4.0f; // 1024 units for now
@@ -370,7 +377,7 @@ const char* GLRenderer::GetShaderError(GLuint vs, GLuint fs) const
 bool GLRenderer::LoadTexture()
 {
 	int x, y, channels;
-	auto* textureData = stbi_load("admswater/gfx/water_c2a5.png", &x, &y, &channels, 4);
+	auto* textureData = stbi_load("admswater/gfx/water_blue.png", &x, &y, &channels, 4);
 	if (nullptr == textureData)
 	{
 		Con_Printf("Cannot load 'gfx/water_c2a5.png'\n");
