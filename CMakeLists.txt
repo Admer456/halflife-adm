@@ -11,7 +11,7 @@ set(VCPKG_OVERLAY_TRIPLETS ${CMAKE_SOURCE_DIR}/vcpkg_config/triplets)
 project(HalfLifeMod
 	VERSION 1.0.0
 	DESCRIPTION "Half-Life ADM Mod Template"
-	LANGUAGES CXX)
+	LANGUAGES CXX C)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 

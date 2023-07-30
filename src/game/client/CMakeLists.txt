@@ -30,6 +30,11 @@ target_include_directories(SDL2 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../../../e
 
 add_library(client SHARED)
 
+# Set up GLEW
+add_library(glew STATIC ../../../external/glew/src/glew.c)
+target_include_directories(glew PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../external/glew/include)
+target_compile_definitions(glew PRIVATE GLEW_STATIC)
+
 set_target_properties(client PROPERTIES INSTALL_RPATH "$ORIGIN")
 
 set_common_properties(client)
@@ -57,10 +62,14 @@ target_include_directories(client PRIVATE
 	../shared/utils
 	../../engine
 	../../../utils/vgui/include
+	../../../external/glm
+	../../../external/glew/include
+	../../../external/stb_image
 	${OPENGL_INCLUDE_DIR})
 	
 target_compile_definitions(client PRIVATE
 	CLIENT_DLL
+	GLEW_STATIC
 	HL_DLL)
 	
 target_link_libraries(client PRIVATE
@@ -69,6 +78,8 @@ target_link_libraries(client PRIVATE
 	$<$<PLATFORM_ID:Windows>:wsock32>
 	SDL2
 	OpenAL::OpenAL
+	OpenGL::GL
+	glew
 	libnyquist)
 
 if (UNIX)
