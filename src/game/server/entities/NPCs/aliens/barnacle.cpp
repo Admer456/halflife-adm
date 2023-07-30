@@ -12,37 +12,38 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// barnacle - stationary ceiling mounted 'fishing' monster
-//=========================================================
 
 #include "cbase.h"
 
-#define BARNACLE_BODY_HEIGHT 44 // how 'tall' the barnacle's model is.
+#define BARNACLE_BODY_HEIGHT 44 //!< how 'tall' the barnacle's model is.
 #define BARNACLE_PULL_SPEED 8
-#define BARNACLE_KILL_VICTIM_DELAY 5 // how many seconds after pulling prey in to gib them.
+#define BARNACLE_KILL_VICTIM_DELAY 5 //!< how many seconds after pulling prey in to gib them.
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define BARNACLE_AE_PUKEGIB 2
 
+/**
+ *	@brief stationary ceiling mounted 'fishing' monster
+ */
 class CBarnacle : public CBaseMonster
 {
+	DECLARE_CLASS(CBarnacle, CBaseMonster);
+	DECLARE_DATAMAP();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
+
+	/**
+	 *	@brief does a trace along the barnacle's tongue to see if any entity is touching it.
+	 *	Also stores the length of the trace in the float reference provided.
+	 */
 	CBaseEntity* TongueTouchEnt(float& flLength);
-	int Classify() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
-	void EXPORT BarnacleThink();
-	void EXPORT WaitTillDead();
+	void BarnacleThink();
+	void WaitTillDead();
 	void Killed(CBaseEntity* attacker, int iGib) override;
 	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
 
 	float m_flAltitude;
 	float m_flKillVictimTime;
@@ -51,19 +52,19 @@ public:
 	bool m_fLiftingPrey;
 	float m_flTongueAdj;
 };
+
 LINK_ENTITY_TO_CLASS(monster_barnacle, CBarnacle);
 
-TYPEDESCRIPTION CBarnacle::m_SaveData[] =
-	{
-		DEFINE_FIELD(CBarnacle, m_flAltitude, FIELD_FLOAT),
-		DEFINE_FIELD(CBarnacle, m_flKillVictimTime, FIELD_TIME),
-		DEFINE_FIELD(CBarnacle, m_cGibs, FIELD_INTEGER), // barnacle loads up on gibs each time it kills something.
-		DEFINE_FIELD(CBarnacle, m_fTongueExtended, FIELD_BOOLEAN),
-		DEFINE_FIELD(CBarnacle, m_fLiftingPrey, FIELD_BOOLEAN),
-		DEFINE_FIELD(CBarnacle, m_flTongueAdj, FIELD_FLOAT),
-};
-
-IMPLEMENT_SAVERESTORE(CBarnacle, CBaseMonster);
+BEGIN_DATAMAP(CBarnacle)
+DEFINE_FIELD(m_flAltitude, FIELD_FLOAT),
+	DEFINE_FIELD(m_flKillVictimTime, FIELD_TIME),
+	DEFINE_FIELD(m_cGibs, FIELD_INTEGER), // barnacle loads up on gibs each time it kills something.
+	DEFINE_FIELD(m_fTongueExtended, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_fLiftingPrey, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flTongueAdj, FIELD_FLOAT),
+	DEFINE_FUNCTION(BarnacleThink),
+	DEFINE_FUNCTION(WaitTillDead),
+	END_DATAMAP();
 
 void CBarnacle::OnCreate()
 {
@@ -71,29 +72,17 @@ void CBarnacle::OnCreate()
 
 	pev->health = 25;
 	pev->model = MAKE_STRING("models/barnacle.mdl");
+
+	SetClassification("alien_monster");
 }
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int CBarnacle::Classify()
-{
-	return CLASS_ALIEN_MONSTER;
-}
-
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//
-// Returns number of events handled, 0 if none.
-//=========================================================
 void CBarnacle::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
 	{
 	case BARNACLE_AE_PUKEGIB:
-		CGib::SpawnRandomGibs(pev, 1, true);
+		//CGib::SpawnRandomGibs(this, 1, true);
+		CGib::SpawnClientGibs(this, GibType::Human, 1, false, false);
 		break;
 	default:
 		CBaseMonster::HandleAnimEvent(pEvent);
@@ -101,9 +90,6 @@ void CBarnacle::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void CBarnacle::Spawn()
 {
 	Precache();
@@ -130,7 +116,7 @@ void CBarnacle::Spawn()
 	SetThink(&CBarnacle::BarnacleThink);
 	pev->nextthink = gpGlobals->time + 0.5;
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 }
 
 bool CBarnacle::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
@@ -143,8 +129,6 @@ bool CBarnacle::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float 
 	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
-//=========================================================
-//=========================================================
 void CBarnacle::BarnacleThink()
 {
 	CBaseEntity* pTouchEnt;
@@ -207,7 +191,7 @@ void CBarnacle::BarnacleThink()
 				}
 			}
 
-			UTIL_SetOrigin(m_hEnemy->pev, vecNewEnemyOrigin);
+			m_hEnemy->SetOrigin(vecNewEnemyOrigin);
 		}
 		else
 		{
@@ -252,7 +236,7 @@ void CBarnacle::BarnacleThink()
 		// barnacle has no prey right now, so just idle and check to see if anything is touching the tongue.
 
 		// If idle and no nearby client, don't think so often
-		if (FNullEnt(FIND_CLIENT_IN_PVS(edict())))
+		if (!UTIL_FindClientInPVS(this))
 			pev->nextthink = gpGlobals->time + RANDOM_FLOAT(1, 1.5); // Stagger a bit to keep barnacles from thinking on the same frame
 
 		if (m_fSequenceFinished)
@@ -264,7 +248,8 @@ void CBarnacle::BarnacleThink()
 		if (0 != m_cGibs && RANDOM_LONG(0, 99) == 1)
 		{
 			// cough up a gib.
-			CGib::SpawnRandomGibs(pev, 1, true);
+			//CGib::SpawnRandomGibs(this, 1, true);
+			CGib::SpawnClientGibs(this, GibType::Human, 1, false, false);
 			m_cGibs--;
 
 			switch (RANDOM_LONG(0, 2))
@@ -329,9 +314,6 @@ void CBarnacle::BarnacleThink()
 	StudioFrameAdvance(0.1);
 }
 
-//=========================================================
-// Killed.
-//=========================================================
 void CBarnacle::Killed(CBaseEntity* attacker, int iGib)
 {
 	CBaseMonster* pVictim;
@@ -354,7 +336,7 @@ void CBarnacle::Killed(CBaseEntity* attacker, int iGib)
 		}
 	}
 
-	//	CGib::SpawnRandomGibs( pev, 4, 1 );
+	//	CGib::SpawnRandomGibs(this, 4, true);
 
 	switch (RANDOM_LONG(0, 1))
 	{
@@ -375,8 +357,6 @@ void CBarnacle::Killed(CBaseEntity* attacker, int iGib)
 	SetThink(&CBarnacle::WaitTillDead);
 }
 
-//=========================================================
-//=========================================================
 void CBarnacle::WaitTillDead()
 {
 	pev->nextthink = gpGlobals->time + 0.1;
@@ -392,9 +372,6 @@ void CBarnacle::WaitTillDead()
 	}
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void CBarnacle::Precache()
 {
 	PrecacheModel(STRING(pev->model));
@@ -408,18 +385,13 @@ void CBarnacle::Precache()
 	PrecacheSound("barnacle/bcl_die3.wav");
 }
 
-//=========================================================
-// TongueTouchEnt - does a trace along the barnacle's tongue
-// to see if any entity is touching it. Also stores the length
-// of the trace in the int pointer provided.
-//=========================================================
 #define BARNACLE_CHECK_SPACING 8
 CBaseEntity* CBarnacle::TongueTouchEnt(float& flLength)
 {
 	TraceResult tr;
 
 	// trace once to hit architecture and see if the tongue needs to change position.
-	UTIL_TraceLine(pev->origin, pev->origin - Vector(0, 0, 2048), ignore_monsters, ENT(pev), &tr);
+	UTIL_TraceLine(pev->origin, pev->origin - Vector(0, 0, 2048), ignore_monsters, edict(), &tr);
 	const float length = fabs(pev->origin.z - tr.vecEndPos.z);
 	flLength = length;
 
@@ -436,7 +408,9 @@ CBaseEntity* CBarnacle::TongueTouchEnt(float& flLength)
 		for (int i = 0; i < count; i++)
 		{
 			// only clients and monsters
-			if (pList[i] != this && IRelationship(pList[i]) > R_NO && pList[i]->pev->deadflag == DEAD_NO) // this ent is one of our enemies. Barnacle tries to eat it.
+			if (pList[i] != this &&
+				IRelationship(pList[i]) > Relationship::None &&
+				pList[i]->pev->deadflag == DEAD_NO) // this ent is one of our enemies. Barnacle tries to eat it.
 			{
 				return pList[i];
 			}

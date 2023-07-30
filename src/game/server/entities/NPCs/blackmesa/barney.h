@@ -15,9 +15,8 @@
 
 #pragma once
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
+#include "talkmonster.h"
+
 // first flag is barney dying for scripted sequences?
 #define BARNEY_AE_DRAW (2)
 #define BARNEY_AE_SHOOT (3)
@@ -33,19 +32,33 @@ enum GuardBodyGroup
 
 class CBarney : public CTalkMonster
 {
+	DECLARE_CLASS(CBarney, CTalkMonster);
+	DECLARE_DATAMAP();
+	DECLARE_CUSTOM_SCHEDULES();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
 	int ISoundMask() override;
+
+	bool HasHumanGibs() override { return true; }
+
+	/**
+	 *	@brief shoots one round from the pistol at the enemy barney is facing.
+	 */
 	virtual void GuardFirePistol();
+
+	/**
+	 *	@brief barney says "Freeze!"
+	 */
 	void AlertSound() override;
-	int Classify() override;
+
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 
-	void RunTask(Task_t* pTask) override;
-	void StartTask(Task_t* pTask) override;
+	void RunTask(const Task_t* pTask) override;
+	void StartTask(const Task_t* pTask) override;
 	int ObjectCaps() override { return CTalkMonster::ObjectCaps() | FCAP_IMPULSE_USE; }
 	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 	bool CheckRangeAttack1(float flDot, float flDist) override;
@@ -53,8 +66,8 @@ public:
 	void DeclineFollowing() override;
 
 	// Override these to set behavior
-	Schedule_t* GetScheduleOfType(int Type) override;
-	Schedule_t* GetSchedule() override;
+	const Schedule_t* GetScheduleOfType(int Type) override;
+	const Schedule_t* GetSchedule() override;
 	MONSTERSTATE GetIdealState() override;
 
 	void DeathSound() override;
@@ -67,10 +80,6 @@ public:
 
 	bool KeyValue(KeyValueData* pkvd) override;
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-
 	float m_painTime;
 	float m_checkAttackTime;
 	bool m_lastAttackCheck;
@@ -78,8 +87,6 @@ public:
 
 	// Used during spawn to set initial values, not restored
 	int m_iGuardBody;
-
-	CUSTOM_SCHEDULES;
 
 protected:
 	virtual void DropWeapon();

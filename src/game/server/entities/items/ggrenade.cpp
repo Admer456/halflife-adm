@@ -12,22 +12,25 @@
  *   without written permission from Valve LLC.
  *
  ****/
-/*
-
-===== generic grenade.cpp ========================================================
-
-*/
 
 #include "cbase.h"
-
-
-//===================grenade
-
 
 LINK_ENTITY_TO_CLASS(grenade, CGrenade);
 
 // Grenades flagged with this will be triggered when the owner calls detonateSatchelCharges
 #define SF_DETONATE 0x0001
+
+BEGIN_DATAMAP(CGrenade)
+DEFINE_FUNCTION(Smoke),
+	DEFINE_FUNCTION(BounceTouch),
+	DEFINE_FUNCTION(SlideTouch),
+	DEFINE_FUNCTION(ExplodeTouch),
+	DEFINE_FUNCTION(DangerSoundThink),
+	DEFINE_FUNCTION(PreDetonate),
+	DEFINE_FUNCTION(Detonate),
+	DEFINE_FUNCTION(DetonateUse),
+	DEFINE_FUNCTION(TumbleThink),
+	END_DATAMAP();
 
 void CGrenade::OnCreate()
 {
@@ -45,18 +48,14 @@ void CGrenade::Precache()
 	}
 }
 
-//
-// Grenade Explode
-//
 void CGrenade::Explode(Vector vecSrc, Vector vecAim)
 {
 	TraceResult tr;
-	UTIL_TraceLine(pev->origin, pev->origin + Vector(0, 0, -32), ignore_monsters, ENT(pev), &tr);
+	UTIL_TraceLine(pev->origin, pev->origin + Vector(0, 0, -32), ignore_monsters, edict(), &tr);
 
 	Explode(&tr, DMG_BLAST);
 }
 
-// UNDONE: temporary scorching for PreAlpha - find a less sleazy permenant solution.
 void CGrenade::Explode(TraceResult* pTrace, int bitsDamageType)
 {
 	pev->model = string_t::Null; // invisible
@@ -87,7 +86,7 @@ void CGrenade::Explode(TraceResult* pTrace, int bitsDamageType)
 	Vector origin = pev->origin;
 	origin.z -= 1;
 
-	RadiusDamage(origin, this, owner, pev->dmg, CLASS_NONE, bitsDamageType);
+	RadiusDamage(origin, this, owner, pev->dmg, bitsDamageType);
 
 	if (RANDOM_FLOAT(0, 1) < 0.5)
 	{
@@ -124,7 +123,6 @@ void CGrenade::Explode(TraceResult* pTrace, int bitsDamageType)
 	}
 }
 
-
 void CGrenade::Smoke()
 {
 	if (UTIL_PointContents(pev->origin) == CONTENTS_WATER)
@@ -151,8 +149,6 @@ void CGrenade::Killed(CBaseEntity* attacker, int iGib)
 	Detonate();
 }
 
-
-// Timed grenade, this think is called when time runs out.
 void CGrenade::DetonateUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
 	SetThink(&CGrenade::Detonate);
@@ -167,22 +163,17 @@ void CGrenade::PreDetonate()
 	pev->nextthink = gpGlobals->time + 1;
 }
 
-
 void CGrenade::Detonate()
 {
 	TraceResult tr;
 	Vector vecSpot; // trace starts here!
 
 	vecSpot = pev->origin + Vector(0, 0, 8);
-	UTIL_TraceLine(vecSpot, vecSpot + Vector(0, 0, -40), ignore_monsters, ENT(pev), &tr);
+	UTIL_TraceLine(vecSpot, vecSpot + Vector(0, 0, -40), ignore_monsters, edict(), &tr);
 
 	Explode(&tr, DMG_BLAST);
 }
 
-
-//
-// Contact grenade, explode when it touches something
-//
 void CGrenade::ExplodeTouch(CBaseEntity* pOther)
 {
 	TraceResult tr;
@@ -191,11 +182,10 @@ void CGrenade::ExplodeTouch(CBaseEntity* pOther)
 	pev->enemy = pOther->edict();
 
 	vecSpot = pev->origin - pev->velocity.Normalize() * 32;
-	UTIL_TraceLine(vecSpot, vecSpot + pev->velocity.Normalize() * 64, ignore_monsters, ENT(pev), &tr);
+	UTIL_TraceLine(vecSpot, vecSpot + pev->velocity.Normalize() * 64, ignore_monsters, edict(), &tr);
 
 	Explode(&tr, DMG_BLAST);
 }
-
 
 void CGrenade::DangerSoundThink()
 {
@@ -213,7 +203,6 @@ void CGrenade::DangerSoundThink()
 		pev->velocity = pev->velocity * 0.5;
 	}
 }
-
 
 void CGrenade::BounceTouch(CBaseEntity* pOther)
 {
@@ -274,8 +263,6 @@ void CGrenade::BounceTouch(CBaseEntity* pOther)
 	else if (pev->framerate < 0.5)
 		pev->framerate = 0;
 }
-
-
 
 void CGrenade::SlideTouch(CBaseEntity* pOther)
 {
@@ -344,7 +331,6 @@ void CGrenade::TumbleThink()
 	}
 }
 
-
 void CGrenade::Spawn()
 {
 	Precache();
@@ -360,17 +346,16 @@ void CGrenade::Spawn()
 	m_fRegisteredSound = false;
 }
 
-
-CGrenade* CGrenade::ShootContact(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity)
+CGrenade* CGrenade::ShootContact(CBaseEntity* owner, Vector vecStart, Vector vecVelocity)
 {
 	CGrenade* pGrenade = g_EntityDictionary->Create<CGrenade>("grenade");
 	pGrenade->Spawn();
 	// contact grenades arc lower
 	pGrenade->pev->gravity = 0.5; // lower gravity since grenade is aerodynamic and engine doesn't know it.
-	UTIL_SetOrigin(pGrenade->pev, vecStart);
+	pGrenade->SetOrigin(vecStart);
 	pGrenade->pev->velocity = vecVelocity;
 	pGrenade->pev->angles = UTIL_VecToAngles(pGrenade->pev->velocity);
-	pGrenade->pev->owner = ENT(pevOwner);
+	pGrenade->pev->owner = owner->edict();
 
 	// make monsters afaid of it while in the air
 	pGrenade->SetThink(&CGrenade::DangerSoundThink);
@@ -387,15 +372,14 @@ CGrenade* CGrenade::ShootContact(entvars_t* pevOwner, Vector vecStart, Vector ve
 	return pGrenade;
 }
 
-
-CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity, float time)
+CGrenade* CGrenade::ShootTimed(CBaseEntity* owner, Vector vecStart, Vector vecVelocity, float time)
 {
 	CGrenade* pGrenade = g_EntityDictionary->Create<CGrenade>("grenade");
 	pGrenade->Spawn();
-	UTIL_SetOrigin(pGrenade->pev, vecStart);
+	pGrenade->SetOrigin(vecStart);
 	pGrenade->pev->velocity = vecVelocity;
 	pGrenade->pev->angles = UTIL_VecToAngles(pGrenade->pev->velocity);
-	pGrenade->pev->owner = ENT(pevOwner);
+	pGrenade->pev->owner = owner->edict();
 
 	pGrenade->SetTouch(&CGrenade::BounceTouch); // Bounce if touched
 
@@ -427,8 +411,7 @@ CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecV
 	return pGrenade;
 }
 
-
-CGrenade* CGrenade::ShootSatchelCharge(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity)
+CGrenade* CGrenade::ShootSatchelCharge(CBaseEntity* owner, Vector vecStart, Vector vecVelocity)
 {
 	CGrenade* pGrenade = g_EntityDictionary->Create<CGrenade>("grenade");
 	pGrenade->pev->movetype = MOVETYPE_BOUNCE;
@@ -440,13 +423,13 @@ CGrenade* CGrenade::ShootSatchelCharge(entvars_t* pevOwner, Vector vecStart, Vec
 	pGrenade->SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
 
 	pGrenade->pev->dmg = 200;
-	UTIL_SetOrigin(pGrenade->pev, vecStart);
+	pGrenade->SetOrigin(vecStart);
 	pGrenade->pev->velocity = vecVelocity;
 	pGrenade->pev->angles = g_vecZero;
-	pGrenade->pev->owner = ENT(pevOwner);
+	pGrenade->pev->owner = owner->edict();
 
 	// Detonate in "time" seconds
-	pGrenade->SetThink(&CGrenade::SUB_DoNothing);
+	pGrenade->SetThink(nullptr);
 	pGrenade->SetUse(&CGrenade::DetonateUse);
 	pGrenade->SetTouch(&CGrenade::SlideTouch);
 	pGrenade->pev->spawnflags = SF_DETONATE;
@@ -456,27 +439,19 @@ CGrenade* CGrenade::ShootSatchelCharge(entvars_t* pevOwner, Vector vecStart, Vec
 	return pGrenade;
 }
 
-
-
-void CGrenade::UseSatchelCharges(entvars_t* pevOwner, SATCHELCODE code)
+void CGrenade::UseSatchelCharges(CBaseEntity* owner, SATCHELCODE code)
 {
-	if (!pevOwner)
+	if (!owner)
 		return;
-
-	CBaseEntity* pOwner = CBaseEntity::Instance(pevOwner);
-
-	auto pentOwner = pOwner->edict();
 
 	for (auto pEnt : UTIL_FindEntitiesByClassname("grenade"))
 	{
-		if (FBitSet(pEnt->pev->spawnflags, SF_DETONATE) && pEnt->pev->owner == pentOwner)
+		if (FBitSet(pEnt->pev->spawnflags, SF_DETONATE) && pEnt->GetOwner() == owner)
 		{
 			if (code == SATCHEL_DETONATE)
-				pEnt->Use(pOwner, pOwner, USE_ON, 0);
+				pEnt->Use(owner, owner, USE_ON, 0);
 			else // SATCHEL_RELEASE
 				pEnt->pev->owner = nullptr;
 		}
 	}
 }
-
-//======================end grenade

@@ -17,30 +17,24 @@
 
 #include "CSniperRifle.h"
 
-#ifndef CLIENT_DLL
-TYPEDESCRIPTION CSniperRifle::m_SaveData[] =
-	{
-		DEFINE_FIELD(CSniperRifle, m_flReloadStart, FIELD_TIME),
-		DEFINE_FIELD(CSniperRifle, m_bReloading, FIELD_BOOLEAN),
-};
-
-IMPLEMENT_SAVERESTORE(CSniperRifle, CSniperRifle::BaseClass);
-#endif
+BEGIN_DATAMAP(CSniperRifle)
+DEFINE_FIELD(m_flReloadStart, FIELD_TIME),
+	DEFINE_FIELD(m_bReloading, FIELD_BOOLEAN),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(weapon_sniperrifle, CSniperRifle);
 
 void CSniperRifle::OnCreate()
 {
 	CBasePlayerWeapon::OnCreate();
-
+	m_iId = WEAPON_SNIPERRIFLE;
+	m_iDefaultAmmo = SNIPERRIFLE_DEFAULT_GIVE;
 	m_WorldModel = pev->model = MAKE_STRING("models/w_m40a1.mdl");
 }
 
 void CSniperRifle::Precache()
 {
 	BaseClass::Precache();
-
-	m_iId = WEAPON_SNIPERRIFLE;
 
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/v_m40a1.mdl");
@@ -55,17 +49,6 @@ void CSniperRifle::Precache()
 	PrecacheSound("weapons/sniper_bolt2.wav");
 
 	m_usSniper = PRECACHE_EVENT(1, "events/sniper.sc");
-}
-
-void CSniperRifle::Spawn()
-{
-	Precache();
-
-	SetModel(STRING(pev->model));
-
-	m_iDefaultAmmo = SNIPERRIFLE_DEFAULT_GIVE;
-
-	FallInit(); // get ready to fall down.
 }
 
 bool CSniperRifle::Deploy()
@@ -102,7 +85,7 @@ void CSniperRifle::WeaponIdle()
 
 	if (m_flTimeWeaponIdle < UTIL_WeaponTimeBase())
 	{
-		if (0 != m_iClip)
+		if (0 != GetMagazine1())
 			SendWeaponAnim(SNIPERRIFLE_SLOWIDLE);
 		else
 			SendWeaponAnim(SNIPERRIFLE_SLOWIDLE2);
@@ -120,7 +103,7 @@ void CSniperRifle::PrimaryAttack()
 		return;
 	}
 
-	if (0 == m_iClip)
+	if (0 == GetMagazine1())
 	{
 		PlayEmptySound();
 		return;
@@ -128,7 +111,7 @@ void CSniperRifle::PrimaryAttack()
 
 	m_pPlayer->m_iWeaponVolume = QUIET_GUN_VOLUME;
 
-	--m_iClip;
+	AdjustMagazine1(-1);
 
 	m_pPlayer->SetAnimation(PLAYER_ATTACK1);
 
@@ -139,7 +122,7 @@ void CSniperRifle::PrimaryAttack()
 	Vector vecSrc = m_pPlayer->GetGunPosition();
 	Vector vecAiming = m_pPlayer->GetAutoaimVector(AUTOAIM_2DEGREES);
 
-	// TODO: 8192 constant should be defined somewhere - Solokiller
+	// TODO: 8192 constant should be defined somewhere
 	Vector vecShot = m_pPlayer->FireBulletsPlayer(1,
 		vecSrc, vecAiming, g_vecZero,
 		8192, BULLET_PLAYER_762, 0, 0,
@@ -149,7 +132,7 @@ void CSniperRifle::PrimaryAttack()
 		m_pPlayer->edict(), m_usSniper, 0,
 		g_vecZero, g_vecZero,
 		vecShot.x, vecShot.y,
-		m_iClip, m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()],
+		GetMagazine1(), m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType),
 		0, 0);
 
 	m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 2.0f;
@@ -170,21 +153,21 @@ void CSniperRifle::SecondaryAttack()
 
 void CSniperRifle::Reload()
 {
-	if (m_pPlayer->ammo_762 > 0)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) > 0)
 	{
 		if (m_pPlayer->m_iFOV != 0)
 		{
 			ToggleZoom();
 		}
 
-		if (0 != m_iClip)
+		if (0 != GetMagazine1())
 		{
-			if (DefaultReload(SNIPERRIFLE_MAX_CLIP, SNIPERRIFLE_RELOAD3, 2.324, 1))
+			if (DefaultReload(SNIPERRIFLE_MAX_CLIP, SNIPERRIFLE_RELOAD3, 2.324))
 			{
 				m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 2.324;
 			}
 		}
-		else if (DefaultReload(SNIPERRIFLE_MAX_CLIP, SNIPERRIFLE_RELOAD1, 2.324, 1))
+		else if (DefaultReload(SNIPERRIFLE_MAX_CLIP, SNIPERRIFLE_RELOAD1, 2.324))
 		{
 			m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 4.102;
 			m_flReloadStart = gpGlobals->time;
@@ -201,12 +184,12 @@ void CSniperRifle::Reload()
 
 bool CSniperRifle::GetWeaponInfo(WeaponInfo& info)
 {
-	info.AmmoType1 = "762";
+	info.AttackModeInfo[0].AmmoType = "762";
 	info.Name = STRING(pev->classname);
-	info.MagazineSize1 = SNIPERRIFLE_MAX_CLIP;
+	info.AttackModeInfo[0].MagazineSize = SNIPERRIFLE_MAX_CLIP;
 	info.Slot = 5;
 	info.Position = 2;
-	info.Id = m_iId = WEAPON_SNIPERRIFLE;
+	info.Id = WEAPON_SNIPERRIFLE;
 	info.Weight = SNIPERRIFLE_WEIGHT;
 	return true;
 }
@@ -233,32 +216,15 @@ void CSniperRifle::ToggleZoom()
 
 class CSniperRifleAmmo : public CBasePlayerAmmo
 {
-public:
-	using BaseClass = CBasePlayerAmmo;
+	DECLARE_CLASS(CSniperRifleAmmo, CBasePlayerAmmo);
 
+public:
 	void OnCreate() override
 	{
 		CBasePlayerAmmo::OnCreate();
-
+		m_AmmoAmount = AMMO_SNIPERRIFLE_GIVE;
+		m_AmmoName = MAKE_STRING("762");
 		pev->model = MAKE_STRING("models/w_m40a1clip.mdl");
-	}
-
-	void Precache() override
-	{
-		BaseClass::Precache();
-		PrecacheSound("items/9mmclip1.wav");
-	}
-
-	bool AddAmmo(CBasePlayer* pOther) override
-	{
-		if (pOther->GiveAmmo(AMMO_SNIPERRIFLE_GIVE, "762") != -1)
-		{
-			EmitSound(CHAN_ITEM, "items/9mmclip1.wav", VOL_NORM, ATTN_NORM);
-
-			return true;
-		}
-
-		return false;
 	}
 };
 

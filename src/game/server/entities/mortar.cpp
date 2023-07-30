@@ -12,18 +12,18 @@
  *   without written permission from Valve LLC.
  *
  ****/
-/*
-
-===== mortar.cpp ========================================================
-
-  the "LaBuznik" mortar device
-
-*/
 
 #include "cbase.h"
 
+/**
+ *	@brief the "LaBuznik" mortar device
+ *	Drops bombs from above
+ */
 class CFuncMortarField : public CBaseToggle
 {
+	DECLARE_CLASS(CFuncMortarField, CBaseToggle);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	void Precache() override;
@@ -32,12 +32,10 @@ public:
 	// Bmodels don't go across transitions
 	int ObjectCaps() override { return CBaseToggle::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-
-	void EXPORT FieldUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	/**
+	 *	@brief If connected to a table, then use the table controllers, else hit where the trigger is.
+	 */
+	void FieldUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 
 	string_t m_iszXController;
 	string_t m_iszYController;
@@ -49,18 +47,15 @@ public:
 
 LINK_ENTITY_TO_CLASS(func_mortar_field, CFuncMortarField);
 
-TYPEDESCRIPTION CFuncMortarField::m_SaveData[] =
-	{
-		DEFINE_FIELD(CFuncMortarField, m_iszXController, FIELD_STRING),
-		DEFINE_FIELD(CFuncMortarField, m_iszYController, FIELD_STRING),
-		DEFINE_FIELD(CFuncMortarField, m_flSpread, FIELD_FLOAT),
-		DEFINE_FIELD(CFuncMortarField, m_flDelay, FIELD_FLOAT),
-		DEFINE_FIELD(CFuncMortarField, m_iCount, FIELD_INTEGER),
-		DEFINE_FIELD(CFuncMortarField, m_fControl, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(CFuncMortarField, CBaseToggle);
-
+BEGIN_DATAMAP(CFuncMortarField)
+DEFINE_FIELD(m_iszXController, FIELD_STRING),
+	DEFINE_FIELD(m_iszYController, FIELD_STRING),
+	DEFINE_FIELD(m_flSpread, FIELD_FLOAT),
+	DEFINE_FIELD(m_flDelay, FIELD_FLOAT),
+	DEFINE_FIELD(m_iCount, FIELD_INTEGER),
+	DEFINE_FIELD(m_fControl, FIELD_INTEGER),
+	DEFINE_FUNCTION(FieldUse),
+	END_DATAMAP();
 
 bool CFuncMortarField::KeyValue(KeyValueData* pkvd)
 {
@@ -93,8 +88,6 @@ bool CFuncMortarField::KeyValue(KeyValueData* pkvd)
 	return false;
 }
 
-
-// Drop bombs from above
 void CFuncMortarField::Spawn()
 {
 	pev->solid = SOLID_NOT;
@@ -105,7 +98,6 @@ void CFuncMortarField::Spawn()
 	Precache();
 }
 
-
 void CFuncMortarField::Precache()
 {
 	PrecacheSound("weapons/mortar.wav");
@@ -113,8 +105,6 @@ void CFuncMortarField::Precache()
 	PrecacheModel("sprites/lgtning.spr");
 }
 
-
-// If connected to a table, then use the table controllers, else hit where the trigger is.
 void CFuncMortarField::FieldUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
 	Vector vecStart;
@@ -170,13 +160,9 @@ void CFuncMortarField::FieldUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 		vecSpot.y += RANDOM_FLOAT(-m_flSpread, m_flSpread);
 
 		TraceResult tr;
-		UTIL_TraceLine(vecSpot, vecSpot + Vector(0, 0, -1) * 4096, ignore_monsters, ENT(pev), &tr);
+		UTIL_TraceLine(vecSpot, vecSpot + Vector(0, 0, -1) * 4096, ignore_monsters, edict(), &tr);
 
-		edict_t* pentOwner = nullptr;
-		if (pActivator)
-			pentOwner = pActivator->edict();
-
-		CBaseEntity* pMortar = Create("monster_mortar", tr.vecEndPos, Vector(0, 0, 0), pentOwner);
+		CBaseEntity* pMortar = Create("monster_mortar", tr.vecEndPos, Vector(0, 0, 0), pActivator);
 		pMortar->pev->nextthink = gpGlobals->time + t;
 		t += RANDOM_FLOAT(0.2, 0.5);
 
@@ -185,17 +171,23 @@ void CFuncMortarField::FieldUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 	}
 }
 
-
 class CMortar : public CGrenade
 {
+	DECLARE_CLASS(CMortar, CGrenade);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	void Precache() override;
 
-	void EXPORT MortarExplode();
+	void MortarExplode();
 
 	int m_spriteTexture;
 };
+
+BEGIN_DATAMAP(CMortar)
+DEFINE_FUNCTION(MortarExplode),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(monster_mortar, CMortar);
 
@@ -211,7 +203,6 @@ void CMortar::Spawn()
 
 	Precache();
 }
-
 
 void CMortar::Precache()
 {
@@ -269,7 +260,7 @@ void CMortar::MortarExplode()
 #endif
 
 	TraceResult tr;
-	UTIL_TraceLine(pev->origin + Vector(0, 0, 1024), pev->origin - Vector(0, 0, 1024), dont_ignore_monsters, ENT(pev), &tr);
+	UTIL_TraceLine(pev->origin + Vector(0, 0, 1024), pev->origin - Vector(0, 0, 1024), dont_ignore_monsters, edict(), &tr);
 
 	Explode(&tr, DMG_BLAST | DMG_MORTAR);
 	UTIL_ScreenShake(tr.vecEndPos, 25.0, 150.0, 1.0, 750);
@@ -282,7 +273,7 @@ void CMortar::MortarExplode()
 
 	// ExplodeModel( pev->origin, 400, g_sModelIndexShrapnel, 30 );
 
-	RadiusDamage(pev, VARS(pev->owner), pev->dmg, CLASS_NONE, DMG_BLAST);
+	RadiusDamage(this, GetOwner(), pev->dmg, DMG_BLAST);
 
 	/*
 	if ( RANDOM_FLOAT ( 0 , 1 ) < 0.5 )
@@ -300,7 +291,6 @@ void CMortar::MortarExplode()
 #endif
 }
 
-
 #if 0
 void CMortar::ShootTimed(EVARS* pevOwner, Vector vecStart, float time)
 {
@@ -312,6 +302,6 @@ void CMortar::ShootTimed(EVARS* pevOwner, Vector vecStart, float time)
 
 	pMortar->pev->nextthink = gpGlobals->time + time;
 
-	UTIL_SetOrigin(pMortar->pev, tr.vecEndPos);
+	pMortar->SetOrigin(tr.vecEndPos);
 }
 #endif

@@ -61,7 +61,7 @@ void NetworkDataSystem::RegisterHandler(std::string&& name, INetworkDataBlockHan
 	if (std::find_if_not(name.begin(), name.end(), [](auto c)
 			{ return 0 != std::isalpha(c); }) != name.end())
 	{
-		assert(!"Producer name is invalid");
+		assert(!"Handler name is invalid");
 		return;
 	}
 
@@ -70,7 +70,7 @@ void NetworkDataSystem::RegisterHandler(std::string&& name, INetworkDataBlockHan
 	if (std::find_if(m_Handlers.begin(), m_Handlers.end(), [&](const auto& candidate)
 			{ return candidate.Name == name; }) != m_Handlers.end())
 	{
-		assert(!"Tried to add multiple producers with the same name");
+		assert(!"Tried to add multiple handlers with the same name");
 		return;
 	}
 
@@ -250,7 +250,7 @@ std::optional<std::vector<std::uint8_t>> NetworkDataSystem::TryLoadDataFromFile(
 	std::vector<std::uint8_t> fileData;
 	fileData.resize(sizeInBytes);
 
-	if (file.Read(fileData.data(), fileData.size()) != fileData.size())
+	if (static_cast<std::size_t>(file.Read(fileData.data(), fileData.size())) != fileData.size())
 	{
 		m_Logger->error("Error loading network data: read error");
 		return {};

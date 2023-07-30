@@ -19,6 +19,7 @@
 
 #include "hud.h"
 #include "cbase.h"
+#include "client_gibs.h"
 #include "ClientLibrary.h"
 #include "entity.h"
 #include "net_api.h"
@@ -37,6 +38,7 @@
 #include "sound/ISoundSystem.h"
 
 #include "ui/hud/HudSpriteConfigSystem.h"
+#include "ui/vgui/CampaignSelectSystem.h"
 
 #include "utils/ReplacementMaps.h"
 
@@ -50,7 +52,12 @@ bool ClientLibrary::Initialize()
 		return false;
 	}
 
+	g_UILogger = g_Logging.CreateLogger("ui");
+
+	AddCheatCommands();
+
 	TempEntity_Initialize();
+	ClientGibs_Initialize();
 
 	return true;
 }
@@ -72,8 +79,12 @@ void ClientLibrary::VidInit()
 
 	// Hud vid init has been delayed until after the network data file has been received to allow use of its data.
 	// gHUD.VidInit();
+	// Needed by some UI code before the network data file is loaded.
+	gHUD.UpdateScreenInfo();
 
 	g_ClientPrediction.Reset();
+
+	CL_TempEntInit();
 }
 
 void ClientLibrary::PostInitialize()
@@ -95,7 +106,11 @@ void ClientLibrary::ClientActivated()
 
 void ClientLibrary::Shutdown()
 {
+	TempEntity_Shutdown();
+
 	sound::g_SoundSystem.reset();
+
+	g_UILogger.reset();
 
 	GameLibrary::Shutdown();
 
@@ -116,6 +131,12 @@ void ClientLibrary::RunFrame()
 	gEngfuncs.pNetAPI->Status(&status);
 
 	const bool isConnected = status.connected != 0;
+
+	if (!isConnected)
+	{
+		TempEntity_ResetTargetLaser();
+		CL_TempEntInit();
+	}
 
 	auto mapName = gEngfuncs.pfnGetLevelName();
 
@@ -193,6 +214,11 @@ void ClientLibrary::RunFrame()
 	}
 
 	sound::g_SoundSystem->Update();
+
+	if (isConnected)
+	{
+		TempEntity_UpdateTargetLaser();
+	}
 }
 
 void ClientLibrary::OnUserMessageReceived()
@@ -233,6 +259,7 @@ void ClientLibrary::AddGameSystems()
 	g_GameSystems.Add(&g_ClientPrediction);
 	g_GameSystems.Add(&sound::g_ClientSoundReplacement);
 	g_GameSystems.Add(&g_HudSpriteConfig);
+	g_GameSystems.Add(&g_CampaignSelect);
 }
 
 SDL_Window* ClientLibrary::FindWindow()
@@ -249,4 +276,22 @@ SDL_Window* ClientLibrary::FindWindow()
 	}
 
 	return nullptr;
+}
+
+static void AddForwardedCommand(const char* name)
+{
+	gEngfuncs.pfnAddCommand(name, nullptr);
+}
+
+void ClientLibrary::AddCheatCommands()
+{
+	// These need to show up in the console autocompletion list, but are handled on the server side.
+	AddForwardedCommand("cheat_god");
+	AddForwardedCommand("cheat_unkillable");
+	AddForwardedCommand("cheat_notarget");
+	AddForwardedCommand("cheat_noclip");
+	AddForwardedCommand("cheat_infiniteair");
+	AddForwardedCommand("cheat_infinitearmor");
+	AddForwardedCommand("cheat_givemagazine");
+	AddForwardedCommand("cheat_jetpack");
 }

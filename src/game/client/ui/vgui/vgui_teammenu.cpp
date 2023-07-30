@@ -47,7 +47,8 @@
 #define TEAMMENU_FULL_TOPLEFT_Y YRES(42)
 
 // Creation
-CTeamMenuPanel::CTeamMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int wide, int tall) : CMenuPanel(iTrans, iRemoveMe, x, y, wide, tall)
+CTeamMenuPanel::CTeamMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int wide, int tall)
+	: CMenuPanel(iTrans, iRemoveMe, x, y, wide, tall)
 {
 	// Get the scheme used for the Titles
 	CSchemeManager* pSchemes = gViewPort->GetSchemeManager();
@@ -416,11 +417,9 @@ void CTeamMenuPanel::SetActiveInfo(int iInput)
 	m_pScrollPanel->validate();
 }
 
-void CTeamMenuPanel::MsgFunc_TeamFull(const char* pszName, int iSize, void* pbuf)
+void CTeamMenuPanel::MsgFunc_TeamFull(const char* pszName, BufferReader& reader)
 {
-	BEGIN_READ(pbuf, iSize);
-
-	m_pTeamFull->setVisible(READ_BYTE() != 0);
+	m_pTeamFull->setVisible(reader.ReadByte() != 0);
 
 	m_flTeamFullReset = gHUD.m_flTime + 2.0;
 }

@@ -29,15 +29,11 @@ enum hgun_e
 
 class CHgun : public CBasePlayerWeapon
 {
-public:
-#ifndef CLIENT_DLL
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-#endif
+	DECLARE_CLASS(CHgun, CBasePlayerWeapon);
+	DECLARE_DATAMAP();
 
+public:
 	void OnCreate() override;
-	void Spawn() override;
 	void Precache() override;
 	bool GetWeaponInfo(WeaponInfo& info) override;
 	void AddToPlayer(CBasePlayer* pPlayer) override;
@@ -53,7 +49,7 @@ public:
 
 	float m_flRechargeTime;
 
-	int m_iFirePhase; // don't save me.
+	int m_iFirePhase = 0; // don't save me.
 
 	bool UseDecrement() override
 	{

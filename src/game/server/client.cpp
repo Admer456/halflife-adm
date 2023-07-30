@@ -27,6 +27,7 @@
 #include <optional>
 
 #include "cbase.h"
+#include "changelevel.h"
 #include "CCorpse.h"
 #include "com_model.h"
 #include "client.h"
@@ -39,19 +40,13 @@
 #include "ClientCommandRegistry.h"
 #include "ServerLibrary.h"
 
-#include "ctf/CTFGoal.h"
-#include "ctf/CTFGoalFlag.h"
-#include "ctfplay_gamerules.h"
+#include "ctf/ctf_goals.h"
 
 unsigned int g_ulFrameCount;
 
-/*
-===========
-ClientConnect
-
-called when a player connects to a server
-============
-*/
+/**
+ *	@brief called when a player connects to a server
+ */
 qboolean ClientConnect(edict_t* pEntity, const char* pszName, const char* pszAddress, char szRejectReason[128])
 {
 	return static_cast<qboolean>(g_pGameRules->ClientConnected(pEntity, pszName, pszAddress, szRejectReason));
@@ -62,15 +57,9 @@ qboolean ClientConnect(edict_t* pEntity, const char* pszName, const char* pszAdd
 }
 
 
-/*
-===========
-ClientDisconnect
-
-called when a player disconnects from a server
-
-GLOBALS ASSUMED SET:  g_fGameOver
-============
-*/
+/**
+ *	@brief called when a player disconnects from a server
+ */
 void ClientDisconnect(edict_t* pEntity)
 {
 	if (g_fGameOver)
@@ -80,7 +69,7 @@ void ClientDisconnect(edict_t* pEntity)
 	if (!FStringNull(pEntity->v.netname))
 		snprintf(text, sizeof(text), "- %s has left the game\n", STRING(pEntity->v.netname));
 	text[sizeof(text) - 1] = 0;
-	MESSAGE_BEGIN(MSG_ALL, gmsgSayText, nullptr);
+	MESSAGE_BEGIN(MSG_ALL, gmsgSayText);
 	WRITE_BYTE(ENTINDEX(pEntity));
 	WRITE_STRING(text);
 	MESSAGE_END();
@@ -98,12 +87,15 @@ void ClientDisconnect(edict_t* pEntity)
 	// since the edict doesn't get deleted, fix it so it doesn't interfere.
 	pEntity->v.takedamage = DAMAGE_NO; // don't attract autoaim
 	pEntity->v.solid = SOLID_NOT;	   // nonsolid
-	UTIL_SetOrigin(&pEntity->v, pEntity->v.origin);
 
-	auto pPlayer = reinterpret_cast<CBasePlayer*>(GET_PRIVATE(pEntity));
+	auto pPlayer = ToBasePlayer(pEntity);
 
 	if (pPlayer)
 	{
+		pPlayer->m_Connected = false;
+
+		pPlayer->SetOrigin(pPlayer->pev->origin);
+
 		if (pPlayer->m_pTank != nullptr)
 		{
 			pPlayer->m_pTank->Use(pPlayer, pPlayer, USE_OFF, 0);
@@ -115,10 +107,12 @@ void ClientDisconnect(edict_t* pEntity)
 }
 
 
-// called by ClientKill and DeadThink
+/**
+ *	@brief called by ClientKill and DeadThink
+ */
 void respawn(CBasePlayer* player, bool fCopyCorpse)
 {
-	if (0 != gpGlobals->coop || 0 != gpGlobals->deathmatch)
+	if (g_pGameRules->IsMultiplayer())
 	{
 		if (fCopyCorpse)
 		{
@@ -135,16 +129,14 @@ void respawn(CBasePlayer* player, bool fCopyCorpse)
 	}
 }
 
-/*
-============
-ClientKill
-
-Player entered the suicide command
-============
-*/
+/**
+ *	@brief Player entered the suicide command
+ */
 void ClientKill(edict_t* pEntity)
 {
-	CBasePlayer* pl = GET_PRIVATE<CBasePlayer>(pEntity);
+	CBasePlayer* pl = ToBasePlayer(pEntity);
+
+	assert(pl);
 
 	// Only check for teams in CTF gamemode
 	if ((pl->pev->flags & FL_SPECTATOR) != 0 || (g_pGameRules->IsCTF() && pl->m_iTeamNum == CTFTeam::None))
@@ -165,13 +157,9 @@ void ClientKill(edict_t* pEntity)
 	//	respawn( pev );
 }
 
-/*
-===========
-ClientPutInServer
-
-called each time a player is spawned
-============
-*/
+/**
+ *	@brief called each time a player is spawned
+ */
 void ClientPutInServer(edict_t* pEntity)
 {
 	auto pPlayer = g_EntityDictionary->Create<CBasePlayer>("player", &pEntity->v);
@@ -189,13 +177,14 @@ void ClientPutInServer(edict_t* pEntity)
 	pPlayer->pev->iuser2 = 0;
 	*/
 
+	pPlayer->m_Connected = true;
+	pPlayer->m_ConnectTime = gpGlobals->time;
+
 	g_LastPlayerJoinTime = gpGlobals->time;
 }
 
 #include "voice_gamemgr.h"
 extern CVoiceGameMgr g_VoiceGameMgr;
-
-
 
 #if defined(_MSC_VER) || defined(WIN32)
 typedef wchar_t uchar16;
@@ -205,9 +194,9 @@ typedef unsigned short uchar16;
 typedef wchar_t uchar32;
 #endif
 
-//-----------------------------------------------------------------------------
-// Purpose: determine if a uchar32 represents a valid Unicode code point
-//-----------------------------------------------------------------------------
+/**
+ *	@brief determine if a uchar32 represents a valid Unicode code point
+ */
 bool Q_IsValidUChar32(uchar32 uVal)
 {
 	// Values > 0x10FFFF are explicitly invalid; ditto for UTF-16 surrogate halves,
@@ -215,9 +204,11 @@ bool Q_IsValidUChar32(uchar32 uVal)
 	return (uVal < 0x110000u) && ((uVal - 0x00D800u) > 0x7FFu) && ((uVal & 0xFFFFu) < 0xFFFEu) && ((uVal - 0x00FDD0u) > 0x1Fu);
 }
 
-
-// Decode one character from a UTF-8 encoded string. Treats 6-byte CESU-8 sequences
-// as a single character, as if they were a correctly-encoded 4-byte UTF-8 sequence.
+/*
+ *	@brief Decode one character from a UTF-8 encoded string.
+ *	@details Treats 6-byte CESU-8 sequences as a single character,
+ *	as if they were a correctly-encoded 4-byte UTF-8 sequence.
+ */
 int Q_UTF8ToUChar32(const char* pUTF8_, uchar32& uValueOut, bool& bErrorOut)
 {
 	const uint8* pUTF8 = (const uint8*)pUTF8_;
@@ -289,11 +280,9 @@ decodeFinishedMaybeCESU8:
 	goto decodeFinished;
 }
 
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Returns true if UTF-8 string contains invalid sequences.
-//-----------------------------------------------------------------------------
+/**
+ *	@brief Returns true if UTF-8 string contains invalid sequences.
+ */
 bool Q_UnicodeValidate(const char* pUTF8)
 {
 	bool bError = false;
@@ -310,12 +299,15 @@ bool Q_UnicodeValidate(const char* pUTF8)
 	return true;
 }
 
-//// HOST_SAY
-// String comes in as
-// say blah blah blah
-// or as
-// blah blah blah
-//
+/**
+ *	@brief Handles incoming @c say and @c say_team commands and sends them to other players.
+ *	<pre>
+ *	String comes in as
+ *	say blah blah blah
+ *	or as
+ *	blah blah blah
+ *	</pre>
+ */
 void Host_Say(CBasePlayer* player, bool teamonly)
 {
 	int j;
@@ -330,8 +322,9 @@ void Host_Say(CBasePlayer* player, bool teamonly)
 	if (CMD_ARGC() == 0)
 		return;
 
+	// Only limit chat in multiplayer.
 	// Not yet.
-	if (player->m_flNextChatTime > gpGlobals->time)
+	if (g_pGameRules->IsMultiplayer() && player->m_flNextChatTime > gpGlobals->time)
 		return;
 
 	if (!stricmp(pcmd, cpSay) || !stricmp(pcmd, cpSayTeam))
@@ -420,14 +413,14 @@ void Host_Say(CBasePlayer* player, bool teamonly)
 			if (!client->IsObserver())
 				continue;
 
-		MESSAGE_BEGIN(MSG_ONE, gmsgSayText, nullptr, client->pev);
+		MESSAGE_BEGIN(MSG_ONE, gmsgSayText, nullptr, client);
 		WRITE_BYTE(player->entindex());
 		WRITE_STRING(text);
 		MESSAGE_END();
 	}
 
 	// print to the sending client
-	MESSAGE_BEGIN(MSG_ONE, gmsgSayText, nullptr, player->pev);
+	MESSAGE_BEGIN(MSG_ONE, gmsgSayText, nullptr, player);
 	WRITE_BYTE(player->entindex());
 	WRITE_STRING(text);
 	MESSAGE_END();
@@ -448,7 +441,6 @@ const int NumberOfEntitiesPerPage = 10;
 
 struct PageSearchResult
 {
-	bool UsePagination{false};
 	int TotalEntityCount{0};
 	int DesiredPage{0};
 	int PageCount{0};
@@ -462,13 +454,13 @@ struct PageSearchResult
 template <typename Function>
 PageSearchResult PageBasedEntitySearch(CBasePlayer* player, int desiredPage, Function&& filter)
 {
+	desiredPage = std::max(desiredPage, 1);
+
 	int pageCount = 0;
 	int totalCount = 0;
 	int currentPage = 1;
 
-	const bool doPagination = desiredPage != 0;
-
-	UTIL_ConsolePrint(player->edict(), "entindex - classname - targetname - origin\n");
+	UTIL_ConsolePrint(player, "entindex - classname - targetname - origin\n");
 
 	for (auto entity : UTIL_FindEntities())
 	{
@@ -479,15 +471,10 @@ PageSearchResult PageBasedEntitySearch(CBasePlayer* player, int desiredPage, Fun
 
 		++totalCount;
 
-		if (!doPagination || currentPage == desiredPage)
+		if (currentPage == desiredPage)
 		{
-			UTIL_ConsolePrint(player->edict(), "{} - {} - {} - {{{}}}\n",
+			UTIL_ConsolePrint(player, "{} - {} - {} - {{{}}}\n",
 				entity->entindex(), entity->GetClassname(), entity->GetTargetname(), entity->pev->origin);
-
-			if (!doPagination)
-			{
-				continue;
-			}
 		}
 
 		++pageCount;
@@ -498,33 +485,87 @@ PageSearchResult PageBasedEntitySearch(CBasePlayer* player, int desiredPage, Fun
 		}
 	}
 
-	return {.UsePagination = doPagination, .TotalEntityCount = totalCount, .DesiredPage = desiredPage, .PageCount = currentPage};
+	return {.TotalEntityCount = totalCount, .DesiredPage = desiredPage, .PageCount = currentPage};
 }
 
 void PrintPageSearchResult(CBasePlayer* player, const PageSearchResult& result, const char* filterName, const char* filterContents)
 {
-	if (result.UsePagination)
-	{
-		UTIL_ConsolePrint(player->edict(), "{} entities having the {}: \"{}\" (page {} / {})\n",
-			result.TotalEntityCount, filterName, filterContents, result.DesiredPage, result.PageCount);
-	}
-	else
-	{
-		UTIL_ConsolePrint(player->edict(), "{} entities having the {}: \"{}\"\n",
-			result.TotalEntityCount, filterName, filterContents);
-	}
+	UTIL_ConsolePrint(player, "{} entities having the {}: \"{}\" (page {} / {})\n",
+		result.TotalEntityCount, filterName, filterContents, result.DesiredPage, result.PageCount);
 }
 
 void PrintPageSearchResult(CBasePlayer* player, const PageSearchResult& result)
 {
-	if (result.UsePagination)
+	UTIL_ConsolePrint(player, "Total {} / {} entities (page {} / {})\n",
+		result.TotalEntityCount, gpGlobals->maxEntities, result.DesiredPage, result.PageCount);
+}
+
+static CBaseEntity* FindNextEntityToRemove(CBasePlayer* player, CBaseEntity* startEntity, const char* needle)
+{
+	for (CBaseEntity* entity = startEntity; (entity = UTIL_FindEntityByIdentifier(entity, needle)) != nullptr;)
 	{
-		UTIL_ConsolePrint(player->edict(), "Total {} / {} entities (page {} / {})\n", result.TotalEntityCount, gpGlobals->maxEntities, result.DesiredPage, result.PageCount);
+		if (!UTIL_IsRemovableEntity(entity))
+		{
+			UTIL_ConsolePrint(player, "Can't remove \"{}\": not allowed to remove entities of this type\n",
+				STRING(entity->pev->classname));
+			continue;
+		}
+
+		return entity;
 	}
-	else
+
+	return nullptr;
+}
+
+static CBaseEntity* TryCreateEntity(CBasePlayer* player, const char* className, const Vector& angles,
+	const CommandArgs& args, int firstKeyValue)
+{
+	Vector forward;
+	AngleVectors(player->pev->v_angle, &forward, nullptr, nullptr);
+
+	Vector origin = player->pev->origin + forward * MAX_EXTENT;
+
+	TraceResult tr;
+	UTIL_TraceLine(player->pev->origin, origin, dont_ignore_monsters, player->edict(), &tr);
+
+	if (tr.fStartSolid != 0)
 	{
-		UTIL_ConsolePrint(player->edict(), "Total {} / {} entities\n", result.TotalEntityCount, gpGlobals->maxEntities);
+		UTIL_ConsolePrint(player, "Cannot create entity in solid object\n");
+		return nullptr;
 	}
+
+	auto entity = CBaseEntity::Create(className, tr.vecEndPos, Vector{0, angles.y, 0}, nullptr, false);
+
+	if (!entity)
+	{
+		return nullptr;
+	}
+
+	const int keyValues = args.Count();
+
+	KeyValueData kvd{.szClassName = className};
+
+	for (int i = firstKeyValue; i < keyValues; i += 2)
+	{
+		kvd.szKeyName = args.Argument(i);
+		kvd.szValue = args.Argument(i + 1);
+		kvd.fHandled = 0;
+
+		// Skip the classname the same way the engine does.
+		if (FStrEq(kvd.szValue, className))
+		{
+			continue;
+		}
+
+		DispatchKeyValue(entity->edict(), &kvd);
+	}
+
+	if (DispatchSpawn(entity->edict()) == -1)
+	{
+		UTIL_ConsolePrint(player, "Entity was removed during spawn\n");
+	}
+
+	return entity;
 }
 
 void SV_CreateClientCommands()
@@ -558,7 +599,7 @@ void SV_CreateClientCommands()
 			}
 			else
 			{
-				UTIL_ConsolePrint(player->edict(), "\"fov\" is \"{}\"\n", player->m_iFOV);
+				UTIL_ConsolePrint(player, "\"fov\" is \"{}\"\n", player->m_iFOV);
 			} });
 
 	g_ClientCommands.Create("set_hud_color", [](CBasePlayer* player, const auto& args)
@@ -574,7 +615,7 @@ void SV_CreateClientCommands()
 			}
 			else
 			{
-				UTIL_ConsolePrint(player->edict(), "Usage: set_hud_color <r> <g> <b> (values in range 0-255)\n");
+				UTIL_ConsolePrint(player, "Usage: set_hud_color <r> <g> <b> (values in range 0-255)\n");
 			} },
 		{.Flags = ClientCommandFlag::Cheat});
 
@@ -590,7 +631,7 @@ void SV_CreateClientCommands()
 				}
 				else
 				{
-					UTIL_ConsolePrint(player->edict(), "Unknown suit light type \"{}\"\n", args.Argument(1));
+					UTIL_ConsolePrint(player, "Unknown suit light type \"{}\"\n", args.Argument(1));
 				}
 			} },
 		{.Flags = ClientCommandFlag::Cheat});
@@ -606,7 +647,7 @@ void SV_CreateClientCommands()
 			}
 			else
 			{
-				UTIL_ConsolePrint(player->edict(), "usage: selectweapon <weapon name>\n");
+				UTIL_ConsolePrint(player, "usage: selectweapon <weapon name>\n");
 			} });
 
 	g_ClientCommands.Create("lastinv", [](CBasePlayer* player, const auto& args)
@@ -622,12 +663,53 @@ void SV_CreateClientCommands()
 			if (player->IsObserver())
 				player->Observer_FindNextPlayer(atoi(args.Argument(1)) != 0); });
 
+	g_ClientCommands.Create("cheat_god", [](CBasePlayer* player, const CommandArgs& args)
+		{ player->ToggleCheat(Cheat::Godmode); },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("cheat_unkillable", [](CBasePlayer* player, const CommandArgs& args)
+		{ player->ToggleCheat(Cheat::Unkillable); },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("cheat_notarget", [](CBasePlayer* player, const CommandArgs& args)
+		{ player->ToggleCheat(Cheat::Notarget); },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("cheat_noclip", [](CBasePlayer* player, const CommandArgs& args)
+		{ player->ToggleCheat(Cheat::Noclip); },
+		{.Flags = ClientCommandFlag::Cheat});
+
 	g_ClientCommands.Create("cheat_infiniteair", [](CBasePlayer* player, const CommandArgs& args)
 		{ player->ToggleCheat(Cheat::InfiniteAir); },
 		{.Flags = ClientCommandFlag::Cheat});
 
 	g_ClientCommands.Create("cheat_infinitearmor", [](CBasePlayer* player, const CommandArgs& args)
 		{ player->ToggleCheat(Cheat::InfiniteArmor); },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("cheat_jetpack", [](CBasePlayer* player, const CommandArgs& args)
+		{ player->ToggleCheat(Cheat::Jetpack); },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("cheat_givemagazine", [](CBasePlayer* player, const CommandArgs& args)
+		{
+			int attackMode = 0;
+
+			if (args.Count() >= 2)
+			{
+				attackMode = atoi(args.Argument(1));
+
+				if (attackMode < 0 || attackMode >= MAX_WEAPON_ATTACK_MODES)
+				{
+					UTIL_ConsolePrint(player, "Invalid weapon attack mode\n");
+					return;
+				}
+			}
+
+			if (player->GiveMagazine(player->m_pActiveWeapon, attackMode) != -1)
+			{
+				player->EmitSound(CHAN_ITEM, DefaultItemPickupSound, VOL_NORM, ATTN_NORM);
+			} },
 		{.Flags = ClientCommandFlag::Cheat});
 
 	g_ClientCommands.Create("ent_find_by_classname", [](CBasePlayer* player, const CommandArgs& args)
@@ -641,7 +723,7 @@ void SV_CreateClientCommands()
 			}
 			else
 			{
-				UTIL_ConsolePrint(player->edict(), "usage: ent_find_by_classname <classname> [page]\n");
+				UTIL_ConsolePrint(player, "usage: ent_find_by_classname <classname> [page]\n");
 			} },
 		{.Flags = ClientCommandFlag::Cheat});
 
@@ -656,7 +738,7 @@ void SV_CreateClientCommands()
 			}
 			else
 			{
-				UTIL_ConsolePrint(player->edict(), "usage: ent_find_by_targetname <targetname> [page]\n");
+				UTIL_ConsolePrint(player, "usage: ent_find_by_targetname <targetname> [page]\n");
 			} },
 		{.Flags = ClientCommandFlag::Cheat});
 
@@ -681,17 +763,227 @@ void SV_CreateClientCommands()
 			}
 			else
 			{
-				UTIL_ConsolePrint(player->edict(), "usage: ent_fire <targetname> [usetype] [value]\n");
+				UTIL_ConsolePrint(player, "usage: ent_fire <targetname> [usetype] [value]\n");
 			} },
 		{.Flags = ClientCommandFlag::Cheat});
 
 	g_ClientCommands.Create("ent_list", [](CBasePlayer* player, const CommandArgs& args)
 		{
-			// Turn pagination off by default for this so player gets a list of all entities by default.
-			const auto result = PageBasedEntitySearch(player, args.Count() > 1 ? std::max(atoi(args.Argument(1)), 0) : 0, [&](auto entity)
+			const auto result = PageBasedEntitySearch(player, args.Count() > 1 ? atoi(args.Argument(1)) : 1, [&](auto entity)
 				{ return true; });
 
 			PrintPageSearchResult(player, result); },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("ent_remove", [](CBasePlayer* player, const CommandArgs& args)
+		{
+			CBaseEntity* candidate;
+
+			if (args.Count() < 2)
+			{
+				candidate = UTIL_FindEntityForward(player);
+			}
+			else
+			{
+				candidate = FindNextEntityToRemove(player, nullptr, args.Argument(1));
+			}
+
+			if (candidate)
+			{
+				UTIL_ConsolePrint(player, "Removed {}:{} ({})\n",
+					candidate->GetClassname(), candidate->entindex(), candidate->GetTargetname());
+				UTIL_Remove(candidate);
+			} },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("ent_remove_all", [](CBasePlayer* player, const CommandArgs& args)
+		{
+			if (args.Count() < 2)
+			{
+				UTIL_ConsolePrint(player, "Usage: ent_remove_all <classname|targetname>\n");
+				return;
+			}
+
+			const char* needle = args.Argument(1);
+
+			int count = 0;
+
+			for (CBaseEntity* candidate = nullptr; (candidate = FindNextEntityToRemove(player, candidate, needle)) != nullptr;)
+			{
+				if (candidate)
+				{
+					++count;
+					UTIL_Remove(candidate);
+				}
+			}
+
+			UTIL_ConsolePrint(player,"Removed {} entities matching \"{}\"\n", count, needle); },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("ent_setname", [](CBasePlayer* player, const CommandArgs& args)
+		{
+			if (args.Count() < 2)
+			{
+				UTIL_ConsolePrint(player, "Usage: ent_setname <new targetname> [classname|targetname]\n");
+				return;
+			}
+
+			CBaseEntity* target;
+
+			if (args.Count() < 3)
+			{
+				target = UTIL_FindEntityForward(player);
+			}
+			else
+			{
+				target = UTIL_FindEntityByIdentifier(nullptr, args.Argument(2));
+			}
+
+			if (target)
+			{
+				const char* name = args.Argument(1);
+				UTIL_ConsolePrint(player, "Set the name of {} to {}\n", target->GetClassname(), name);
+				target->pev->targetname = ALLOC_STRING(name);
+			} },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("ent_show_origin", [](CBasePlayer* player, const CommandArgs& args)
+		{
+			if (args.Count() < 2)
+			{
+				UTIL_ConsolePrint(player, "Usage: ent_show_origin <targetname>\n");
+				return;
+			}
+
+			CBaseEntity* target = UTIL_FindEntityByTargetname(nullptr, args.Argument(1));
+
+			if (target)
+			{
+				MESSAGE_BEGIN(MSG_ONE, SVC_TEMPENTITY, nullptr, player);
+				WRITE_BYTE(TE_FIREFIELD);
+				WRITE_COORD_VECTOR(target->pev->origin);
+				WRITE_SHORT(0);
+				WRITE_SHORT(g_sModelIndexLaserDot);
+				WRITE_BYTE(1);
+				WRITE_BYTE(TEFIRE_FLAG_ADDITIVE);
+				WRITE_BYTE(100); // Stick around for 10 seconds.
+				MESSAGE_END();
+
+				UTIL_ConsolePrint(player, "Origin: {}\n", target->pev->origin);
+			}
+			else
+			{
+				UTIL_ConsolePrint(player, "No entity found\n");
+			} },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("ent_show_center", [](CBasePlayer* player, const CommandArgs& args)
+		{
+			if (args.Count() < 2)
+			{
+				UTIL_ConsolePrint(player, "Usage: ent_show_center <targetname>\n");
+				return;
+			}
+
+			CBaseEntity* target = UTIL_FindEntityByTargetname(nullptr, args.Argument(1));
+
+			if (target)
+			{
+				const Vector center = target->Center();
+
+				MESSAGE_BEGIN(MSG_ONE, SVC_TEMPENTITY, nullptr, player);
+				WRITE_BYTE(TE_FIREFIELD);
+				WRITE_COORD_VECTOR(center);
+				WRITE_SHORT(0);
+				WRITE_SHORT(g_sModelIndexLaserDot);
+				WRITE_BYTE(1);
+				WRITE_BYTE(TEFIRE_FLAG_ADDITIVE);
+				WRITE_BYTE(100); // Stick around for 10 seconds.
+				MESSAGE_END();
+
+				UTIL_ConsolePrint(player, "Center: {}\n", center);
+			}
+			else
+			{
+				UTIL_ConsolePrint(player, "No entity found\n");
+			} },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("ent_show_bbox", [](CBasePlayer* player, const CommandArgs& args)
+		{
+			if (args.Count() < 2)
+			{
+				UTIL_ConsolePrint(player, "Usage: ent_show_bbox <targetname>\n");
+				return;
+			}
+
+			CBaseEntity* target = UTIL_FindEntityByTargetname(nullptr, args.Argument(1));
+
+			if (target)
+			{
+				MESSAGE_BEGIN(MSG_ONE, SVC_TEMPENTITY, nullptr, player);
+				WRITE_BYTE(TE_BOX);
+				WRITE_COORD_VECTOR(target->pev->absmin);
+				WRITE_COORD_VECTOR(target->pev->absmax);
+				WRITE_SHORT(100); // Stick around for 10 seconds.
+				WRITE_BYTE(0);
+				WRITE_BYTE(0);
+				WRITE_BYTE(255);
+				MESSAGE_END();
+
+				UTIL_ConsolePrint(player, "BBox: min {} max {}\n", target->pev->absmin, target->pev->absmax);
+			}
+			else
+			{
+				UTIL_ConsolePrint(player, "No entity found\n");
+			} },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("ent_create", [](CBasePlayer* player, const CommandArgs& args)
+		{
+			if (args.Count() < 2)
+			{
+				UTIL_ConsolePrint(player, "Usage: ent_create <classname> [<key> <value> <key2> <value2> ...]\n");
+				return;
+			}
+
+			const char* className = args.Argument(1);
+
+			TryCreateEntity(player, className, vec3_origin, args, 2); },
+		{.Flags = ClientCommandFlag::Cheat});
+
+	g_ClientCommands.Create("npc_create", [](CBasePlayer* player, const CommandArgs& args)
+		{
+			if (args.Count() < 2)
+			{
+				UTIL_ConsolePrint(player, "Usage: npc_create <classname> [<key> <value> <key2> <value2> ...]\n");
+				return;
+			}
+
+			const char* className = args.Argument(1);
+
+			auto entity = TryCreateEntity(player, className, player->pev->v_angle, args, 2);
+
+			if (!entity)
+			{
+				return;
+			}
+
+			// Move NPC up based on its bounding box.
+			if (entity->pev->mins.z < 0)
+			{
+				entity->pev->origin.z -= entity->pev->mins.z;
+			}
+
+			if ((entity->pev->flags & FL_FLY) == 0 && entity->pev->movetype != MOVETYPE_FLY)
+			{
+				// See if the NPC is stuck in something.
+				if (DROP_TO_FLOOR(entity->edict()) == 0)
+				{
+					UTIL_ConsolePrint(player, "NPC fell out of level\n");
+					UTIL_Remove(entity);
+				}
+			} },
 		{.Flags = ClientCommandFlag::Cheat});
 }
 
@@ -699,20 +991,17 @@ bool UTIL_CheatsAllowed(CBasePlayer* player, std::string_view name)
 {
 	if (0 == g_psv_cheats->value)
 	{
-		UTIL_ConsolePrint(player->edict(), "The command \"{}\" can only be used when cheats are enabled\n", name);
+		UTIL_ConsolePrint(player, "The command \"{}\" can only be used when cheats are enabled\n", name);
 		return false;
 	}
 
 	return true;
 }
 
-/*
-===========
-ClientCommand
-called each time a player uses a "cmd" command
-============
-*/
-// Use CMD_ARGV,  CMD_ARGV, and CMD_ARGC to get pointers the character string command.
+/**
+ *	@brief called each time a player uses a @c "cmd" command
+ *	@details Use CMD_ARGV, CMD_ARGV, and CMD_ARGC to get pointers the character string command.
+ */
 void ExecuteClientCommand(edict_t* pEntity)
 {
 	// Is the client spawned yet?
@@ -720,7 +1009,7 @@ void ExecuteClientCommand(edict_t* pEntity)
 		return;
 
 	const char* pcmd = CMD_ARGV(0);
-	auto player = GET_PRIVATE<CBasePlayer>(pEntity);
+	auto player = ToBasePlayer(pEntity);
 
 	if (auto clientCommand = g_ClientCommands.Find(pcmd); clientCommand)
 	{
@@ -740,18 +1029,14 @@ void ExecuteClientCommand(edict_t* pEntity)
 		command[127] = '\0';
 
 		// tell the user they entered an unknown command
-		ClientPrint(player->pev, HUD_PRINTCONSOLE, UTIL_VarArgs("Unknown command: %s\n", command));
+		ClientPrint(player, HUD_PRINTCONSOLE, UTIL_VarArgs("Unknown command: %s\n", command));
 	}
 }
 
 
-/*
-========================
-ClientUserInfoChanged
-
-called after the player changes
-userinfo - gives dll a chance to modify it before
-it gets sent into the rest of the engine.
+/**
+*	@brief called after the player changes userinfo.
+*	gives dll a chance to modify it before it gets sent into the rest of the engine.
 ========================
 */
 void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer)
@@ -760,7 +1045,7 @@ void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer)
 	if (!pEntity->pvPrivateData)
 		return;
 
-	auto player = GET_PRIVATE<CBasePlayer>(pEntity);
+	auto player = ToBasePlayer(pEntity);
 
 	// msg everyone if someone changes their name,  and it isn't the first time (changing no name to current name)
 	if (!FStringNull(pEntity->v.netname) && STRING(pEntity->v.netname)[0] != 0 && !FStrEq(STRING(pEntity->v.netname), g_engfuncs.pfnInfoKeyValue(infobuffer, "name")))
@@ -781,11 +1066,11 @@ void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer)
 		// Set the name
 		g_engfuncs.pfnSetClientKeyValue(player->entindex(), infobuffer, "name", sName);
 
-		if (gpGlobals->maxClients > 1)
+		if (g_pGameRules->IsMultiplayer())
 		{
 			char text[256];
 			sprintf(text, "* %s changed name to %s\n", STRING(pEntity->v.netname), g_engfuncs.pfnInfoKeyValue(infobuffer, "name"));
-			MESSAGE_BEGIN(MSG_ALL, gmsgSayText, nullptr);
+			MESSAGE_BEGIN(MSG_ALL, gmsgSayText);
 			WRITE_BYTE(player->entindex());
 			WRITE_STRING(text);
 			MESSAGE_END();
@@ -797,18 +1082,16 @@ void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer)
 	g_pGameRules->ClientUserInfoChanged(player, infobuffer);
 }
 
-static int g_serveractive = 0;
-
 void ServerDeactivate()
 {
 	// It's possible that the engine will call this function more times than is necessary
 	//  Therefore, only run it one time for each call to ServerActivate
-	if (g_serveractive != 1)
+	if (!g_serveractive)
 	{
 		return;
 	}
 
-	g_serveractive = 0;
+	g_serveractive = false;
 
 	// Peform any shutdown operations here...
 	//
@@ -820,7 +1103,7 @@ void ServerActivate(edict_t* pEdictList, int edictCount, int clientMax)
 	CBaseEntity* pClass;
 
 	// Every call to ServerActivate should be matched by a call to ServerDeactivate
-	g_serveractive = 1;
+	g_serveractive = true;
 
 	g_Server.PreMapActivate();
 
@@ -850,42 +1133,31 @@ void ServerActivate(edict_t* pEdictList, int edictCount, int clientMax)
 }
 
 
-/*
-================
-PlayerPreThink
-
-Called every frame before physics are run
-================
-*/
+/**
+ *	@brief Called every frame before physics are run
+ */
 void PlayerPreThink(edict_t* pEntity)
 {
-	CBasePlayer* pPlayer = (CBasePlayer*)GET_PRIVATE(pEntity);
+	CBasePlayer* pPlayer = ToBasePlayer(pEntity);
 
 	if (pPlayer)
 		pPlayer->PreThink();
 }
 
-/*
-================
-PlayerPostThink
-
-Called every frame after physics are run
-================
-*/
+/**
+ *	@brief Called every frame after physics are run
+ */
 void PlayerPostThink(edict_t* pEntity)
 {
-	CBasePlayer* pPlayer = (CBasePlayer*)GET_PRIVATE(pEntity);
+	CBasePlayer* pPlayer = ToBasePlayer(pEntity);
 
 	if (pPlayer)
 		pPlayer->PostThink();
 }
 
-
-
 void ParmsNewLevel()
 {
 }
-
 
 void ParmsChangeLevel()
 {
@@ -893,9 +1165,8 @@ void ParmsChangeLevel()
 	SAVERESTOREDATA* pSaveData = (SAVERESTOREDATA*)gpGlobals->pSaveData;
 
 	if (pSaveData)
-		pSaveData->connectionCount = BuildChangeList(pSaveData->levelList, MAX_LEVEL_CONNECTIONS);
+		pSaveData->connectionCount = CChangeLevel::ChangeList(pSaveData->levelList, MAX_LEVEL_CONNECTIONS);
 }
-
 
 //
 // GLOBALS ASSUMED SET:  g_ulFrameCount
@@ -910,10 +1181,8 @@ void StartFrame()
 	if (g_fGameOver)
 		return;
 
-	gpGlobals->teamplay = teamplay.value;
 	g_ulFrameCount++;
 }
-
 
 void ClientPrecache()
 {
@@ -1038,17 +1307,16 @@ void ClientPrecache()
 
 	UTIL_PrecacheSound("ctf/pow_big_jump.wav");
 
+	// for cheat_givemagazine
+	UTIL_PrecacheSound(DefaultItemPickupSound);
+
 	if (giPrecacheGrunt)
 		UTIL_PrecacheOther("monster_human_grunt");
 }
 
-/*
-===============
-GetGameDescription
-
-Returns the descriptive name of this .dll.  E.g., Half-Life, or Team Fortress 2
-===============
-*/
+/**
+ *	@brief Returns the descriptive name of this .dll. E.g., <tt>Half-Life</tt>, or <tt>Team Fortress 2</tt>
+ */
 const char* GetGameDescription()
 {
 	if (g_pGameRules) // this function may be called before the world has spawned, and the game rules initialized
@@ -1057,30 +1325,21 @@ const char* GetGameDescription()
 		return "Half-Life";
 }
 
-/*
-================
-Sys_Error
-
-Engine is going to shut down, allows setting a breakpoint in game .dll to catch that occasion
-================
-*/
+/**
+ *	@brief Engine is going to shut down, allows setting a breakpoint in game .dll to catch that occasion
+ */
 void Sys_Error(const char* error_string)
 {
 	// Default case, do nothing.  MOD AUTHORS:  Add code ( e.g., _asm { int 3 }; here to cause a breakpoint for debugging your game .dlls
 }
 
-/*
-================
-PlayerCustomization
-
-A new player customization has been registered on the server
-UNDONE:  This only sets the # of frames of the spray can logo
-animation right now.
-================
-*/
+/**
+ *	@brief A new player customization has been registered on the server
+ *	@details UNDONE: This only sets the # of frames of the spray can logo animation right now.
+ */
 void PlayerCustomization(edict_t* pEntity, customization_t* pCust)
 {
-	CBasePlayer* pPlayer = (CBasePlayer*)GET_PRIVATE(pEntity);
+	CBasePlayer* pPlayer = ToBasePlayer(pEntity);
 
 	if (!pPlayer)
 	{
@@ -1114,20 +1373,19 @@ void PlayerCustomization(edict_t* pEntity, customization_t* pCust)
 // PAS and PVS routines for client messaging
 //
 
-/*
-================
-SetupVisibility
-
-A client can have a separate "view entity" indicating that his/her view should depend on the origin of that
-view entity.  If that's the case, then pViewEntity will be non-nullptr and will be used.  Otherwise, the current
-entity's origin is used.  Either is offset by the view_ofs to get the eye position.
-
-From the eye position, we set up the PAS and PVS to use for filtering network messages to the client.  At this point, we could
- override the actual PAS or PVS values, or use a different origin.
-
-NOTE:  Do not cache the values of pas and pvs, as they depend on reusable memory in the engine, they are only good for this one frame
-================
-*/
+/**
+ *	@brief A client can have a separate "view entity" indicating that his/her view should depend on the origin of that
+ *	view entity.
+ *	If that's the case, then pViewEntity will be non-nullptr and will be used.
+ *	Otherwise, the current entity's origin is used.
+ *	Either is offset by the view_ofs to get the eye position.
+ *
+ *	From the eye position, we set up the PAS and PVS to use for filtering network messages to the client.
+ *	At this point, we could override the actual PAS or PVS values, or use a different origin.
+ *
+ *	NOTE: Do not cache the values of pas and pvs, as they depend on reusable memory in the engine,
+ *	they are only good for this one frame
+ */
 void SetupVisibility(edict_t* pViewEntity, edict_t* pClient, unsigned char** pvs, unsigned char** pas)
 {
 	Vector org;
@@ -1158,19 +1416,21 @@ void SetupVisibility(edict_t* pViewEntity, edict_t* pClient, unsigned char** pvs
 
 #include "entity_state.h"
 
-/*
-AddToFullPack
-
-Return 1 if the entity state has been filled in for the ent and the entity will be propagated to the client, 0 otherwise
-
-state is the server maintained copy of the state info that is transmitted to the client
-a MOD could alter values copied into state to send the "host" a different look for a particular entity update, etc.
-e and ent are the entity that is being added to the update, if 1 is returned
-host is the player's edict of the player whom we are sending the update to
-player is 1 if the ent/e is a player and 0 otherwise
-pSet is either the PAS or PVS that we previous set up.  We can use it to ask the engine to filter the entity against the PAS or PVS.
-we could also use the pas/ pvs that we set in SetupVisibility, if we wanted to.  Caching the value is valid in that case, but still only for the current frame
-*/
+/**
+ *	@brief Return 1 if the entity state has been filled in for the ent and the entity will be propagated to the client,
+ *	0 otherwise
+ *	@param state the server maintained copy of the state info that is transmitted to the client
+ *		a MOD could alter values copied into state to send the "host" a different look for a particular entity update, etc.
+ *	@param e index of the entity that is being added to the update, if 1 is returned
+ *	@param ent the entity that is being added to the update, if 1 is returned
+ *	@param host is the player's edict of the player whom we are sending the update to
+ *	@param hostflags 1 if the host has <tt>cl_lw</tt> enabled, 0 otherwise
+ *	@param player 1 if the ent/e is a player and 0 otherwise
+ *	@param pSet either the PAS or PVS that we previous set up.
+ *		We can use it to ask the engine to filter the entity against the PAS or PVS.
+ *		we could also use the pas/ pvs that we set in SetupVisibility, if we wanted to.
+ *		Caching the value is valid in that case, but still only for the current frame
+ */
 int AddToFullPack(entity_state_t* state, int e, edict_t* ent, edict_t* host, int hostflags, int player, unsigned char* pSet)
 {
 	// Entities with an index greater than this will corrupt the client's heap because
@@ -1380,13 +1640,10 @@ int AddToFullPack(entity_state_t* state, int e, edict_t* ent, edict_t* host, int
 	return 1;
 }
 
-/*
-===================
-CreateBaseline
-
-Creates baselines used for network encoding, especially for player data since players are not spawned until connect time.
-===================
-*/
+/**
+ *	@brief Creates baselines used for network encoding,
+ *	especially for player data since players are not spawned until connect time.
+ */
 void CreateBaseline(int player, int eindex, entity_state_t* baseline, edict_t* entity, int playermodelindex, Vector* player_mins, Vector* player_maxs)
 {
 	baseline->origin = entity->v.origin;
@@ -1466,14 +1723,10 @@ void Entity_FieldInit(delta_t* pFields)
 	entity_field_alias[FIELD_ANGLES2].field = DELTA_FINDFIELD(pFields, entity_field_alias[FIELD_ANGLES2].name);
 }
 
-/*
-==================
-Entity_Encode
-
-Callback for sending entity_state_t info over network.
-FIXME:  Move to script
-==================
-*/
+/**
+ *	@brief Callback for sending entity_state_t info over network.
+ *	FIXME: Move to script
+ */
 void Entity_Encode(delta_t* pFields, const unsigned char* from, const unsigned char* to)
 {
 	entity_state_t *f, *t;
@@ -1537,13 +1790,9 @@ void Player_FieldInit(delta_t* pFields)
 	player_field_alias[FIELD_ORIGIN2].field = DELTA_FINDFIELD(pFields, player_field_alias[FIELD_ORIGIN2].name);
 }
 
-/*
-==================
-Player_Encode
-
-Callback for sending entity_state_t for players info over network.
-==================
-*/
+/**
+ *	@brief Callback for sending entity_state_t for players info over network.
+ */
 void Player_Encode(delta_t* pFields, const unsigned char* from, const unsigned char* to)
 {
 	entity_state_t *f, *t;
@@ -1618,14 +1867,10 @@ void Custom_Entity_FieldInit(delta_t* pFields)
 	custom_entity_field_alias[CUSTOMFIELD_ANIMTIME].field = DELTA_FINDFIELD(pFields, custom_entity_field_alias[CUSTOMFIELD_ANIMTIME].name);
 }
 
-/*
-==================
-Custom_Encode
-
-Callback for sending entity_state_t info ( for custom entities ) over network.
-FIXME:  Move to script
-==================
-*/
+/**
+ *	@brief Callback for sending entity_state_t info ( for custom entities ) over network.
+ *	FIXME: Move to script
+ */
 void Custom_Encode(delta_t* pFields, const unsigned char* from, const unsigned char* to)
 {
 	entity_state_t *f, *t;
@@ -1671,13 +1916,10 @@ void Custom_Encode(delta_t* pFields, const unsigned char* from, const unsigned c
 	}
 }
 
-/*
-=================
-RegisterEncoders
-
-Allows game .dll to override network encoding of certain types of entities and tweak values, etc.
-=================
-*/
+/**
+ *	@brief Allows game .dll to override network encoding of certain types of entities and tweak values, etc.
+ *	@details See the mod's @c delta.lst configuration file for relevant encoding settings.
+ */
 void RegisterEncoders()
 {
 	DELTA_ADDENCODER("Entity_Encode", Entity_Encode);
@@ -1692,8 +1934,7 @@ int GetWeaponData(edict_t* player, weapon_data_t* info)
 #if defined(CLIENT_WEAPONS)
 	int i;
 	weapon_data_t* item;
-	entvars_t* pev = &player->v;
-	CBasePlayer* pl = dynamic_cast<CBasePlayer*>(CBasePlayer::Instance(pev));
+	auto pl = ToBasePlayer(player);
 
 	if (!pl)
 		return 1;
@@ -1721,21 +1962,16 @@ int GetWeaponData(edict_t* player, weapon_data_t* info)
 						item->m_iId = weaponInfo.Id;
 						item->m_iClip = gun->m_iClip;
 
-						item->m_flTimeWeaponIdle = V_max(gun->m_flTimeWeaponIdle, -0.001);
-						item->m_flNextPrimaryAttack = V_max(gun->m_flNextPrimaryAttack, -0.001);
-						item->m_flNextSecondaryAttack = V_max(gun->m_flNextSecondaryAttack, -0.001);
+						item->m_flTimeWeaponIdle = std::max(gun->m_flTimeWeaponIdle, -0.001f);
+						item->m_flNextPrimaryAttack = std::max(gun->m_flNextPrimaryAttack, -0.001f);
+						item->m_flNextSecondaryAttack = std::max(gun->m_flNextSecondaryAttack, -0.001f);
 						item->m_fInReload = static_cast<int>(gun->m_fInReload);
 						item->m_fInSpecialReload = gun->m_fInSpecialReload;
-						item->fuser1 = V_max(gun->pev->fuser1, -0.001);
-						item->fuser2 = gun->m_flStartThrow;
-						item->fuser3 = gun->m_flReleaseThrow;
-						item->iuser1 = gun->m_chargeReady;
-						item->iuser2 = gun->m_fInAttack;
-						item->iuser3 = gun->m_fireState;
+						item->fuser1 = std::max(gun->pev->fuser1, -0.001f);
 
 						gun->GetWeaponData(*item);
 
-						//						item->m_flPumpTime				= V_max( gun->m_flPumpTime, -0.001 );
+						// item->m_flPumpTime = std::max(gun->m_flPumpTime, -0.001f);
 					}
 				}
 				gun = gun->m_pNext;
@@ -1746,76 +1982,81 @@ int GetWeaponData(edict_t* player, weapon_data_t* info)
 	return 1;
 }
 
-/*
-=================
-UpdateClientData
-
-Data sent to current client only
-engine sets cd to 0 before calling.
-=================
-*/
+/**
+ *	@brief Data sent to current client only
+ *	@param cd zeroed out by engine before call.
+ */
 void UpdateClientData(const edict_t* ent, int sendweapons, clientdata_t* cd)
 {
-	if (!ent || !ent->pvPrivateData)
+	g_Server.OnUpdateClientData();
+
+	if (!ent)
 		return;
-	entvars_t* pev = (entvars_t*)&ent->v;
-	CBasePlayer* pl = dynamic_cast<CBasePlayer*>(CBasePlayer::Instance(pev));
-	entvars_t* pevOrg = nullptr;
+
+	auto pl = ToBasePlayer(const_cast<edict_t*>(ent));
+
+	if (!pl)
+	{
+		return;
+	}
+
+	CBaseEntity* viewEntity = pl;
+	CBasePlayer* plOrg = pl;
 
 	// if user is spectating different player in First person, override some vars
 	if (pl && pl->pev->iuser1 == OBS_IN_EYE)
 	{
 		if (pl->m_hObserverTarget)
 		{
-			pevOrg = pev;
-			pev = pl->m_hObserverTarget->pev;
-			pl = dynamic_cast<CBasePlayer*>(CBasePlayer::Instance(pev));
+			viewEntity = pl->m_hObserverTarget;
+			pl = ToBasePlayer(viewEntity);
 		}
 	}
 
-	cd->flags = pev->flags;
-	cd->health = pev->health;
+	cd->flags = viewEntity->pev->flags;
+	cd->health = viewEntity->pev->health;
 
-	cd->viewmodel = MODEL_INDEX(STRING(pev->viewmodel));
+	cd->viewmodel = MODEL_INDEX(STRING(viewEntity->pev->viewmodel));
 
-	cd->waterlevel = pev->waterlevel;
-	cd->watertype = pev->watertype;
-	cd->weapons = pev->weapons;
+	cd->waterlevel = viewEntity->pev->waterlevel;
+	cd->watertype = viewEntity->pev->watertype;
 
 	// Vectors
-	cd->origin = pev->origin;
-	cd->velocity = pev->velocity;
-	cd->view_ofs = pev->view_ofs;
-	cd->punchangle = pev->punchangle;
+	cd->origin = viewEntity->pev->origin;
+	cd->velocity = viewEntity->pev->velocity;
+	cd->view_ofs = viewEntity->pev->view_ofs;
+	cd->punchangle = viewEntity->pev->punchangle;
 
-	cd->bInDuck = pev->bInDuck;
-	cd->flTimeStepSound = pev->flTimeStepSound;
-	cd->flDuckTime = pev->flDuckTime;
-	cd->flSwimTime = pev->flSwimTime;
-	cd->waterjumptime = pev->teleport_time;
+	cd->bInDuck = viewEntity->pev->bInDuck;
+	cd->flTimeStepSound = viewEntity->pev->flTimeStepSound;
+	cd->flDuckTime = viewEntity->pev->flDuckTime;
+	cd->flSwimTime = viewEntity->pev->flSwimTime;
+	cd->waterjumptime = viewEntity->pev->teleport_time;
 
 	strcpy(cd->physinfo, ENGINE_GETPHYSINFO(ent));
 
-	cd->maxspeed = pev->maxspeed;
-	cd->fov = pl->m_iFOV;
-	cd->weaponanim = pev->weaponanim;
+	cd->maxspeed = viewEntity->pev->maxspeed;
+	cd->weaponanim = viewEntity->pev->weaponanim;
 
-	cd->pushmsec = pev->pushmsec;
+	cd->pushmsec = viewEntity->pev->pushmsec;
 
 	// Spectator mode
-	if (pevOrg != nullptr)
+	// don't use spec vars from chased player
+	cd->iuser1 = plOrg->pev->iuser1;
+	cd->iuser2 = plOrg->pev->iuser2;
+
+	if (pl)
 	{
-		// don't use spec vars from chased player
-		cd->iuser1 = pevOrg->iuser1;
-		cd->iuser2 = pevOrg->iuser2;
+		cd->weapons = pl->m_HudFlags;
+		cd->fov = pl->m_iFOV;
+		cd->iuser4 = pl->m_iItems;
 	}
 	else
 	{
-		cd->iuser1 = pev->iuser1;
-		cd->iuser2 = pev->iuser2;
+		cd->weapons = 0;			// Non-players don't have hud flags.
+		cd->fov = plOrg->m_iFOV;	// Use actual player FOV if target is not a player.
+		cd->iuser4 = CTFItem::None; // Non-players don't have items.
 	}
-
-	cd->iuser4 = pl->m_iItems;
 
 #if defined(CLIENT_WEAPONS)
 	if (0 != sendweapons)
@@ -1825,16 +2066,16 @@ void UpdateClientData(const edict_t* ent, int sendweapons, clientdata_t* cd)
 			cd->m_flNextAttack = pl->m_flNextAttack;
 			cd->fuser2 = pl->m_flNextAmmoBurn;
 			cd->fuser3 = pl->m_flAmmoStartCharge;
-			cd->vuser1.x = pl->ammo_9mm;
-			cd->vuser1.y = pl->ammo_357;
-			cd->vuser1.z = pl->ammo_argrens;
-			cd->ammo_nails = pl->ammo_bolts;
-			cd->ammo_shells = pl->ammo_buckshot;
-			cd->ammo_rockets = pl->ammo_rockets;
-			cd->ammo_cells = pl->ammo_uranium;
-			cd->vuser2.x = pl->ammo_hornets;
-			cd->vuser2.y = pl->ammo_spores;
-			cd->vuser2.z = pl->ammo_762;
+			cd->vuser1.x = pl->GetAmmoCount("9mm");
+			cd->vuser1.y = pl->GetAmmoCount("357");
+			cd->vuser1.z = pl->GetAmmoCount("ARgrenades");
+			cd->ammo_nails = pl->GetAmmoCount("bolts");
+			cd->ammo_shells = pl->GetAmmoCount("buckshot");
+			cd->ammo_rockets = pl->GetAmmoCount("rockets");
+			cd->ammo_cells = pl->GetAmmoCount("uranium");
+			cd->vuser2.x = pl->GetAmmoCount("Hornets");
+			cd->vuser2.y = pl->GetAmmoCount("spores");
+			cd->vuser2.z = pl->GetAmmoCount("762");
 
 			if (pl->m_pActiveWeapon)
 			{
@@ -1848,8 +2089,8 @@ void UpdateClientData(const edict_t* ent, int sendweapons, clientdata_t* cd)
 
 					cd->vuser3.z = gun->m_iSecondaryAmmoType;
 					cd->vuser4.x = gun->m_iPrimaryAmmoType;
-					cd->vuser4.y = pl->m_rgAmmo[gun->m_iPrimaryAmmoType];
-					cd->vuser4.z = pl->m_rgAmmo[gun->m_iSecondaryAmmoType];
+					cd->vuser4.y = pl->GetAmmoCountByIndex(gun->m_iPrimaryAmmoType);
+					cd->vuser4.z = pl->GetAmmoCountByIndex(gun->m_iSecondaryAmmoType);
 				}
 			}
 		}
@@ -1857,18 +2098,13 @@ void UpdateClientData(const edict_t* ent, int sendweapons, clientdata_t* cd)
 #endif
 }
 
-/*
-=================
-CmdStart
-
-We're about to run this usercmd for the specified player.  We can set up groupinfo and masking here, etc.
-This is the time to examine the usercmd for anything extra.  This call happens even if think does not.
-=================
-*/
+/**
+ *	@brief We're about to run this usercmd for the specified player. We can set up groupinfo and masking here, etc.
+ *	This is the time to examine the usercmd for anything extra. This call happens even if think does not.
+ */
 void CmdStart(const edict_t* player, const usercmd_t* cmd, unsigned int random_seed)
 {
-	entvars_t* pev = (entvars_t*)&player->v;
-	CBasePlayer* pl = dynamic_cast<CBasePlayer*>(CBasePlayer::Instance(pev));
+	auto pl = ToBasePlayer(const_cast<edict_t*>(player));
 
 	if (!pl)
 		return;
@@ -1881,17 +2117,12 @@ void CmdStart(const edict_t* player, const usercmd_t* cmd, unsigned int random_s
 	pl->random_seed = random_seed;
 }
 
-/*
-=================
-CmdEnd
-
-Each cmdstart is exactly matched with a cmd end, clean up any group trace flags, etc. here
-=================
-*/
+/**
+ *	@brief Each cmdstart is exactly matched with a cmd end, clean up any group trace flags, etc. here
+ */
 void CmdEnd(const edict_t* player)
 {
-	entvars_t* pev = (entvars_t*)&player->v;
-	CBasePlayer* pl = dynamic_cast<CBasePlayer*>(CBasePlayer::Instance(pev));
+	auto pl = ToBasePlayer(const_cast<edict_t*>(player));
 
 	if (!pl)
 		return;
@@ -1901,18 +2132,18 @@ void CmdEnd(const edict_t* player)
 	}
 }
 
-/*
-================================
-ConnectionlessPacket
-
- Return 1 if the packet is valid.  Set response_buffer_size if you want to send a response packet.  Incoming, it holds the max
-  size of the response_buffer, so you must zero it out if you choose not to respond.
-================================
-*/
+/**
+ *	@brief Return 1 if the packet is valid.
+ *	@param net_from Address of the sender.
+ *	@param args Argument string.
+ *	@param response_buffer Buffer to write a response message to.
+ *	@param[in,out] response_buffer_size Initially holds the maximum size of @p response_buffer.
+ *		Set to size of response message or 0 if sending no response.
+ */
 int ConnectionlessPacket(const netadr_t* net_from, const char* args, char* response_buffer, int* response_buffer_size)
 {
 	// Parse stuff from args
-	int max_buffer_size = *response_buffer_size;
+	// int max_buffer_size = *response_buffer_size;
 
 	// Zero it out since we aren't going to respond.
 	// If we wanted to response, we'd write data into response_buffer
@@ -1923,26 +2154,19 @@ int ConnectionlessPacket(const netadr_t* net_from, const char* args, char* respo
 	return 0;
 }
 
-/*
-================================
-GetHullBounds
-
-  Engine calls this to enumerate player collision hulls, for prediction.  Return 0 if the hullnumber doesn't exist.
-================================
-*/
+/**
+ *	@brief Engine calls this to enumerate player collision hulls, for prediction.
+ *	@return 0 if the hullnumber doesn't exist, 1 otherwise.
+ */
 int GetHullBounds(int hullnumber, float* mins, float* maxs)
 {
 	return static_cast<int>(PM_GetHullBounds(hullnumber, mins, maxs));
 }
 
-/*
-================================
-CreateInstancedBaselines
-
-Create pseudo-baselines for items that aren't placed in the map at spawn time, but which are likely
-to be created during play ( e.g., grenades, ammo packs, projectiles, corpses, etc. )
-================================
-*/
+/**
+ *	@brief Create pseudo-baselines for items that aren't placed in the map at spawn time, but which are likely
+ *	to be created during play ( e.g., grenades, ammo packs, projectiles, corpses, etc. )
+ */
 void CreateInstancedBaselines()
 {
 	// int iret = 0;
@@ -1957,14 +2181,11 @@ void CreateInstancedBaselines()
 	// UTIL_Remove( pc );
 }
 
-/*
-================================
-InconsistentFile
-
-One of the ENGINE_FORCE_UNMODIFIED files failed the consistency check for the specified player
- Return 0 to allow the client to continue, 1 to force immediate disconnection ( with an optional disconnect message of up to 256 characters )
-================================
-*/
+/**
+ *	@brief One of the ENGINE_FORCE_UNMODIFIED files failed the consistency check for the specified player
+ *	@return 0 to allow the client to continue, 1 to force immediate disconnection
+ *		( with an optional disconnect message of up to 256 characters )
+ */
 int InconsistentFile(const edict_t* player, const char* filename, char* disconnect_message)
 {
 	// Server doesn't care?
@@ -1978,17 +2199,12 @@ int InconsistentFile(const edict_t* player, const char* filename, char* disconne
 	return 1;
 }
 
-/*
-================================
-AllowLagCompensation
-
- The game .dll should return 1 if lag compensation should be allowed ( could also just set
-  the sv_unlag cvar.
- Most games right now should return 0, until client-side weapon prediction code is written
-  and tested for them ( note you can predict weapons, but not do lag compensation, too,
-  if you want.
-================================
-*/
+/**
+ *	@brief The game .dll should return 1 if lag compensation should be allowed ( must also set the sv_unlag cvar ).
+ *	@details Most games right now should return 0,
+ *	until client-side weapon prediction code is written and tested for them
+ *	( note you can predict weapons, but not do lag compensation, too, if you want ).
+ */
 int AllowLagCompensation()
 {
 	return 1;

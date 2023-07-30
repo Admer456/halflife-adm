@@ -26,19 +26,16 @@ const int AE_GENEWORM_HIT_WALL = 9;
 
 class COFGeneWormCloud : public CBaseEntity
 {
+	DECLARE_CLASS(COFGeneWormCloud, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-
-	int Classify() override { return CLASS_NONE; }
-
 	void Precache() override;
 	void Spawn() override;
 
-	void EXPORT GeneWormCloudThink();
+	void GeneWormCloudThink();
 
-	void EXPORT GeneWormCloudTouch(CBaseEntity* pOther);
+	void GeneWormCloudTouch(CBaseEntity* pOther);
 
 	void RunGeneWormCloud(float frames);
 
@@ -46,7 +43,7 @@ public:
 
 	static COFGeneWormCloud* GeneWormCloudCreate(const Vector& origin);
 
-	void LaunchCloud(const Vector& origin, const Vector& aim, int nSpeed, edict_t* pOwner, float fadeTime);
+	void LaunchCloud(const Vector& origin, const Vector& aim, int nSpeed, CBaseEntity* owner, float fadeTime);
 
 	float m_lastTime;
 	float m_maxFrame;
@@ -60,18 +57,17 @@ public:
 	bool m_fSinking;
 };
 
-TYPEDESCRIPTION COFGeneWormCloud::m_SaveData[] =
-	{
-		DEFINE_FIELD(COFGeneWormCloud, m_lastTime, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWormCloud, m_maxFrame, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWormCloud, m_bLaunched, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFGeneWormCloud, m_fadeScale, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWormCloud, m_fadeRender, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWormCloud, m_damageTimer, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWormCloud, m_fSinking, FIELD_BOOLEAN),
-};
-
-IMPLEMENT_SAVERESTORE(COFGeneWormCloud, CBaseEntity);
+BEGIN_DATAMAP(COFGeneWormCloud)
+DEFINE_FIELD(m_lastTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_maxFrame, FIELD_FLOAT),
+	DEFINE_FIELD(m_bLaunched, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_fadeScale, FIELD_FLOAT),
+	DEFINE_FIELD(m_fadeRender, FIELD_FLOAT),
+	DEFINE_FIELD(m_damageTimer, FIELD_FLOAT),
+	DEFINE_FIELD(m_fSinking, FIELD_BOOLEAN),
+	DEFINE_FUNCTION(GeneWormCloudThink),
+	DEFINE_FUNCTION(GeneWormCloudTouch),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(env_genewormcloud, COFGeneWormCloud);
 
@@ -91,7 +87,7 @@ void COFGeneWormCloud::Spawn()
 
 	SetModel("sprites/ballsmoke.spr");
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetSize(g_vecZero, g_vecZero);
 
@@ -195,11 +191,11 @@ COFGeneWormCloud* COFGeneWormCloud::GeneWormCloudCreate(const Vector& origin)
 	return pCloud;
 }
 
-void COFGeneWormCloud::LaunchCloud(const Vector& origin, const Vector& aim, int nSpeed, edict_t* pOwner, float fadeTime)
+void COFGeneWormCloud::LaunchCloud(const Vector& origin, const Vector& aim, int nSpeed, CBaseEntity* owner, float fadeTime)
 {
-	pev->angles = pOwner->v.angles;
+	pev->angles = owner->pev->angles;
 
-	pev->owner = pOwner;
+	SetOwner(owner);
 
 	pev->velocity = aim * nSpeed;
 
@@ -211,7 +207,7 @@ void COFGeneWormCloud::LaunchCloud(const Vector& origin, const Vector& aim, int 
 	pev->aiment = nullptr;
 	pev->movetype = MOVETYPE_FLY;
 
-	UTIL_SetOrigin(pev, origin);
+	SetOrigin(origin);
 
 	SetTouch(&COFGeneWormCloud::GeneWormCloudTouch);
 	m_bLaunched = true;
@@ -221,17 +217,16 @@ const auto GENEWORM_SPAWN_BEAM_COUNT = 8;
 
 class COFGeneWormSpawn : public CBaseEntity
 {
-public:
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+	DECLARE_CLASS(COFGeneWormSpawn, CBaseEntity);
+	DECLARE_DATAMAP();
 
+public:
 	void Precache() override;
 	void Spawn() override;
 
-	void EXPORT GeneWormSpawnThink();
+	void GeneWormSpawnThink();
 
-	void EXPORT GeneWormSpawnTouch(CBaseEntity* pOther);
+	void GeneWormSpawnTouch(CBaseEntity* pOther);
 
 	void RunGeneWormSpawn(float frames);
 
@@ -239,7 +234,7 @@ public:
 
 	static COFGeneWormSpawn* GeneWormSpawnCreate(const Vector& origin);
 
-	void LaunchSpawn(const Vector& origin, const Vector& aim, int nSpeed, edict_t* pOwner, float flBirthTime);
+	void LaunchSpawn(const Vector& origin, const Vector& aim, int nSpeed, CBaseEntity* owner, float flBirthTime);
 
 	void CreateWarpBeams(int side);
 
@@ -257,20 +252,19 @@ public:
 	int m_iBeams;
 };
 
-TYPEDESCRIPTION COFGeneWormSpawn::m_SaveData[] =
-	{
-		DEFINE_FIELD(COFGeneWormSpawn, m_lastTime, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWormSpawn, m_maxFrame, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWormSpawn, m_flBirthTime, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWormSpawn, m_flWarpTime, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWormSpawn, m_bLaunched, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFGeneWormSpawn, m_bWarping, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFGeneWormSpawn, m_bTrooperDropped, FIELD_BOOLEAN),
-		DEFINE_ARRAY(COFGeneWormSpawn, m_pBeam, FIELD_CLASSPTR, GENEWORM_SPAWN_BEAM_COUNT),
-		DEFINE_FIELD(COFGeneWormSpawn, m_iBeams, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(COFGeneWormSpawn, CBaseEntity);
+BEGIN_DATAMAP(COFGeneWormSpawn)
+DEFINE_FIELD(m_lastTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_maxFrame, FIELD_FLOAT),
+	DEFINE_FIELD(m_flBirthTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_flWarpTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_bLaunched, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_bWarping, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_bTrooperDropped, FIELD_BOOLEAN),
+	DEFINE_ARRAY(m_pBeam, FIELD_CLASSPTR, GENEWORM_SPAWN_BEAM_COUNT),
+	DEFINE_FIELD(m_iBeams, FIELD_INTEGER),
+	DEFINE_FUNCTION(GeneWormSpawnThink),
+	DEFINE_FUNCTION(GeneWormSpawnTouch),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(env_genewormspawn, COFGeneWormSpawn);
 
@@ -292,7 +286,7 @@ void COFGeneWormSpawn::Spawn()
 
 	SetModel("sprites/boss_glow.spr");
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetSize(g_vecZero, g_vecZero);
 
@@ -370,7 +364,7 @@ void COFGeneWormSpawn::RunGeneWormSpawn(float frames)
 					}
 					else
 					{
-						::RadiusDamage(pev->origin, this, this, 1000.0, 128.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_SHOCK);
+						::RadiusDamage(pev->origin, this, this, 1000.0, 128.0, DMG_ALWAYSGIB | DMG_SHOCK);
 						CreateWarpBeams(1);
 						CreateWarpBeams(-1);
 					}
@@ -460,12 +454,12 @@ COFGeneWormSpawn* COFGeneWormSpawn::GeneWormSpawnCreate(const Vector& origin)
 	return pSpawn;
 }
 
-void COFGeneWormSpawn::LaunchSpawn(const Vector& origin, const Vector& aim, int nSpeed, edict_t* pOwner, float flBirthTime)
+void COFGeneWormSpawn::LaunchSpawn(const Vector& origin, const Vector& aim, int nSpeed, CBaseEntity* owner, float flBirthTime)
 {
 	pev->movetype = MOVETYPE_FLY;
 
-	pev->angles = pOwner->v.angles;
-	pev->owner = pOwner;
+	pev->angles = owner->pev->angles;
+	SetOwner(owner);
 	pev->velocity = aim * nSpeed;
 
 	pev->speed = nSpeed;
@@ -480,7 +474,7 @@ void COFGeneWormSpawn::LaunchSpawn(const Vector& origin, const Vector& aim, int 
 
 	pev->frame = 0;
 
-	UTIL_SetOrigin(pev, origin);
+	SetOrigin(origin);
 
 	SetTouch(&COFGeneWormSpawn::GeneWormSpawnTouch);
 	m_bLaunched = true;
@@ -502,7 +496,7 @@ void COFGeneWormSpawn::CreateWarpBeams(int side)
 	{
 		Vector vecAim = gpGlobals->v_right * side * RANDOM_FLOAT(0, 1) + gpGlobals->v_up * RANDOM_FLOAT(-1, 1);
 		TraceResult tr1;
-		UTIL_TraceLine(vecSrc, vecSrc + vecAim * 512, dont_ignore_monsters, ENT(pev), &tr1);
+		UTIL_TraceLine(vecSrc, vecSrc + vecAim * 512, dont_ignore_monsters, edict(), &tr1);
 		if (flDist > tr1.flFraction)
 		{
 			tr = tr1;
@@ -545,14 +539,13 @@ int iGeneWormSpitSprite;
 
 class COFGeneWorm : public CBaseMonster
 {
+	DECLARE_CLASS(COFGeneWorm, CBaseMonster);
+	DECLARE_DATAMAP();
+
 public:
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-
-	int Classify() override { return CLASS_ALIEN_MONSTER; }
-
 	int BloodColor() override { return BLOOD_COLOR_GREEN; }
+
+	bool HasAlienGibs() override { return true; }
 
 	// Don't gib ever
 	void GibMonster() override {}
@@ -576,23 +569,34 @@ public:
 		CBaseMonster::Killed(attacker, iGib);
 	}
 
+	void UpdateOnRemove() override
+	{
+		if (m_orificeGlow)
+		{
+			UTIL_Remove(m_orificeGlow);
+			m_orificeGlow = nullptr;
+		}
+
+		CBaseMonster::UpdateOnRemove();
+	}
+
 	bool FVisible(CBaseEntity* pEntity) override;
 
 	bool FVisible(const Vector& vecOrigin) override;
 
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 
-	void EXPORT StartupThink();
+	void StartupThink();
 
-	void EXPORT HuntThink();
+	void HuntThink();
 
-	void EXPORT DyingThink();
+	void DyingThink();
 
-	void EXPORT NullThink();
+	void NullThink();
 
-	void EXPORT HitTouch(CBaseEntity* pOther);
+	void HitTouch(CBaseEntity* pOther);
 
-	void EXPORT CommandUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void CommandUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 
 	void NextActivity();
 
@@ -651,37 +655,40 @@ public:
 	float m_flMadDelayTime;
 };
 
-TYPEDESCRIPTION COFGeneWorm::m_SaveData[] =
-	{
-		DEFINE_FIELD(COFGeneWorm, m_flNextPainSound, FIELD_TIME),
-		DEFINE_FIELD(COFGeneWorm, m_posTarget, FIELD_POSITION_VECTOR),
-		DEFINE_FIELD(COFGeneWorm, m_flLastSeen, FIELD_TIME),
-		DEFINE_FIELD(COFGeneWorm, m_flPrevSeen, FIELD_TIME),
-		DEFINE_FIELD(COFGeneWorm, m_pCloud, FIELD_CLASSPTR),
-		DEFINE_FIELD(COFGeneWorm, m_iWasHit, FIELD_INTEGER),
-		DEFINE_FIELD(COFGeneWorm, m_flTakeHitTime, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWorm, m_flHitTime, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWorm, m_flNextMeleeTime, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWorm, m_flNextRangeTime, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWorm, m_fRightEyeHit, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFGeneWorm, m_fLeftEyeHit, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFGeneWorm, m_fGetMad, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFGeneWorm, m_fOrificeHit, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFGeneWorm, m_flOrificeOpenTime, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWorm, m_orificeGlow, FIELD_CLASSPTR),
-		DEFINE_FIELD(COFGeneWorm, m_fSpawningTrooper, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFGeneWorm, m_flSpawnTrooperTime, FIELD_FLOAT),
-		DEFINE_FIELD(COFGeneWorm, m_iHitTimes, FIELD_INTEGER),
-		DEFINE_FIELD(COFGeneWorm, m_iMaxHitTimes, FIELD_INTEGER),
-		DEFINE_FIELD(COFGeneWorm, m_fSpitting, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFGeneWorm, m_flSpitStartTime, FIELD_TIME),
-		DEFINE_FIELD(COFGeneWorm, m_fActivated, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFGeneWorm, m_flDeathStart, FIELD_TIME),
-		DEFINE_FIELD(COFGeneWorm, m_fHasEntered, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFGeneWorm, m_flMadDelayTime, FIELD_FLOAT),
-};
-
-IMPLEMENT_SAVERESTORE(COFGeneWorm, CBaseMonster);
+BEGIN_DATAMAP(COFGeneWorm)
+DEFINE_FIELD(m_flNextPainSound, FIELD_TIME),
+	DEFINE_FIELD(m_posTarget, FIELD_POSITION_VECTOR),
+	DEFINE_FIELD(m_flLastSeen, FIELD_TIME),
+	DEFINE_FIELD(m_flPrevSeen, FIELD_TIME),
+	DEFINE_FIELD(m_pCloud, FIELD_CLASSPTR),
+	DEFINE_FIELD(m_iWasHit, FIELD_INTEGER),
+	DEFINE_FIELD(m_flTakeHitTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_flHitTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_flNextMeleeTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_flNextRangeTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_fRightEyeHit, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_fLeftEyeHit, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_fGetMad, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_fOrificeHit, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flOrificeOpenTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_orificeGlow, FIELD_CLASSPTR),
+	DEFINE_FIELD(m_fSpawningTrooper, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flSpawnTrooperTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_iHitTimes, FIELD_INTEGER),
+	DEFINE_FIELD(m_iMaxHitTimes, FIELD_INTEGER),
+	DEFINE_FIELD(m_fSpitting, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flSpitStartTime, FIELD_TIME),
+	DEFINE_FIELD(m_fActivated, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flDeathStart, FIELD_TIME),
+	DEFINE_FIELD(m_fHasEntered, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flMadDelayTime, FIELD_FLOAT),
+	DEFINE_FUNCTION(StartupThink),
+	DEFINE_FUNCTION(HuntThink),
+	DEFINE_FUNCTION(DyingThink),
+	DEFINE_FUNCTION(NullThink),
+	DEFINE_FUNCTION(HitTouch),
+	DEFINE_FUNCTION(CommandUse),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(monster_geneworm, COFGeneWorm);
 
@@ -746,6 +753,8 @@ void COFGeneWorm::OnCreate()
 
 	pev->health = GetSkillFloat("geneworm_health"sv);
 	pev->model = MAKE_STRING("models/geneworm.mdl");
+
+	SetClassification("alien_monster");
 }
 
 void COFGeneWorm::Spawn()
@@ -759,7 +768,7 @@ void COFGeneWorm::Spawn()
 
 	SetSize({-436.67, -720.49, -331.74}, {425.29, 164.85, 355.68});
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	pev->flags |= FL_MONSTER;
 	pev->takedamage = DAMAGE_AIM;
@@ -803,7 +812,7 @@ void COFGeneWorm::Spawn()
 
 	m_flSpitStartTime = gpGlobals->time;
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	pev->rendermode = kRenderTransTexture;
 
@@ -994,7 +1003,7 @@ void COFGeneWorm::HuntThink()
 		// Keep the glow in place relative to the orifice
 		Vector vecOrigin, vecAngles;
 		GetAttachment(1, vecOrigin, vecAngles);
-		UTIL_SetOrigin(m_orificeGlow->pev, vecOrigin);
+		m_orificeGlow->SetOrigin(vecOrigin);
 	}
 
 	if (m_hEnemy)
@@ -1057,7 +1066,9 @@ void COFGeneWorm::HuntThink()
 
 				m_pCloud->TurnOn();
 
-				m_pCloud->LaunchCloud(vecOrigin, (m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs - vecOrigin).Normalize() + Vector(0, 0, RANDOM_FLOAT(-0.01, 0.01)), 1000, edict(), 35);
+				m_pCloud->LaunchCloud(vecOrigin,
+					(m_hEnemy->pev->origin + m_hEnemy->pev->view_ofs - vecOrigin).Normalize() + Vector(0, 0, RANDOM_FLOAT(-0.01, 0.01)),
+					1000, this, 35);
 
 				m_pCloud = nullptr;
 			}
@@ -1126,19 +1137,27 @@ void COFGeneWorm::DyingThink()
 
 	if (gpGlobals->time - m_flDeathStart >= 15)
 	{
-		auto pPlayer = UTIL_GetLocalPlayer();
-
-		if (pPlayer)
+		if (g_pGameRules->IsMultiplayer())
 		{
-			// Teleport the player to the end script
-			// TODO: this really shouldn't be hardcoded
-			for (auto pTeleport : UTIL_FindEntitiesByTargetname("GeneWormTeleport"))
-			{
-				pTeleport->Touch(pPlayer);
-				AILogger->debug("Touching Target GeneWormTeleport");
-			}
+			// Fire this so level designers can respond to this at the right time.
+			FireTargets("GeneWormTeleport", this, this, USE_ON, 1);
+		}
+		else
+		{
+			auto pPlayer = UTIL_GetLocalPlayer();
 
-			FireTargets("GeneWormTeleport", pPlayer, pPlayer, USE_ON, 1);
+			if (pPlayer)
+			{
+				// Teleport the player to the end script
+				// TODO: this really shouldn't be hardcoded
+				for (auto pTeleport : UTIL_FindEntitiesByTargetname("GeneWormTeleport"))
+				{
+					pTeleport->Touch(pPlayer);
+					AILogger->debug("Touching Target GeneWormTeleport");
+				}
+
+				FireTargets("GeneWormTeleport", pPlayer, pPlayer, USE_ON, 1);
+			}
 		}
 
 		m_flDeathStart = gpGlobals->time + 999;
@@ -1222,7 +1241,7 @@ void COFGeneWorm::CommandUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_
 
 		pev->solid = SOLID_BBOX;
 
-		UTIL_SetOrigin(pev, pev->origin);
+		SetOrigin(pev->origin);
 		EmitSound(CHAN_VOICE, "geneworm/geneworm_entry.wav", VOL_NORM, 0.1);
 	}
 }
@@ -1314,7 +1333,7 @@ void COFGeneWorm::NextActivity()
 
 bool COFGeneWorm::ClawAttack()
 {
-	auto pEnemy = m_hEnemy.Entity<CBaseEntity>();
+	CBaseEntity* pEnemy = m_hEnemy;
 
 	if (pEnemy)
 	{
@@ -1618,7 +1637,7 @@ void COFGeneWorm::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 			EmitSoundDyn(CHAN_WEAPON, pSpawnSounds[RANDOM_LONG(0, std::size(pSpawnSounds) - 1)], VOL_NORM, 0.1, 0, RANDOM_LONG(-5, 5) + 100);
 
-			m_orificeGlow->LaunchSpawn(vecPos, gpGlobals->v_forward, RANDOM_LONG(0, 50) + 300, edict(), 2);
+			m_orificeGlow->LaunchSpawn(vecPos, gpGlobals->v_forward, RANDOM_LONG(0, 50) + 300, this, 2);
 
 			m_orificeGlow = nullptr;
 		}
@@ -1667,7 +1686,7 @@ void COFGeneWorm::TrackHead()
 
 	const auto yawDelta = UTIL_AngleDiff(angles.y, pev->angles.y);
 
-	const auto yawAngle = V_max(-30, V_min(30, yawDelta));
+	const auto yawAngle = std::clamp(yawDelta, -30.f, 30.f);
 
 	SetBoneController(0, yawAngle);
 }

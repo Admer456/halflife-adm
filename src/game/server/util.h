@@ -17,8 +17,6 @@
 
 #include <fmt/core.h>
 
-#include <EASTL/fixed_string.h>
-
 #include "Platform.h"
 
 //
@@ -53,14 +51,9 @@ inline globalvars_t* gpGlobals = nullptr;
 edict_t* UTIL_GetEntityList();
 
 /**
- *	@brief Gets the local player in singleplayer, or @c nullptr in multiplayer.
+ *	@brief Gets the local player in singleplayer, or the first player on the server in multiplayer.
  */
 CBasePlayer* UTIL_GetLocalPlayer();
-
-inline void MESSAGE_BEGIN(int msg_dest, int msg_type, const float* pOrigin, entvars_t* ent)
-{
-	(*g_engfuncs.pfnMessageBegin)(msg_dest, msg_type, pOrigin, ENT(ent));
-}
 
 #define cchMapNameMost 32
 
@@ -71,7 +64,9 @@ inline void MESSAGE_BEGIN(int msg_dest, int msg_type, const float* pOrigin, entv
 #define VIEW_FIELD_ULTRA_NARROW (float)0.9 // +-25 degrees, more narrow check used to set up ranged attacks
 
 // All monsters need this data
+// TODO: convert into enum class? make sure the type is correct, add info about where to find these (Half-Life/valve/gfx/palette.bmp)
 #define DONT_BLEED -1
+constexpr byte BLOOD_COLOR_BRIGHT_BLUE = 208;
 #define BLOOD_COLOR_RED (byte)247
 #define BLOOD_COLOR_YELLOW (byte)195
 #define BLOOD_COLOR_GREEN BLOOD_COLOR_YELLOW
@@ -111,15 +106,11 @@ inline bool FStrEq(const char* sz1, const char* sz2)
 }
 
 // Misc. Prototypes
-float UTIL_VecToYaw(const Vector& vec);
-Vector UTIL_VecToAngles(const Vector& vec);
-float UTIL_AngleMod(float a);
-float UTIL_AngleDiff(float destAngle, float srcAngle);
-
 CBaseEntity* UTIL_FindEntityInSphere(CBaseEntity* pStartEntity, const Vector& vecCenter, float flRadius);
 CBaseEntity* UTIL_FindEntityByString(CBaseEntity* pStartEntity, const char* szKeyword, const char* szValue);
 CBaseEntity* UTIL_FindEntityByClassname(CBaseEntity* pStartEntity, const char* szName);
-CBaseEntity* UTIL_FindEntityByTargetname(CBaseEntity* pStartEntity, const char* szName);
+CBaseEntity* UTIL_FindEntityByTargetname(CBaseEntity* pStartEntity, const char* szName,
+	CBaseEntity* activator = nullptr, CBaseEntity* caller = nullptr);
 
 /**
  *	@brief For doing a reverse lookup. Say you have a door, and want to find its button.
@@ -127,6 +118,11 @@ CBaseEntity* UTIL_FindEntityByTargetname(CBaseEntity* pStartEntity, const char* 
 CBaseEntity* UTIL_FindEntityByTarget(CBaseEntity* pStartEntity, const char* szName);
 
 CBaseEntity* UTIL_FindEntityGeneric(const char* szName, Vector& vecSrc, float flRadius);
+
+/**
+ *	@brief Finds entities by an identifier matching either classname or targetname.
+ */
+CBaseEntity* UTIL_FindEntityByIdentifier(CBaseEntity* startEntity, const char* needle);
 
 /**
  *	@brief returns a CBasePlayer pointer to a player by index.
@@ -141,6 +137,7 @@ CBasePlayer* UTIL_PlayerByIndex(int playerIndex);
 CBasePlayer* UTIL_FindNearestPlayer(const Vector& origin);
 
 #define UTIL_EntitiesInPVS(pent) (*g_engfuncs.pfnEntitiesInPVS)(pent)
+CBasePlayer* UTIL_FindClientInPVS(CBaseEntity* entity);
 void UTIL_MakeVectors(const Vector& vecAngles);
 
 // Pass in an array of pointers and an array size, it fills the array and returns the number inserted
@@ -150,14 +147,13 @@ int UTIL_EntitiesInBox(CBaseEntity** pList, int listMax, const Vector& mins, con
 void UTIL_MakeAimVectors(const Vector& vecAngles); // like MakeVectors, but assumes pitch isn't inverted
 void UTIL_MakeInvVectors(const Vector& vec, globalvars_t* pgv);
 
-void UTIL_SetOrigin(entvars_t* pev, const Vector& vecOrigin);
 void UTIL_ParticleEffect(const Vector& vecOrigin, const Vector& vecDirection, unsigned int ulColor, unsigned int ulCount);
 void UTIL_ScreenShake(const Vector& center, float amplitude, float frequency, float duration, float radius);
 void UTIL_ScreenShakeAll(const Vector& center, float amplitude, float frequency, float duration);
-void UTIL_ShowMessage(const char* pString, CBaseEntity* pPlayer);
+void UTIL_ShowMessage(const char* pString, CBasePlayer* pPlayer);
 void UTIL_ShowMessageAll(const char* pString);
 void UTIL_ScreenFadeAll(const Vector& color, float fadeTime, float holdTime, int alpha, int flags);
-void UTIL_ScreenFade(CBaseEntity* pEntity, const Vector& color, float fadeTime, float fadeHold, int alpha, int flags);
+void UTIL_ScreenFade(CBasePlayer* pEntity, const Vector& color, float fadeTime, float fadeHold, int alpha, int flags);
 
 enum IGNORE_MONSTERS
 {
@@ -195,7 +191,7 @@ void UTIL_DecalTrace(TraceResult* pTrace, int decalNumber);
 void UTIL_PlayerDecalTrace(TraceResult* pTrace, int playernum, int decalNumber, bool bIsCustom);
 void UTIL_GunshotDecalTrace(TraceResult* pTrace, int decalNumber);
 void UTIL_ExplosionEffect(const Vector& explosionOrigin, int modelIndex, byte scale, int framerate, int flags,
-	int msg_dest, const float* pOrigin = nullptr, edict_t* ed = nullptr);
+	int msg_dest, const float* pOrigin = nullptr, CBasePlayer* player = nullptr);
 void UTIL_Sparks(const Vector& position);
 void UTIL_Ricochet(const Vector& position, float scale);
 void UTIL_StringToIntArray(int* pVector, int count, const char* pString);
@@ -207,6 +203,12 @@ float UTIL_AngleDistance(float next, float cur);
 char* UTIL_VarArgs(const char* format, ...);
 void UTIL_Remove(CBaseEntity* pEntity);
 bool UTIL_IsValidEntity(edict_t* pent);
+
+/**
+ *	@brief Returns whether the given entity can be removed if requested by players or designers (killtarget).
+ */
+bool UTIL_IsRemovableEntity(CBaseEntity* entity);
+
 bool UTIL_TeamsMatch(const char* pTeamName1, const char* pTeamName2);
 
 // Use for ease-in, ease-out style interpolation (accel/decel)
@@ -217,7 +219,20 @@ float UTIL_WaterLevel(const Vector& position, float minz, float maxz);
 void UTIL_Bubbles(Vector mins, Vector maxs, int count);
 void UTIL_BubbleTrail(Vector from, Vector to, int count);
 
-// allows precacheing of other entities
+/**
+ *	@brief Initializes the given entity with the given list of keyvalue pairs.
+ */
+void UTIL_InitializeKeyValues(CBaseEntity* entity, string_t* keys, string_t* values, int numKeyValues);
+
+/**
+ *	@brief Allows precaching of other entities,
+ *	initializing it with the given pairs of keyvalues so custom settings precache correctly.
+ */
+void UTIL_PrecacheOther(const char* szClassname, string_t* keys, string_t* values, int numKeyValues);
+
+/**
+ *	@brief Allows precaching of other entities
+ */
 void UTIL_PrecacheOther(const char* szClassname);
 
 // prints a message to each client
@@ -228,32 +243,12 @@ inline void UTIL_CenterPrintAll(const char* msg_name, const char* param1 = nullp
 }
 
 // prints messages through the HUD
-void ClientPrint(entvars_t* client, int msg_dest, const char* msg_name, const char* param1 = nullptr, const char* param2 = nullptr, const char* param3 = nullptr, const char* param4 = nullptr);
+void ClientPrint(CBasePlayer* client, int msg_dest, const char* msg_name,
+	const char* param1 = nullptr, const char* param2 = nullptr, const char* param3 = nullptr, const char* param4 = nullptr);
 
 // prints a message to the HUD say (chat)
-void UTIL_SayText(const char* pText, CBaseEntity* pEntity);
-void UTIL_SayTextAll(const char* pText, CBaseEntity* pEntity);
-
-/**
- *	@brief Prints to the given player's console.
- *	Uses fmtlib format strings.
- */
-template <typename... Args>
-void UTIL_ConsolePrint(edict_t* client, fmt::format_string<Args...> fmt, Args&&... args)
-{
-	eastl::fixed_string<char, 256> buf;
-	fmt::format_to(std::back_inserter(buf), fmt, std::forward<Args>(args)...);
-
-	CLIENT_PRINTF(client, print_console, buf.c_str());
-}
-
-/**
- *	@brief Prints to the given player's console.
- */
-inline void UTIL_ConsolePrint(edict_t* client, const char* msg)
-{
-	CLIENT_PRINTF(client, print_console, msg);
-}
+void UTIL_SayText(const char* pText, CBasePlayer* pEntity);
+void UTIL_SayTextAll(const char* pText, CBasePlayer* pEntity);
 
 struct hudtextparms_t
 {
@@ -271,7 +266,7 @@ struct hudtextparms_t
 
 // prints as transparent 'title' to the HUD
 void UTIL_HudMessageAll(const hudtextparms_t& textparms, const char* pMessage);
-void UTIL_HudMessage(CBaseEntity* pEntity, const hudtextparms_t& textparms, const char* pMessage);
+void UTIL_HudMessage(CBasePlayer* pEntity, const hudtextparms_t& textparms, const char* pMessage);
 
 // Sorta like FInViewCone, but for nonmonsters.
 float UTIL_DotPoints(const Vector& vecSrc, const Vector& vecCheck, const Vector& vecDir);
@@ -279,9 +274,15 @@ float UTIL_DotPoints(const Vector& vecSrc, const Vector& vecCheck, const Vector&
 void UTIL_StripToken(const char* pKey, char* pDest); // for redundant keynames
 
 // Misc functions
-void SetMovedir(entvars_t* pev);
-Vector VecBModelOrigin(entvars_t* pevBModel);
-int BuildChangeList(LEVELLIST* pLevelList, int maxList);
+/**
+ *	@brief QuakeEd only writes a single float for angles (bad idea), so up and down are just constant angles.
+ */
+void SetMovedir(CBaseEntity* entity);
+
+/**
+ *	@brief calculates origin of a bmodel from absmin/size because all bmodel origins are 0 0 0
+ */
+Vector VecBModelOrigin(CBaseEntity* bModel);
 
 //
 // Constants that were used only by QC (maybe not used at all now)
@@ -302,16 +303,18 @@ inline int g_Language;
 
 #define SPEAKER_START_SILENT 1 // wait for trigger 'on' to start announcements
 
-constexpr int SND_VOLUME = 1 << 0;			 // Volume is not 255
-constexpr int SND_ATTENUATION = 1 << 1;		 // Attenuation is not 1
-constexpr int SND_LARGE_INDEX = 1 << 2;		 // Sound or sentence index is larger than 8 bits
-constexpr int SND_PITCH = 1 << 3;			 // Pitch is not 100
-constexpr int SND_SENTENCE = 1 << 4;		 // This is a sentence
-constexpr int SND_STOP = 1 << 5;			 // duplicated in protocol.h stop sound
-constexpr int SND_CHANGE_VOL = 1 << 6;		 // duplicated in protocol.h change sound vol
-constexpr int SND_CHANGE_PITCH = 1 << 7;	 // duplicated in protocol.h change sound pitch
-constexpr int SND_SPAWNING = 1 << 8;		 // duplicated in protocol.h we're spawing, used in some cases for ambients
-constexpr int SND_PLAY_WHEN_PAUSED = 1 << 9; // For client side use only: start playing sound even when paused.
+// Only the first 8 flags are sent from the server to the client.
+constexpr int SND_VOLUME = 1 << 0;				// Volume is not 255
+constexpr int SND_ATTENUATION = 1 << 1;			// Attenuation is not 1
+constexpr int SND_LARGE_INDEX = 1 << 2;			// Sound or sentence index is larger than 8 bits
+constexpr int SND_PITCH = 1 << 3;				// Pitch is not 100
+constexpr int SND_SENTENCE = 1 << 4;			// This is a sentence
+constexpr int SND_STOP = 1 << 5;				// duplicated in protocol.h stop sound
+constexpr int SND_CHANGE_VOL = 1 << 6;			// duplicated in protocol.h change sound vol
+constexpr int SND_CHANGE_PITCH = 1 << 7;		// duplicated in protocol.h change sound pitch
+constexpr int SND_SPAWNING = 1 << 8;			// duplicated in protocol.h we're spawing, used in some cases for ambients
+constexpr int SND_PLAY_WHEN_PAUSED = 1 << 9;	// For client side use only: start playing sound even when paused.
+constexpr int SND_NOTHOST = 1 << 10;			// Don't send sound message to host (only for sounds emitted by players).
 
 #define LFO_SQUARE 1
 #define LFO_TRIANGLE 2
@@ -379,11 +382,6 @@ void EMIT_SOUND_PREDICTED(CBaseEntity* entity, int channel, const char* sample, 
 void EMIT_SOUND_SUIT(CBaseEntity* entity, const char* sample);
 
 /**
- *	@brief play a sentence, randomly selected from the passed in group id, over the HEV suit speaker
- */
-void EMIT_GROUPID_SUIT(CBaseEntity* entity, int isentenceg);
-
-/**
  *	@brief play a sentence, randomly selected from the passed in groupname
  */
 void EMIT_GROUPNAME_SUIT(CBaseEntity* entity, const char* groupname);
@@ -426,8 +424,6 @@ float UTIL_WeaponTimeBase();
 CBaseEntity* UTIL_FindEntityForward(CBaseEntity* pMe);
 
 bool UTIL_IsMultiplayer();
-
-bool UTIL_IsCTF();
 
 inline void WRITE_COORD_VECTOR(const Vector& vec)
 {
@@ -530,14 +526,16 @@ class CEntityIterator
 {
 public:
 	CEntityIterator()
-		: m_pszName(""), m_pEntity(nullptr)
+		: m_pszName(""),
+		  m_pEntity(nullptr)
 	{
 	}
 
 	CEntityIterator(const CEntityIterator&) = default;
 
 	CEntityIterator(const char* const pszName, T* pEntity)
-		: m_pszName(pszName), m_pEntity(pEntity)
+		: m_pszName(pszName),
+		  m_pEntity(pEntity)
 	{
 	}
 
@@ -616,7 +614,8 @@ public:
 
 public:
 	CEntityEnumeratorWithStart(const char* pszClassName, T* pStartEntity)
-		: m_pszName(pszClassName), m_pStartEntity(pStartEntity)
+		: m_pszName(pszClassName),
+		  m_pStartEntity(pStartEntity)
 	{
 	}
 

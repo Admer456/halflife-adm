@@ -53,6 +53,7 @@ target_include_directories(client PRIVATE
 	../../common
 	../shared
 	../shared/player_movement
+	../shared/saverestore
 	../shared/utils
 	../../engine
 	../../../utils/vgui/include
@@ -83,6 +84,8 @@ target_sources(client PRIVATE
 	cdll_int.cpp
 	cl_dll.h
 	cl_util.h
+	client_gibs.cpp
+	client_gibs.h
 	ClientLibrary.cpp
 	ClientLibrary.h
 	com_weapons.cpp
@@ -101,7 +104,6 @@ target_sources(client PRIVATE
 	interpolation.cpp
 	interpolation.h
 	player_info.h
-	util.cpp
 	view.cpp
 	view.h
 	
@@ -157,7 +159,7 @@ target_sources(client PRIVATE
 	sound/SentencesSystem.h
 	sound/SoundCache.cpp
 	sound/SoundCache.h
-	sound/SoundInternalDefs.h
+	sound/SoundDefs.h
 	sound/SoundSystem.cpp
 	sound/SoundSystem.h
 
@@ -170,7 +172,6 @@ target_sources(client PRIVATE
 	ui/hud/ammo.h
 	ui/hud/ammohistory.cpp
 	ui/hud/ammohistory.h
-	ui/hud/battery.cpp
 	ui/hud/death.cpp
 	ui/hud/flashlight.cpp
 	ui/hud/geiger.cpp
@@ -178,6 +179,7 @@ target_sources(client PRIVATE
 	ui/hud/health.h
 	ui/hud/hud.cpp
 	ui/hud/hud.h
+	ui/hud/hud_debuginfo.cpp
 	ui/hud/hud_entityinfo.cpp
 	ui/hud/hud_flagicons.cpp
 	ui/hud/hud_msg.cpp
@@ -198,6 +200,10 @@ target_sources(client PRIVATE
 	ui/hud/text_message.cpp
 	ui/hud/train.cpp
 	
+	ui/vgui/CampaignSelectSystem.cpp
+	ui/vgui/CampaignSelectSystem.h
+	ui/vgui/vgui_CampaignSelect.cpp
+	ui/vgui/vgui_CampaignSelect.h
 	ui/vgui/vgui_ClassMenu.cpp
 	ui/vgui/vgui_CustomObjects.cpp
 	ui/vgui/vgui_int.cpp
@@ -238,6 +244,7 @@ target_sources(client PRIVATE
 	
 	../../common/beamdef.h
 	../../common/cl_entity.h
+	../../common/ClassData.h
 	../../common/com_model.h
 	../../common/common_types.h
 	../../common/const.h
@@ -258,7 +265,6 @@ target_sources(client PRIVATE
 	../../common/mathlib.h
 	../../common/netadr.h
 	../../common/net_api.h
-	../../common/parsemsg.cpp
 	../../common/parsemsg.h
 	../../common/particledef.h
 	../../common/Platform.h

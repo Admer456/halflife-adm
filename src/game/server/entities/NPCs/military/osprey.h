@@ -21,33 +21,35 @@
 
 class COsprey : public CBaseMonster
 {
+	DECLARE_CLASS(COsprey, CBaseMonster);
+	DECLARE_DATAMAP();
+
 public:
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
 	int ObjectCaps() override { return CBaseMonster::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 
+	bool IsMachine() const override { return true; }
+
 	void OnCreate() override;
+	bool KeyValue(KeyValueData* pkvd) override;
 	void Spawn() override;
 	void Precache() override;
-	int Classify() override { return CLASS_MACHINE; }
 	int BloodColor() override { return DONT_BLEED; }
 	void Killed(CBaseEntity* attacker, int iGib) override;
 
 	void UpdateGoal();
 	bool HasDead();
-	void EXPORT FlyThink();
-	void EXPORT DeployThink();
+	void FlyThink();
+	void DeployThink();
 	void Flight();
-	void EXPORT HitTouch(CBaseEntity* pOther);
-	void EXPORT FindAllThink();
-	void EXPORT HoverThink();
+	void HitTouch(CBaseEntity* pOther);
+	void FindAllThink();
+	void HoverThink();
 
 	CBaseMonster* MakeGrunt(Vector vecSrc);
 
-	void EXPORT CrashTouch(CBaseEntity* pOther);
-	void EXPORT DyingThink();
-	void EXPORT CommandUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void CrashTouch(CBaseEntity* pOther);
+	void DyingThink();
+	void CommandUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 
 	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
@@ -72,7 +74,7 @@ public:
 	float m_flRightHealth;
 	float m_flLeftHealth;
 
-	int m_iUnits;
+	int m_iUnits = 0;
 	EHANDLE m_hGrunt[MAX_CARRY];
 	Vector m_vecOrigin[MAX_CARRY];
 	EHANDLE m_hRepel[4];

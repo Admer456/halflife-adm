@@ -79,13 +79,6 @@ SBColumnInfo g_ColumnInfo[NUM_COLUMNS] =
 		{nullptr, 2, Label::a_east}, // blank column to take up the slack
 };
 
-
-#define TEAM_NO 0
-#define TEAM_YES 1
-#define TEAM_SPECTATORS 2
-#define TEAM_BLANK 3
-
-
 //-----------------------------------------------------------------------------
 // ScorePanel::HitTestPanel.
 //-----------------------------------------------------------------------------
@@ -103,7 +96,8 @@ void ScorePanel::HitTestPanel::internalMousePressed(MouseCode code)
 //-----------------------------------------------------------------------------
 // Purpose: Create the ScoreBoard panel
 //-----------------------------------------------------------------------------
-ScorePanel::ScorePanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tall)
+ScorePanel::ScorePanel(int x, int y, int wide, int tall)
+	: Panel(x, y, wide, tall)
 {
 	CSchemeManager* pSchemes = gViewPort->GetSchemeManager();
 	SchemeHandle_t hTitleScheme = pSchemes->getSchemeHandle("Scoreboard Title Text");
@@ -294,7 +288,7 @@ void ScorePanel::Update()
 	for (i = 0; i < NUM_ROWS; i++)
 	{
 		m_iSortedRows[i] = 0;
-		m_iIsATeam[i] = TEAM_NO;
+		m_iIsATeam[i] = TeamType::No;
 	}
 	for (i = 0; i < MAX_PLAYERS_HUD; i++)
 	{
@@ -303,7 +297,7 @@ void ScorePanel::Update()
 
 	// If it's not teamplay, sort all the players. Otherwise, sort the teams.
 	if (0 == gHUD.m_Teamplay)
-		SortPlayers(0, nullptr);
+		SortPlayers(TeamType::No, nullptr);
 	else
 		SortTeams();
 
@@ -416,22 +410,22 @@ void ScorePanel::SortTeams()
 
 		// Put this team in the sorted list
 		m_iSortedRows[m_iRows] = best_team;
-		m_iIsATeam[m_iRows] = TEAM_YES;
+		m_iIsATeam[m_iRows] = TeamType::Yes;
 		g_TeamInfo[best_team].already_drawn = true; // set the already_drawn to be true, so this team won't get sorted again
 		m_iRows++;
 
 		// Now sort all the players on this team
-		SortPlayers(0, g_TeamInfo[best_team].name);
+		SortPlayers(TeamType::No, g_TeamInfo[best_team].name);
 	}
 
 	// Add all the players who aren't in a team yet into spectators
-	SortPlayers(TEAM_SPECTATORS, nullptr);
+	SortPlayers(TeamType::Spectators, nullptr);
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: Sort a list of players
 //-----------------------------------------------------------------------------
-void ScorePanel::SortPlayers(int iTeam, char* team)
+void ScorePanel::SortPlayers(TeamType iTeam, char* team)
 {
 	bool bCreatedTeam = false;
 
@@ -467,7 +461,7 @@ void ScorePanel::SortPlayers(int iTeam, char* team)
 			break;
 
 		// If we haven't created the Team yet, do it first
-		if (!bCreatedTeam && 0 != iTeam)
+		if (!bCreatedTeam && TeamType::No != iTeam)
 		{
 			m_iIsATeam[m_iRows] = iTeam;
 			m_iRows++;
@@ -483,7 +477,7 @@ void ScorePanel::SortPlayers(int iTeam, char* team)
 
 	if (team)
 	{
-		m_iIsATeam[m_iRows++] = TEAM_BLANK;
+		m_iIsATeam[m_iRows++] = TeamType::Blank;
 	}
 }
 
@@ -535,7 +529,7 @@ int ScorePanel::RebuildTeams()
 				g_TeamInfo[j].players = 0;
 			}
 
-			m_iNumTeams = V_max(j, m_iNumTeams);
+			m_iNumTeams = std::max(j, m_iNumTeams);
 		}
 		else
 		{
@@ -559,7 +553,7 @@ int ScorePanel::RebuildTeams()
 						break;
 				}
 
-				m_iNumTeams = V_max(j, m_iNumTeams);
+				m_iNumTeams = std::max(j, m_iNumTeams);
 
 				strncpy(g_TeamInfo[j].name, g_PlayerExtraInfo[i].teamname, MAX_TEAM_NAME);
 				g_TeamInfo[j].players = 0;
@@ -655,12 +649,34 @@ void ScorePanel::FillGrid()
 			hud_player_info_t* pl_info = nullptr;
 			team_info_t* team_info = nullptr;
 
-			if (m_iIsATeam[row] == TEAM_BLANK)
+			if (m_iIsATeam[row] == TeamType::No)
 			{
-				pLabel->setText(" ");
-				continue;
+				// team color text for player names
+				pLabel->setFgColor(ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][0],
+					ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][1],
+					ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][2],
+					0);
+
+				// Get the player's data
+				pl_info = &g_PlayerInfoList[m_iSortedRows[row]];
+
+				// Set background color
+				if (0 != pl_info->thisplayer) // if it is their name, draw it a different color
+				{
+					// Highlight this player
+					pLabel->setFgColor(Scheme::sc_white);
+					pLabel->setBgColor(ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][0],
+						ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][1],
+						ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][2],
+						196);
+				}
+				else if (m_iSortedRows[row] == m_iLastKilledBy && 0 != m_fLastKillTime && m_fLastKillTime > gHUD.m_flTime)
+				{
+					// Killer's name
+					pLabel->setBgColor(255, 0, 0, 255 - ((float)15 * (float)(m_fLastKillTime - gHUD.m_flTime)));
+				}
 			}
-			else if (m_iIsATeam[row] == TEAM_YES)
+			else if (m_iIsATeam[row] == TeamType::Yes)
 			{
 				// Get the team's data
 				team_info = &g_TeamInfo[m_iSortedRows[row]];
@@ -688,7 +704,7 @@ void ScorePanel::FillGrid()
 					ScoreColorsBG[team_info->teamnumber % iNumberOfTeamColors][2],
 					0);
 			}
-			else if (m_iIsATeam[row] == TEAM_SPECTATORS)
+			else if (m_iIsATeam[row] == TeamType::Spectators)
 			{
 				// grey text for spectators
 				pLabel->setFgColor(100, 100, 100, 0);
@@ -706,30 +722,9 @@ void ScorePanel::FillGrid()
 			}
 			else
 			{
-				// team color text for player names
-				pLabel->setFgColor(ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][0],
-					ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][1],
-					ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][2],
-					0);
-
-				// Get the player's data
-				pl_info = &g_PlayerInfoList[m_iSortedRows[row]];
-
-				// Set background color
-				if (0 != pl_info->thisplayer) // if it is their name, draw it a different color
-				{
-					// Highlight this player
-					pLabel->setFgColor(Scheme::sc_white);
-					pLabel->setBgColor(ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][0],
-						ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][1],
-						ScoreColorsBG[g_PlayerExtraInfo[m_iSortedRows[row]].teamid % iNumberOfTeamColors][2],
-						196);
-				}
-				else if (m_iSortedRows[row] == m_iLastKilledBy && 0 != m_fLastKillTime && m_fLastKillTime > gHUD.m_flTime)
-				{
-					// Killer's name
-					pLabel->setBgColor(255, 0, 0, 255 - ((float)15 * (float)(m_fLastKillTime - gHUD.m_flTime)));
-				}
+				assert(m_iIsATeam[row] == TeamType::Blank);
+				pLabel->setText(" ");
+				continue;
 			}
 
 			// Align
@@ -748,14 +743,14 @@ void ScorePanel::FillGrid()
 
 			// Fill out with the correct data
 			strcpy(sz, "");
-			if (TEAM_NO != m_iIsATeam[row])
+			if (TeamType::No != m_iIsATeam[row])
 			{
 				char sz2[128];
 
 				switch (col)
 				{
 				case COLUMN_NAME:
-					if (m_iIsATeam[row] == TEAM_SPECTATORS)
+					if (m_iIsATeam[row] == TeamType::Spectators)
 					{
 						sprintf(sz2, "%s", CHudTextMessage::BufferedLocaliseTextString("#Spectators"));
 					}
@@ -767,7 +762,7 @@ void ScorePanel::FillGrid()
 					strcpy(sz, sz2);
 
 					// Append the number of players
-					if (m_iIsATeam[row] == TEAM_YES)
+					if (m_iIsATeam[row] == TeamType::Yes)
 					{
 						if (team_info->players == 1)
 						{
@@ -787,15 +782,15 @@ void ScorePanel::FillGrid()
 				case COLUMN_CLASS:
 					break;
 				case COLUMN_KILLS:
-					if (m_iIsATeam[row] == TEAM_YES)
+					if (m_iIsATeam[row] == TeamType::Yes)
 						sprintf(sz, "%d", team_info->frags);
 					break;
 				case COLUMN_DEATHS:
-					if (m_iIsATeam[row] == TEAM_YES)
+					if (m_iIsATeam[row] == TeamType::Yes)
 						sprintf(sz, "%d", team_info->deaths);
 					break;
 				case COLUMN_LATENCY:
-					if (m_iIsATeam[row] == TEAM_YES)
+					if (m_iIsATeam[row] == TeamType::Yes)
 						sprintf(sz, "%d", team_info->ping);
 					break;
 				default:
@@ -804,7 +799,7 @@ void ScorePanel::FillGrid()
 			}
 			else
 			{
-				bool bShowClass = false;
+				// bool bShowClass = false;
 
 				switch (col)
 				{
@@ -953,10 +948,10 @@ void ScorePanel::mousePressed(MouseCode code, Panel* panel)
 
 			if (pl_info && pl_info->name && '\0' != pl_info->name[0])
 			{
-				char string[256];
+				char string[2048];
 				if (GetClientVoiceMgr()->IsPlayerBlocked(iPlayer))
 				{
-					char string1[1024];
+					char string1[512];
 
 					// remove mute
 					GetClientVoiceMgr()->SetPlayerBlockedState(iPlayer, false);
@@ -964,12 +959,13 @@ void ScorePanel::mousePressed(MouseCode code, Panel* panel)
 					sprintf(string1, CHudTextMessage::BufferedLocaliseTextString("#Unmuted"), pl_info->name);
 					sprintf(string, "%c** %s\n", HUD_PRINTTALK, string1);
 
-					gHUD.m_TextMessage.MsgFunc_TextMsg(nullptr, strlen(string) + 1, string);
+					BufferReader reader{{reinterpret_cast<std::byte*>(string), strlen(string) + 1}};
+					gHUD.m_TextMessage.MsgFunc_TextMsg(nullptr, reader);
 				}
 				else
 				{
-					char string1[1024];
-					char string2[1024];
+					char string1[512];
+					char string2[512];
 
 					// mute the player
 					GetClientVoiceMgr()->SetPlayerBlockedState(iPlayer, true);
@@ -978,7 +974,8 @@ void ScorePanel::mousePressed(MouseCode code, Panel* panel)
 					sprintf(string2, "%s", CHudTextMessage::BufferedLocaliseTextString("#No_longer_hear_that_player"));
 					sprintf(string, "%c** %s %s\n", HUD_PRINTTALK, string1, string2);
 
-					gHUD.m_TextMessage.MsgFunc_TextMsg(nullptr, strlen(string) + 1, string);
+					BufferReader reader{{reinterpret_cast<std::byte*>(string), strlen(string) + 1}};
+					gHUD.m_TextMessage.MsgFunc_TextMsg(nullptr, reader);
 				}
 			}
 		}
@@ -1021,7 +1018,7 @@ void ScorePanel::MouseOverCell(int row, int col)
 		return;
 
 	// don't act on teams
-	if (m_iIsATeam[row] != TEAM_NO)
+	if (m_iIsATeam[row] != TeamType::No)
 		return;
 
 	// don't act on disconnected players or ourselves

@@ -17,14 +17,15 @@
 
 #include "CShockBeam.h"
 
-TYPEDESCRIPTION CShockBeam::m_SaveData[] =
-	{
-		DEFINE_FIELD(CShockBeam, m_pBeam1, FIELD_CLASSPTR),
-		DEFINE_FIELD(CShockBeam, m_pBeam2, FIELD_CLASSPTR),
-		DEFINE_FIELD(CShockBeam, m_pSprite, FIELD_CLASSPTR),
-};
-
-IMPLEMENT_SAVERESTORE(CShockBeam, CShockBeam::BaseClass);
+BEGIN_DATAMAP(CShockBeam)
+DEFINE_FIELD(m_pBeam1, FIELD_CLASSPTR),
+	DEFINE_FIELD(m_pBeam2, FIELD_CLASSPTR),
+	DEFINE_FIELD(m_pSprite, FIELD_CLASSPTR),
+	DEFINE_FUNCTION(FlyThink),
+	DEFINE_FUNCTION(ExplodeThink),
+	DEFINE_FUNCTION(WaterExplodeThink),
+	DEFINE_FUNCTION(BallTouch),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(shock_beam, CShockBeam);
 
@@ -46,7 +47,7 @@ void CShockBeam::Spawn()
 
 	SetModel("models/shock_effect.mdl");
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetSize(Vector(-4, -4, -4), Vector(4, 4, 4));
 
@@ -65,7 +66,7 @@ void CShockBeam::Spawn()
 
 	if (m_pBeam1)
 	{
-		UTIL_SetOrigin(m_pBeam1->pev, pev->origin);
+		m_pBeam1->SetOrigin(pev->origin);
 
 		m_pBeam1->EntsInit(entindex(), entindex());
 
@@ -90,7 +91,7 @@ void CShockBeam::Spawn()
 
 		if (m_pBeam2)
 		{
-			UTIL_SetOrigin(m_pBeam2->pev, pev->origin);
+			m_pBeam2->SetOrigin(pev->origin);
 
 			m_pBeam2->EntsInit(entindex(), entindex());
 
@@ -132,7 +133,7 @@ void CShockBeam::WaterExplodeThink()
 
 	Explode();
 
-	::RadiusDamage(pev->origin, this, pOwner, 100.0, 150.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_BLAST);
+	::RadiusDamage(pev->origin, this, pOwner, 100.0, 150.0, DMG_ALWAYSGIB | DMG_BLAST);
 
 	UTIL_Remove(this);
 }
@@ -242,7 +243,7 @@ CShockBeam* CShockBeam::CreateShockBeam(const Vector& vecOrigin, const Vector& v
 	pBeam->pev->angles = vecAngles;
 	pBeam->pev->angles.x = -pBeam->pev->angles.x;
 
-	UTIL_SetOrigin(pBeam->pev, vecOrigin);
+	pBeam->SetOrigin(vecOrigin);
 
 	UTIL_MakeVectors(pBeam->pev->angles);
 

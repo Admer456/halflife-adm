@@ -34,7 +34,7 @@ static std::string GetHudSpriteConfigSchema()
 			"properties": {{
 				"SpriteName": {{
 					"type": "string",
-					"pattern": "^\\w+$"
+					"pattern": "^[\\w/]+$"
 				}},
 				"Left": {{
 					"type": "integer"
@@ -110,9 +110,6 @@ std::vector<HudSprite> HudSpriteConfigSystem::Load(const char* fileName)
 	return sprites;
 }
 
-/**
- *	@brief Finds and returns the matching sprite name @p spriteName in the given sprite list @p sprites
- */
 const HudSprite* GetSpriteList(const std::vector<HudSprite>& sprites, const char* spriteName)
 {
 	if (auto it = std::find_if(sprites.begin(), sprites.end(), [&](const auto& candidate)

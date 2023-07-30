@@ -34,6 +34,9 @@ enum BarnacleGrappleAnim
 
 class CGrapple : public CBasePlayerWeapon
 {
+	DECLARE_CLASS(CGrapple, CBasePlayerWeapon);
+	DECLARE_DATAMAP();
+
 private:
 	enum class FireState
 	{
@@ -42,20 +45,9 @@ private:
 	};
 
 public:
-	using BaseClass = CBasePlayerWeapon;
-
-#ifndef CLIENT_DLL
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-#endif
-
 	void OnCreate() override;
 
 	void Precache() override;
-
-	void Spawn() override;
 
 	bool Deploy() override;
 
@@ -87,7 +79,7 @@ private:
 	void DestroyEffect();
 
 private:
-	CGrappleTip* m_pTip;
+	CGrappleTip* m_pTip = nullptr;
 
 	CBeam* m_pBeam;
 
@@ -96,7 +88,7 @@ private:
 
 	FireState m_FireState;
 
-	bool m_bGrappling;
+	bool m_bGrappling = false;
 
 	bool m_bMissed;
 

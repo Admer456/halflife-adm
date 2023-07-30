@@ -26,22 +26,23 @@ enum MonsterPenguinAnim
 
 class CPenguinGrenade : public CGrenade
 {
+	DECLARE_CLASS(CPenguinGrenade, CGrenade);
+	DECLARE_DATAMAP();
+
 public:
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-
 	void OnCreate() override;
 	void Precache() override;
 	void GibMonster() override;
-	void EXPORT SuperBounceTouch(CBaseEntity* pOther);
+	void SuperBounceTouch(CBaseEntity* pOther);
 	void Spawn() override;
 
-	int Classify() override;
-	int IRelationship(CBaseEntity* pTarget) override;
+	bool HasAlienGibs() override { return true; }
+
+	bool IsBioWeapon() const override { return true; }
+
+	Relationship IRelationship(CBaseEntity* pTarget) override;
 	void Killed(CBaseEntity* attacker, int iGib) override;
-	void EXPORT HuntThink();
+	void HuntThink();
 	void Smoke();
 	int BloodColor() override;
 
@@ -53,21 +54,20 @@ public:
 	float m_flNextHit;
 	Vector m_posPrev;
 	EHANDLE m_hOwner;
-	int m_iMyClass;
 };
 
 float CPenguinGrenade::m_flNextBounceSoundTime = 0;
 
-TYPEDESCRIPTION CPenguinGrenade::m_SaveData[] =
-	{
-		DEFINE_FIELD(CPenguinGrenade, m_flDie, FIELD_TIME),
-		DEFINE_FIELD(CPenguinGrenade, m_vecTarget, FIELD_VECTOR),
-		DEFINE_FIELD(CPenguinGrenade, m_flNextHunt, FIELD_TIME),
-		DEFINE_FIELD(CPenguinGrenade, m_flNextHit, FIELD_TIME),
-		DEFINE_FIELD(CPenguinGrenade, m_posPrev, FIELD_POSITION_VECTOR),
-		DEFINE_FIELD(CPenguinGrenade, m_hOwner, FIELD_EHANDLE)};
-
-IMPLEMENT_SAVERESTORE(CPenguinGrenade, CGrenade);
+BEGIN_DATAMAP(CPenguinGrenade)
+DEFINE_FIELD(m_flDie, FIELD_TIME),
+	DEFINE_FIELD(m_vecTarget, FIELD_VECTOR),
+	DEFINE_FIELD(m_flNextHunt, FIELD_TIME),
+	DEFINE_FIELD(m_flNextHit, FIELD_TIME),
+	DEFINE_FIELD(m_posPrev, FIELD_POSITION_VECTOR),
+	DEFINE_FIELD(m_hOwner, FIELD_EHANDLE),
+	DEFINE_FUNCTION(SuperBounceTouch),
+	DEFINE_FUNCTION(HuntThink),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(monster_penguin, CPenguinGrenade);
 
@@ -77,6 +77,8 @@ void CPenguinGrenade::OnCreate()
 
 	pev->health = GetSkillFloat("snark_health"sv);
 	pev->model = MAKE_STRING("models/w_penguin.mdl");
+
+	SetClassification("alien_bioweapon");
 }
 
 void CPenguinGrenade::Precache()
@@ -126,20 +128,18 @@ void CPenguinGrenade::SuperBounceTouch(CBaseEntity* pOther)
 		if (g_pGameRules->IsMultiplayer())
 		{
 			// TODO: set to null earlier on, so this can never be valid
-			auto owner = CBaseEntity::Instance(pev->owner);
-
-			auto ownerPlayer = owner->IsPlayer() ? owner : nullptr;
+			auto owner = ToBasePlayer(pev->owner);
 
 			hurtTarget = true;
 
-			if (pOther->IsPlayer())
+			if (auto otherPlayer = ToBasePlayer(pOther); otherPlayer)
 			{
-				if (ownerPlayer)
+				if (owner)
 				{
 					hurtTarget = false;
-					if (ownerPlayer != pOther)
+					if (owner != otherPlayer)
 					{
-						hurtTarget = g_pGameRules->FPlayerCanTakeDamage(static_cast<CBasePlayer*>(pOther), ownerPlayer);
+						hurtTarget = g_pGameRules->FPlayerCanTakeDamage(otherPlayer, owner);
 					}
 				}
 			}
@@ -227,7 +227,7 @@ void CPenguinGrenade::Spawn()
 
 	SetModel(STRING(pev->model));
 	SetSize(Vector(-4, -4, 0), Vector(4, 4, 8));
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetTouch(&CPenguinGrenade::SuperBounceTouch);
 	SetThink(&CPenguinGrenade::HuntThink);
@@ -255,37 +255,17 @@ void CPenguinGrenade::Spawn()
 	ResetSequenceInfo();
 }
 
-int CPenguinGrenade::Classify()
+Relationship CPenguinGrenade::IRelationship(CBaseEntity* pTarget)
 {
-	if (m_iMyClass != 0)
-		return m_iMyClass; // protect against recursion
+	const auto classification = pTarget->Classify();
 
-	if (m_hEnemy != nullptr)
+	if (g_EntityClassifications.ClassNameIs(classification, {"alien_military"}))
 	{
-		m_iMyClass = CLASS_INSECT; // no one cares about it
-		switch (m_hEnemy->Classify())
-		{
-		case CLASS_PLAYER:
-		case CLASS_HUMAN_PASSIVE:
-		case CLASS_HUMAN_MILITARY:
-			m_iMyClass = 0;
-			return CLASS_ALIEN_MILITARY; // barney's get mad, grunts get mad at it
-		}
-		m_iMyClass = 0;
+		return Relationship::Dislike;
 	}
-
-	return CLASS_ALIEN_BIOWEAPON;
-}
-
-int CPenguinGrenade::IRelationship(CBaseEntity* pTarget)
-{
-	if (pTarget->Classify() == CLASS_ALIEN_MILITARY)
+	else if (g_EntityClassifications.ClassNameIs(classification, {"player_ally"}))
 	{
-		return R_DL;
-	}
-	else if (pTarget->Classify() == CLASS_PLAYER_ALLY)
-	{
-		return R_AL;
+		return Relationship::Ally;
 	}
 	else
 	{
@@ -421,6 +401,24 @@ void CPenguinGrenade::HuntThink()
 	pev->angles = UTIL_VecToAngles(pev->velocity);
 	pev->angles.z = 0;
 	pev->angles.x = 0;
+
+	// Update classification
+	if (!HasCustomClassification())
+	{
+		// TODO: maybe use a different classification that has the expected relationships for these classes.
+		const char* classification = "alien_bioweapon";
+
+		if (m_hEnemy != nullptr)
+		{
+			if (g_EntityClassifications.ClassNameIs(m_hEnemy->Classify(), {"player", "human_passive", "human_military"}))
+			{
+				// barney's get mad, grunts get mad at it
+				classification = "alien_military";
+			}
+		}
+
+		SetClassification(classification);
+	}
 }
 
 void CPenguinGrenade::Smoke()
@@ -432,7 +430,7 @@ void CPenguinGrenade::Smoke()
 	}
 	else
 	{
-		g_engfuncs.pfnMessageBegin(MSG_PVS, SVC_TEMPENTITY, pev->origin, nullptr);
+		MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, pev->origin);
 		g_engfuncs.pfnWriteByte(TE_SMOKE);
 		g_engfuncs.pfnWriteCoord(pev->origin.x);
 		g_engfuncs.pfnWriteCoord(pev->origin.y);

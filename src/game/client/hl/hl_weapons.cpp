@@ -245,7 +245,6 @@ void HUD_SetupServerEngineInterface()
 
 	// Fake functions
 	g_engfuncs.pfnPrecacheEvent = stub_PrecacheEvent;
-	g_engfuncs.pfnNameForFunction = stub_NameForFunction;
 	g_engfuncs.pfnSetModel = stub_SetModel;
 	g_engfuncs.pfnSetClientMaxspeed = HUD_SetMaxSpeed;
 
@@ -308,17 +307,16 @@ void SetLocalBody(int id, int body)
 	}
 }
 
-/*
-=====================
-HUD_PostRunCmd
-
-Client calls this during prediction, after it has moved the player and updated any info changed into to->
-time is the current client clock based on prediction
-cmd is the command that caused the movement, etc
-runfuncs is 1 if this is the first time we've predicted this command.  If so, sounds and effects should play, otherwise, they should
-be ignored
-=====================
-*/
+/**
+ *	@brief Client calls this during prediction, after it has moved the player and updated any info changed into @p to.
+ *	@param from Incoming state.
+ *	@param to Outgoing state. This should be @p from, modified by predicted actions.
+ *	@param cmd The command that caused the movement, etc.
+ *	@param runfuncs 1 if this is the first time we've predicted this command. If so, sounds and effects should play,
+ *		otherwise they should be ignored.
+ *	@param time the current client clock based on prediction.
+ *	@param random_seed Random number generator seed shared between server and client.
+ */
 void DLLEXPORT HUD_PostRunCmd(local_state_t* from, local_state_t* to, usercmd_t* cmd, int runfuncs, double time, unsigned int random_seed)
 {
 	g_runfuncs = 0 != runfuncs;
@@ -346,14 +344,10 @@ void DLLEXPORT HUD_PostRunCmd(local_state_t* from, local_state_t* to, usercmd_t*
 
 	// All games can use FOV state
 	g_lastFOV = to->client.fov;
+	g_CurrentWeaponId = to->client.m_iId;
 }
 
 bool UTIL_IsMultiplayer()
 {
 	return gEngfuncs.GetMaxClients() != 1;
-}
-
-bool UTIL_IsCTF()
-{
-	return giTeamplay == 2;
 }

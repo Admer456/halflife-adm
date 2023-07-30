@@ -15,7 +15,7 @@
 
 #pragma once
 
-#define NUM_SCIENTIST_HEADS 4 // four heads available for scientist model
+#define NUM_SCIENTIST_HEADS 4 //!< four heads available for scientist model
 enum
 {
 	HEAD_GLASSES = 0,
@@ -72,33 +72,33 @@ enum
 	TASK_MOVE_TO_TARGET_RANGE_SCARED,
 };
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define SCIENTIST_AE_HEAL (1)
 #define SCIENTIST_AE_NEEDLEON (2)
 #define SCIENTIST_AE_NEEDLEOFF (3)
 
-//=======================================================
-// Scientist
-//=======================================================
-
+/**
+ *	@brief human scientist (passive lab worker)
+ */
 class CScientist : public CTalkMonster
 {
+	DECLARE_CLASS(CScientist, CTalkMonster);
+	DECLARE_DATAMAP();
+	DECLARE_CUSTOM_SCHEDULES();
+
 public:
 	void OnCreate() override;
 	bool KeyValue(KeyValueData* pkvd) override;
 	void Spawn() override;
 	void Precache() override;
 
+	bool HasHumanGibs() override { return true; }
+
 	void SetYawSpeed() override;
-	int Classify() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
-	void RunTask(Task_t* pTask) override;
-	void StartTask(Task_t* pTask) override;
+	void RunTask(const Task_t* pTask) override;
+	void StartTask(const Task_t* pTask) override;
 	int ObjectCaps() override { return CTalkMonster::ObjectCaps() | FCAP_IMPULSE_USE; }
 	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
-	int FriendNumber(int arrayNumber) override;
 	void SetActivity(Activity newActivity) override;
 	Activity GetStoppedActivity() override;
 	int ISoundMask() override;
@@ -112,22 +112,14 @@ public:
 	virtual void Scream();
 
 	// Override these to set behavior
-	Schedule_t* GetScheduleOfType(int Type) override;
-	Schedule_t* GetSchedule() override;
+	const Schedule_t* GetScheduleOfType(int Type) override;
+	const Schedule_t* GetSchedule() override;
 	MONSTERSTATE GetIdealState() override;
 
 	void DeathSound() override;
 	void PainSound() override;
 
 	void TalkInit() override;
-
-	void Killed(CBaseEntity* attacker, int iGib) override;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-
-	CUSTOM_SCHEDULES;
 
 protected:
 	float m_painTime;
@@ -136,7 +128,6 @@ protected:
 
 	// Don't save, only used during spawn.
 	ScientistItem m_Item = ScientistItem::None;
-	bool m_AllowFollow = true;
 };
 
 /**
@@ -144,19 +135,17 @@ protected:
  */
 class CSittingScientist : public CScientist // kdb: changed from public CBaseMonster so he can speak
 {
+	DECLARE_CLASS(CSittingScientist, CScientist);
+	DECLARE_DATAMAP();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 
-	void EXPORT SittingThink();
-	int Classify() override;
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+	void SittingThink();
 
 	void SetAnswerQuestion(CTalkMonster* pSpeaker) override;
-	int FriendNumber(int arrayNumber) override;
 
 	bool FIdleSpeak();
 	int m_baseSequence;

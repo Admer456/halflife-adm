@@ -56,7 +56,7 @@ GameSoundSystem::~GameSoundSystem()
 	m_CacheLogger.reset();
 }
 
-bool GameSoundSystem::Create(std::shared_ptr<spdlog::logger> logger, ALCdevice* device)
+bool GameSoundSystem::Create(std::shared_ptr<spdlog::logger> logger)
 {
 	m_Logger = logger;
 	m_CacheLogger = g_Logging.CreateLogger("sound.cache");
@@ -91,7 +91,17 @@ bool GameSoundSystem::Create(std::shared_ptr<spdlog::logger> logger, ALCdevice* 
 		return false;
 	}
 
-	if (!CheckOpenALContextExtension(device, "ALC_EXT_EFX", *m_Logger))
+	m_Device.reset(alcOpenDevice(nullptr));
+
+	if (!m_Device)
+	{
+		m_Logger->error("Couldn't open OpenAL device for GameSoundSystem");
+		return false;
+	}
+
+	m_Logger->trace("OpenAL device opened for GameSoundSystem");
+
+	if (!CheckOpenALContextExtension(m_Device.get(), "ALC_EXT_EFX", *m_Logger))
 	{
 		return false;
 	}
@@ -102,7 +112,7 @@ bool GameSoundSystem::Create(std::shared_ptr<spdlog::logger> logger, ALCdevice* 
 	attribs[0] = ALC_MAX_AUXILIARY_SENDS;
 	attribs[1] = 1;
 
-	m_Context.reset(alcCreateContext(device, attribs));
+	m_Context.reset(alcCreateContext(m_Device.get(), attribs));
 
 	if (!m_Context)
 	{
@@ -134,7 +144,7 @@ bool GameSoundSystem::Create(std::shared_ptr<spdlog::logger> logger, ALCdevice* 
 	}
 
 	ALCint auxSendsCount = 0;
-	alcGetIntegerv(device, ALC_MAX_AUXILIARY_SENDS, 1, &auxSendsCount);
+	alcGetIntegerv(m_Device.get(), ALC_MAX_AUXILIARY_SENDS, 1, &auxSendsCount);
 
 	if (auxSendsCount < 1)
 	{
@@ -201,6 +211,22 @@ bool GameSoundSystem::Create(std::shared_ptr<spdlog::logger> logger, ALCdevice* 
 	m_SoundCache = std::make_unique<SoundCache>(m_CacheLogger);
 	m_Sentences = std::make_unique<SentencesSystem>(m_SentencesLogger, m_SoundCache.get());
 
+	m_HRTFEnabled = g_ConCommands.CreateCVar("snd_hrtf_enabled", "0", FCVAR_ARCHIVE);
+	m_HRTFImplementation = g_ConCommands.CreateCVar("snd_hrtf_implementation", "", FCVAR_ARCHIVE);
+	g_ConCommands.CreateCommand("snd_hrtf_list_implementations", [this](const auto&)
+		{ PrintHRTFImplementations(); });
+
+	m_SupportsHRTF = alcIsExtensionPresent(m_Device.get(), "ALC_SOFT_HRTF") != ALC_FALSE;
+
+	if (m_SupportsHRTF)
+	{
+		m_Logger->trace("HRTF is supported");
+	}
+	else
+	{
+		m_Logger->trace("HRTF is not supported");
+	}
+
 	return true;
 }
 
@@ -242,6 +268,17 @@ void GameSoundSystem::Update()
 	if (!MakeCurrent())
 	{
 		return;
+	}
+
+	++m_CurrentGameFrame;
+
+	if (m_SupportsHRTF)
+	{
+		if (const bool hrtfEnabled = m_HRTFEnabled->value != 0; m_CachedHRTFEnabled != hrtfEnabled)
+		{
+			m_CachedHRTFEnabled = hrtfEnabled;
+			ConfigureHRTF(hrtfEnabled);
+		}
 	}
 
 	Vector origin, forward, right, up;
@@ -349,41 +386,6 @@ void GameSoundSystem::StartSound(
 	int entityIndex, int channelIndex,
 	const char* soundOrSentence, const Vector& origin, float volume, float attenuation, int pitch, int flags)
 {
-	if (g_cl_snd_openal->value == 0)
-	{
-		// Convert sentences back into an index.
-		Filename sentenceIndexString;
-
-		if (soundOrSentence[0] == '!')
-		{
-			const auto sentenceIndex = m_Sentences->FindSentence(soundOrSentence + 1);
-
-			if (sentenceIndex == SentencesSystem::InvalidIndex)
-			{
-				return;
-			}
-
-			if (sentenceIndex >= sentences::EngineMaxSentences)
-			{
-				m_Logger->warn("cl_snd_openal is 0: Sentence \"{}\" has index greater than {}, engine doesn't support this",
-					soundOrSentence, (sentences::EngineMaxSentences - 1));
-				return;
-			}
-
-			fmt::format_to(std::back_inserter(sentenceIndexString), "!{}", sentenceIndex);
-
-			soundOrSentence = sentenceIndexString.c_str();
-		}
-
-		gEngfuncs.pEventAPI->EV_PlaySound(entityIndex, origin, channelIndex, soundOrSentence, volume, attenuation, flags, pitch);
-		return;
-	}
-
-	if (!MakeCurrent())
-	{
-		return;
-	}
-
 	SoundData sound;
 
 	if (soundOrSentence[0] != '!')
@@ -394,30 +396,52 @@ void GameSoundSystem::StartSound(
 			++soundOrSentence;
 		}
 
-		const auto index = m_SoundCache->FindName(soundOrSentence);
-
-		if (!index.IsValid())
-		{
-			return;
-		}
-
-		if (auto soundData = m_SoundCache->GetSound(index); !m_SoundCache->LoadSound(*soundData))
-		{
-			return;
-		}
-
-		sound = index;
+		sound = m_SoundCache->FindName(soundOrSentence);
 	}
 	else
 	{
-		const auto sentenceIndex = m_Sentences->FindSentence(soundOrSentence + 1);
+		sound = SentenceChannel{m_Sentences->FindSentence(soundOrSentence + 1), 0};
+	}
 
-		if (sentenceIndex == SentencesSystem::InvalidIndex)
+	StartSound(entityIndex, channelIndex, std::move(sound), origin, volume, attenuation, pitch, flags);
+}
+
+void GameSoundSystem::StartSound(int entityIndex, int channelIndex, SoundData&& sound,
+	const Vector& origin, float volume, float attenuation, int pitch, int flags)
+{
+	if (!MakeCurrent())
+	{
+		return;
+	}
+
+	if (!std::visit([&, this](auto&& sound)
 		{
-			return;
-		}
+			using T = std::decay_t<decltype(sound)>;
 
-		sound = SentenceChannel{sentenceIndex, 0};
+			if constexpr (std::is_same_v<T, SoundIndex>)
+			{
+				if (!sound.IsValid())
+				{
+					return false;
+				}
+
+				auto& soundData = *m_SoundCache->GetSound(sound);
+
+				return m_SoundCache->LoadSound(soundData);
+			}
+			else if constexpr (std::is_same_v<T, SentenceChannel>)
+			{
+				return m_Sentences->GetSentence(sound.Sentence) != nullptr;
+			}
+			else
+			{
+				static_assert(always_false_v<T>, "StartSound does not handle all sound types");
+			}
+
+			return false; },
+		sound))
+	{
+		return;
 	}
 
 	if ((flags & (SND_STOP | SND_CHANGE_VOL | SND_CHANGE_PITCH)) != 0)
@@ -441,6 +465,8 @@ void GameSoundSystem::StartSound(
 
 	Channel* newChannel = FindOrCreateChannel(entityIndex, channelIndex);
 
+	const std::string_view soundOrSentence = GetSoundName(sound);
+
 	if (SetupChannel(*newChannel, entityIndex, channelIndex, std::move(sound), origin, volume, pitch, attenuation, false))
 	{
 		m_Logger->trace("Playing \"{}\": Entity {}, channel {}", soundOrSentence, entityIndex, channelIndex);
@@ -461,16 +487,14 @@ void GameSoundSystem::StopAllSounds()
 	m_Channels.clear();
 }
 
-void GameSoundSystem::MsgFunc_EmitSound(const char* pszName, int iSize, void* pbuf)
+void GameSoundSystem::MsgFunc_EmitSound(const char* pszName, BufferReader& reader)
 {
-	BEGIN_READ(pbuf, iSize);
+	const int flags = reader.ReadByte();
 
-	const int flags = READ_BYTE();
-
-	const float volume = (flags & SND_VOLUME) != 0 ? READ_BYTE() / 255.f : 1;
-	const float attenuation = (flags & SND_ATTENUATION) != 0 ? READ_BYTE() / 64.f : 1;
-	const int channel = READ_BYTE();
-	const int entityIndex = READ_SHORT();
+	const float volume = (flags & SND_VOLUME) != 0 ? reader.ReadByte() / 255.f : 1;
+	const float attenuation = (flags & SND_ATTENUATION) != 0 ? reader.ReadByte() / 64.f : 1;
+	const int channel = reader.ReadByte();
+	const int entityIndex = reader.ReadShort();
 
 	int soundIndex;
 
@@ -478,19 +502,19 @@ void GameSoundSystem::MsgFunc_EmitSound(const char* pszName, int iSize, void* pb
 	{
 		// Cast the signed short back to an unsigned short so the index is correct.
 		// See ServerSoundSystem::EmitSound for why this is needed.
-		soundIndex = static_cast<std::uint16_t>(READ_SHORT());
+		soundIndex = static_cast<std::uint16_t>(reader.ReadShort());
 	}
 	else
 	{
-		soundIndex = READ_BYTE();
+		soundIndex = reader.ReadByte();
 	}
 
 	Vector origin;
-	origin.x = READ_COORD();
-	origin.y = READ_COORD();
-	origin.z = READ_COORD();
+	origin.x = reader.ReadCoord();
+	origin.y = reader.ReadCoord();
+	origin.z = reader.ReadCoord();
 
-	const int pitch = (flags & SND_PITCH) != 0 ? READ_BYTE() : 100;
+	const int pitch = (flags & SND_PITCH) != 0 ? reader.ReadByte() : 100;
 
 	const auto entity = gEngfuncs.GetEntityByIndex(entityIndex);
 
@@ -502,7 +526,6 @@ void GameSoundSystem::MsgFunc_EmitSound(const char* pszName, int iSize, void* pb
 
 	const std::size_t absoluteSoundIndex = soundIndex >= 0 ? static_cast<std::size_t>(soundIndex) : SentencesSystem::InvalidIndex;
 
-	// TODO: this is needlessly converting from index to filename and back again
 	if ((flags & SND_SENTENCE) == 0)
 	{
 		if (absoluteSoundIndex >= m_PrecacheMap.size())
@@ -511,28 +534,13 @@ void GameSoundSystem::MsgFunc_EmitSound(const char* pszName, int iSize, void* pb
 			return;
 		}
 
-		const SoundIndex soundIndex = m_PrecacheMap[absoluteSoundIndex];
+		const SoundIndex actualSoundIndex = m_PrecacheMap[absoluteSoundIndex];
 
-		const auto sound = m_SoundCache->GetSound(soundIndex);
-
-		assert(sound);
-
-		StartSound(entityIndex, channel, sound->Name.c_str(), origin, volume, attenuation, pitch, flags);
+		StartSound(entityIndex, channel, actualSoundIndex, origin, volume, attenuation, pitch, flags);
 	}
 	else
 	{
-		const auto sentence = m_Sentences->GetSentence(absoluteSoundIndex);
-
-		if (!sentence)
-		{
-			m_Logger->error("MsgFunc_EmitSound: Invalid sentence index {}", soundIndex);
-			return;
-		}
-		
-		Filename sample;
-		fmt::format_to(std::back_inserter(sample), "!{}", sentence->Name.c_str());
-
-		StartSound(entityIndex, channel, sample.c_str(), origin, volume, attenuation, pitch, flags);
+		StartSound(entityIndex, channel, SentenceChannel{absoluteSoundIndex, 0}, origin, volume, attenuation, pitch, flags);
 	}
 }
 
@@ -545,6 +553,87 @@ bool GameSoundSystem::MakeCurrent()
 	}
 
 	return true;
+}
+
+void GameSoundSystem::PrintHRTFImplementations()
+{
+	ALCint numHRTF;
+	alcGetIntegerv(m_Device.get(), ALC_NUM_HRTF_SPECIFIERS_SOFT, 1, &numHRTF);
+
+	if (numHRTF == 0)
+	{
+		Con_Printf("No HRTF implementations found\n");
+		return;
+	}
+
+	Con_Printf("%d HRTF implementations found\n", numHRTF);
+
+	for (ALCint j = 0; j < numHRTF; ++j)
+	{
+		const ALCchar* name = alcGetStringiSOFT(m_Device.get(), ALC_HRTF_SPECIFIER_SOFT, j);
+
+		Con_Printf("%d: %s\n", j, name);
+	}
+}
+
+void GameSoundSystem::ConfigureHRTF(bool enabled)
+{
+	ALCint numHRTF;
+	alcGetIntegerv(m_Device.get(), ALC_NUM_HRTF_SPECIFIERS_SOFT, 1, &numHRTF);
+
+	if (numHRTF == 0)
+	{
+		m_Logger->debug("No HRTF implementations found");
+		return;
+	}
+
+	ALCint attribs[5]{0};
+
+	int i = 0;
+	attribs[i++] = ALC_HRTF_SOFT;
+	attribs[i++] = enabled ? ALC_TRUE : ALC_FALSE;
+
+	if (enabled)
+	{
+		ALCint implementationIndex = -1;
+
+		if (m_HRTFImplementation->string[0] != '\0')
+		{
+			for (ALCint j = 0; j < numHRTF; ++j)
+			{
+				const ALCchar* name = alcGetStringiSOFT(m_Device.get(), ALC_HRTF_SPECIFIER_SOFT, j);
+
+				if (strcmp(m_HRTFImplementation->string, name) == 0)
+				{
+					implementationIndex = j;
+					break;
+				}
+			}
+
+			if (implementationIndex == -1)
+			{
+				m_Logger->error("HRTF implementation \"{}\" not found", m_HRTFImplementation->string);
+			}
+		}
+
+		if (implementationIndex != -1)
+		{
+			m_Logger->debug("Using HRTF implementation \"{}\" (index {})", m_HRTFImplementation->string, implementationIndex);
+			attribs[i++] = ALC_HRTF_ID_SOFT;
+			attribs[i++] = implementationIndex;
+		}
+		else
+		{
+			m_Logger->debug("Using default HRTF implementation");
+		}
+	}
+
+	attribs[i++] = 0;
+
+	if (ALC_FALSE == alcResetDeviceSOFT(m_Device.get(), attribs))
+	{
+		m_Logger->error("Failed to reset device: {}", alcGetString(m_Device.get(), alcGetError(m_Device.get())));
+	}
 }
 
 void GameSoundSystem::SetVolume()
@@ -682,10 +771,12 @@ bool GameSoundSystem::SetupChannel(Channel& channel, int entityIndex, int channe
 	channel.EntityIndex = entityIndex;
 	channel.ChannelIndex = channelIndex;
 	channel.Pitch = pitch;
+	channel.CreatedOnFrame = m_CurrentGameFrame;
 
 	// If attenuation is 0 then the sound will play everywhere.
+	// If the entity is the current view entity then it should always sound like it's playing "here".
 	// Make it relative to the listener to stop it from having 3D spatialization.
-	if (!isRelative && attenuation == 0)
+	if (!isRelative && (attenuation == 0 || entityIndex == g_ViewEntity))
 	{
 		isRelative = true;
 		alSourcefv(channel.Source.Id, AL_POSITION, vec3_origin);
@@ -757,10 +848,16 @@ bool GameSoundSystem::SetupChannel(Channel& channel, int entityIndex, int channe
 					continue;
 				}
 
-				ALint offset = -1;
-				alGetSourcei(otherChannel.Source.Id, AL_BYTE_OFFSET, &offset);
+				if (otherChannel.CreatedOnFrame != channel.CreatedOnFrame)
+				{
+					continue;
+				}
 
-				if (offset == 0)
+				// Don't query this; it causes performance issues with HRTF enabled.
+				// ALint offset = -1;
+				// alGetSourcei(otherChannel.Source.Id, AL_BYTE_OFFSET, &offset);
+
+				// if (offset == 0)
 				{
 					ALint frequency = 0;
 					alGetBufferi(soundData.Buffer.Id, AL_FREQUENCY, &frequency);
@@ -950,6 +1047,15 @@ void GameSoundSystem::Spatialize(Channel& channel, int messagenum)
 		// Entities without a model are not sent to the client so there is no point in updating their position.
 		if (entity && entity->model && entity->curstate.messagenum == messagenum)
 		{
+			ALint isRelative = AL_FALSE;
+			alGetSourcei(channel.Source.Id, AL_SOURCE_RELATIVE, &isRelative);
+
+			// Don't update relative sources (always vec3_origin).
+			if (isRelative != AL_FALSE)
+			{
+				return;
+			}
+
 			if (entity->model->type == mod_brush)
 			{
 				alSourcefv(channel.Source.Id, AL_POSITION, entity->origin + (entity->model->mins + entity->model->maxs) * 0.5f);

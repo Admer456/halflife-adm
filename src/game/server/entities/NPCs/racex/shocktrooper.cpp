@@ -12,21 +12,6 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// hgrunt
-//=========================================================
-
-//=========================================================
-// Hit groups!
-//=========================================================
-/*
-
-  1 - Head
-  2 - Stomach
-  3 - Gun
-
-*/
-
 
 #include "cbase.h"
 #include "plane.h"
@@ -36,20 +21,17 @@
 #include "weapons/CSpore.h"
 #include "weapons/CShockBeam.h"
 
-int g_fShockTrooperQuestion; // true if an idle grunt asked a question. Cleared when someone answers.
+int g_fShockTrooperQuestion; //!< true if an idle grunt asked a question. Cleared when someone answers.
 static int iShockTrooperMuzzleFlash;
 
-//=========================================================
-// monster-specific DEFINE's
-//=========================================================
-#define GRUNT_CLIP_SIZE 36	 // how many bullets in a clip? - NOTE: 3 round burst sound, so keep as 3 * x!
-#define GRUNT_VOL 0.35		 // volume of grunt sounds
-#define GRUNT_ATTN ATTN_NORM // attenutation of grunt sentences
+#define GRUNT_CLIP_SIZE 36	 //!< how many bullets in a clip? - NOTE: 3 round burst sound, so keep as 3 * x!
+#define GRUNT_VOL 0.35		 //!< volume of grunt sounds
+#define GRUNT_ATTN ATTN_NORM //!< attenutation of grunt sentences
 #define HGRUNT_LIMP_HEALTH 20
-#define HGRUNT_DMG_HEADSHOT (DMG_BULLET | DMG_CLUB) // damage types that can kill a grunt with a single headshot.
-#define HGRUNT_NUM_HEADS 2							// how many grunt heads are there?
-#define HGRUNT_MINIMUM_HEADSHOT_DAMAGE 15			// must do at least this much damage in one shot to head to score a headshot kill
-#define ShockTrooper_SENTENCE_VOLUME (float)0.35	// volume of grunt sentences
+#define HGRUNT_DMG_HEADSHOT (DMG_BULLET | DMG_CLUB) //!< damage types that can kill a grunt with a single headshot.
+#define HGRUNT_NUM_HEADS 2							//!< how many grunt heads are there?
+#define HGRUNT_MINIMUM_HEADSHOT_DAMAGE 15			//!< must do at least this much damage in one shot to head to score a headshot kill
+#define ShockTrooper_SENTENCE_VOLUME (float)0.35	//!< volume of grunt sentences
 
 #define HGRUNT_9MMAR (1 << 0)
 #define HGRUNT_HANDGRENADE (1 << 1)
@@ -72,19 +54,13 @@ enum STrooperWeapon
 };
 }
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define STROOPER_AE_RELOAD (2)
 #define STROOPER_AE_KICK (3)
 #define STROOPER_AE_SHOOT (4)
 #define STROOPER_AE_GREN_TOSS (7)
-#define STROOPER_AE_CAUGHT_ENEMY (10) // grunt established sight with an enemy (player only) that had previously eluded the squad.
-#define STROOPER_AE_DROP_GUN (11)	  // grunt (probably dead) is dropping his mp5.
+#define STROOPER_AE_CAUGHT_ENEMY (10) //!< grunt established sight with an enemy (player only) that had previously eluded the squad.
+#define STROOPER_AE_DROP_GUN (11)	  //!< grunt (probably dead) is dropping his mp5.
 
-//=========================================================
-// monster-specific schedule types
-//=========================================================
 enum
 {
 	SCHED_GRUNT_SUPPRESS = LAST_COMMON_SCHEDULE + 1,
@@ -100,9 +76,6 @@ enum
 	SCHED_GRUNT_ELOF_FAIL,
 };
 
-//=========================================================
-// monster-specific tasks
-//=========================================================
 enum
 {
 	TASK_GRUNT_FACE_TOSS_DIR = LAST_COMMON_TASK + 1,
@@ -110,55 +83,117 @@ enum
 	TASK_GRUNT_CHECK_FIRE,
 };
 
-//=========================================================
-// monster-specific conditions
-//=========================================================
 #define bits_COND_GRUNT_NOFIRE (bits_COND_SPECIAL1)
 
 class CShockTrooper : public CSquadMonster
 {
+	DECLARE_CLASS(CShockTrooper, CSquadMonster);
+	DECLARE_DATAMAP();
+	DECLARE_CUSTOM_SCHEDULES();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
-	int Classify() override;
+
+	bool HasAlienGibs() override { return true; }
+
+	/**
+	 *	@brief Overridden for human grunts because they hear the DANGER sound
+	 *	that is made by hand grenades and other dangerous items.
+	 */
 	int ISoundMask() override;
+
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
+
+	/**
+	 *	@brief this is overridden for human grunts because they can throw/shoot grenades when they can't see their
+	 *	target and the base class doesn't check attacks if the monster cannot see its enemy.
+	 *	@details !!!BUGBUG - this gets called before a 3-round burst is fired
+	 *	which means that a friendly can still be hit with up to 2 rounds.
+	 *	ALSO, grenades will not be tossed if there is a friendly in front, this is a bad bug.
+	 *	Friendly machine gun fire avoidance will unecessarily prevent the throwing of a grenade as well.
+	 */
 	bool FCanCheckAttacks() override;
+
 	bool CheckMeleeAttack1(float flDot, float flDist) override;
+
+	/**
+	 *	@brief overridden for Shock Trooper, cause FCanCheckAttacks() doesn't disqualify all attacks based on
+	 *	whether or not the enemy is occluded because unlike the base class,
+	 *	the Trooper can attack when the enemy is occluded (throw grenade over wall, etc).
+	 *	We must disqualify the machine gun attack if the enemy is occluded.
+	 */
 	bool CheckRangeAttack1(float flDot, float flDist) override;
+
+	/**
+	 *	@brief this checks the Grunt's grenade attack.
+	 */
 	bool CheckRangeAttack2(float flDot, float flDist) override;
+
+	/**
+	 *	@brief overridden for the grunt because he actually uses ammo! (base class doesn't)
+	 */
 	void CheckAmmo() override;
+
 	void SetActivity(Activity NewActivity) override;
-	void StartTask(Task_t* pTask) override;
-	void RunTask(Task_t* pTask) override;
+	void StartTask(const Task_t* pTask) override;
+	void RunTask(const Task_t* pTask) override;
 	void PainSound() override;
 	void IdleSound() override;
+
+	/**
+	 *	@brief return the end of the barrel
+	 */
 	Vector GetGunPosition() override;
+
 	void Shoot();
 	void PrescheduleThink() override;
+
+	/**
+	 *	@brief make gun fly through the air.
+	 */
 	void GibMonster() override;
+
+	/**
+	 *	@brief say your cued up sentence.
+	 *	@details Some grunt sentences (take cover and charge) rely on
+	 *	actually being able to execute the intended action.
+	 *	It's really lame when a grunt says 'COVER ME' and then doesn't move.
+	 *	The problem is that the sentences were played when the decision to TRY to move to cover was made.
+	 *	Now the sentence is played after we know for sure that there is a valid path.
+	 *	The schedule may still fail but in most cases, well after the grunt has started moving.
+	 */
 	void SpeakSentence();
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
 	CBaseEntity* Kick();
-	Schedule_t* GetSchedule() override;
-	Schedule_t* GetScheduleOfType(int Type) override;
+	const Schedule_t* GetSchedule() override;
+	const Schedule_t* GetScheduleOfType(int Type) override;
+
+	/**
+	 *	@brief make sure we're not taking it in the helmet
+	 */
 	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
+
+	/**
+	 *	@brief overridden for the grunt because the grunt needs to forget that he is in cover if he's hurt.
+	 *	(Obviously not in a safe place anymore).
+	 */
 	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 
-	int IRelationship(CBaseEntity* pTarget) override;
+	/**
+	 *	@brief overridden because Alien Grunts are Shock Trooper's nemesis.
+	 */
+	Relationship IRelationship(CBaseEntity* pTarget) override;
 
+	/**
+	 *	@brief someone else is talking - don't speak
+	 */
 	bool FOkToSpeak();
 	void JustSpoke();
 
 	void MonsterThink() override;
-
-	CUSTOM_SCHEDULES;
-	static TYPEDESCRIPTION m_SaveData[];
 
 	// checking the feasibility of a grenade toss is kind of costly, so we do it every couple of seconds,
 	// not every server frame.
@@ -191,25 +226,20 @@ public:
 
 LINK_ENTITY_TO_CLASS(monster_shocktrooper, CShockTrooper);
 
-TYPEDESCRIPTION CShockTrooper::m_SaveData[] =
-	{
-		DEFINE_FIELD(CShockTrooper, m_flNextGrenadeCheck, FIELD_TIME),
-		DEFINE_FIELD(CShockTrooper, m_flNextPainTime, FIELD_TIME),
-		//	DEFINE_FIELD( CShockTrooper, m_flLastEnemySightTime, FIELD_TIME ), // don't save, go to zero
-		DEFINE_FIELD(CShockTrooper, m_vecTossVelocity, FIELD_VECTOR),
-		DEFINE_FIELD(CShockTrooper, m_fThrowGrenade, FIELD_BOOLEAN),
-		DEFINE_FIELD(CShockTrooper, m_fStanding, FIELD_BOOLEAN),
-		DEFINE_FIELD(CShockTrooper, m_fFirstEncounter, FIELD_BOOLEAN),
-		DEFINE_FIELD(CShockTrooper, m_cClipSize, FIELD_INTEGER),
-		DEFINE_FIELD(CShockTrooper, m_voicePitch, FIELD_INTEGER),
-		//  DEFINE_FIELD( CShotgun, m_iBrassShell, FIELD_INTEGER ),
-		//  DEFINE_FIELD( CShotgun, m_iShotgunShell, FIELD_INTEGER ),
-		DEFINE_FIELD(CShockTrooper, m_iSentence, FIELD_INTEGER),
-		DEFINE_FIELD(CShockTrooper, m_flLastChargeTime, FIELD_FLOAT),
-		DEFINE_FIELD(CShockTrooper, m_flLastShot, FIELD_TIME),
-};
-
-IMPLEMENT_SAVERESTORE(CShockTrooper, CSquadMonster);
+BEGIN_DATAMAP(CShockTrooper)
+DEFINE_FIELD(m_flNextGrenadeCheck, FIELD_TIME),
+	DEFINE_FIELD(m_flNextPainTime, FIELD_TIME),
+	//	DEFINE_FIELD(m_flLastEnemySightTime, FIELD_TIME), // don't save, go to zero
+	DEFINE_FIELD(m_vecTossVelocity, FIELD_VECTOR),
+	DEFINE_FIELD(m_fThrowGrenade, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_fStanding, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_fFirstEncounter, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_cClipSize, FIELD_INTEGER),
+	DEFINE_FIELD(m_voicePitch, FIELD_INTEGER),
+	DEFINE_FIELD(m_iSentence, FIELD_INTEGER),
+	DEFINE_FIELD(m_flLastChargeTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_flLastShot, FIELD_TIME),
+	END_DATAMAP();
 
 const char* CShockTrooper::pGruntSentences[] =
 	{
@@ -240,20 +270,10 @@ void CShockTrooper::OnCreate()
 
 	pev->health = GetSkillFloat("shocktrooper_health"sv);
 	pev->model = MAKE_STRING("models/strooper.mdl");
+
+	SetClassification("race_x");
 }
 
-//=========================================================
-// Speak Sentence - say your cued up sentence.
-//
-// Some grunt sentences (take cover and charge) rely on actually
-// being able to execute the intended action. It's really lame
-// when a grunt says 'COVER ME' and then doesn't move. The problem
-// is that the sentences were played when the decision to TRY
-// to move to cover was made. Now the sentence is played after
-// we know for sure that there is a valid path. The schedule
-// may still fail but in most cases, well after the grunt has
-// started moving.
-//=========================================================
 void CShockTrooper::SpeakSentence()
 {
 	if (m_iSentence == ShockTrooper_SENT_NONE)
@@ -269,25 +289,16 @@ void CShockTrooper::SpeakSentence()
 	}
 }
 
-//=========================================================
-// IRelationship - overridden because Alien Grunts are
-// Human Grunt's nemesis.
-//=========================================================
-int CShockTrooper::IRelationship(CBaseEntity* pTarget)
+Relationship CShockTrooper::IRelationship(CBaseEntity* pTarget)
 {
 	if (pTarget->ClassnameIs("monster_alien_grunt") || (pTarget->ClassnameIs("monster_gargantua")))
 	{
-		return R_NM;
+		return Relationship::Nemesis;
 	}
 
 	return CSquadMonster::IRelationship(pTarget);
 }
 
-const GibData ShockTrooperGibs = {"models/strooper_gibs.mdl", 0, 8};
-
-//=========================================================
-// GibMonster - make gun fly through the air.
-//=========================================================
 void CShockTrooper::GibMonster()
 {
 	Vector vecGunPos;
@@ -311,23 +322,22 @@ void CShockTrooper::GibMonster()
 		// TODO: change body group
 	}
 
+	/*
 	EmitSound(CHAN_WEAPON, "common/bodysplat.wav", 1, ATTN_NORM);
 
 	if (CVAR_GET_FLOAT("violence_agibs") != 0) // Should never get here, but someone might call it directly
 	{
-		CGib::SpawnRandomGibs(pev, 6, ShockTrooperGibs); // Throw alien gibs
+		CGib::SpawnRandomGibs(this, 6, ShockTrooperGibs); // Throw alien gibs
 	}
+	*/
+
+	CGib::SpawnClientGibs(this, GibType::ShockTrooper, 6, true, false);
 
 	// don't remove players!
 	SetThink(&CBaseMonster::SUB_Remove);
 	pev->nextthink = gpGlobals->time;
 }
 
-//=========================================================
-// ISoundMask - Overidden for human grunts because they
-// hear the DANGER sound that is made by hand grenades and
-// other dangerous items.
-//=========================================================
 int CShockTrooper::ISoundMask()
 {
 	return bits_SOUND_WORLD |
@@ -336,9 +346,6 @@ int CShockTrooper::ISoundMask()
 		   bits_SOUND_DANGER;
 }
 
-//=========================================================
-// someone else is talking - don't speak
-//=========================================================
 bool CShockTrooper::FOkToSpeak()
 {
 	// if someone else is talking, don't speak
@@ -355,24 +362,18 @@ bool CShockTrooper::FOkToSpeak()
 	}
 
 	// if player is not in pvs, don't speak
-	//	if (FNullEnt(FIND_CLIENT_IN_PVS(edict())))
+	//	if (!UTIL_FindClientInPVS(this))
 	//		return false;
 
 	return true;
 }
 
-//=========================================================
-//=========================================================
 void CShockTrooper::JustSpoke()
 {
 	CTalkMonster::g_talkWaitTime = gpGlobals->time + RANDOM_FLOAT(1.5, 2.0);
 	m_iSentence = ShockTrooper_SENT_NONE;
 }
 
-//=========================================================
-// PrescheduleThink - this function runs after conditions
-// are collected and before scheduling code is run.
-//=========================================================
 void CShockTrooper::PrescheduleThink()
 {
 	if (InSquad() && m_hEnemy != nullptr)
@@ -393,18 +394,6 @@ void CShockTrooper::PrescheduleThink()
 	}
 }
 
-//=========================================================
-// FCanCheckAttacks - this is overridden for human grunts
-// because they can throw/shoot grenades when they can't see their
-// target and the base class doesn't check attacks if the monster
-// cannot see its enemy.
-//
-// !!!BUGBUG - this gets called before a 3-round burst is fired
-// which means that a friendly can still be hit with up to 2 rounds.
-// ALSO, grenades will not be tossed if there is a friendly in front,
-// this is a bad bug. Friendly machine gun fire avoidance
-// will unecessarily prevent the throwing of a grenade as well.
-//=========================================================
 bool CShockTrooper::FCanCheckAttacks()
 {
 	if (!HasConditions(bits_COND_ENEMY_TOOFAR))
@@ -417,41 +406,27 @@ bool CShockTrooper::FCanCheckAttacks()
 	}
 }
 
-
-//=========================================================
-// CheckMeleeAttack1
-//=========================================================
 bool CShockTrooper::CheckMeleeAttack1(float flDot, float flDist)
 {
-	CBaseMonster* pEnemy;
+	CBaseMonster* pEnemy = nullptr;
 
 	if (m_hEnemy != nullptr)
 	{
 		pEnemy = m_hEnemy->MyMonsterPointer();
-
-		if (!pEnemy)
-		{
-			return false;
-		}
 	}
 
-	if (flDist <= 64 && flDot >= 0.7 &&
-		pEnemy->Classify() != CLASS_ALIEN_BIOWEAPON &&
-		pEnemy->Classify() != CLASS_PLAYER_BIOWEAPON)
+	if (!pEnemy)
+	{
+		return false;
+	}
+
+	if (flDist <= 64 && flDot >= 0.7 && !pEnemy->IsBioWeapon())
 	{
 		return true;
 	}
 	return false;
 }
 
-//=========================================================
-// CheckRangeAttack1 - overridden for HGrunt, cause
-// FCanCheckAttacks() doesn't disqualify all attacks based
-// on whether or not the enemy is occluded because unlike
-// the base class, the HGrunt can attack when the enemy is
-// occluded (throw grenade over wall, etc). We must
-// disqualify the machine gun attack if the enemy is occluded.
-//=========================================================
 bool CShockTrooper::CheckRangeAttack1(float flDot, float flDist)
 {
 	if (gpGlobals->time - m_flLastShot > 0.175 && !HasConditions(bits_COND_ENEMY_OCCLUDED) && flDist <= 2048 && flDot >= 0.5 && NoFriendlyFire())
@@ -467,7 +442,7 @@ bool CShockTrooper::CheckRangeAttack1(float flDot, float flDist)
 		Vector vecSrc = GetGunPosition();
 
 		// verify that a bullet fired from the gun will hit the enemy before the world.
-		UTIL_TraceLine(vecSrc, m_hEnemy->BodyTarget(vecSrc), ignore_monsters, ignore_glass, ENT(pev), &tr);
+		UTIL_TraceLine(vecSrc, m_hEnemy->BodyTarget(vecSrc), ignore_monsters, ignore_glass, edict(), &tr);
 
 		if (tr.flFraction == 1.0)
 		{
@@ -478,10 +453,6 @@ bool CShockTrooper::CheckRangeAttack1(float flDot, float flDist)
 	return false;
 }
 
-//=========================================================
-// CheckRangeAttack2 - this checks the Grunt's grenade
-// attack.
-//=========================================================
 bool CShockTrooper::CheckRangeAttack2(float flDot, float flDist)
 {
 	if (!FBitSet(pev->weapons, HGRUNT_HANDGRENADE))
@@ -562,7 +533,7 @@ bool CShockTrooper::CheckRangeAttack2(float flDot, float flDist)
 
 	if (FBitSet(pev->weapons, HGRUNT_HANDGRENADE))
 	{
-		Vector vecToss = VecCheckToss(pev, GetGunPosition(), vecTarget, 0.5);
+		Vector vecToss = VecCheckToss(this, GetGunPosition(), vecTarget, 0.5);
 
 		if (vecToss != g_vecZero)
 		{
@@ -583,7 +554,7 @@ bool CShockTrooper::CheckRangeAttack2(float flDot, float flDist)
 	}
 	else
 	{
-		Vector vecToss = VecCheckThrow(pev, GetGunPosition(), vecTarget, GetSkillFloat("shocktrooper_gspeed"sv), 0.5);
+		Vector vecToss = VecCheckThrow(this, GetGunPosition(), vecTarget, GetSkillFloat("shocktrooper_gspeed"sv), 0.5);
 
 		if (vecToss != g_vecZero)
 		{
@@ -608,21 +579,11 @@ bool CShockTrooper::CheckRangeAttack2(float flDot, float flDist)
 	return m_fThrowGrenade;
 }
 
-
-//=========================================================
-// TraceAttack - make sure we're not taking it in the helmet
-//=========================================================
 void CShockTrooper::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	CSquadMonster::TraceAttack(attacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
-
-//=========================================================
-// TakeDamage - overridden for the grunt because the grunt
-// needs to forget that he is in cover if he's hurt. (Obviously
-// not in a safe place anymore).
-//=========================================================
 bool CShockTrooper::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
 	Forget(bits_MEMORY_INCOVER);
@@ -630,10 +591,6 @@ bool CShockTrooper::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, fl
 	return CSquadMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
-//=========================================================
-// SetYawSpeed - allows each sequence to have a different
-// turn rate associated with it.
-//=========================================================
 void CShockTrooper::SetYawSpeed()
 {
 	int ys;
@@ -716,10 +673,6 @@ void CShockTrooper::IdleSound()
 	}
 }
 
-//=========================================================
-// CheckAmmo - overridden for the grunt because he actually
-// uses ammo! (base class doesn't)
-//=========================================================
 void CShockTrooper::CheckAmmo()
 {
 	if (m_cAmmoLoaded <= 0)
@@ -728,17 +681,6 @@ void CShockTrooper::CheckAmmo()
 	}
 }
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int CShockTrooper::Classify()
-{
-	return CLASS_ALIEN_RACE_X;
-}
-
-//=========================================================
-//=========================================================
 CBaseEntity* CShockTrooper::Kick()
 {
 	TraceResult tr;
@@ -748,7 +690,7 @@ CBaseEntity* CShockTrooper::Kick()
 	vecStart.z += pev->size.z * 0.5;
 	Vector vecEnd = vecStart + (gpGlobals->v_forward * 70);
 
-	UTIL_TraceHull(vecStart, vecEnd, dont_ignore_monsters, head_hull, ENT(pev), &tr);
+	UTIL_TraceHull(vecStart, vecEnd, dont_ignore_monsters, head_hull, edict(), &tr);
 
 	if (tr.pHit)
 	{
@@ -758,10 +700,6 @@ CBaseEntity* CShockTrooper::Kick()
 
 	return nullptr;
 }
-
-//=========================================================
-// GetGunPosition	return the end of the barrel
-//=========================================================
 
 Vector CShockTrooper::GetGunPosition()
 {
@@ -774,9 +712,6 @@ Vector CShockTrooper::GetGunPosition()
 	return gpGlobals->v_forward * 32 + vecShootOrigin;
 }
 
-//=========================================================
-// Shoot
-//=========================================================
 void CShockTrooper::Shoot()
 {
 	if (m_hEnemy == nullptr)
@@ -812,10 +747,6 @@ void CShockTrooper::Shoot()
 	m_flLastShot = gpGlobals->time;
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void CShockTrooper::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -852,7 +783,7 @@ void CShockTrooper::HandleAnimEvent(MonsterEvent_t* pEvent)
 	case STROOPER_AE_GREN_TOSS:
 	{
 		UTIL_MakeVectors(pev->angles);
-		// CGrenade::ShootTimed( pev, pev->origin + gpGlobals->v_forward * 34 + Vector (0, 0, 32), m_vecTossVelocity, 3.5 );
+		// CGrenade::ShootTimed(this, pev->origin + gpGlobals->v_forward * 34 + Vector (0, 0, 32), m_vecTossVelocity, 3.5);
 		CSpore::CreateSpore(pev->origin + Vector(0, 0, 98), m_vecTossVelocity, this, CSpore::SporeType::GRENADE, true, false);
 
 		m_fThrowGrenade = false;
@@ -916,9 +847,6 @@ void CShockTrooper::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void CShockTrooper::Spawn()
 {
 	Precache();
@@ -961,9 +889,6 @@ void CShockTrooper::Spawn()
 	MonsterInit();
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void CShockTrooper::Precache()
 {
 	PrecacheModel(STRING(pev->model));
@@ -994,10 +919,7 @@ void CShockTrooper::Precache()
 	iShockTrooperMuzzleFlash = PrecacheModel("sprites/muzzle_shock.spr");
 }
 
-//=========================================================
-// start task
-//=========================================================
-void CShockTrooper::StartTask(Task_t* pTask)
+void CShockTrooper::StartTask(const Task_t* pTask)
 {
 	m_iTaskStatus = TASKSTATUS_RUNNING;
 
@@ -1045,10 +967,7 @@ void CShockTrooper::StartTask(Task_t* pTask)
 	}
 }
 
-//=========================================================
-// RunTask
-//=========================================================
-void CShockTrooper::RunTask(Task_t* pTask)
+void CShockTrooper::RunTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -1072,9 +991,6 @@ void CShockTrooper::RunTask(Task_t* pTask)
 	}
 }
 
-//=========================================================
-// PainSound
-//=========================================================
 void CShockTrooper::PainSound()
 {
 	if (gpGlobals->time > m_flNextPainTime)
@@ -1115,13 +1031,6 @@ void CShockTrooper::PainSound()
 	}
 }
 
-//=========================================================
-// AI Schedules Specific to this monster
-//=========================================================
-
-//=========================================================
-// GruntFail
-//=========================================================
 Task_t tlShockTrooperFail[] =
 	{
 		{TASK_STOP_MOVING, 0},
@@ -1142,9 +1051,6 @@ Schedule_t slShockTrooperFail[] =
 			"Grunt Fail"},
 };
 
-//=========================================================
-// Grunt Combat Fail
-//=========================================================
 Task_t tlShockTrooperCombatFail[] =
 	{
 		{TASK_STOP_MOVING, 0},
@@ -1163,9 +1069,6 @@ Schedule_t slShockTrooperCombatFail[] =
 			"Grunt Combat Fail"},
 };
 
-//=========================================================
-// Victory dance!
-//=========================================================
 Task_t tlShockTrooperVictoryDance[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -1189,10 +1092,6 @@ Schedule_t slShockTrooperVictoryDance[] =
 			"GruntVictoryDance"},
 };
 
-//=========================================================
-// Establish line of fire - move to a position that allows
-// the grunt to attack.
-//=========================================================
 Task_t tlShockTrooperEstablishLineOfFire[] =
 	{
 		{TASK_SET_FAIL_SCHEDULE, (float)SCHED_GRUNT_ELOF_FAIL},
@@ -1202,6 +1101,9 @@ Task_t tlShockTrooperEstablishLineOfFire[] =
 		{TASK_WAIT_FOR_MOVEMENT, (float)0},
 };
 
+/**
+ *	@brief move to a position that allows the grunt to attack.
+ */
 Schedule_t slShockTrooperEstablishLineOfFire[] =
 	{
 		{tlShockTrooperEstablishLineOfFire,
@@ -1218,10 +1120,6 @@ Schedule_t slShockTrooperEstablishLineOfFire[] =
 			"GruntEstablishLineOfFire"},
 };
 
-//=========================================================
-// GruntFoundEnemy - grunt established sight with an enemy
-// that was hiding from the squad.
-//=========================================================
 Task_t tlShockTrooperFoundEnemy[] =
 	{
 		{TASK_STOP_MOVING, 0},
@@ -1229,6 +1127,9 @@ Task_t tlShockTrooperFoundEnemy[] =
 		{TASK_PLAY_SEQUENCE_FACE_ENEMY, (float)ACT_SIGNAL1},
 };
 
+/**
+ *	@brief grunt established sight with an enemy that was hiding from the squad.
+ */
 Schedule_t slShockTrooperFoundEnemy[] =
 	{
 		{tlShockTrooperFoundEnemy,
@@ -1239,9 +1140,6 @@ Schedule_t slShockTrooperFoundEnemy[] =
 			"GruntFoundEnemy"},
 };
 
-//=========================================================
-// GruntCombatFace Schedule
-//=========================================================
 Task_t tlShockTrooperCombatFace1[] =
 	{
 		{TASK_STOP_MOVING, 0},
@@ -1263,10 +1161,6 @@ Schedule_t slShockTrooperCombatFace[] =
 			"Combat Face"},
 };
 
-//=========================================================
-// Suppressing fire - don't stop shooting until the clip is
-// empty or grunt gets hurt.
-//=========================================================
 Task_t tlShockTrooperSignalSuppress[] =
 	{
 		{TASK_STOP_MOVING, 0},
@@ -1289,6 +1183,9 @@ Task_t tlShockTrooperSignalSuppress[] =
 		{TASK_RANGE_ATTACK1, (float)0},
 };
 
+/**
+ *	@brief don't stop shooting until the clip is empty or grunt gets hurt.
+ */
 Schedule_t slShockTrooperSignalSuppress[] =
 	{
 		{tlShockTrooperSignalSuppress,
@@ -1339,12 +1236,6 @@ Schedule_t slShockTrooperSuppress[] =
 			"Suppress"},
 };
 
-
-//=========================================================
-// grunt wait in cover - we don't allow danger or the ability
-// to attack to break a grunt's run to cover schedule, but
-// when a grunt is in cover, we do want them to attack if they can.
-//=========================================================
 Task_t tlShockTrooperWaitInCover[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -1352,6 +1243,10 @@ Task_t tlShockTrooperWaitInCover[] =
 		{TASK_WAIT_FACE_ENEMY, (float)1},
 };
 
+/**
+ *	@brief we don't allow danger or the ability to attack to break a grunt's run to cover schedule,
+ *	but when a grunt is in cover, we do want them to attack if they can.
+ */
 Schedule_t slShockTrooperWaitInCover[] =
 	{
 		{tlShockTrooperWaitInCover,
@@ -1393,9 +1288,6 @@ Schedule_t slShockTrooperTakeCover[] =
 			"TakeCover"},
 };
 
-//=========================================================
-// drop grenade then run to cover.
-//=========================================================
 Task_t tlShockTrooperGrenadeCover1[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -1408,6 +1300,9 @@ Task_t tlShockTrooperGrenadeCover1[] =
 		{TASK_SET_SCHEDULE, (float)SCHED_GRUNT_WAIT_FACE_ENEMY},
 };
 
+/**
+ *	@brief drop grenade then run to cover.
+ */
 Schedule_t slShockTrooperGrenadeCover[] =
 	{
 		{tlShockTrooperGrenadeCover1,
@@ -1417,10 +1312,6 @@ Schedule_t slShockTrooperGrenadeCover[] =
 			"GrenadeCover"},
 };
 
-
-//=========================================================
-// drop grenade then run to cover.
-//=========================================================
 Task_t tlShockTrooperTossGrenadeCover1[] =
 	{
 		{TASK_FACE_ENEMY, (float)0},
@@ -1428,6 +1319,9 @@ Task_t tlShockTrooperTossGrenadeCover1[] =
 		{TASK_SET_SCHEDULE, (float)SCHED_TAKE_COVER_FROM_ENEMY},
 };
 
+/**
+ *	@brief drop grenade then run to cover.
+ */
 Schedule_t slShockTrooperTossGrenadeCover[] =
 	{
 		{tlShockTrooperTossGrenadeCover1,
@@ -1437,9 +1331,6 @@ Schedule_t slShockTrooperTossGrenadeCover[] =
 			"TossGrenadeCover"},
 };
 
-//=========================================================
-// hide from the loudest sound source (to run from grenade)
-//=========================================================
 Task_t tlShockTrooperTakeCoverFromBestSound[] =
 	{
 		{TASK_SET_FAIL_SCHEDULE, (float)SCHED_COWER}, // duck and cover if cannot move from explosion
@@ -1451,6 +1342,9 @@ Task_t tlShockTrooperTakeCoverFromBestSound[] =
 		{TASK_TURN_LEFT, (float)179},
 };
 
+/**
+ *	@brief hide from the loudest sound source (to run from grenade)
+ */
 Schedule_t slShockTrooperTakeCoverFromBestSound[] =
 	{
 		{tlShockTrooperTakeCoverFromBestSound,
@@ -1460,9 +1354,6 @@ Schedule_t slShockTrooperTakeCoverFromBestSound[] =
 			"GruntTakeCoverFromBestSound"},
 };
 
-//=========================================================
-// Grunt reload schedule
-//=========================================================
 Task_t tlShockTrooperHideReload[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -1485,9 +1376,6 @@ Schedule_t slShockTrooperHideReload[] =
 			bits_SOUND_DANGER,
 			"GruntHideReload"}};
 
-//=========================================================
-// Do a turning sweep of the area
-//=========================================================
 Task_t tlShockTrooperSweep[] =
 	{
 		{TASK_TURN_LEFT, (float)179},
@@ -1496,6 +1384,9 @@ Task_t tlShockTrooperSweep[] =
 		{TASK_WAIT, (float)1},
 };
 
+/**
+ *	@brief Do a turning sweep of the area
+ */
 Schedule_t slShockTrooperSweep[] =
 	{
 		{tlShockTrooperSweep,
@@ -1515,10 +1406,6 @@ Schedule_t slShockTrooperSweep[] =
 			"Grunt Sweep"},
 };
 
-//=========================================================
-// primary range attack. Overriden because base class stops attacking when the enemy is occluded.
-// grunt's grenade toss requires the enemy be occluded.
-//=========================================================
 Task_t tlShockTrooperRangeAttack1A[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -1536,6 +1423,10 @@ Task_t tlShockTrooperRangeAttack1A[] =
 		{TASK_RANGE_ATTACK1, (float)0},
 };
 
+/**
+ *	@brief Overridden because base class stops attacking when the enemy is occluded.
+ *	grunt's grenade toss requires the enemy be occluded.
+ */
 Schedule_t slShockTrooperRangeAttack1A[] =
 	{
 		{tlShockTrooperRangeAttack1A,
@@ -1552,11 +1443,6 @@ Schedule_t slShockTrooperRangeAttack1A[] =
 			"Range Attack1A"},
 };
 
-
-//=========================================================
-// primary range attack. Overriden because base class stops attacking when the enemy is occluded.
-// grunt's grenade toss requires the enemy be occluded.
-//=========================================================
 Task_t tlShockTrooperRangeAttack1B[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -1574,6 +1460,10 @@ Task_t tlShockTrooperRangeAttack1B[] =
 		{TASK_RANGE_ATTACK1, (float)0},
 };
 
+/**
+ *	@brief Overridden because base class stops attacking when the enemy is occluded.
+ *	grunt's grenade toss requires the enemy be occluded.
+ */
 Schedule_t slShockTrooperRangeAttack1B[] =
 	{
 		{tlShockTrooperRangeAttack1B,
@@ -1590,10 +1480,6 @@ Schedule_t slShockTrooperRangeAttack1B[] =
 			"Range Attack1B"},
 };
 
-//=========================================================
-// secondary range attack. Overriden because base class stops attacking when the enemy is occluded.
-// grunt's grenade toss requires the enemy be occluded.
-//=========================================================
 Task_t tlShockTrooperRangeAttack2[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -1602,6 +1488,10 @@ Task_t tlShockTrooperRangeAttack2[] =
 		{TASK_SET_SCHEDULE, (float)SCHED_GRUNT_WAIT_FACE_ENEMY}, // don't run immediately after throwing grenade.
 };
 
+/**
+ *	@brief Overridden because base class stops attacking when the enemy is occluded.
+ *	grunt's grenade toss requires the enemy be occluded.
+ */
 Schedule_t slShockTrooperRangeAttack2[] =
 	{
 		{tlShockTrooperRangeAttack2,
@@ -1611,10 +1501,6 @@ Schedule_t slShockTrooperRangeAttack2[] =
 			"RangeAttack2"},
 };
 
-
-//=========================================================
-// repel
-//=========================================================
 Task_t tlShockTrooperRepel[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -1638,10 +1524,6 @@ Schedule_t slShockTrooperRepel[] =
 			"Repel"},
 };
 
-
-//=========================================================
-// repel
-//=========================================================
 Task_t tlShockTrooperRepelAttack[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -1658,9 +1540,6 @@ Schedule_t slShockTrooperRepelAttack[] =
 			"Repel Attack"},
 };
 
-//=========================================================
-// repel land
-//=========================================================
 Task_t tlShockTrooperRepelLand[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -1688,8 +1567,8 @@ Schedule_t slShockTrooperRepelLand[] =
 };
 
 
-DEFINE_CUSTOM_SCHEDULES(CShockTrooper){
-	slShockTrooperFail,
+BEGIN_CUSTOM_SCHEDULES(CShockTrooper)
+slShockTrooperFail,
 	slShockTrooperCombatFail,
 	slShockTrooperVictoryDance,
 	slShockTrooperEstablishLineOfFire,
@@ -1709,14 +1588,9 @@ DEFINE_CUSTOM_SCHEDULES(CShockTrooper){
 	slShockTrooperRangeAttack2,
 	slShockTrooperRepel,
 	slShockTrooperRepelAttack,
-	slShockTrooperRepelLand,
-};
+	slShockTrooperRepelLand
+	END_CUSTOM_SCHEDULES();
 
-IMPLEMENT_CUSTOM_SCHEDULES(CShockTrooper, CSquadMonster);
-
-//=========================================================
-// SetActivity
-//=========================================================
 void CShockTrooper::SetActivity(Activity NewActivity)
 {
 	int iSequence = ACTIVITY_NOT_AVAILABLE;
@@ -1798,10 +1672,7 @@ void CShockTrooper::SetActivity(Activity NewActivity)
 	}
 }
 
-//=========================================================
-// Get Schedule!
-//=========================================================
-Schedule_t* CShockTrooper::GetSchedule()
+const Schedule_t* CShockTrooper::GetSchedule()
 {
 
 	// clear old sentence
@@ -1894,15 +1765,19 @@ Schedule_t* CShockTrooper::GetSchedule()
 					// before he starts pluggin away.
 					if (FOkToSpeak()) // && RANDOM_LONG(0,1))
 					{
-						if ((m_hEnemy != nullptr) && m_hEnemy->IsPlayer())
-							// player
-							sentences::g_Sentences.PlayRndSz(this, "ST_ALERT", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
-						else if ((m_hEnemy != nullptr) &&
-								 (m_hEnemy->Classify() != CLASS_PLAYER_ALLY) &&
-								 (m_hEnemy->Classify() != CLASS_HUMAN_PASSIVE) &&
-								 (m_hEnemy->Classify() != CLASS_MACHINE))
-							// monster
-							sentences::g_Sentences.PlayRndSz(this, "ST_MONST", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+						if (m_hEnemy)
+						{
+							if (m_hEnemy->IsPlayer())
+							{
+								// player
+								sentences::g_Sentences.PlayRndSz(this, "ST_ALERT", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+							}
+							else if (auto monster = m_hEnemy->MyMonsterPointer(); monster && monster->HasAlienGibs())
+							{
+								// monster
+								sentences::g_Sentences.PlayRndSz(this, "ST_MONST", ShockTrooper_SENTENCE_VOLUME, GRUNT_ATTN, 0, m_voicePitch);
+							}
+						}
 
 						JustSpoke();
 					}
@@ -2040,9 +1915,7 @@ Schedule_t* CShockTrooper::GetSchedule()
 	return CSquadMonster::GetSchedule();
 }
 
-//=========================================================
-//=========================================================
-Schedule_t* CShockTrooper::GetScheduleOfType(int Type)
+const Schedule_t* CShockTrooper::GetScheduleOfType(int Type)
 {
 	switch (Type)
 	{
@@ -2234,19 +2107,24 @@ void CShockTrooper::MonsterThink()
 	CBaseMonster::MonsterThink();
 }
 
-//=========================================================
-// CShockTrooperRepel - when triggered, spawns a monster_shocktrooper
-// repelling down a line.
-//=========================================================
-
+/**
+ *	@brief when triggered, spawns a monster_shocktrooper repelling down a line.
+ */
 class CShockTrooperRepel : public CBaseMonster
 {
+	DECLARE_CLASS(CShockTrooperRepel, CBaseMonster);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	void Precache() override;
-	void EXPORT RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 	int m_iSpriteTexture; // Don't save, precache
 };
+
+BEGIN_DATAMAP(CShockTrooperRepel)
+DEFINE_FUNCTION(RepelUse),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(monster_shocktrooper_repel, CShockTrooperRepel);
 
@@ -2267,7 +2145,7 @@ void CShockTrooperRepel::Precache()
 void CShockTrooperRepel::RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
 	TraceResult tr;
-	UTIL_TraceLine(pev->origin, pev->origin + Vector(0, 0, -4096.0), dont_ignore_monsters, ENT(pev), &tr);
+	UTIL_TraceLine(pev->origin, pev->origin + Vector(0, 0, -4096.0), dont_ignore_monsters, edict(), &tr);
 	/*
 	if ( tr.pHit && Instance( tr.pHit )->pev->solid != SOLID_BSP)
 		return nullptr;
@@ -2291,17 +2169,14 @@ void CShockTrooperRepel::RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller,
 	UTIL_Remove(this);
 }
 
-
-
-//=========================================================
-// DEAD SHOCKTROOPER PROP
-//=========================================================
 class CDeadShockTrooper : public CBaseMonster
 {
 public:
 	void OnCreate() override;
 	void Spawn() override;
-	int Classify() override { return CLASS_HUMAN_MILITARY; }
+
+	// TODO: needs to be alien gibs instead
+	bool HasHumanGibs() override { return true; }
 
 	bool KeyValue(KeyValueData* pkvd) override;
 
@@ -2318,6 +2193,9 @@ void CDeadShockTrooper::OnCreate()
 	// Corpses have less health
 	pev->health = 8;
 	pev->model = MAKE_STRING("models/strooper.mdl");
+
+	// TODO: should be race x
+	SetClassification("human_military");
 }
 
 bool CDeadShockTrooper::KeyValue(KeyValueData* pkvd)
@@ -2331,11 +2209,8 @@ bool CDeadShockTrooper::KeyValue(KeyValueData* pkvd)
 	return CBaseMonster::KeyValue(pkvd);
 }
 
-LINK_ENTITY_TO_CLASS(monster_ShockTrooper_dead, CDeadShockTrooper);
+LINK_ENTITY_TO_CLASS(monster_shocktrooper_dead, CDeadShockTrooper);
 
-//=========================================================
-// ********** DeadHGrunt SPAWN **********
-//=========================================================
 void CDeadShockTrooper::Spawn()
 {
 	PrecacheModel(STRING(pev->model));

@@ -77,21 +77,12 @@ public:
 	void Shutdown() override;
 
 	/**
-	 *	@brief Used to check if debug functionality is enabled.
-	 *	@details This allows sensitive commands and performance-lowering systems to be disabled.
-	 */
-	bool IsDebugEnabled() const
-	{
-		return !!m_JsonDebug->value;
-	}
-
-	/**
 	 *	@brief Registers a schema with a function to get the schema.
 	 */
 	void RegisterSchema(std::string&& name, std::function<std::string()>&& getSchemaFunction);
 
 	/**
-	 *	@copydoc RegisterSchema(std::string&&, std::function<json()>&&)
+	 *	@copydoc RegisterSchema(std::string&&, std::function<std::string()>&&)
 	 */
 	void RegisterSchema(std::string_view name, std::function<std::string()>&& getSchemaFunction)
 	{
@@ -123,7 +114,7 @@ public:
 	 *	@return An optional value that contains the result object if no errors occurred, empty otherwise
 	 */
 	template <typename Callable>
-	auto ParseJSON(Callable callable, const json& input) -> std::optional<decltype(callable(input))>;
+	auto ParseJSON(Callable callable, json& input) -> std::optional<decltype(callable(input))>;
 
 	/**
 	 *	@brief Helper function to parse JSON Schemas.
@@ -137,7 +128,7 @@ public:
 	 */
 	template <typename Callable>
 	auto ParseJSONFile(const char* fileName, const JSONLoadParameters& parameters, Callable callable)
-		-> std::optional<decltype(callable(json{}))>;
+		-> std::optional<decltype(callable(*(json*)nullptr))>;
 
 private:
 	void ListSchemas(const CommandArgs& args);
@@ -149,7 +140,6 @@ private:
 	void WriteSchemaToFile(std::string_view schemaName, const json& schema);
 
 private:
-	cvar_t* m_JsonDebug = nullptr;
 	cvar_t* m_JsonSchemaValidation = nullptr;
 	std::shared_ptr<spdlog::logger> m_Logger;
 
@@ -157,7 +147,7 @@ private:
 };
 
 template <typename Callable>
-inline auto JSONSystem::ParseJSON(Callable callable, const json& input) -> std::optional<decltype(callable(input))>
+inline auto JSONSystem::ParseJSON(Callable callable, json& input) -> std::optional<decltype(callable(input))>
 {
 	if (!m_Logger)
 	{
@@ -197,7 +187,7 @@ inline std::optional<json> JSONSystem::ParseJSONSchema(std::string_view schema)
 
 template <typename Callable>
 inline auto JSONSystem::ParseJSONFile(const char* fileName, const JSONLoadParameters& parameters, Callable callable)
-	-> std::optional<decltype(callable(json{}))>
+	-> std::optional<decltype(callable(*(json*)nullptr))>
 {
 	if (auto data = LoadJSONFile(fileName, parameters); data.has_value())
 	{

@@ -12,16 +12,12 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// rat - environmental monster
-//=========================================================
 
 #include "cbase.h"
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
-
+/**
+ *	@brief environmental monster
+ */
 class CRat : public CBaseMonster
 {
 public:
@@ -29,7 +25,8 @@ public:
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
-	int Classify() override;
+
+	bool HasAlienGibs() override { return true; }
 };
 LINK_ENTITY_TO_CLASS(monster_rat, CRat);
 
@@ -39,21 +36,10 @@ void CRat::OnCreate()
 
 	pev->health = 8;
 	pev->model = MAKE_STRING("models/bigrat.mdl");
+
+	SetClassification("insect");
 }
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int CRat::Classify()
-{
-	return CLASS_INSECT;
-}
-
-//=========================================================
-// SetYawSpeed - allows each sequence to have a different
-// turn rate associated with it.
-//=========================================================
 void CRat::SetYawSpeed()
 {
 	int ys;
@@ -69,9 +55,6 @@ void CRat::SetYawSpeed()
 	pev->yaw_speed = ys;
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void CRat::Spawn()
 {
 	Precache();
@@ -89,14 +72,7 @@ void CRat::Spawn()
 	MonsterInit();
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void CRat::Precache()
 {
 	PrecacheModel(STRING(pev->model));
 }
-
-//=========================================================
-// AI Schedules Specific to this monster
-//=========================================================

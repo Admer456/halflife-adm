@@ -24,12 +24,13 @@
 #include <spdlog/logger.h>
 
 #include <EASTL/fixed_string.h>
+#include <EASTL/fixed_vector.h>
 
 #include "cbase.h"
 
 namespace sentences
 {
-constexpr int CBSENTENCENAME_MAX = 32;
+constexpr int CBSENTENCENAME_MAX = 16;
 
 constexpr int EngineMaxSentences = 1536;
 
@@ -51,16 +52,16 @@ constexpr int CSENTENCE_LRU_MAX = 32;
 
 using SentenceName = eastl::fixed_string<char, CBSENTENCENAME_MAX>;
 
-using SentenceIndexName = eastl::fixed_string<char, CBSENTENCENAME_MAX + 1>;
+using SentenceIndexName = eastl::fixed_string<char, 20 + 1 + 1>;
 
 /**
  *	@brief group of related sentences
  */
-struct SENTENCEG
+struct SentenceGroup
 {
 	SentenceName GroupName;
-	int count = 1;
-	unsigned char rgblru[CSENTENCE_LRU_MAX]{};
+	eastl::fixed_vector<int, CSENTENCE_LRU_MAX> Sentences{};
+	eastl::fixed_vector<unsigned char, CSENTENCE_LRU_MAX> LeastRecentlyUsed{};
 };
 
 /**
@@ -86,7 +87,8 @@ class SentencesListParser final
 {
 public:
 	SentencesListParser(std::string_view contents, spdlog::logger& logger)
-		: m_Contents(contents), m_Logger(logger)
+		: m_Contents(contents),
+		  m_Logger(logger)
 	{
 	}
 
@@ -117,7 +119,8 @@ struct SentenceWordParser final
 	SentenceWordParameters Parameters;
 
 	explicit SentenceWordParser(std::string_view sentence)
-		: Sentence(sentence), m_Next(Sentence.begin())
+		: Sentence(sentence),
+		  m_Next(Sentence.begin())
 	{
 	}
 

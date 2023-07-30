@@ -27,6 +27,7 @@
 #include "string_utils.h"
 #include "extdll.h"
 #include "enginecallback.h"
+#include "utils/JSONSystem.h"
 #include "utils/PrecacheList.h"
 
 extern globalvars_t* gpGlobals;
@@ -60,10 +61,6 @@ inline edict_t* ENT(const entvars_t* pev)
 	return pev->pContainingEntity;
 }
 #endif
-inline edict_t* ENT(edict_t* pent)
-{
-	return pent;
-}
 
 inline entvars_t* VARS(edict_t* pent)
 {

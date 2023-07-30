@@ -17,13 +17,20 @@
 
 #include "CBaseAnimating.h"
 
-//
-// generic Toggle entity.
-//
 #define SF_ITEM_USE_ONLY 256 //  ITEM_USE_ONLY = BUTTON_USE_ONLY = DOOR_USE_ONLY!!!
 
+class CBaseToggle;
+
+using MoveDonePtr = TBASEPTR<CBaseToggle>;
+
+/**
+ *	@brief generic Toggle entity.
+ */
 class CBaseToggle : public CBaseAnimating
 {
+	DECLARE_CLASS(CBaseToggle, CBaseAnimating);
+	DECLARE_DATAMAP();
+
 public:
 	bool KeyValue(KeyValueData* pkvd) override;
 
@@ -32,46 +39,49 @@ public:
 	float m_flMoveDistance;		// how far a door should slide or rotate
 	float m_flWait;
 	float m_flLip;
-	float m_flTWidth;  // for plats
-	float m_flTLength; // for plats
 
 	Vector m_vecPosition1;
 	Vector m_vecPosition2;
 	Vector m_vecAngle1;
 	Vector m_vecAngle2;
 
-	int m_cTriggersLeft; // trigger_counter only, # of activations remaining
-	float m_flHeight;
-	EHANDLE m_hActivator;
-	TBASEPTR<CBaseToggle> m_pfnCallWhenMoveDone;
+	MoveDonePtr m_pfnCallWhenMoveDone;
 	Vector m_vecFinalDest;
 	Vector m_vecFinalAngle;
 
-	int m_bitsDamageInflict; // DMG_ damage type that the door or tigger does
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-
-	int GetToggleState() override { return m_toggle_state; }
 	float GetDelay() override { return m_flWait; }
 
 	// common member functions
+	/**
+	 *	@brief calculate pev->velocity and pev->nextthink to reach vecDest from pev->origin traveling at flSpeed
+	 */
 	void LinearMove(Vector vecDest, float flSpeed);
-	void EXPORT LinearMoveDone();
+
+	/**
+	 *	@brief After moving, set origin to exact final destination, call "move done" function
+	 */
+	void LinearMoveDone();
+
+	/**
+	 *	@brief calculate pev->velocity and pev->nextthink to reach vecDest from pev->origin traveling at flSpeed
+	 *	Just like LinearMove, but rotational.
+	 */
 	void AngularMove(Vector vecDestAngle, float flSpeed);
-	void EXPORT AngularMoveDone();
-	bool IsLockedByMaster();
+
+	/**
+	 *	@brief After rotating, set angle to exact final angle, call "move done" function
+	 */
+	void AngularMoveDone();
 
 	static float AxisValue(int flags, const Vector& angles);
-	static void AxisDir(entvars_t* pev);
+	static void AxisDir(CBaseEntity* entity);
 	static float AxisDelta(int flags, const Vector& angle1, const Vector& angle2);
 
-	string_t m_sMaster; // If this button has a master switch, this is the targetname.
-						// A master switch must be of the multisource type. If all
-						// of the switches in the multisource have been triggered, then
-						// the button will be allowed to operate. Otherwise, it will be
-						// deactivated.
+	template <typename T>
+	MoveDonePtr MoveDoneSet(TBASEPTR<T> func, const char* name)
+	{
+		return FunctionSet<T>(m_pfnCallWhenMoveDone, func, name);
+	}
 };
-#define SetMoveDone(a) m_pfnCallWhenMoveDone = static_cast<decltype(CBaseToggle::m_pfnCallWhenMoveDone)>(a)
+
+#define SetMoveDone(a) MoveDoneSet(a, #a)

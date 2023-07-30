@@ -12,20 +12,18 @@
  *   without written permission from Valve LLC.
  *
  ****/
-/*
-
-===== doors.cpp ========================================================
-
-*/
 
 #include "cbase.h"
 #include "doors.h"
 
-
-void SetMovedir(entvars_t* ev);
-
+/**
+ *	@brief if two doors touch, they are assumed to be connected and operate as a unit.
+ */
 class CBaseDoor : public CBaseToggle
 {
+	DECLARE_CLASS(CBaseDoor, CBaseToggle);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	void Precache() override;
@@ -41,22 +39,38 @@ public:
 		else
 			return (CBaseToggle::ObjectCaps() & ~FCAP_ACROSS_TRANSITION);
 	};
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-
-	void SetToggleState(int state) override;
 
 	// used to selectivly override defaults
-	void EXPORT DoorTouch(CBaseEntity* pOther);
+	/**
+	 *	@brief Doors not tied to anything (e.g. button, another door) can be touched, to make them activate.
+	 */
+	void DoorTouch(CBaseEntity* pOther);
 
 	// local functions
+	/**
+	 *	@brief Causes the door to "do its thing", i.e. start moving, and cascade activation.
+	 */
 	bool DoorActivate();
-	void EXPORT DoorGoUp();
-	void EXPORT DoorGoDown();
-	void EXPORT DoorHitTop();
-	void EXPORT DoorHitBottom();
+
+	/**
+	 *	@brief Starts the door going to its "up" position (simply ToggleData->vecPosition2).
+	 */
+	void DoorGoUp();
+
+	/**
+	 *	@brief Starts the door going to its "down" position (simply ToggleData->vecPosition1).
+	 */
+	void DoorGoDown();
+
+	/**
+	 *	@brief The door has reached the "up" position. Either go back down, or wait for another activation.
+	 */
+	void DoorHitTop();
+
+	/**
+	 *	@brief The door has reached the "down" position. Back to quiescence.
+	 */
+	void DoorHitBottom();
 
 	byte m_bHealthValue; // some doors are medi-kit doors, they give players health
 
@@ -71,32 +85,25 @@ public:
 	string_t m_UnlockedSentence;
 };
 
+BEGIN_DATAMAP(CBaseDoor)
+DEFINE_FIELD(m_bHealthValue, FIELD_CHARACTER),
+	DEFINE_FIELD(m_MoveSound, FIELD_SOUNDNAME),
+	DEFINE_FIELD(m_StopSound, FIELD_SOUNDNAME),
 
-TYPEDESCRIPTION CBaseDoor::m_SaveData[] =
-	{
-		DEFINE_FIELD(CBaseDoor, m_bHealthValue, FIELD_CHARACTER),
-		DEFINE_FIELD(CBaseDoor, m_MoveSound, FIELD_SOUNDNAME),
-		DEFINE_FIELD(CBaseDoor, m_StopSound, FIELD_SOUNDNAME),
-
-		DEFINE_FIELD(CBaseDoor, m_LockedSound, FIELD_SOUNDNAME),
-		DEFINE_FIELD(CBaseDoor, m_LockedSentence, FIELD_STRING),
-		DEFINE_FIELD(CBaseDoor, m_UnlockedSound, FIELD_SOUNDNAME),
-		DEFINE_FIELD(CBaseDoor, m_UnlockedSentence, FIELD_STRING),
-
-};
-
-IMPLEMENT_SAVERESTORE(CBaseDoor, CBaseToggle);
-
+	DEFINE_FIELD(m_LockedSound, FIELD_SOUNDNAME),
+	DEFINE_FIELD(m_LockedSentence, FIELD_STRING),
+	DEFINE_FIELD(m_UnlockedSound, FIELD_SOUNDNAME),
+	DEFINE_FIELD(m_UnlockedSentence, FIELD_STRING),
+	DEFINE_FUNCTION(DoorTouch),
+	DEFINE_FUNCTION(DoorGoUp),
+	DEFINE_FUNCTION(DoorGoDown),
+	DEFINE_FUNCTION(DoorHitTop),
+	DEFINE_FUNCTION(DoorHitBottom),
+	END_DATAMAP();
 
 #define DOOR_SENTENCEWAIT 6
 #define DOOR_SOUNDWAIT 3
 #define BUTTON_SOUNDWAIT 0.5
-
-// play door or button locked or unlocked sounds.
-// pass in pointer to valid locksound struct.
-// if flocked is true, play 'door is locked' sound,
-// otherwise play 'door is unlocked' sound
-// NOTE: this routine is shared by doors and buttons
 
 void PlayLockSounds(CBaseEntity* entity, locksound_t* pls, bool flocked, bool fbutton)
 {
@@ -183,10 +190,6 @@ void PlayLockSounds(CBaseEntity* entity, locksound_t* pls, bool flocked, bool fb
 	}
 }
 
-//
-// Cache user-entity-field values until spawn is called.
-//
-
 bool CBaseDoor::KeyValue(KeyValueData* pkvd)
 {
 
@@ -239,42 +242,17 @@ bool CBaseDoor::KeyValue(KeyValueData* pkvd)
 	return CBaseToggle::KeyValue(pkvd);
 }
 
-/*QUAKED func_door (0 .5 .8) ? START_OPEN x DOOR_DONT_LINK TOGGLE
-if two doors touch, they are assumed to be connected and operate as a unit.
-
-TOGGLE causes the door to wait in both the start and end states for a trigger event.
-
-START_OPEN causes the door to move to its destination when spawned, and operate in reverse.
-It is used to temporarily or permanently close off an area when triggered (not usefull for
-touch or takedamage doors).
-
-"angle"         determines the opening direction
-"targetname"	if set, no touch field will be spawned and a remote button or trigger
-				field activates the door.
-"health"        if set, door must be shot open
-"speed"         movement speed (100 default)
-"wait"          wait before returning (3 default, -1 = never return)
-"lip"           lip remaining at end of move (8 default)
-"dmg"           damage to inflict when blocked (2 default)
-"sounds"
-0)      no sound
-1)      stone
-2)      base
-3)      stone chain
-4)      screechy metal
-*/
-
 LINK_ENTITY_TO_CLASS(func_door, CBaseDoor);
-//
-// func_water - same as a door.
-//
-LINK_ENTITY_TO_CLASS(func_water, CBaseDoor);
 
+/**
+ *	@brief func_water - same as a door.
+ */
+LINK_ENTITY_TO_CLASS(func_water, CBaseDoor);
 
 void CBaseDoor::Spawn()
 {
 	Precache();
-	SetMovedir(pev);
+	SetMovedir(this);
 
 	if (pev->skin == 0)
 	{ // normal door
@@ -290,7 +268,7 @@ void CBaseDoor::Spawn()
 	}
 
 	pev->movetype = MOVETYPE_PUSH;
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 	SetModel(STRING(pev->model));
 
 	if (pev->speed == 0)
@@ -302,7 +280,7 @@ void CBaseDoor::Spawn()
 	ASSERTSZ(m_vecPosition1 != m_vecPosition2, "door start/end positions are equal");
 	if (FBitSet(pev->spawnflags, SF_DOOR_START_OPEN))
 	{ // swap pos1 and pos2, put door at pos2
-		UTIL_SetOrigin(pev, m_vecPosition2);
+		SetOrigin(m_vecPosition2);
 		m_vecPosition2 = m_vecPosition1;
 		m_vecPosition1 = pev->origin;
 	}
@@ -317,16 +295,6 @@ void CBaseDoor::Spawn()
 	else // touchable button
 		SetTouch(&CBaseDoor::DoorTouch);
 }
-
-
-void CBaseDoor::SetToggleState(int state)
-{
-	if (state == TS_AT_TOP)
-		UTIL_SetOrigin(pev, m_vecPosition2);
-	else
-		UTIL_SetOrigin(pev, m_vecPosition1);
-}
-
 
 void CBaseDoor::Precache()
 {
@@ -365,9 +333,6 @@ void CBaseDoor::Precache()
 	m_ls.sUnlockedSentence = m_UnlockedSentence;
 }
 
-//
-// Doors not tied to anything (e.g. button, another door) can be touched, to make them activate.
-//
 void CBaseDoor::DoorTouch(CBaseEntity* pOther)
 {
 	// Ignore touches by anything but players
@@ -396,10 +361,6 @@ void CBaseDoor::DoorTouch(CBaseEntity* pOther)
 		SetTouch(nullptr); // Temporarily disable the touch function, until movement is finished.
 }
 
-
-//
-// Used by SUB_UseTargets, when a door is the target of a button.
-//
 void CBaseDoor::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
 	m_hActivator = pActivator;
@@ -408,9 +369,6 @@ void CBaseDoor::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useT
 		DoorActivate();
 }
 
-//
-// Causes the door to "do its thing", i.e. start moving, and cascade activation.
-//
 bool CBaseDoor::DoorActivate()
 {
 	if (!UTIL_IsMasterTriggered(m_sMaster, m_hActivator))
@@ -425,9 +383,7 @@ bool CBaseDoor::DoorActivate()
 
 		if (m_hActivator != nullptr && m_hActivator->IsPlayer())
 		{ // give health if player opened the door (medikit)
-			// VARS( m_eoActivator )->health += m_bHealthValue;
-
-			m_hActivator->TakeHealth(m_bHealthValue, DMG_GENERIC);
+			m_hActivator->GiveHealth(m_bHealthValue, DMG_GENERIC);
 		}
 
 		// play door unlock sounds
@@ -439,15 +395,8 @@ bool CBaseDoor::DoorActivate()
 	return true;
 }
 
-Vector VecBModelOrigin(entvars_t* pevBModel);
-
-//
-// Starts the door going to its "up" position (simply ToggleData->vecPosition2).
-//
 void CBaseDoor::DoorGoUp()
 {
-	entvars_t* pevActivator;
-
 	// It could be going-down, if blocked.
 	ASSERT(m_toggle_state == TS_AT_BOTTOM || m_toggle_state == TS_GOING_DOWN);
 
@@ -468,18 +417,18 @@ void CBaseDoor::DoorGoUp()
 
 		if (m_hActivator != nullptr)
 		{
-			pevActivator = m_hActivator->pev;
+			CBaseEntity* activator = m_hActivator;
 
 			if (!FBitSet(pev->spawnflags, SF_DOOR_ONEWAY) && 0 != pev->movedir.y) // Y axis rotation, move away from the player
 			{
-				Vector vec = pevActivator->origin - pev->origin;
-				Vector angles = pevActivator->angles;
+				Vector vec = activator->pev->origin - pev->origin;
+				Vector angles = activator->pev->angles;
 				angles.x = 0;
 				angles.z = 0;
 				UTIL_MakeVectors(angles);
 				//			Vector vnext = (pevToucher->origin + (pevToucher->velocity * 10)) - pev->origin;
-				UTIL_MakeVectors(pevActivator->angles);
-				Vector vnext = (pevActivator->origin + (gpGlobals->v_forward * 10)) - pev->origin;
+				UTIL_MakeVectors(activator->pev->angles);
+				Vector vnext = (activator->pev->origin + (gpGlobals->v_forward * 10)) - pev->origin;
 				if ((vec.x * vnext.y - vec.y * vnext.x) < 0)
 					sign = -1.0;
 			}
@@ -490,10 +439,6 @@ void CBaseDoor::DoorGoUp()
 		LinearMove(m_vecPosition2, pev->speed);
 }
 
-
-//
-// The door has reached the "up" position.  Either go back down, or wait for another activation.
-//
 void CBaseDoor::DoorHitTop()
 {
 	if (!FBitSet(pev->spawnflags, SF_DOOR_SILENT))
@@ -531,10 +476,6 @@ void CBaseDoor::DoorHitTop()
 	SUB_UseTargets(m_hActivator, USE_TOGGLE, 0); // this isn't finished
 }
 
-
-//
-// Starts the door going to its "down" position (simply ToggleData->vecPosition1).
-//
 void CBaseDoor::DoorGoDown()
 {
 	if (!FBitSet(pev->spawnflags, SF_DOOR_SILENT))
@@ -555,9 +496,6 @@ void CBaseDoor::DoorGoDown()
 		LinearMove(m_vecPosition1, pev->speed);
 }
 
-//
-// The door has reached the "down" position.  Back to quiescence.
-//
 void CBaseDoor::DoorHitBottom()
 {
 	if (!FBitSet(pev->spawnflags, SF_DOOR_SILENT))
@@ -649,60 +587,19 @@ void CBaseDoor::Blocked(CBaseEntity* pOther)
 	}
 }
 
-
-/*QUAKED FuncRotDoorSpawn (0 .5 .8) ? START_OPEN REVERSE
-DOOR_DONT_LINK TOGGLE X_AXIS Y_AXIS
-if two doors touch, they are assumed to be connected and operate as
-a unit.
-
-TOGGLE causes the door to wait in both the start and end states for
-a trigger event.
-
-START_OPEN causes the door to move to its destination when spawned,
-and operate in reverse.  It is used to temporarily or permanently
-close off an area when triggered (not usefull for touch or
-takedamage doors).
-
-You need to have an origin brush as part of this entity.  The
-center of that brush will be
-the point around which it is rotated. It will rotate around the Z
-axis by default.  You can
-check either the X_AXIS or Y_AXIS box to change that.
-
-"distance" is how many degrees the door will be rotated.
-"speed" determines how fast the door moves; default value is 100.
-
-REVERSE will cause the door to rotate in the opposite direction.
-
-"angle"		determines the opening direction
-"targetname" if set, no touch field will be spawned and a remote
-button or trigger field activates the door.
-"health"	if set, door must be shot open
-"speed"		movement speed (100 default)
-"wait"		wait before returning (3 default, -1 = never return)
-"dmg"		damage to inflict when blocked (2 default)
-"sounds"
-0)	no sound
-1)	stone
-2)	base
-3)	stone chain
-4)	screechy metal
-*/
 class CRotDoor : public CBaseDoor
 {
 public:
 	void Spawn() override;
-	void SetToggleState(int state) override;
 };
 
 LINK_ENTITY_TO_CLASS(func_door_rotating, CRotDoor);
-
 
 void CRotDoor::Spawn()
 {
 	Precache();
 	// set the axis of rotation
-	CBaseToggle::AxisDir(pev);
+	CBaseToggle::AxisDir(this);
 
 	// check for clockwise rotation
 	if (FBitSet(pev->spawnflags, SF_DOOR_ROTATE_BACKWARDS))
@@ -720,7 +617,7 @@ void CRotDoor::Spawn()
 		pev->solid = SOLID_BSP;
 
 	pev->movetype = MOVETYPE_PUSH;
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 	SetModel(STRING(pev->model));
 
 	if (pev->speed == 0)
@@ -747,20 +644,11 @@ void CRotDoor::Spawn()
 		SetTouch(&CRotDoor::DoorTouch);
 }
 
-
-void CRotDoor::SetToggleState(int state)
-{
-	if (state == TS_AT_TOP)
-		pev->angles = m_vecAngle2;
-	else
-		pev->angles = m_vecAngle1;
-
-	UTIL_SetOrigin(pev, pev->origin);
-}
-
-
 class CMomentaryDoor : public CBaseToggle
 {
+	DECLARE_CLASS(CMomentaryDoor, CBaseToggle);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	void Precache() override;
@@ -769,12 +657,11 @@ public:
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
 	int ObjectCaps() override { return CBaseToggle::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-
-	void EXPORT DoorMoveDone();
-	void EXPORT StopMoveSound();
+	/**
+	 *	@brief The door has reached needed position.
+	 */
+	void DoorMoveDone();
+	void StopMoveSound();
 
 	string_t m_MoveSound; // sound a door makes while moving
 	string_t m_StopSound;
@@ -782,22 +669,21 @@ public:
 
 LINK_ENTITY_TO_CLASS(momentary_door, CMomentaryDoor);
 
-TYPEDESCRIPTION CMomentaryDoor::m_SaveData[] =
-	{
-		DEFINE_FIELD(CMomentaryDoor, m_MoveSound, FIELD_SOUNDNAME),
-		DEFINE_FIELD(CMomentaryDoor, m_StopSound, FIELD_SOUNDNAME),
-};
-
-IMPLEMENT_SAVERESTORE(CMomentaryDoor, CBaseToggle);
+BEGIN_DATAMAP(CMomentaryDoor)
+DEFINE_FIELD(m_MoveSound, FIELD_SOUNDNAME),
+	DEFINE_FIELD(m_StopSound, FIELD_SOUNDNAME),
+	DEFINE_FUNCTION(DoorMoveDone),
+	DEFINE_FUNCTION(StopMoveSound),
+	END_DATAMAP();
 
 void CMomentaryDoor::Spawn()
 {
-	SetMovedir(pev);
+	SetMovedir(this);
 
 	pev->solid = SOLID_BSP;
 	pev->movetype = MOVETYPE_PUSH;
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 	SetModel(STRING(pev->model));
 
 	if (pev->speed == 0)
@@ -812,7 +698,7 @@ void CMomentaryDoor::Spawn()
 
 	if (FBitSet(pev->spawnflags, SF_DOOR_START_OPEN))
 	{ // swap pos1 and pos2, put door at pos2
-		UTIL_SetOrigin(pev, m_vecPosition2);
+		SetOrigin(m_vecPosition2);
 		m_vecPosition2 = m_vecPosition1;
 		m_vecPosition1 = pev->origin;
 	}
@@ -838,7 +724,6 @@ void CMomentaryDoor::Precache()
 
 bool CMomentaryDoor::KeyValue(KeyValueData* pkvd)
 {
-
 	if (FStrEq(pkvd->szKeyName, "movesnd"))
 	{
 		m_MoveSound = ALLOC_STRING(pkvd->szValue);
@@ -888,9 +773,6 @@ void CMomentaryDoor::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE
 	LinearMove(move, speed);
 }
 
-//
-// The door has reached needed position.
-//
 void CMomentaryDoor::DoorMoveDone()
 {
 	// Stop sounds at the next think, rather than here as another

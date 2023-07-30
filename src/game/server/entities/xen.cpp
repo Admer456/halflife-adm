@@ -12,35 +12,30 @@
  *   without written permission from Valve LLC.
  *
  ****/
-#include "cbase.h"
 
+#include "cbase.h"
 
 #define XEN_PLANT_GLOW_SPRITE "sprites/flare3.spr"
 #define XEN_PLANT_HIDE_TIME 5
 
-
 class CActAnimating : public CBaseAnimating
 {
+	DECLARE_CLASS(CActAnimating, CBaseAnimating);
+	DECLARE_DATAMAP();
+
 public:
 	void SetActivity(Activity act);
 	inline Activity GetActivity() { return m_Activity; }
 
 	int ObjectCaps() override { return CBaseAnimating::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-
 private:
 	Activity m_Activity;
 };
 
-TYPEDESCRIPTION CActAnimating::m_SaveData[] =
-	{
-		DEFINE_FIELD(CActAnimating, m_Activity, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(CActAnimating, CBaseAnimating);
+BEGIN_DATAMAP(CActAnimating)
+DEFINE_FIELD(m_Activity, FIELD_INTEGER),
+	END_DATAMAP();
 
 void CActAnimating::SetActivity(Activity act)
 {
@@ -54,24 +49,21 @@ void CActAnimating::SetActivity(Activity act)
 	}
 }
 
-
-
-
 class CXenPLight : public CActAnimating
 {
+	DECLARE_CLASS(CXenPLight, CActAnimating);
+	DECLARE_DATAMAP();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void Touch(CBaseEntity* pOther) override;
 	void Think() override;
+	void UpdateOnRemove() override;
 
 	void LightOn();
 	void LightOff();
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
 
 private:
 	CSprite* m_pGlow;
@@ -79,12 +71,9 @@ private:
 
 LINK_ENTITY_TO_CLASS(xen_plantlight, CXenPLight);
 
-TYPEDESCRIPTION CXenPLight::m_SaveData[] =
-	{
-		DEFINE_FIELD(CXenPLight, m_pGlow, FIELD_CLASSPTR),
-};
-
-IMPLEMENT_SAVERESTORE(CXenPLight, CActAnimating);
+BEGIN_DATAMAP(CXenPLight)
+DEFINE_FIELD(m_pGlow, FIELD_CLASSPTR),
+	END_DATAMAP();
 
 void CXenPLight::OnCreate()
 {
@@ -111,13 +100,11 @@ void CXenPLight::Spawn()
 	m_pGlow->SetAttachment(edict(), 1);
 }
 
-
 void CXenPLight::Precache()
 {
 	PrecacheModel(STRING(pev->model));
 	PrecacheModel(XEN_PLANT_GLOW_SPRITE);
 }
-
 
 void CXenPLight::Think()
 {
@@ -153,7 +140,6 @@ void CXenPLight::Think()
 	}
 }
 
-
 void CXenPLight::Touch(CBaseEntity* pOther)
 {
 	if (pOther->IsPlayer())
@@ -166,6 +152,16 @@ void CXenPLight::Touch(CBaseEntity* pOther)
 	}
 }
 
+void CXenPLight::UpdateOnRemove()
+{
+	if (m_pGlow)
+	{
+		UTIL_Remove(m_pGlow);
+		m_pGlow = nullptr;
+	}
+
+	CActAnimating::UpdateOnRemove();
+}
 
 void CXenPLight::LightOn()
 {
@@ -174,15 +170,12 @@ void CXenPLight::LightOn()
 		m_pGlow->pev->effects &= ~EF_NODRAW;
 }
 
-
 void CXenPLight::LightOff()
 {
 	SUB_UseTargets(this, USE_OFF, 0);
 	if (m_pGlow)
 		m_pGlow->pev->effects |= EF_NODRAW;
 }
-
-
 
 class CXenHair : public CActAnimating
 {
@@ -223,39 +216,36 @@ void CXenHair::Spawn()
 	pev->nextthink = gpGlobals->time + RANDOM_FLOAT(0.1, 0.4); // Load balance these a bit
 }
 
-
 void CXenHair::Think()
 {
 	StudioFrameAdvance();
 	pev->nextthink = gpGlobals->time + 0.5;
 }
 
-
 void CXenHair::Precache()
 {
 	PrecacheModel(STRING(pev->model));
 }
 
-
 class CXenTreeTrigger : public CBaseEntity
 {
 public:
 	void Touch(CBaseEntity* pOther) override;
-	static CXenTreeTrigger* TriggerCreate(edict_t* pOwner, const Vector& position);
+	static CXenTreeTrigger* TriggerCreate(CBaseEntity* owner, const Vector& position);
 };
+
 LINK_ENTITY_TO_CLASS(xen_ttrigger, CXenTreeTrigger);
 
-CXenTreeTrigger* CXenTreeTrigger::TriggerCreate(edict_t* pOwner, const Vector& position)
+CXenTreeTrigger* CXenTreeTrigger::TriggerCreate(CBaseEntity* owner, const Vector& position)
 {
 	CXenTreeTrigger* pTrigger = g_EntityDictionary->Create<CXenTreeTrigger>("xen_ttrigger");
 	pTrigger->pev->origin = position;
 	pTrigger->pev->solid = SOLID_TRIGGER;
 	pTrigger->pev->movetype = MOVETYPE_NONE;
-	pTrigger->pev->owner = pOwner;
+	pTrigger->SetOwner(owner);
 
 	return pTrigger;
 }
-
 
 void CXenTreeTrigger::Touch(CBaseEntity* pOther)
 {
@@ -266,11 +256,13 @@ void CXenTreeTrigger::Touch(CBaseEntity* pOther)
 	}
 }
 
-
 #define TREE_AE_ATTACK 1
 
 class CXenTree : public CActAnimating
 {
+	DECLARE_CLASS(CXenTree, CActAnimating);
+	DECLARE_DATAMAP();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
@@ -284,11 +276,8 @@ public:
 	}
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	void Attack();
-	int Classify() override { return CLASS_BARNACLE; }
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+	void UpdateOnRemove() override;
 
 	static const char* pAttackHitSounds[];
 	static const char* pAttackMissSounds[];
@@ -299,18 +288,17 @@ private:
 
 LINK_ENTITY_TO_CLASS(xen_tree, CXenTree);
 
-TYPEDESCRIPTION CXenTree::m_SaveData[] =
-	{
-		DEFINE_FIELD(CXenTree, m_pTrigger, FIELD_CLASSPTR),
-};
-
-IMPLEMENT_SAVERESTORE(CXenTree, CActAnimating);
+BEGIN_DATAMAP(CXenTree)
+DEFINE_FIELD(m_pTrigger, FIELD_CLASSPTR),
+	END_DATAMAP();
 
 void CXenTree::OnCreate()
 {
 	CActAnimating::OnCreate();
 
 	pev->model = MAKE_STRING("models/tree.mdl");
+
+	SetClassification("alien_flora");
 }
 
 void CXenTree::Spawn()
@@ -333,7 +321,7 @@ void CXenTree::Spawn()
 	AngleVectors(pev->angles, &triggerPosition, nullptr, nullptr);
 	triggerPosition = pev->origin + (triggerPosition * 64);
 	// Create the trigger
-	m_pTrigger = CXenTreeTrigger::TriggerCreate(edict(), triggerPosition);
+	m_pTrigger = CXenTreeTrigger::TriggerCreate(this, triggerPosition);
 	m_pTrigger->SetSize(Vector(-24, -24, 0), Vector(24, 24, 128));
 }
 
@@ -358,7 +346,6 @@ void CXenTree::Precache()
 	PRECACHE_SOUND_ARRAY(pAttackMissSounds);
 }
 
-
 void CXenTree::Touch(CBaseEntity* pOther)
 {
 	if (!pOther->IsPlayer() && pOther->ClassnameIs("monster_bigmomma"))
@@ -366,7 +353,6 @@ void CXenTree::Touch(CBaseEntity* pOther)
 
 	Attack();
 }
-
 
 void CXenTree::Attack()
 {
@@ -377,7 +363,6 @@ void CXenTree::Attack()
 		EMIT_SOUND_ARRAY_DYN(CHAN_WEAPON, pAttackMissSounds);
 	}
 }
-
 
 void CXenTree::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
@@ -439,14 +424,21 @@ void CXenTree::Think()
 	}
 }
 
+void CXenTree::UpdateOnRemove()
+{
+	if (m_pTrigger)
+	{
+		UTIL_Remove(m_pTrigger);
+		m_pTrigger = nullptr;
+	}
+
+	CActAnimating::UpdateOnRemove();
+}
 
 // UNDONE:	These need to smoke somehow when they take damage
 //			Touch behavior?
 //			Cause damage in smoke area
 
-//
-// Spores
-//
 class CXenSpore : public CActAnimating
 {
 public:
@@ -482,19 +474,27 @@ class CXenSporeLarge : public CXenSpore
 	static const Vector m_hullSizes[];
 };
 
-// Fake collision box for big spores
+/**
+ *	@brief Fake collision box for big spores
+ */
 class CXenHull : public CPointEntity
 {
 public:
 	static CXenHull* CreateHull(CBaseEntity* source, const Vector& mins, const Vector& maxs, const Vector& offset);
-	int Classify() override { return CLASS_BARNACLE; }
+
+	void OnCreate() override
+	{
+		BaseClass::OnCreate();
+
+		SetClassification("alien_flora");
+	}
 };
 
 CXenHull* CXenHull::CreateHull(CBaseEntity* source, const Vector& mins, const Vector& maxs, const Vector& offset)
 {
 	CXenHull* pHull = g_EntityDictionary->Create<CXenHull>("xen_hull");
 
-	UTIL_SetOrigin(pHull->pev, source->pev->origin + offset);
+	pHull->SetOrigin(source->pev->origin + offset);
 	pHull->SetModel(STRING(source->pev->model));
 	pHull->pev->solid = SOLID_BBOX;
 	pHull->pev->movetype = MOVETYPE_NONE;
@@ -506,7 +506,6 @@ CXenHull* CXenHull::CreateHull(CBaseEntity* source, const Vector& mins, const Ve
 
 	return pHull;
 }
-
 
 LINK_ENTITY_TO_CLASS(xen_spore_small, CXenSporeSmall);
 LINK_ENTITY_TO_CLASS(xen_spore_medium, CXenSporeMed);
@@ -525,7 +524,6 @@ void CXenSporeMed::Spawn()
 	CXenSpore::Spawn();
 	SetSize(Vector(-40, -40, 0), Vector(40, 40, 120));
 }
-
 
 // I just eyeballed these -- fill in hulls for the legs
 const Vector CXenSporeLarge::m_hullSizes[] =
@@ -583,7 +581,6 @@ const char* CXenSpore::pModelNames[] =
 		"models/fungus(large).mdl",
 };
 
-
 void CXenSpore::Precache()
 {
 	if (FStringNull(pev->model))
@@ -600,7 +597,6 @@ void CXenSpore::Precache()
 void CXenSpore::Touch(CBaseEntity* pOther)
 {
 }
-
 
 void CXenSpore::Think()
 {

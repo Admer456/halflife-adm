@@ -20,8 +20,6 @@
 
 #include "hud.h"
 
-#define BAT_NAME "sprites/%d_Flashlight.spr"
-
 bool CHudFlashlight::Init()
 {
 	m_fFade = 0;
@@ -49,43 +47,47 @@ bool CHudFlashlight::VidInit()
 	{
 		const int HUD_flash_empty = gHUD.GetSpriteIndex(empty);
 		const int HUD_flash_full = gHUD.GetSpriteIndex(full);
-		const int HUD_flash_beam = gHUD.GetSpriteIndex(beam);
 
 		LightData data;
 
 		data.m_hSprite1 = gHUD.GetSprite(HUD_flash_empty);
 		data.m_hSprite2 = gHUD.GetSprite(HUD_flash_full);
-		data.m_hBeam = gHUD.GetSprite(HUD_flash_beam);
 		data.m_prc1 = &gHUD.GetSpriteRect(HUD_flash_empty);
 		data.m_prc2 = &gHUD.GetSpriteRect(HUD_flash_full);
-		data.m_prcBeam = &gHUD.GetSpriteRect(HUD_flash_beam);
+
+		if (beam)
+		{
+			const int HUD_flash_beam = gHUD.GetSpriteIndex(beam);
+			data.m_hBeam = gHUD.GetSprite(HUD_flash_beam);
+			data.m_prcBeam = &gHUD.GetSpriteRect(HUD_flash_beam);
+		}
+
 		data.m_iWidth = data.m_prc2->right - data.m_prc2->left;
 
 		return data;
 	};
 
 	m_Flashlight = setup("flash_empty", "flash_full", "flash_beam");
-	m_Nightvision = setup("nvg_empty", "nvg_full", "nvg_beam");
+	//NVG doesn't have a beam.
+	m_Nightvision = setup("nvg_empty", "nvg_full", nullptr);
 
-	m_nvSprite = LoadSprite("sprites/of_nv_b.spr");
+	m_nvSprite = SPR_Load("sprites/of_nv_b.spr");
 
 	return true;
 }
 
-void CHudFlashlight::MsgFunc_FlashBat(const char* pszName, int iSize, void* pbuf)
+void CHudFlashlight::MsgFunc_FlashBat(const char* pszName, BufferReader& reader)
 {
-	BEGIN_READ(pbuf, iSize);
-	int x = READ_BYTE();
+	int x = reader.ReadByte();
 	m_iBat = x;
 	m_flBat = ((float)x) / 100.0;
 }
 
-void CHudFlashlight::MsgFunc_Flashlight(const char* pszName, int iSize, void* pbuf)
+void CHudFlashlight::MsgFunc_Flashlight(const char* pszName, BufferReader& reader)
 {
-	BEGIN_READ(pbuf, iSize);
-	m_SuitLightType = static_cast<SuitLightType>(READ_BYTE());
-	m_fOn = 0 != READ_BYTE();
-	int x = READ_BYTE();
+	m_SuitLightType = static_cast<SuitLightType>(reader.ReadByte());
+	m_fOn = 0 != reader.ReadByte();
+	int x = reader.ReadByte();
 	m_iBat = x;
 	m_flBat = ((float)x) / 100.0;
 
@@ -123,8 +125,11 @@ bool CHudFlashlight::Draw(float flTime)
 	{ // draw the flashlight beam
 		x = ScreenWidth - data->m_iWidth / 2;
 
-		SPR_Set(data->m_hBeam, color);
-		SPR_DrawAdditive(0, x, y, data->m_prcBeam);
+		if (data->m_hBeam != 0)
+		{
+			SPR_Set(data->m_hBeam, color);
+			SPR_DrawAdditive(0, x, y, data->m_prcBeam);
+		}
 
 		if (m_SuitLightType == SuitLightType::Nightvision)
 		{

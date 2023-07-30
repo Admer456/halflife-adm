@@ -55,26 +55,15 @@ public:
 	const char* GetSentenceNameByIndex(int index) const;
 
 	/**
-	 *	@brief Given sentence group rootname (name without number suffix), get sentence group index (isentenceg).
-	 *	@return -1 if no such name.
-	 */
-	int GetGroupIndex(CBaseEntity* entity, const char* szrootname) const;
-
-	/**
 	 *	@brief convert sentence (sample) name to !sentencenum.
 	 *	@return Sentence index, or -1 if the sentence could not be found.
 	 */
 	int LookupSentence(CBaseEntity* entity, const char* sample, SentenceIndexName* sentencenum) const;
 
 	/**
-	 *	@brief given sentence group index, play random sentence for given entity.
+	 *	@brief given sentence group name, play random sentence for given entity.
 	 *	@return ipick - which sentence was picked to play from the group.
 	 *		Ipick is only needed if you plan on stopping the sound before playback is done (@see Stop).
-	 */
-	int PlayRndI(CBaseEntity* entity, int isentenceg, float volume, float attenuation, int flags, int pitch);
-
-	/**
-	 *	@brief same as PlayRndI, but takes sentence group name instead of index.
 	 */
 	int PlayRndSz(CBaseEntity* entity, const char* szrootname, float volume, float attenuation, int flags, int pitch);
 
@@ -89,12 +78,16 @@ public:
 	void Stop(CBaseEntity* entity, int isentenceg, int ipick);
 
 private:
-	void LoadSentences(const std::string& fileName);
-
 	/**
 	 *	@brief randomize list of sentence name indices
 	 */
-	void InitLRU(unsigned char* plru, int count) const;
+	static void InitLRU(eastl::fixed_vector<unsigned char, CSENTENCE_LRU_MAX>& lru);
+
+	/**
+	 *	@brief Given sentence group rootname (name without number suffix), get sentence group index (isentenceg).
+	 *	@return -1 if no such name.
+	 */
+	int GetGroupIndex(CBaseEntity* entity, const char* szrootname) const;
 
 	/**
 	 *	@brief pick a random sentence from rootname0 to rootnameX.
@@ -121,7 +114,7 @@ private:
 	std::shared_ptr<spdlog::logger> m_Logger;
 
 	std::vector<Sentence> m_Sentences;
-	std::vector<SENTENCEG> m_SentenceGroups;
+	std::vector<SentenceGroup> m_SentenceGroups;
 };
 
 inline SentencesSystem g_Sentences;

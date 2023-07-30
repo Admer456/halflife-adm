@@ -16,27 +16,24 @@
 
 #include "CPenguin.h"
 
-#ifndef CLIENT_DLL
 // TODO: this isn't in vanilla Op4 so it won't save properly there
-TYPEDESCRIPTION CPenguin::m_SaveData[] =
-	{
-		DEFINE_FIELD(CPenguin, m_fJustThrown, FIELD_BOOLEAN),
-};
-
-IMPLEMENT_SAVERESTORE(CPenguin, CPenguin::BaseClass);
-#endif
+BEGIN_DATAMAP(CPenguin)
+DEFINE_FIELD(m_fJustThrown, FIELD_BOOLEAN),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(weapon_penguin, CPenguin);
 
 void CPenguin::OnCreate()
 {
 	CBasePlayerWeapon::OnCreate();
-
+	m_iId = WEAPON_PENGUIN;
+	m_iDefaultAmmo = PENGUIN_MAX_CLIP;
 	m_WorldModel = pev->model = MAKE_STRING("models/w_penguinnest.mdl");
 }
 
 void CPenguin::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/v_penguin.mdl");
 	PrecacheModel("models/p_penguin.mdl");
@@ -48,13 +45,8 @@ void CPenguin::Precache()
 
 void CPenguin::Spawn()
 {
-	Precache();
+	CBasePlayerWeapon::Spawn();
 
-	m_iId = WEAPON_PENGUIN;
-	SetModel(STRING(pev->model));
-	FallInit();
-
-	m_iDefaultAmmo = PENGUIN_MAX_CLIP;
 	pev->sequence = 1;
 	pev->animtime = gpGlobals->time;
 	pev->framerate = 1;
@@ -76,7 +68,7 @@ void CPenguin::Holster()
 {
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
 
-	if (0 == m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+	if (0 == m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType))
 	{
 		m_pPlayer->ClearWeaponBit(m_iId);
 		SetThink(&CPenguin::DestroyItem);
@@ -97,7 +89,7 @@ void CPenguin::WeaponIdle()
 	{
 		m_fJustThrown = false;
 
-		if (0 != m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()])
+		if (0 != m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType))
 		{
 			SendWeaponAnim(PENGUIN_UP);
 			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat(m_pPlayer->random_seed, 10, 15);
@@ -135,7 +127,7 @@ void CPenguin::WeaponIdle()
 
 void CPenguin::PrimaryAttack()
 {
-	if (0 != m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+	if (0 != m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType))
 	{
 		UTIL_MakeVectors(m_pPlayer->pev->v_angle);
 
@@ -166,7 +158,7 @@ void CPenguin::PrimaryAttack()
 			m_pPlayer->SetAnimation(PLAYER_ATTACK1);
 
 #ifndef CLIENT_DLL
-			auto penguin = CBaseEntity::Create("monster_penguin", tr.vecEndPos, m_pPlayer->pev->v_angle, m_pPlayer->edict());
+			auto penguin = CBaseEntity::Create("monster_penguin", tr.vecEndPos, m_pPlayer->pev->v_angle, m_pPlayer);
 
 			penguin->pev->velocity = m_pPlayer->pev->velocity + (gpGlobals->v_forward * 200);
 #endif
@@ -177,7 +169,7 @@ void CPenguin::PrimaryAttack()
 				EmitSoundDyn(CHAN_VOICE, "squeek/sqk_hunt3.wav", VOL_NORM, ATTN_NORM, 0, 105);
 
 			m_pPlayer->m_iWeaponVolume = QUIET_GUN_VOLUME;
-			--m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType];
+			m_pPlayer->AdjustAmmoByIndex(m_iPrimaryAmmoType, -1);
 			m_fJustThrown = true;
 
 			m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 1.9;
@@ -193,12 +185,12 @@ void CPenguin::SecondaryAttack()
 
 bool CPenguin::GetWeaponInfo(WeaponInfo& info)
 {
-	info.AmmoType1 = "Penguins";
+	info.AttackModeInfo[0].AmmoType = "Penguins";
 	info.Name = STRING(pev->classname);
-	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.AttackModeInfo[0].MagazineSize = WEAPON_NOCLIP;
 	info.Slot = 4;
 	info.Position = 4;
-	info.Id = m_iId = WEAPON_PENGUIN;
+	info.Id = WEAPON_PENGUIN;
 	info.Weight = PENGUIN_WEIGHT;
 	info.Flags = ITEM_FLAG_LIMITINWORLD | ITEM_FLAG_EXHAUSTIBLE;
 

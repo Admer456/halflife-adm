@@ -18,25 +18,12 @@
 #include "palette.h"
 
 #define DMG_IMAGE_LIFE 2 // seconds that image is up
-
-#define DMG_IMAGE_POISON 0
-#define DMG_IMAGE_ACID 1
-#define DMG_IMAGE_COLD 2
-#define DMG_IMAGE_DROWN 3
-#define DMG_IMAGE_BURN 4
-#define DMG_IMAGE_NERVE 5
-#define DMG_IMAGE_RAD 6
-#define DMG_IMAGE_SHOCK 7
-// tf defines
-#define DMG_IMAGE_CALTROP 8
-#define DMG_IMAGE_TRANQ 9
-#define DMG_IMAGE_CONCUSS 10
-#define DMG_IMAGE_HALLUC 11
 #define NUM_DMG_TYPES 12
 // instant damage
 
 struct DAMAGE_IMAGE
 {
+	int SpriteIndex{0};
 	float fExpire;
 	float fBaseline;
 	int x, y;
@@ -52,21 +39,35 @@ public:
 	bool VidInit() override;
 	bool Draw(float fTime) override;
 	void Reset() override;
-	void MsgFunc_Health(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_Damage(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_Health(const char* pszName, BufferReader& reader);
+	void MsgFunc_Battery(const char* pszName, BufferReader& reader);
+	void MsgFunc_Damage(const char* pszName, BufferReader& reader);
 	int m_iHealth;
-	int m_HUD_dmg_bio;
 	int m_HUD_cross;
 	float m_fAttackFront, m_fAttackRear, m_fAttackLeft, m_fAttackRight;
 	RGB24 GetPainColor();
-	float m_fFade;
+	float m_HealthFade;
 
 private:
-	HSPRITE m_hSprite;
-	HSPRITE m_hDamage;
+	HSPRITE m_DamageDirectionsSprite;
 
 	DAMAGE_IMAGE m_dmg[NUM_DMG_TYPES];
 	int m_bitsDamage;
+
+	// Armor HUD
+	HSPRITE m_ArmorSprite1;
+	HSPRITE m_ArmorSprite2;
+	Rect* m_ArmorSprite1Rect;
+	Rect* m_ArmorSprite2Rect;
+	int m_iBat;
+	int m_iBatMax;
+	float m_ArmorFade;
+
+	/**
+	 *	@brief Returns X coordinate for armor HUD.
+	 */
+	int DrawHealth();
+	void DrawArmor(int startX);
 	bool DrawPain(float fTime);
 	bool DrawDamage(float fTime);
 	void CalcDamageDirection(Vector vecFrom);

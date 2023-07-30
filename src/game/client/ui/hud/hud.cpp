@@ -27,6 +27,8 @@
 #include "vgui_ScorePanel.h"
 #include "HudSpriteConfigSystem.h"
 
+#include "ui/hud/HudReplacementSystem.h"
+
 class CHLVoiceStatusHelper : public IVoiceStatusHelper
 {
 public:
@@ -88,31 +90,6 @@ void __CmdFunc_OpenCommandMenu()
 	}
 }
 
-// TFC "special" command
-void __CmdFunc_InputPlayerSpecial()
-{
-	if (gViewPort)
-	{
-		gViewPort->InputPlayerSpecial();
-	}
-}
-
-void __CmdFunc_CloseCommandMenu()
-{
-	if (gViewPort)
-	{
-		gViewPort->InputSignalHideCommandMenu();
-	}
-}
-
-void __CmdFunc_ForceCloseCommandMenu()
-{
-	if (gViewPort)
-	{
-		gViewPort->HideCommandMenu();
-	}
-}
-
 // This is called every time the DLL is loaded
 void CHud::Init()
 {
@@ -125,12 +102,7 @@ void CHud::Init()
 	g_ClientUserMessages.RegisterHandler("SetFOV", &CHud::MsgFunc_SetFOV, this);
 	g_ClientUserMessages.RegisterHandler("Concuss", &CHud::MsgFunc_Concuss, this);
 	g_ClientUserMessages.RegisterHandler("Weapons", &CHud::MsgFunc_Weapons, this);
-
-	// TFFree CommandMenu
-	HOOK_COMMAND("+commandmenu", OpenCommandMenu);
-	HOOK_COMMAND("-commandmenu", CloseCommandMenu);
-	HOOK_COMMAND("ForceCloseCommandMenu", ForceCloseCommandMenu);
-	HOOK_COMMAND("special", InputPlayerSpecial);
+	g_ClientUserMessages.RegisterHandler("Fog", &CHud::MsgFunc_Fog, this);
 
 	CVAR_CREATE("hud_classautokill", "1", FCVAR_ARCHIVE | FCVAR_USERINFO); // controls whether or not to suicide immediately on TF class switch
 	CVAR_CREATE("hud_takesshots", "0", FCVAR_ARCHIVE);					   // controls whether or not to automatically take screenshots at the end of a round
@@ -155,7 +127,6 @@ void CHud::Init()
 	m_Spectator.Init();
 	m_Geiger.Init();
 	m_Train.Init();
-	m_Battery.Init();
 	m_Flash.Init();
 	m_Message.Init();
 	m_Scoreboard.Init();
@@ -166,12 +137,14 @@ void CHud::Init()
 	m_FlagIcons.Init();
 	m_PlayerBrowse.Init();
 	m_ProjectInfo.Init();
+	m_DebugInfo.Init();
 	m_EntityInfo.Init();
 	GetClientVoiceMgr()->Init(&g_VoiceStatusHelper, (vgui::Panel**)&gViewPort);
 
 	m_Menu.Init();
 
-	MsgFunc_ResetHUD(nullptr, 0, nullptr);
+	BufferReader reader;
+	MsgFunc_ResetHUD(nullptr, reader);
 }
 
 void CHud::Shutdown()
@@ -190,23 +163,34 @@ int CHud::GetSpriteIndex(const char* SpriteName)
 	return -1; // invalid sprite
 }
 
-void CHud::VidInit()
+void CHud::UpdateScreenInfo()
 {
 	m_scrinfo.iSize = sizeof(m_scrinfo);
 	GetScreenInfo(&m_scrinfo);
+}
+
+void CHud::VidInit()
+{
+	// Show paused text by default.
+	gEngfuncs.Cvar_SetValue("showpause", 1);
 
 	// ----------
 	// Load Sprites
 	// ---------
-	//	m_hsprFont = LoadSprite("sprites/%d_font.spr");
 
 	m_hsprLogo = 0;
 	m_hsprCursor = 0;
 
-	// Only load this once
+	// we need to load the hud.json, and all sprites within
+	m_Sprites.clear();
+
+	if (g_pFileSystem->FileExists(g_HudReplacements.HudReplacementFileName.c_str()))
+	{
+		m_Sprites = g_HudSpriteConfig.Load(g_HudReplacements.HudReplacementFileName.c_str());
+	}
+
 	if (m_Sprites.empty())
 	{
-		// we need to load the hud.json, and all sprites within
 		m_Sprites = g_HudSpriteConfig.Load("sprites/hud.json");
 	}
 
@@ -238,13 +222,11 @@ void CHud::VidInit()
 	}
 }
 
-void CHud::MsgFunc_HudColor(const char* pszName, int iSize, void* pbuf)
+void CHud::MsgFunc_HudColor(const char* pszName, BufferReader& reader)
 {
-	BEGIN_READ(pbuf, iSize);
-
-	m_HudColor.Red = READ_BYTE();
-	m_HudColor.Green = READ_BYTE();
-	m_HudColor.Blue = READ_BYTE();
+	m_HudColor.Red = reader.ReadByte();
+	m_HudColor.Green = reader.ReadByte();
+	m_HudColor.Blue = reader.ReadByte();
 
 	// Sync item color up if we're not in NVG mode
 	if (!m_NightVisionState)
@@ -253,12 +235,10 @@ void CHud::MsgFunc_HudColor(const char* pszName, int iSize, void* pbuf)
 	}
 }
 
-void CHud::MsgFunc_Logo(const char* pszName, int iSize, void* pbuf)
+void CHud::MsgFunc_Logo(const char* pszName, BufferReader& reader)
 {
-	BEGIN_READ(pbuf, iSize);
-
 	// update Train data
-	m_ShowLogo = READ_BYTE() != 0;
+	m_ShowLogo = reader.ReadByte() != 0;
 }
 
 float g_lastFOV = 0.0;
@@ -355,11 +335,9 @@ float HUD_GetFOV()
 	return g_lastFOV;
 }
 
-void CHud::MsgFunc_SetFOV(const char* pszName, int iSize, void* pbuf)
+void CHud::MsgFunc_SetFOV(const char* pszName, BufferReader& reader)
 {
-	BEGIN_READ(pbuf, iSize);
-
-	int newfov = READ_BYTE();
+	int newfov = reader.ReadByte();
 	int def_fov = CVAR_GET_FLOAT("default_fov");
 
 	// Weapon prediction already takes care of changing the fog. ( g_lastFOV ).

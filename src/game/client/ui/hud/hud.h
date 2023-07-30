@@ -35,6 +35,10 @@
 #include "parsemsg.h"
 #include "networking/ClientUserMessages.h"
 
+#include "cbase.h"
+
+class BufferReader;
+
 #define DHN_DRAWZERO 1
 #define DHN_2DIGITS 2
 #define DHN_3DIGITS 4
@@ -102,12 +106,12 @@ public:
 	void Think() override;
 	void Reset() override;
 	bool DrawWList(float flTime);
-	void MsgFunc_CurWeapon(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_AmmoX(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_AmmoPickup(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_WeapPickup(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_ItemPickup(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_HideWeapon(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_CurWeapon(const char* pszName, BufferReader& reader);
+	void MsgFunc_AmmoX(const char* pszName, BufferReader& reader);
+	void MsgFunc_AmmoPickup(const char* pszName, BufferReader& reader);
+	void MsgFunc_WeapPickup(const char* pszName, BufferReader& reader);
+	void MsgFunc_ItemPickup(const char* pszName, BufferReader& reader);
+	void MsgFunc_HideWeapon(const char* pszName, BufferReader& reader);
 
 	void SlotInput(int iSlot);
 	void UserCmd_Slot1();
@@ -147,8 +151,9 @@ private:
 	float m_fFade;
 	RGBA m_rgba;
 	WEAPON* m_pWeapon;
-	int m_HUD_bucket0;
 	int m_HUD_selection;
+
+	std::array<int, MAX_WEAPON_SLOTS> m_BucketSprites;
 
 	bool m_DrawCrosshair = true;
 
@@ -174,7 +179,7 @@ public:
 	bool Init() override;
 	bool VidInit() override;
 	bool Draw(float flTime) override;
-	void MsgFunc_Geiger(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_Geiger(const char* pszName, BufferReader& reader);
 
 private:
 	int m_iGeigerRange;
@@ -189,7 +194,7 @@ public:
 	bool Init() override;
 	bool VidInit() override;
 	bool Draw(float flTime) override;
-	void MsgFunc_Train(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_Train(const char* pszName, BufferReader& reader);
 
 private:
 	HSPRITE m_hSprite;
@@ -208,8 +213,8 @@ public:
 	void Reset() override;
 	void ParseStatusString(int line_num);
 
-	void MsgFunc_StatusText(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_StatusValue(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_StatusText(const char* pszName, BufferReader& reader);
+	void MsgFunc_StatusValue(const char* pszName, BufferReader& reader);
 
 protected:
 	enum
@@ -268,7 +273,7 @@ public:
 	void InitHUDData() override;
 	bool VidInit() override;
 	bool Draw(float flTime) override;
-	void MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_DeathMsg(const char* pszName, BufferReader& reader);
 
 private:
 	int m_HUD_d_skull; // sprite index of skull icon
@@ -285,7 +290,7 @@ public:
 	bool VidInit() override;
 	void Reset() override;
 	bool Draw(float flTime) override;
-	void MsgFunc_ShowMenu(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_ShowMenu(const char* pszName, BufferReader& reader);
 
 	void SelectMenuItem(int menu_item);
 
@@ -305,39 +310,37 @@ public:
 	void InitHUDData() override;
 	bool VidInit() override;
 	bool Draw(float flTime) override;
-	void MsgFunc_SayText(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_SayText(const char* pszName, BufferReader& reader);
 	void SayTextPrint(const char* pszBuf, int iBufSize, int clientIndex = -1);
 	void EnsureTextFitsInOneLineAndWrapIfHaveTo(int line);
 	friend class CHudSpectator;
 
+	int GetChatYInputPosition() const;
+
 private:
+	static int GetMaxLineWidth();
+
+	int ScrollTextUp();
+
+private:
+	static constexpr int MAX_LINES = 5;
+	static constexpr int MAX_CHARS_PER_LINE = 256; // it can be less than this, depending on char size
+
+	// allow 20 pixels on either side of the text
+	static constexpr int LINE_START = 10;
+
 	cvar_t* m_HUD_saytext;
 	cvar_t* m_HUD_saytext_time;
 	cvar_t* m_con_color;
+
+	char m_LineBuffer[MAX_LINES + 1][MAX_CHARS_PER_LINE]{};
+	Vector* m_NameColors[MAX_LINES + 1]{};
+	int m_NameLengths[MAX_LINES + 1]{};
+	float m_ScrollTime = 0; // the time at which the lines next scroll up
+
+	int m_YStart = 0;
+	int m_LineHeight = 0;
 };
-
-//
-//-----------------------------------------------------
-//
-class CHudBattery : public CHudBase
-{
-public:
-	bool Init() override;
-	bool VidInit() override;
-	bool Draw(float flTime) override;
-	void MsgFunc_Battery(const char* pszName, int iSize, void* pbuf);
-
-private:
-	HSPRITE m_hSprite1;
-	HSPRITE m_hSprite2;
-	Rect* m_prc1;
-	Rect* m_prc2;
-	int m_iBat;
-	int m_iBatMax;
-	float m_fFade;
-	int m_iHeight; // width of the battery innards
-};
-
 
 //
 //-----------------------------------------------------
@@ -361,8 +364,8 @@ public:
 	bool VidInit() override;
 	bool Draw(float flTime) override;
 	void Reset() override;
-	void MsgFunc_Flashlight(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_FlashBat(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_Flashlight(const char* pszName, BufferReader& reader);
+	void MsgFunc_FlashBat(const char* pszName, BufferReader& reader);
 
 private:
 	LightData* GetLightData()
@@ -404,7 +407,6 @@ struct message_parms_t
 	int totalWidth, totalHeight;
 	int width;
 	int lines;
-	int lineLength;
 	int length;
 	int r, g, b;
 	int text;
@@ -424,7 +426,7 @@ public:
 	static char* LocaliseTextString(const char* msg, char* dst_buffer, int buffer_size);
 	static char* BufferedLocaliseTextString(const char* msg);
 	const char* LookupString(const char* msg_name, int* msg_dest = nullptr);
-	void MsgFunc_TextMsg(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_TextMsg(const char* pszName, BufferReader& reader);
 };
 
 //
@@ -437,8 +439,8 @@ public:
 	bool Init() override;
 	bool VidInit() override;
 	bool Draw(float flTime) override;
-	void MsgFunc_HudText(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_GameTitle(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_HudText(const char* pszName, BufferReader& reader);
+	void MsgFunc_GameTitle(const char* pszName, BufferReader& reader);
 
 	float FadeBlend(float fadein, float fadeout, float hold, float localTime);
 	int XPosition(float x, int width, int lineWidth);
@@ -452,6 +454,10 @@ public:
 	void Reset() override;
 
 private:
+	cvar_t* m_CustomMessageText{};
+	cvar_t* m_CustomMessageX{};
+	cvar_t* m_CustomMessageY{};
+
 	client_textmessage_t* m_pMessages[maxHUDMessages];
 	float m_startTime[maxHUDMessages];
 	message_parms_t m_parms;
@@ -482,8 +488,8 @@ public:
 	bool VidInit() override;
 	void Reset() override;
 	bool Draw(float flTime) override;
-	void MsgFunc_StatusIcon(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_CustomIcon(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_StatusIcon(const char* pszName, BufferReader& reader);
+	void MsgFunc_CustomIcon(const char* pszName, BufferReader& reader);
 
 	enum
 	{
@@ -530,8 +536,8 @@ public:
 	void EnableFlag(const char* pszFlagName, unsigned char team_idx, unsigned char red, unsigned char green, unsigned char blue, unsigned char score);
 	void DisableFlag(const char* pszFlagName, unsigned char team_idx);
 
-	void MsgFunc_FlagIcon(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_FlagTimer(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_FlagIcon(const char* pszName, BufferReader& reader);
+	void MsgFunc_FlagTimer(const char* pszName, BufferReader& reader);
 
 private:
 	enum
@@ -568,7 +574,7 @@ public:
 	void InitHUDData();
 	bool Draw(float flTime);
 
-	void MsgFunc_PlyrBrowse(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_PlyrBrowse(const char* pszName, BufferReader& reader);
 
 private:
 	enum
@@ -612,11 +618,11 @@ public:
 	int DrawPlayers(int xoffset, float listslot, int nameoffset = 0, const char* team = nullptr); // returns the ypos where it finishes drawing
 	void UserCmd_ShowScores();
 	void UserCmd_HideScores();
-	void MsgFunc_ScoreInfo(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_TeamInfo(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_TeamScore(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_PlayerIcon(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_CTFScore(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_ScoreInfo(const char* pszName, BufferReader& reader);
+	void MsgFunc_TeamInfo(const char* pszName, BufferReader& reader);
+	void MsgFunc_TeamScore(const char* pszName, BufferReader& reader);
+	void MsgFunc_PlayerIcon(const char* pszName, BufferReader& reader);
+	void MsgFunc_CTFScore(const char* pszName, BufferReader& reader);
 	void DeathMsg(int killer, int victim);
 
 
@@ -650,6 +656,21 @@ private:
 };
 
 /**
+ *	@brief Displays info about the local player and client state on the HUD.
+ */
+class CHudDebugInfo : public CHudBase
+{
+public:
+	bool Init() override;
+	bool VidInit() override;
+	bool Draw(float flTime) override;
+
+private:
+	cvar_t* m_ShowDebugInfo = nullptr;
+	std::string m_GameMode;
+};
+
+/**
  *	@brief Displays info about a single entity on the HUD.
  */
 class CHudEntityInfo : public CHudBase
@@ -659,7 +680,7 @@ public:
 	bool VidInit() override;
 	bool Draw(float flTime) override;
 
-	void MsgFunc_EntityInfo(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_EntityInfo(const char* pszName, BufferReader& reader);
 
 private:
 	static constexpr int MaxClassnameLengthCount = 64;
@@ -713,7 +734,6 @@ public:
 	int m_iHideHUDDisplay = 0;
 	int m_iFOV = 0;
 	int m_Teamplay = 0;
-	static constexpr int m_iRes = 640;
 	cvar_t* m_pCvarStealMouse = nullptr;
 	cvar_t* m_pCvarDraw = nullptr;
 	cvar_t* m_pCvarCrosshair = nullptr;
@@ -742,12 +762,12 @@ public:
 
 	bool HasSuit() const
 	{
-		return HasWeapon(WEAPON_SUIT);
+		return (m_HudFlags & (1U << HUD_HASSUIT)) != 0;
 	}
 
 	bool HasAnyWeapons() const
 	{
-		return (m_iWeaponBits & ~(1ULL << WEAPON_SUIT)) != 0;
+		return m_iWeaponBits != 0;
 	}
 
 public:
@@ -771,7 +791,6 @@ public:
 	CHudHealth m_Health;
 	CHudSpectator m_Spectator;
 	CHudGeiger m_Geiger;
-	CHudBattery m_Battery;
 	CHudTrain m_Train;
 	CHudFlashlight m_Flash;
 	CHudMessage m_Message;
@@ -787,10 +806,12 @@ public:
 	CHudPlayerBrowse m_PlayerBrowse;
 
 	CHudProjectInfo m_ProjectInfo;
+	CHudDebugInfo m_DebugInfo;
 	CHudEntityInfo m_EntityInfo;
 
 	void Init();
 	void Shutdown();
+	void UpdateScreenInfo();
 	void VidInit();
 	void Think();
 	bool Redraw(float flTime, bool intermission);
@@ -800,21 +821,23 @@ public:
 	~CHud() = default;
 
 	// user messages
-	void MsgFunc_Damage(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_GameMode(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_HudColor(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_Logo(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_ResetHUD(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_InitHUD(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_ViewMode(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_SetFOV(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_Concuss(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_Weapons(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_Damage(const char* pszName, BufferReader& reader);
+	void MsgFunc_GameMode(const char* pszName, BufferReader& reader);
+	void MsgFunc_HudColor(const char* pszName, BufferReader& reader);
+	void MsgFunc_Logo(const char* pszName, BufferReader& reader);
+	void MsgFunc_ResetHUD(const char* pszName, BufferReader& reader);
+	void MsgFunc_InitHUD(const char* pszName, BufferReader& reader);
+	void MsgFunc_ViewMode(const char* pszName, BufferReader& reader);
+	void MsgFunc_SetFOV(const char* pszName, BufferReader& reader);
+	void MsgFunc_Concuss(const char* pszName, BufferReader& reader);
+	void MsgFunc_Weapons(const char* pszName, BufferReader& reader);
+	void MsgFunc_Fog(const char* pszName, BufferReader& reader);
 
 	// Screen information
 	SCREENINFO m_scrinfo;
 
 	std::uint64_t m_iWeaponBits = 0;
+	std::uint32_t m_HudFlags = 0;
 	bool m_fPlayerDead = false;
 	bool m_iIntermission = false;
 

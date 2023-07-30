@@ -12,30 +12,46 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// human scientist (passive lab worker)
-//=========================================================
 
 #include "cbase.h"
+#include "ReplacementMaps.h"
 #include "talkmonster.h"
 #include "defaultai.h"
 #include "scripted.h"
 #include "scientist.h"
 
-//=======================================================
-// Scientist
-//=======================================================
+const ReplacementMap RosenbergSentenceReplacement{
+	{{"SC_POK", "RO_POK"},
+		{"SC_SCREAM", "RO_SCREAM"},
+		{"SC_HEAL", "RO_HEAL"},
+		{"SC_PLFEAR", "RO_PLFEAR"},
+		{"SC_FEAR", "RO_FEAR"}},
+	true};
 
 class CRosenberg : public CScientist
 {
 public:
+	void OnCreate() override
+	{
+		CScientist::OnCreate();
+		pev->model = MAKE_STRING("models/rosenberg.mdl");
+
+		m_iszUse = MAKE_STRING("RO_OK");
+		m_iszUnUse = MAKE_STRING("RO_WAIT");
+
+		m_SentenceReplacement = &RosenbergSentenceReplacement;
+	}
+
 	void Precache() override;
 
-	void StartTask(Task_t* pTask) override;
-	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
-	void DeclineFollowing() override;
+	void Spawn() override
+	{
+		// Scientist changes pitch based on head submodel, so force it back.
+		CScientist::Spawn();
+		m_voicePitch = 100;
+	}
 
-	void Scream();
+	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 
 	void PainSound() override;
 
@@ -44,58 +60,6 @@ public:
 
 LINK_ENTITY_TO_CLASS(monster_rosenberg, CRosenberg);
 
-void CRosenberg::DeclineFollowing()
-{
-	Talk(10);
-	m_hTalkTarget = m_hEnemy;
-	PlaySentence("RO_POK", 2, VOL_NORM, ATTN_NORM);
-}
-
-void CRosenberg::Scream()
-{
-	if (FOkToSpeak())
-	{
-		Talk(10);
-		m_hTalkTarget = m_hEnemy;
-		PlaySentence("RO_SCREAM", RANDOM_FLOAT(3, 6), VOL_NORM, ATTN_NORM);
-	}
-}
-
-void CRosenberg::StartTask(Task_t* pTask)
-{
-	switch (pTask->iTask)
-	{
-	case TASK_SAY_HEAL:
-		//		if ( FOkToSpeak() )
-		Talk(2);
-		m_hTalkTarget = m_hTargetEnt;
-		PlaySentence("RO_HEAL", 2, VOL_NORM, ATTN_IDLE);
-
-		TaskComplete();
-		break;
-
-	case TASK_SAY_FEAR:
-		if (FOkToSpeak())
-		{
-			Talk(2);
-			m_hTalkTarget = m_hEnemy;
-			if (m_hEnemy->IsPlayer())
-				PlaySentence("RO_PLFEAR", 5, VOL_NORM, ATTN_NORM);
-			else
-				PlaySentence("RO_FEAR", 5, VOL_NORM, ATTN_NORM);
-		}
-		TaskComplete();
-		break;
-
-	default:
-		CScientist::StartTask(pTask);
-		break;
-	}
-}
-
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void CRosenberg::Precache()
 {
 	PrecacheModel(STRING(pev->model));
@@ -112,7 +76,6 @@ void CRosenberg::Precache()
 	CTalkMonster::Precache();
 }
 
-// Init talk data
 void CRosenberg::TalkInit()
 {
 	CTalkMonster::TalkInit();
@@ -123,8 +86,6 @@ void CRosenberg::TalkInit()
 	m_szGrp[TLK_QUESTION] = "RO_QUESTION";
 	m_szGrp[TLK_IDLE] = "RO_IDLE";
 	m_szGrp[TLK_STARE] = "RO_STARE";
-	m_szGrp[TLK_USE] = "RO_OK";
-	m_szGrp[TLK_UNUSE] = "RO_WAIT";
 	m_szGrp[TLK_STOP] = "RO_STOP";
 	m_szGrp[TLK_NOSHOOT] = "RO_SCARED";
 	m_szGrp[TLK_HELLO] = "RO_HELLO";
@@ -150,9 +111,6 @@ bool CRosenberg::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float
 	return CTalkMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
-//=========================================================
-// PainSound
-//=========================================================
 void CRosenberg::PainSound()
 {
 	if (gpGlobals->time < m_painTime)

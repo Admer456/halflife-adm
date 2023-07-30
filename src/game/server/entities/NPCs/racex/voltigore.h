@@ -15,25 +15,18 @@
 
 #pragma once
 
-//=========================================================
-// monster-specific schedule types
-//=========================================================
+class COFChargedBolt;
+
 enum
 {
 	SCHED_VOLTIGORE_THREAT_DISPLAY = LAST_COMMON_SCHEDULE + 1,
 };
 
-//=========================================================
-// monster-specific tasks
-//=========================================================
 enum
 {
 	TASK_VOLTIGORE_GET_PATH_TO_ENEMY_CORPSE = LAST_COMMON_TASK + 1,
 };
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define VOLTIGORE_AE_BOLT1 (1)
 #define VOLTIGORE_AE_BOLT2 (2)
 #define VOLTIGORE_AE_BOLT3 (3)
@@ -46,20 +39,24 @@ enum
 #define VOLTIGORE_AE_LEFT_PUNCH (12)
 #define VOLTIGORE_AE_RIGHT_PUNCH (13)
 
-
-
 #define VOLTIGORE_MELEE_DIST 128
 
 constexpr int VOLTIGORE_BEAM_COUNT = 8;
 
+/**
+ *	@brief Tank like alien
+ */
 class COFVoltigore : public CSquadMonster
 {
+	DECLARE_CLASS(COFVoltigore, CSquadMonster);
+	DECLARE_DATAMAP();
+	DECLARE_CUSTOM_SCHEDULES();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
-	int Classify() override;
 	int ISoundMask() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	void SetObjectCollisionBox() override
@@ -68,35 +65,53 @@ public:
 		pev->absmax = pev->origin + Vector(80, 80, 90);
 	}
 
-	Schedule_t* GetSchedule() override;
-	Schedule_t* GetScheduleOfType(int Type) override;
+	bool HasAlienGibs() override { return true; }
+
+	const Schedule_t* GetSchedule() override;
+	const Schedule_t* GetScheduleOfType(int Type) override;
+
+	/**
+	 *	@brief this is overridden for alien grunts because they can use their smart weapons against unseen enemies.
+	 *	Base class doesn't attack anyone it can't see.
+	 */
 	bool FCanCheckAttacks() override;
+
+	/**
+	 *	@brief alien grunts zap the crap out of any enemy that gets too close.
+	 */
 	bool CheckMeleeAttack1(float flDot, float flDist) override;
+
 	bool CheckRangeAttack1(float flDot, float flDist) override;
-	void StartTask(Task_t* pTask) override;
-	void RunTask(Task_t* pTask) override;
+	void StartTask(const Task_t* pTask) override;
+	void RunTask(const Task_t* pTask) override;
 	void AlertSound() override;
 	void PainSound() override;
 	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
-	int IRelationship(CBaseEntity* pTarget) override;
+
+	/**
+	 *	@brief overridden because Human Grunts are Voltigore's nemesis.
+	 */
+	Relationship IRelationship(CBaseEntity* pTarget) override;
+
+	/**
+	 *	@brief won't speak again for 10-20 seconds.
+	 */
 	void StopTalking();
+
+	/**
+	 *	@brief Should this voltigore be talking?
+	 */
 	bool ShouldSpeak();
 
 	void ClearBeams();
 
-	void EXPORT CallDeathGibThink();
+	void CallDeathGibThink();
 
 	virtual void DeathGibThink();
 
 	void GibMonster() override;
 
 	void Killed(CBaseEntity* attacker, int iGib) override;
-
-	CUSTOM_SCHEDULES;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
 
 	static constexpr const char* pAttackHitSounds[] =
 		{
@@ -144,7 +159,7 @@ public:
 	float m_flNextWordTime;
 	int m_iLastWord;
 
-	EHANDLE m_pChargedBolt;
+	EntityHandle<COFChargedBolt> m_pChargedBolt;
 
 	int m_iVoltigoreGibs;
 	bool m_fDeathCharge;

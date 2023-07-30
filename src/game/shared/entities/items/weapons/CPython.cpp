@@ -19,21 +19,27 @@
 
 LINK_ENTITY_TO_CLASS(weapon_357, CPython);
 
+inline bool UseLaserSight()
+{
+	return g_Skill.GetValue("revolver_laser_sight") != 0;
+}
+
 void CPython::OnCreate()
 {
 	CBasePlayerWeapon::OnCreate();
-
+	m_iId = WEAPON_PYTHON;
+	m_iDefaultAmmo = PYTHON_DEFAULT_GIVE;
 	m_WorldModel = pev->model = MAKE_STRING("models/w_357.mdl");
 }
 
 bool CPython::GetWeaponInfo(WeaponInfo& info)
 {
 	info.Name = STRING(pev->classname);
-	info.AmmoType1 = "357";
-	info.MagazineSize1 = PYTHON_MAX_CLIP;
+	info.AttackModeInfo[0].AmmoType = "357";
+	info.AttackModeInfo[0].MagazineSize = PYTHON_MAX_CLIP;
 	info.Slot = 1;
 	info.Position = 1;
-	info.Id = m_iId = WEAPON_PYTHON;
+	info.Id = WEAPON_PYTHON;
 	info.Weight = PYTHON_WEIGHT;
 
 	return true;
@@ -47,20 +53,9 @@ void CPython::IncrementAmmo(CBasePlayer* pPlayer)
 	}
 }
 
-void CPython::Spawn()
-{
-	Precache();
-	m_iId = WEAPON_PYTHON;
-	SetModel(STRING(pev->model));
-
-	m_iDefaultAmmo = PYTHON_DEFAULT_GIVE;
-
-	FallInit(); // get ready to fall down.
-}
-
-
 void CPython::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel("models/v_357.mdl");
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/p_357.mdl");
@@ -78,7 +73,7 @@ void CPython::Precache()
 
 bool CPython::Deploy()
 {
-	if (UTIL_IsMultiplayer())
+	if (UseLaserSight())
 	{
 		// enable laser sight geometry.
 		pev->body = 1;
@@ -88,9 +83,8 @@ bool CPython::Deploy()
 		pev->body = 0;
 	}
 
-	return DefaultDeploy("models/v_357.mdl", "models/p_357.mdl", PYTHON_DRAW, "python", pev->body);
+	return DefaultDeploy("models/v_357.mdl", "models/p_357.mdl", PYTHON_DRAW, "python");
 }
-
 
 void CPython::Holster()
 {
@@ -108,7 +102,7 @@ void CPython::Holster()
 
 void CPython::SecondaryAttack()
 {
-	if (!UTIL_IsMultiplayer())
+	if (!UseLaserSight())
 	{
 		return;
 	}
@@ -135,7 +129,7 @@ void CPython::PrimaryAttack()
 		return;
 	}
 
-	if (m_iClip <= 0)
+	if (GetMagazine1() <= 0)
 	{
 		if (m_fFireOnEmpty)
 		{
@@ -149,7 +143,7 @@ void CPython::PrimaryAttack()
 	m_pPlayer->m_iWeaponVolume = LOUD_GUN_VOLUME;
 	m_pPlayer->m_iWeaponFlash = BRIGHT_GUN_FLASH;
 
-	m_iClip--;
+	AdjustMagazine1(-1);
 
 	m_pPlayer->pev->effects = m_pPlayer->pev->effects | EF_MUZZLEFLASH;
 
@@ -174,18 +168,17 @@ void CPython::PrimaryAttack()
 
 	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usFirePython, 0.0, g_vecZero, g_vecZero, vecDir.x, vecDir.y, 0, 0, 0, 0);
 
-	if (0 == m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
+	if (0 == GetMagazine1() && m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
 		// HEV suit - indicate out of ammo condition
-		m_pPlayer->SetSuitUpdate("!HEV_AMO0", false, 0);
+		m_pPlayer->SetSuitUpdate("!HEV_AMO0", 0);
 
 	m_flNextPrimaryAttack = 0.75;
 	m_flTimeWeaponIdle = UTIL_SharedRandomFloat(m_pPlayer->random_seed, 10, 15);
 }
 
-
 void CPython::Reload()
 {
-	if (m_pPlayer->ammo_357 <= 0)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
 		return;
 
 	if (m_pPlayer->m_iFOV != 0)
@@ -193,11 +186,8 @@ void CPython::Reload()
 		m_pPlayer->m_iFOV = 0; // 0 means reset to default fov
 	}
 
-	const bool bUseScope = UTIL_IsMultiplayer();
-
-	DefaultReload(6, PYTHON_RELOAD, 2.0, bUseScope ? 1 : 0);
+	DefaultReload(6, PYTHON_RELOAD, 2.0);
 }
-
 
 void CPython::WeaponIdle()
 {
@@ -231,11 +221,28 @@ void CPython::WeaponIdle()
 		m_flTimeWeaponIdle = (170.0 / 30.0);
 	}
 
-	const bool bUseScope = UTIL_IsMultiplayer();
-
-	SendWeaponAnim(iAnim, bUseScope ? 1 : 0);
+	SendWeaponAnim(iAnim);
 }
 
+void CPython::ItemPostFrame()
+{
+	const int currentBody = UseLaserSight() ? 1 : 0;
+
+	// Check if we need to reset the laser sight.
+	if (currentBody != pev->body)
+	{
+		pev->body = currentBody;
+
+		m_flTimeWeaponIdle = 0;
+
+		if (!UseLaserSight() && m_pPlayer->m_iFOV != 0)
+		{
+			m_pPlayer->m_iFOV = 0; // 0 means reset to default fov
+		}
+	}
+
+	BaseClass::ItemPostFrame();
+}
 
 class CPythonAmmo : public CBasePlayerAmmo
 {
@@ -243,23 +250,9 @@ public:
 	void OnCreate() override
 	{
 		CBasePlayerAmmo::OnCreate();
-
+		m_AmmoAmount = AMMO_357BOX_GIVE;
+		m_AmmoName = MAKE_STRING("357");
 		pev->model = MAKE_STRING("models/w_357ammobox.mdl");
-	}
-
-	void Precache() override
-	{
-		CBasePlayerAmmo::Precache();
-		PrecacheSound("items/9mmclip1.wav");
-	}
-	bool AddAmmo(CBasePlayer* pOther) override
-	{
-		if (pOther->GiveAmmo(AMMO_357BOX_GIVE, "357") != -1)
-		{
-			EmitSound(CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM);
-			return true;
-		}
-		return false;
 	}
 };
 

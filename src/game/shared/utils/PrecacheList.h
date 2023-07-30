@@ -31,8 +31,13 @@ public:
 	explicit PrecacheList(std::string_view type,
 		std::shared_ptr<spdlog::logger> logger,
 		ValidationFunction validationFunction = nullptr,
-		EnginePrecacheFunction enginePrecacheFunction = nullptr)
-		: m_Type(type), m_Logger(logger), m_ValidationFunction(validationFunction), m_EnginePrecacheFunction(enginePrecacheFunction)
+		EnginePrecacheFunction enginePrecacheFunction = nullptr,
+		unsigned int maxEnginePrecaches = 0)
+		: m_Type(type),
+		  m_Logger(logger),
+		  m_ValidationFunction(validationFunction),
+		  m_EnginePrecacheFunction(enginePrecacheFunction),
+		  m_MaxEnginePrecaches(maxEnginePrecaches)
 	{
 		assert(!type.empty());
 		assert(logger);
@@ -53,9 +58,9 @@ public:
 	int Add(const char* str);
 
 	/**
-	*	@brief Adds a string directly without validation.
-	*	Only to be used for adding files precached by the engine.
-	*/
+	 *	@brief Adds a string directly without validation.
+	 *	Only to be used for adding files precached by the engine.
+	 */
 	void AddUnchecked(const char* str);
 
 	void Clear();
@@ -68,5 +73,6 @@ private:
 	const std::shared_ptr<spdlog::logger> m_Logger;
 	const ValidationFunction m_ValidationFunction;
 	const EnginePrecacheFunction m_EnginePrecacheFunction;
+	const unsigned int m_MaxEnginePrecaches;
 	std::vector<const char*> m_Precaches;
 };

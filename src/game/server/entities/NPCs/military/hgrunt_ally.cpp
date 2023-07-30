@@ -12,9 +12,6 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// hgrunt
-//=========================================================
 
 #include "cbase.h"
 #include "squadmonster.h"
@@ -23,10 +20,7 @@
 #include "customentity.h"
 #include "hgrunt_ally_base.h"
 
-//=========================================================
-// monster-specific DEFINE's
-//=========================================================
-#define GRUNT_MP5_CLIP_SIZE 36 // how many bullets in a clip? - NOTE: 3 round burst sound, so keep as 3 * x!
+#define GRUNT_MP5_CLIP_SIZE 36 //!< how many bullets in a clip? - NOTE: 3 round burst sound, so keep as 3 * x!
 #define GRUNT_SHOTGUN_CLIP_SIZE 8
 #define GRUNT_SAW_CLIP_SIZE 36
 
@@ -163,7 +157,7 @@ void CHGruntAlly::DropWeapon(bool applyVelocity)
 		}
 		else
 		{
-			pGun = DropItem("weapon_9mmAR", vecGunPos, vecGunAngles);
+			pGun = DropItem("weapon_9mmar", vecGunPos, vecGunAngles);
 		}
 		if (pGun && applyVelocity)
 		{
@@ -173,7 +167,7 @@ void CHGruntAlly::DropWeapon(bool applyVelocity)
 
 		if (FBitSet(pev->weapons, HGruntAllyWeaponFlag::GrenadeLauncher))
 		{
-			pGun = DropItem("ammo_ARgrenades", vecGunPos, vecGunAngles);
+			pGun = DropItem("ammo_argrenades", vecGunPos, vecGunAngles);
 			if (pGun && applyVelocity)
 			{
 				pGun->pev->velocity = Vector(RANDOM_FLOAT(-100, 100), RANDOM_FLOAT(-100, 100), RANDOM_FLOAT(200, 300));
@@ -185,9 +179,6 @@ void CHGruntAlly::DropWeapon(bool applyVelocity)
 	}
 }
 
-//=========================================================
-// Shoot
-//=========================================================
 void CHGruntAlly::Shoot(bool firstShotInBurst)
 {
 	if (m_hEnemy)
@@ -290,10 +281,6 @@ void CHGruntAlly::Shoot(bool firstShotInBurst)
 	}
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void CHGruntAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -324,9 +311,6 @@ void CHGruntAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void CHGruntAlly::Spawn()
 {
 	SpawnCore();
@@ -396,9 +380,6 @@ void CHGruntAlly::Spawn()
 	}
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void CHGruntAlly::Precache()
 {
 	PrecacheSound("weapons/saw_fire1.wav");
@@ -483,15 +464,13 @@ protected:
 
 LINK_ENTITY_TO_CLASS(monster_grunt_ally_repel, CHGruntAllyRepel);
 
-//=========================================================
-// DEAD HGRUNT PROP
-//=========================================================
 class CDeadHGruntAlly : public CBaseMonster
 {
 public:
 	void OnCreate() override;
 	void Spawn() override;
-	int Classify() override { return CLASS_HUMAN_MILITARY_FRIENDLY; }
+
+	bool HasHumanGibs() override { return true; }
 
 	bool KeyValue(KeyValueData* pkvd) override;
 
@@ -509,6 +488,8 @@ void CDeadHGruntAlly::OnCreate()
 	// Corpses have less health
 	pev->health = 8;
 	pev->model = MAKE_STRING("models/hgrunt_opfor.mdl");
+
+	SetClassification("human_military_ally");
 }
 
 bool CDeadHGruntAlly::KeyValue(KeyValueData* pkvd)
@@ -529,9 +510,6 @@ bool CDeadHGruntAlly::KeyValue(KeyValueData* pkvd)
 
 LINK_ENTITY_TO_CLASS(monster_human_grunt_ally_dead, CDeadHGruntAlly);
 
-//=========================================================
-// ********** DeadHGrunt SPAWN **********
-//=========================================================
 void CDeadHGruntAlly::Spawn()
 {
 	PrecacheModel(STRING(pev->model));

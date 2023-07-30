@@ -31,9 +31,10 @@ enum python_e
 
 class CPython : public CBasePlayerWeapon
 {
+	DECLARE_CLASS(CPython, CBasePlayerWeapon);
+
 public:
 	void OnCreate() override;
-	void Spawn() override;
 	void Precache() override;
 	bool GetWeaponInfo(WeaponInfo& info) override;
 	void IncrementAmmo(CBasePlayer* pPlayer) override;
@@ -43,6 +44,7 @@ public:
 	void Holster() override;
 	void Reload() override;
 	void WeaponIdle() override;
+	void ItemPostFrame() override;
 
 	bool UseDecrement() override
 	{

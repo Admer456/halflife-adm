@@ -48,7 +48,6 @@ struct ISoundSystem
 
 inline std::unique_ptr<ISoundSystem> g_SoundSystem;
 
-inline cvar_t* g_cl_snd_openal = nullptr;
 inline cvar_t* g_cl_snd_room_off = nullptr;
 
 /**
@@ -64,7 +63,7 @@ void EV_PlaySound(int ent, const Vector& origin, int channel, const char* sample
 
 void EV_StopSound(int ent, int channel, const char* sample);
 
-void PlaySound(const char* szSound, float vol);
+void PlaySound(int channel, const char* szSound, float vol);
 void PlaySoundByNameAtLocation(const char* szSound, float volume, const Vector& origin);
 
 void CL_TempEntPlaySound(TEMPENTITY* pTemp, float damp);

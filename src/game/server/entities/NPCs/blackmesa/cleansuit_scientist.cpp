@@ -12,9 +12,6 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// human scientist (passive lab worker)
-//=========================================================
 
 #include "cbase.h"
 #include "talkmonster.h"
@@ -22,10 +19,9 @@
 #include "scripted.h"
 #include "scientist.h"
 
-//=======================================================
-// Scientist
-//=======================================================
-
+/**
+ *	@brief human scientist (passive lab worker)
+ */
 class CCleansuitScientist : public CScientist
 {
 public:
@@ -53,25 +49,26 @@ void CCleansuitScientist::Heal()
 	if (target.Length() > 100)
 		return;
 
-	m_hTargetEnt->TakeHealth(GetSkillFloat("cleansuit_scientist_heal"sv), DMG_GENERIC);
+	m_hTargetEnt->GiveHealth(GetSkillFloat("cleansuit_scientist_heal"sv), DMG_GENERIC);
 	// Don't heal again for 1 minute
 	m_healTime = gpGlobals->time + 60;
 }
 
-//=========================================================
-// Dead Scientist PROP
-//=========================================================
 class CDeadCleansuitScientist : public CBaseMonster
 {
 public:
 	void OnCreate() override;
 	void Spawn() override;
-	int Classify() override { return CLASS_HUMAN_PASSIVE; }
+
+	bool HasHumanGibs() override { return true; }
 
 	bool KeyValue(KeyValueData* pkvd) override;
 	int m_iPose; // which sequence to display
 	static const char* m_szPoses[9];
 };
+
+LINK_ENTITY_TO_CLASS(monster_cleansuit_scientist_dead, CDeadCleansuitScientist);
+
 const char* CDeadCleansuitScientist::m_szPoses[] =
 	{
 		"lying_on_back",
@@ -91,6 +88,8 @@ void CDeadCleansuitScientist::OnCreate()
 	// Corpses have less health
 	pev->health = 8; // GetSkillFloat("scientist_health"sv);
 	pev->model = MAKE_STRING("models/cleansuit_scientist.mdl");
+
+	SetClassification("human_passive");
 }
 
 bool CDeadCleansuitScientist::KeyValue(KeyValueData* pkvd)
@@ -103,11 +102,7 @@ bool CDeadCleansuitScientist::KeyValue(KeyValueData* pkvd)
 
 	return CBaseMonster::KeyValue(pkvd);
 }
-LINK_ENTITY_TO_CLASS(monster_cleansuit_scientist_dead, CDeadCleansuitScientist);
 
-//
-// ********** DeadScientist SPAWN **********
-//
 void CDeadCleansuitScientist::Spawn()
 {
 	PrecacheModel(STRING(pev->model));
@@ -119,8 +114,11 @@ void CDeadCleansuitScientist::Spawn()
 	m_bloodColor = BLOOD_COLOR_RED;
 
 	if (pev->body == -1)
-	{														 // -1 chooses a random head
-		pev->body = RANDOM_LONG(0, NUM_SCIENTIST_HEADS - 1); // pick a head, any head
+	{														 
+		pev->body = 0;
+		// -1 chooses a random head
+		// pick a head, any head
+		SetBodygroup(ScientistBodygroup::Head, RANDOM_LONG(0, GetBodygroupSubmodelCount(ScientistBodygroup::Head) - 1));
 	}
 	// Luther is black, make his hands black
 	if (pev->body == HEAD_LUTHER)
@@ -137,10 +135,6 @@ void CDeadCleansuitScientist::Spawn()
 	//	pev->skin += 2; // use bloody skin -- UNDONE: Turn this back on when we have a bloody skin again!
 	MonsterInitDead();
 }
-
-//=========================================================
-// Sitting Scientist PROP
-//=========================================================
 
 class CSittingCleansuitScientist : public CSittingScientist // kdb: changed from public CBaseMonster so he can speak
 {

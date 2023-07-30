@@ -22,15 +22,13 @@ class CBeam;
 
 class CApache : public CBaseMonster
 {
-public:
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+	DECLARE_CLASS(CApache, CBaseMonster);
+	DECLARE_DATAMAP();
 
+public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
-	int Classify() override { return CLASS_HUMAN_MILITARY; }
 	int BloodColor() override { return DONT_BLEED; }
 	void Killed(CBaseEntity* attacker, int iGib) override;
 	void GibMonster() override;
@@ -41,12 +39,12 @@ public:
 		pev->absmax = pev->origin + Vector(300, 300, 8);
 	}
 
-	void EXPORT HuntThink();
-	void EXPORT FlyTouch(CBaseEntity* pOther);
-	void EXPORT CrashTouch(CBaseEntity* pOther);
-	void EXPORT DyingThink();
-	void EXPORT StartupUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
-	void EXPORT NullThink();
+	void HuntThink();
+	void FlyTouch(CBaseEntity* pOther);
+	void CrashTouch(CBaseEntity* pOther);
+	void DyingThink();
+	void StartupUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void NullThink();
 
 	void ShowDamage();
 	void Flight();

@@ -12,13 +12,11 @@
  *   without written permission from Valve LLC.
  *
  ****/
-/*
 
-===== bmodels.cpp ========================================================
-
-  spawn, think, and use functions for entities that use brush models
-
-*/
+/**
+ *	@file
+ *	spawn, think, and use functions for entities that use brush models
+ */
 
 #include "cbase.h"
 #include "doors.h"
@@ -28,19 +26,10 @@
 #define SF_ROTATING_NOT_SOLID 64 // some special rotating objects are not solid.
 
 #define SF_PENDULUM_SWING 2 // spawnflag that makes a pendulum a rope swing.
-//
-// BModelOrigin - calculates origin of a bmodel from absmin/size because all bmodel origins are 0 0 0
-//
-Vector VecBModelOrigin(entvars_t* pevBModel)
-{
-	return pevBModel->absmin + (pevBModel->size * 0.5);
-}
 
-// =================== FUNC_WALL ==============================================
-
-/*QUAKED func_wall (0 .5 .8) ?
-This is just a solid wall if not inhibited
-*/
+/**
+ *	@brief This is just a solid wall if not inhibited
+ */
 class CFuncWall : public CBaseEntity
 {
 public:
@@ -64,13 +53,11 @@ void CFuncWall::Spawn()
 	pev->flags |= FL_WORLDBRUSH;
 }
 
-
 void CFuncWall::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
 	if (ShouldToggle(useType, pev->frame != 0))
 		pev->frame = 1 - pev->frame;
 }
-
 
 #define SF_WALL_START_OFF 0x0001
 
@@ -93,22 +80,19 @@ void CFuncWallToggle::Spawn()
 		TurnOff();
 }
 
-
 void CFuncWallToggle::TurnOff()
 {
 	pev->solid = SOLID_NOT;
 	pev->effects |= EF_NODRAW;
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 }
-
 
 void CFuncWallToggle::TurnOn()
 {
 	pev->solid = SOLID_BSP;
 	pev->effects &= ~EF_NODRAW;
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 }
-
 
 bool CFuncWallToggle::IsOn()
 {
@@ -116,7 +100,6 @@ bool CFuncWallToggle::IsOn()
 		return false;
 	return true;
 }
-
 
 void CFuncWallToggle::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
@@ -131,7 +114,6 @@ void CFuncWallToggle::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYP
 	}
 }
 
-
 #define SF_CONVEYOR_VISUAL 0x0001
 #define SF_CONVEYOR_NOTSOLID 0x0002
 
@@ -144,9 +126,10 @@ public:
 };
 
 LINK_ENTITY_TO_CLASS(func_conveyor, CFuncConveyor);
+
 void CFuncConveyor::Spawn()
 {
-	SetMovedir(pev);
+	SetMovedir(this);
 	CFuncWall::Spawn();
 
 	if ((pev->spawnflags & SF_CONVEYOR_VISUAL) == 0)
@@ -165,7 +148,6 @@ void CFuncConveyor::Spawn()
 	UpdateSpeed(pev->speed);
 }
 
-
 // HACKHACK -- This is ugly, but encode the speed in the rendercolor to avoid adding more data to the network stream
 void CFuncConveyor::UpdateSpeed(float speed)
 {
@@ -181,21 +163,15 @@ void CFuncConveyor::UpdateSpeed(float speed)
 	pev->rendercolor.z = (speedCode & 0xFF);
 }
 
-
 void CFuncConveyor::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
 	pev->speed = -pev->speed;
 	UpdateSpeed(pev->speed);
 }
 
-
-
-// =================== FUNC_ILLUSIONARY ==============================================
-
-
-/*QUAKED func_illusionary (0 .5 .8) ?
-A simple entity that looks solid but lets you walk through it.
-*/
+/**
+ *	@brief A simple entity that looks solid but lets you walk through it.
+ */
 class CFuncIllusionary : public CBaseToggle
 {
 public:
@@ -227,21 +203,15 @@ void CFuncIllusionary::Spawn()
 	// I'd rather eat the network bandwidth of this than figure out how to save/restore
 	// these entities after they have been moved to the client, or respawn them ala Quake
 	// Perhaps we can do this in deathmatch only.
-	//	MAKE_STATIC(ENT(pev));
+	//	g_engfuncs.pfnMakeStatic(edict());
 }
 
-
-// -------------------------------------------------------------------------------
-//
-// Monster only clip brush
-//
-// This brush will be solid for any entity who has the FL_MONSTERCLIP flag set
-// in pev->flags
-//
-// otherwise it will be invisible and not solid.  This can be used to keep
-// specific monsters out of certain areas
-//
-// -------------------------------------------------------------------------------
+/**
+ *	@brief Monster only clip brush
+ *	@details This brush will be solid for any entity who has the FL_MONSTERCLIP flag set in pev->flags
+ *	otherwise it will be invisible and not solid.
+ *	This can be used to keep specific monsters out of certain areas
+ */
 class CFuncMonsterClip : public CFuncWall
 {
 public:
@@ -259,27 +229,50 @@ void CFuncMonsterClip::Spawn()
 	pev->flags |= FL_MONSTERCLIP;
 }
 
-
-// =================== FUNC_ROTATING ==============================================
+/**
+ *	@brief You need to have an origin brush as part of this entity.
+ *	The center of that brush will be the point around which it is rotated.
+ *	It will rotate around the Z axis by default.
+ *	You can check either the X_AXIS or Y_AXIS box to change that.
+ */
 class CFuncRotating : public CBaseEntity
 {
+	DECLARE_CLASS(CFuncRotating, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
 	// basic functions
 	void Spawn() override;
 	void Precache() override;
-	void EXPORT SpinUp();
-	void EXPORT SpinDown();
+
+	/**
+	 *	@brief accelerates a non-moving func_rotating up to its speed
+	 */
+	void SpinUp();
+
+	/**
+	 *	@brief decelerates a moving func_rotating to a standstill.
+	 */
+	void SpinDown();
+
 	bool KeyValue(KeyValueData* pkvd) override;
-	void EXPORT HurtTouch(CBaseEntity* pOther);
-	void EXPORT RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
-	void EXPORT Rotate();
+
+	/**
+	 *	@brief will hurt others based on how fast the brush is spinning
+	 */
+	void HurtTouch(CBaseEntity* pOther);
+
+	void RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void Rotate();
+
+	/**
+	 *	@brief ramp pitch and volume up to final values,
+	 *	based on difference between how fast we're going vs how fast we plan to go
+	 */
 	void RampPitchVol(bool fUp);
+
 	void Blocked(CBaseEntity* pOther) override;
 	int ObjectCaps() override { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 
 	float m_flFanFriction;
 	float m_flAttenuation;
@@ -288,16 +281,18 @@ public:
 	string_t m_sounds;
 };
 
-TYPEDESCRIPTION CFuncRotating::m_SaveData[] =
-	{
-		DEFINE_FIELD(CFuncRotating, m_flFanFriction, FIELD_FLOAT),
-		DEFINE_FIELD(CFuncRotating, m_flAttenuation, FIELD_FLOAT),
-		DEFINE_FIELD(CFuncRotating, m_flVolume, FIELD_FLOAT),
-		DEFINE_FIELD(CFuncRotating, m_pitch, FIELD_FLOAT),
-		DEFINE_FIELD(CFuncRotating, m_sounds, FIELD_SOUNDNAME)};
-
-IMPLEMENT_SAVERESTORE(CFuncRotating, CBaseEntity);
-
+BEGIN_DATAMAP(CFuncRotating)
+DEFINE_FIELD(m_flFanFriction, FIELD_FLOAT),
+	DEFINE_FIELD(m_flAttenuation, FIELD_FLOAT),
+	DEFINE_FIELD(m_flVolume, FIELD_FLOAT),
+	DEFINE_FIELD(m_pitch, FIELD_FLOAT),
+	DEFINE_FIELD(m_sounds, FIELD_SOUNDNAME),
+	DEFINE_FUNCTION(SpinUp),
+	DEFINE_FUNCTION(SpinDown),
+	DEFINE_FUNCTION(HurtTouch),
+	DEFINE_FUNCTION(RotatingUse),
+	DEFINE_FUNCTION(Rotate),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(func_rotating, CFuncRotating);
 
@@ -334,20 +329,6 @@ bool CFuncRotating::KeyValue(KeyValueData* pkvd)
 
 	return CBaseEntity::KeyValue(pkvd);
 }
-
-/*QUAKED func_rotating (0 .5 .8) ? START_ON REVERSE X_AXIS Y_AXIS
-You need to have an origin brush as part of this entity.  The
-center of that brush will be
-the point around which it is rotated. It will rotate around the Z
-axis by default.  You can
-check either the X_AXIS or Y_AXIS box to change that.
-
-"speed" determines how fast it moves; default value is 100.
-"dmg"	damage to inflict when blocked (2 default)
-
-REVERSE will cause the it to rotate in the opposite direction.
-*/
-
 
 void CFuncRotating::Spawn()
 {
@@ -406,7 +387,7 @@ void CFuncRotating::Spawn()
 		pev->movetype = MOVETYPE_PUSH;
 	}
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 	SetModel(STRING(pev->model));
 
 	SetUse(&CFuncRotating::RotatingUse);
@@ -433,7 +414,6 @@ void CFuncRotating::Spawn()
 	Precache();
 }
 
-
 void CFuncRotating::Precache()
 {
 	if (FStrEq("", STRING(m_sounds)))
@@ -453,17 +433,10 @@ void CFuncRotating::Precache()
 	}
 }
 
-
-
-//
-// Touch - will hurt others based on how fast the brush is spinning
-//
 void CFuncRotating::HurtTouch(CBaseEntity* pOther)
 {
-	entvars_t* pevOther = pOther->pev;
-
 	// we can't hurt this thing, so we're not concerned with it
-	if (0 == pevOther->takedamage)
+	if (0 == pOther->pev->takedamage)
 		return;
 
 	// calculate damage based on rotation speed
@@ -471,13 +444,9 @@ void CFuncRotating::HurtTouch(CBaseEntity* pOther)
 
 	pOther->TakeDamage(this, this, pev->dmg, DMG_CRUSH);
 
-	pevOther->velocity = (pevOther->origin - VecBModelOrigin(pev)).Normalize() * pev->dmg;
+	pOther->pev->velocity = (pOther->pev->origin - VecBModelOrigin(this)).Normalize() * pev->dmg;
 }
 
-//
-// RampPitchVol - ramp pitch and volume up to final values, based on difference
-// between how fast we're going vs how fast we plan to go
-//
 #define FANPITCHMIN 30
 #define FANPITCHMAX 100
 
@@ -522,9 +491,6 @@ void CFuncRotating::RampPitchVol(bool fUp)
 		fvol, m_flAttenuation, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
 }
 
-//
-// SpinUp - accelerates a non-moving func_rotating up to it's speed
-//
 void CFuncRotating::SpinUp()
 {
 	Vector vecAVel; // rotational velocity
@@ -552,9 +518,6 @@ void CFuncRotating::SpinUp()
 	}
 }
 
-//
-// SpinDown - decelerates a moving func_rotating to a standstill.
-//
 void CFuncRotating::SpinDown()
 {
 	Vector vecAVel; // rotational velocity
@@ -598,9 +561,6 @@ void CFuncRotating::Rotate()
 	pev->nextthink = pev->ltime + 10;
 }
 
-//=========================================================
-// Rotating Use - when a rotating brush is triggered
-//=========================================================
 void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
 	// is this a brush that should accelerate and decelerate when turned on/off (fan)?
@@ -649,40 +609,27 @@ void CFuncRotating::RotatingUse(CBaseEntity* pActivator, CBaseEntity* pCaller, U
 	}
 }
 
-
-//
-// RotatingBlocked - An entity has blocked the brush
-//
 void CFuncRotating::Blocked(CBaseEntity* pOther)
 
 {
 	pOther->TakeDamage(this, this, pev->dmg, DMG_CRUSH);
 }
 
-
-
-
-
-
-// #endif
-
-
 class CPendulum : public CBaseEntity
 {
+	DECLARE_CLASS(CPendulum, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	bool KeyValue(KeyValueData* pkvd) override;
-	void EXPORT Swing();
-	void EXPORT PendulumUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
-	void EXPORT Stop();
+	void Swing();
+	void PendulumUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void Stop();
 	void Touch(CBaseEntity* pOther) override;
-	void EXPORT RopeTouch(CBaseEntity* pOther); // this touch func makes the pendulum a rope
+	void RopeTouch(CBaseEntity* pOther); // this touch func makes the pendulum a rope
 	int ObjectCaps() override { return CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
 	void Blocked(CBaseEntity* pOther) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 
 	float m_accel;	  // Acceleration
 	float m_distance; //
@@ -692,25 +639,27 @@ public:
 	float m_dampSpeed;
 	Vector m_center;
 	Vector m_start;
+
+	EHANDLE m_LastToucher;
 };
 
 LINK_ENTITY_TO_CLASS(func_pendulum, CPendulum);
 
-TYPEDESCRIPTION CPendulum::m_SaveData[] =
-	{
-		DEFINE_FIELD(CPendulum, m_accel, FIELD_FLOAT),
-		DEFINE_FIELD(CPendulum, m_distance, FIELD_FLOAT),
-		DEFINE_FIELD(CPendulum, m_time, FIELD_TIME),
-		DEFINE_FIELD(CPendulum, m_damp, FIELD_FLOAT),
-		DEFINE_FIELD(CPendulum, m_maxSpeed, FIELD_FLOAT),
-		DEFINE_FIELD(CPendulum, m_dampSpeed, FIELD_FLOAT),
-		DEFINE_FIELD(CPendulum, m_center, FIELD_VECTOR),
-		DEFINE_FIELD(CPendulum, m_start, FIELD_VECTOR),
-};
-
-IMPLEMENT_SAVERESTORE(CPendulum, CBaseEntity);
-
-
+BEGIN_DATAMAP(CPendulum)
+DEFINE_FIELD(m_accel, FIELD_FLOAT),
+	DEFINE_FIELD(m_distance, FIELD_FLOAT),
+	DEFINE_FIELD(m_time, FIELD_TIME),
+	DEFINE_FIELD(m_damp, FIELD_FLOAT),
+	DEFINE_FIELD(m_maxSpeed, FIELD_FLOAT),
+	DEFINE_FIELD(m_dampSpeed, FIELD_FLOAT),
+	DEFINE_FIELD(m_center, FIELD_VECTOR),
+	DEFINE_FIELD(m_start, FIELD_VECTOR),
+	DEFINE_FIELD(m_LastToucher, FIELD_EHANDLE),
+	DEFINE_FUNCTION(Swing),
+	DEFINE_FUNCTION(PendulumUse),
+	DEFINE_FUNCTION(Stop),
+	DEFINE_FUNCTION(RopeTouch),
+	END_DATAMAP();
 
 bool CPendulum::KeyValue(KeyValueData* pkvd)
 {
@@ -728,18 +677,17 @@ bool CPendulum::KeyValue(KeyValueData* pkvd)
 	return CBaseEntity::KeyValue(pkvd);
 }
 
-
 void CPendulum::Spawn()
 {
 	// set the axis of rotation
-	CBaseToggle::AxisDir(pev);
+	CBaseToggle::AxisDir(this);
 
 	if (FBitSet(pev->spawnflags, SF_DOOR_PASSABLE))
 		pev->solid = SOLID_NOT;
 	else
 		pev->solid = SOLID_BSP;
 	pev->movetype = MOVETYPE_PUSH;
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 	SetModel(STRING(pev->model));
 
 	if (m_distance == 0)
@@ -766,7 +714,6 @@ void CPendulum::Spawn()
 		SetTouch(&CPendulum::RopeTouch);
 	}
 }
-
 
 void CPendulum::PendulumUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
@@ -798,7 +745,6 @@ void CPendulum::PendulumUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_T
 	}
 }
 
-
 void CPendulum::Stop()
 {
 	pev->angles = m_start;
@@ -807,12 +753,10 @@ void CPendulum::Stop()
 	pev->avelocity = g_vecZero;
 }
 
-
 void CPendulum::Blocked(CBaseEntity* pOther)
 {
 	m_time = gpGlobals->time;
 }
-
 
 void CPendulum::Swing()
 {
@@ -854,16 +798,13 @@ void CPendulum::Swing()
 	}
 }
 
-
 void CPendulum::Touch(CBaseEntity* pOther)
 {
-	entvars_t* pevOther = pOther->pev;
-
 	if (pev->dmg <= 0)
 		return;
 
 	// we can't hurt this thing, so we're not concerned with it
-	if (0 == pevOther->takedamage)
+	if (0 == pOther->pev->takedamage)
 		return;
 
 	// calculate damage based on rotation speed
@@ -874,25 +815,23 @@ void CPendulum::Touch(CBaseEntity* pOther)
 
 	pOther->TakeDamage(this, this, damage, DMG_CRUSH);
 
-	pevOther->velocity = (pevOther->origin - VecBModelOrigin(pev)).Normalize() * damage;
+	pOther->pev->velocity = (pOther->pev->origin - VecBModelOrigin(this)).Normalize() * damage;
 }
 
 void CPendulum::RopeTouch(CBaseEntity* pOther)
 {
-	entvars_t* pevOther = pOther->pev;
-
 	if (!pOther->IsPlayer())
 	{ // not a player!
 		Logger->debug("Not a client");
 		return;
 	}
 
-	if (ENT(pevOther) == pev->enemy)
+	if (pOther == m_LastToucher)
 	{ // this player already on the rope.
 		return;
 	}
 
-	pev->enemy = pOther->edict();
-	pevOther->velocity = g_vecZero;
-	pevOther->movetype = MOVETYPE_NONE;
+	m_LastToucher = pOther;
+	pOther->pev->velocity = g_vecZero;
+	pOther->pev->movetype = MOVETYPE_NONE;
 }

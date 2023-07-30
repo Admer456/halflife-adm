@@ -15,7 +15,7 @@ The minimum requirements for this project are:
 * [Visual Studio 2019 or newer](https://visualstudio.microsoft.com/downloads/)
     * During installation you will need to configure the installer to include a few components:
         * Workloads:
-        * Desktop development with C++
+        	* Desktop development with C++
     * Individual components:
         * MSVC v142 - VS2019 C++ x64/x86 build tools (Latest) (or newer if you are using a newer version of Visual Studio)
         * C++ profiling tools
@@ -25,7 +25,7 @@ Note: vcpkg uses the latest version of Visual Studio installed on your system to
 
 ### For Linux development
 
-* A recent Linux distribution
+* [The minimum requirements for Steam itself](https://github.com/ValveSoftware/steam-for-linux#hardware-and-software-requirements)
 
 The following packages are required:
 * build-essential
@@ -50,9 +50,9 @@ git clone --recurse-submodules https://github.com/SamVanheer/halflife-unified-sd
 
 This makes it easier to group related directories and files together.
 
-If you do not have any experience working with Git, i recommend downloading and installing [Sourcetree](https://www.sourcetreeapp.com) and following this tutorial: https://www.youtube.com/watch?v=5K4gong_lA0
+If you do not have any experience working with Git, it is recommended to download and install [Sourcetree](https://www.sourcetreeapp.com) and following this tutorial: https://www.youtube.com/watch?v=5K4gong_lA0
 
-Make sure to open the `Advanced Options` menu on the Clone page and ticking the `Recurse submodules` option.
+Make sure to open the `Advanced Options` menu on the Clone page and tick the `Recurse submodules` option.
 
 ## Change the mod name
 
@@ -72,17 +72,17 @@ You should commit this change to version control.
 Start the CMake GUI; you will see a few options. Let's go over the ones we'll need to set up to generate the project files.
 
 * "Where is the source code": This should point to the directory that you cloned the repository to
-* "Where to build the binaries": This is where the actual project files will be generated. It is recommended to create a directory next to the source code directory and name it `<source code directory>_build` or `<source code directory>-build`, which makes it obvious that the directory belongs to that repository. This will be referred to as the build directory from now on
+* "Where to build the binaries": This is where the actual project files will be generated. It is recommended to create a directory next to the source code directory and name it `<source code directory>_build`, which makes it obvious that the directory belongs to that repository. This will be referred to as the build directory from now on
 
 A typical setup should look like this:
 
-![CMake initial state](https://i.imgur.com/9f3Tvqw.png)
+![CMake initial state](docs/images/cmake-setup1.png)
 
 ### Windows configuration
 
 Now click the `Configure` button on the bottom left part of the screen. You will see this dialog:
 
-![Configure dialog](https://i.imgur.com/EvnW5xW.png)
+![Configure dialog](docs/images/cmake-setup2.png)
 
 Enter the following settings:
 * Generator: Visual Studio 16 2019 (or newer if you prefer)
@@ -91,7 +91,7 @@ Enter the following settings:
 
 Click the `Next` button. You will now see this dialog:
 
-![Toolchain dialog](https://i.imgur.com/oyptUR0.png)
+![Toolchain dialog](docs/images/cmake-setup3.png)
 
 Browse to the source code directory, open the `cmake` directory and select the file `WindowsToolchain.cmake`.
 
@@ -101,7 +101,7 @@ Click the `Finish` button. CMake will now perform first-run setup to prepare for
 
 Now click the `Configure` button on the bottom left part of the screen. You will see this dialog:
 
-![Configure dialog](https://i.imgur.com/cbJMp3A.png)
+![Configure dialog](docs/images/cmake-setup2b.png)
 
 Enter the following settings:
 * Generator: Unix makefiles
@@ -109,7 +109,7 @@ Enter the following settings:
 
 Click the `Next` button. You will now see this dialog:
 
-![Toolchain dialog](https://i.imgur.com/jMbea4h.png)
+![Toolchain dialog](docs/images/cmake-setup3b.png)
 
 Browse to the source code directory, open the `cmake` directory and select the file `LinuxToolchain.cmake`.
 
@@ -121,7 +121,7 @@ CMake will now perform its initial configuration. vcpkg will run as well and wil
 
 You should now see new variables marked red:
 
-![Configured](https://i.imgur.com/33wxe61.png)
+![Configured](docs/images/cmake-setup4.png)
 
 Modify the `CMAKE_INSTALL_PREFIX` variable to point to your mod directory, e.g. `C:/Program Files (x86)/Steam/steamapps/common/Half-Life/hlu`.
 
@@ -129,7 +129,7 @@ Substitute `hlu` with the name of your mod directory. This name should be short 
 
 If you want to launch a dedicated server through Visual Studio you will need to point the `HalfLife_HLDS_DIRECTORY` variable to the directory that contains `hlds.exe`/`hlds_linux`.
 
-To aid developers project info is displayed on-screen automatically if `HalfLife_RELEASE_TYPE` is set to `Pre-Alpha` or `Alpha`. Configure this variable as needed to suit your needs. This is used solely for in-game diagnostics messages and display and does not affect the source code in any way. See [[Hud Project info|Hud-Project-info]] for more information.
+To aid developers project info is displayed on-screen automatically if `HalfLife_RELEASE_TYPE` is set to `Pre-Alpha` or `Alpha`. Configure this variable as needed to suit your needs. This is used solely for in-game diagnostics messages and display and does not affect the source code in any way. See [Hud Project info](docs/features/hud-project-info.md) for more information.
 
 You can set up the game for debugging by using these optional variables to provide command line arguments to the game:
 * `HalfLife_ENABLE_CONSOLE`: If set, the console will be enabled on startup
@@ -147,13 +147,13 @@ Open Visual Studio and open the solution file `HalfLifeMod.sln` that has been cr
 
 Visual Studio will open the solution and list 4 projects:
 * ALL_BUILD: this is a CMake utility project used to build all projects in the solution
+* ZERO_CHECK: Re-runs CMake when built
 * INSTALL: this is a CMake utility project used to build all projects and install files to the destination set in `CMAKE_INSTALL_PREFIX`. It installs the mod libraries as well as debug info to the mod directory
 * client: this is the Half-Life mod client project
 * server: this is the Half-Life mod server project
+* ProjectInfo: Regenerates the project info shown on the HUD. This project is automatically built when the client or server are built
 
-There is also a solution directory named `Dependencies`. This contains the projects used to compile third party libraries. You can close this directory and ignore it.
-
-The debugging settings have been initialized to point to your mod directory and the startup project has been set to the client, so all you need to do is build the `INSTALL` project and once completed press F5 to launch the game with your mod. Steam will need to be running for the game to launch successfully.
+The debugging settings have been initialized to point to your mod directory and the startup project has been set to the client, so all you need to do is build the `INSTALL` project and once completed press F5 to launch the game with your mod. Steam needs to be running for the game to launch successfully.
 
 If all goes well you should now be able to make changes to your code, build the `INSTALL` project and press F5 to test your changes.
 

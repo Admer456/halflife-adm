@@ -21,8 +21,6 @@
 class COFLoader : public CBaseMonster
 {
 public:
-	int Classify() override { return CLASS_PLAYER_ALLY; }
-
 	int ISoundMask() override { return bits_SOUND_NONE; }
 
 	void OnCreate() override;
@@ -38,7 +36,7 @@ public:
 
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 
-	void StartTask(Task_t* pTask) override;
+	void StartTask(const Task_t* pTask) override;
 
 	void SetTurnActivity();
 };
@@ -51,6 +49,8 @@ void COFLoader::OnCreate()
 
 	pev->health = 8;
 	pev->model = MAKE_STRING("models/loader.mdl");
+
+	SetClassification("player_ally");
 }
 
 void COFLoader::Precache()
@@ -82,6 +82,7 @@ void COFLoader::Spawn()
 	m_flFieldOfView = 0.5f;
 	pev->takedamage = DAMAGE_NO;
 
+	m_AllowFollow = false;
 	MonsterInit();
 }
 
@@ -106,7 +107,7 @@ void COFLoader::HandleAnimEvent(MonsterEvent_t* pEvent)
 	CBaseMonster::HandleAnimEvent(pEvent);
 }
 
-void COFLoader::StartTask(Task_t* pTask)
+void COFLoader::StartTask(const Task_t* pTask)
 {
 	float newYawAngle;
 

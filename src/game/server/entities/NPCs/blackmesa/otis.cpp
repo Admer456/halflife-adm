@@ -12,14 +12,18 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// monster template
-//=========================================================
-// UNDONE: Holster weapon?
 
 #include "cbase.h"
-#include "talkmonster.h"
+#include "ReplacementMaps.h"
 #include "barney.h"
+
+const ReplacementMap OtisSentenceReplacement{
+	{{"BA_POK", "OT_POK"},
+		{"BA_KILL", "OT_KILL"},
+		{"BA_ATTACK", "OT_ATTACK"},
+		{"BA_MAD", "OT_MAD"},
+		{"BA_SHOT", "OT_SHOT"}},
+	true};
 
 namespace OtisBodyGroup
 {
@@ -65,8 +69,6 @@ enum OtisSkin
 };
 }
 
-// TODO: work out a way to abstract sentences out so we don't need to override here to change just those
-
 class COtis : public CBarney
 {
 public:
@@ -75,17 +77,11 @@ public:
 	void Precache() override;
 	void Spawn() override;
 	void GuardFirePistol() override;
-	void AlertSound() override;
-
-	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
-
-	void DeclineFollowing() override;
 
 	void TalkInit() override;
 
 protected:
 	void DropWeapon() override;
-	void SpeakKilledEnemy() override;
 
 private:
 	int m_Sleeves;
@@ -100,26 +96,13 @@ void COtis::OnCreate()
 
 	pev->health = GetSkillFloat("otis_health"sv);
 	pev->model = MAKE_STRING("models/otis.mdl");
+
+	m_iszUse = MAKE_STRING("OT_OK");
+	m_iszUnUse = MAKE_STRING("OT_WAIT");
+
+	m_SentenceReplacement = &OtisSentenceReplacement;
 }
 
-//=========================================================
-// ALertSound - otis says "Freeze!"
-//=========================================================
-void COtis::AlertSound()
-{
-	if (m_hEnemy != nullptr)
-	{
-		if (FOkToSpeak())
-		{
-			PlaySentence("OT_ATTACK", RANDOM_FLOAT(2.8, 3.2), VOL_NORM, ATTN_IDLE);
-		}
-	}
-}
-
-//=========================================================
-// GuardFirePistol - shoots one round from the pistol at
-// the enemy otis is facing.
-//=========================================================
 void COtis::GuardFirePistol()
 {
 	Vector vecShootOrigin;
@@ -165,9 +148,6 @@ bool COtis::KeyValue(KeyValueData* pkvd)
 	return CBarney::KeyValue(pkvd);
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void COtis::Precache()
 {
 	CBarney::Precache();
@@ -192,7 +172,6 @@ void COtis::Spawn()
 	SetBodygroup(OtisBodyGroup::Items, m_Item);
 }
 
-// Init talk data
 void COtis::TalkInit()
 {
 	CTalkMonster::TalkInit();
@@ -203,8 +182,6 @@ void COtis::TalkInit()
 	m_szGrp[TLK_QUESTION] = "OT_QUESTION";
 	m_szGrp[TLK_IDLE] = "OT_IDLE";
 	m_szGrp[TLK_STARE] = "OT_STARE";
-	m_szGrp[TLK_USE] = "OT_OK";
-	m_szGrp[TLK_UNUSE] = "OT_WAIT";
 	m_szGrp[TLK_STOP] = "OT_STOP";
 
 	m_szGrp[TLK_NOSHOOT] = "OT_SCARED";
@@ -227,43 +204,6 @@ void COtis::TalkInit()
 	m_voicePitch = 100;
 }
 
-bool COtis::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
-{
-	// make sure friends talk about it if player hurts talkmonsters...
-	bool ret = CTalkMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
-	if (!IsAlive() || pev->deadflag == DEAD_DYING)
-		return ret;
-
-	if (m_MonsterState != MONSTERSTATE_PRONE && (attacker->pev->flags & FL_CLIENT) != 0)
-	{
-		// This is a heurstic to determine if the player intended to harm me
-		// If I have an enemy, we can't establish intent (may just be crossfire)
-		if (m_hEnemy == nullptr)
-		{
-			// If the player was facing directly at me, or I'm already suspicious, get mad
-			if ((m_afMemory & bits_MEMORY_SUSPICIOUS) != 0 || IsFacing(attacker, pev->origin))
-			{
-				// Alright, now I'm pissed!
-				PlaySentence("OT_MAD", 4, VOL_NORM, ATTN_NORM);
-
-				Remember(bits_MEMORY_PROVOKED);
-				StopFollowing(true);
-			}
-			else
-			{
-				// Hey, be careful with that
-				PlaySentence("OT_SHOT", 4, VOL_NORM, ATTN_NORM);
-				Remember(bits_MEMORY_SUSPICIOUS);
-			}
-		}
-		else if (!(m_hEnemy->IsPlayer()) && pev->deadflag == DEAD_NO)
-		{
-			PlaySentence("OT_SHOT", 4, VOL_NORM, ATTN_NORM);
-		}
-	}
-
-	return ret;
-}
 
 void COtis::DropWeapon()
 {
@@ -272,32 +212,13 @@ void COtis::DropWeapon()
 	DropItem("weapon_eagle", vecGunPos, vecGunAngles);
 }
 
-void COtis::SpeakKilledEnemy()
-{
-	PlaySentence("OT_KILL", 4, VOL_NORM, ATTN_NORM);
-}
-
-void COtis::DeclineFollowing()
-{
-	PlaySentence("OT_POK", 2, VOL_NORM, ATTN_NORM);
-}
-
-//=========================================================
-// DEAD OTIS PROP
-//
-// Designer selects a pose in worldcraft, 0 through num_poses-1
-// this value is added to what is selected as the 'first dead pose'
-// among the monster's normal animations. All dead poses must
-// appear sequentially in the model file. Be sure and set
-// the m_iFirstPose properly!
-//
-//=========================================================
 class CDeadOtis : public CBaseMonster
 {
 public:
 	void OnCreate() override;
 	void Spawn() override;
-	int Classify() override { return CLASS_PLAYER_ALLY; }
+
+	bool HasHumanGibs() override { return true; }
 
 	bool KeyValue(KeyValueData* pkvd) override;
 
@@ -314,6 +235,8 @@ void CDeadOtis::OnCreate()
 	// Corpses have less health
 	pev->health = 8; // GetSkillFloat("otis_health"sv);
 	pev->model = MAKE_STRING("models/otis.mdl");
+
+	SetClassification("player_ally");
 }
 
 bool CDeadOtis::KeyValue(KeyValueData* pkvd)
@@ -329,9 +252,6 @@ bool CDeadOtis::KeyValue(KeyValueData* pkvd)
 
 LINK_ENTITY_TO_CLASS(monster_otis_dead, CDeadOtis);
 
-//=========================================================
-// ********** DeadOtis SPAWN **********
-//=========================================================
 void CDeadOtis::Spawn()
 {
 	PrecacheModel(STRING(pev->model));

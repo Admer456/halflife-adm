@@ -15,8 +15,7 @@
 #include "cbase.h"
 
 #include "ctf/CTFDefs.h"
-#include "ctf/CTFGoal.h"
-#include "ctf/CTFGoalFlag.h"
+#include "ctf/ctf_goals.h"
 
 #include "UserMessages.h"
 
@@ -24,7 +23,7 @@
 
 namespace
 {
-// TODO: can probably be smarter - Solokiller
+// TODO: can probably be smarter
 const char* const displace[] =
 	{
 		"monster_bloater",
@@ -65,6 +64,15 @@ const char* const displace[] =
 		"monster_shocktrooper"};
 }
 
+BEGIN_DATAMAP(CDisplacerBall)
+DEFINE_FUNCTION(BallTouch),
+	DEFINE_FUNCTION(FlyThink),
+	DEFINE_FUNCTION(FlyThink2),
+	DEFINE_FUNCTION(FizzleThink),
+	DEFINE_FUNCTION(ExplodeThink),
+	DEFINE_FUNCTION(KillThink),
+	END_DATAMAP();
+
 LINK_ENTITY_TO_CLASS(displacer_ball, CDisplacerBall);
 
 void CDisplacerBall::Precache()
@@ -86,7 +94,7 @@ void CDisplacerBall::Spawn()
 
 	SetModel("sprites/exit1.spr");
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetSize(g_vecZero, g_vecZero);
 
@@ -102,11 +110,6 @@ void CDisplacerBall::Spawn()
 	pev->nextthink = gpGlobals->time + 0.2;
 
 	InitBeams();
-}
-
-int CDisplacerBall::Classify()
-{
-	return CLASS_NONE;
 }
 
 void CDisplacerBall::BallTouch(CBaseEntity* pOther)
@@ -154,10 +157,8 @@ void CDisplacerBall::BallTouch(CBaseEntity* pOther)
 
 	UTIL_DecalTrace(&tr, DECAL_SCORCH1 + RANDOM_LONG(0, 1));
 
-	if (pOther->IsPlayer())
+	if (auto pPlayer = ToBasePlayer(pOther); pPlayer)
 	{
-		CBasePlayer* pPlayer = static_cast<CBasePlayer*>(pOther);
-
 		// Clear any flags set on player (onground, using grapple, etc).
 		pPlayer->pev->flags &= FL_FAKECLIENT;
 		pPlayer->pev->flags |= FL_CLIENT;
@@ -165,24 +166,18 @@ void CDisplacerBall::BallTouch(CBaseEntity* pOther)
 
 		if (g_pGameRules->IsCTF() && pPlayer->m_pFlag)
 		{
-			auto pFlag = static_cast<CTFGoalFlag*>(static_cast<CBaseEntity*>(pPlayer->m_pFlag));
+			pPlayer->m_pFlag->DropFlag(pPlayer);
 
-			pFlag->DropFlag(pPlayer);
-
-			auto pOwner = CBaseEntity::Instance(pev->owner);
-
-			if (pOwner->IsPlayer())
+			if (auto pOwner = ToBasePlayer(pev->owner); pOwner)
 			{
-				auto pOwnerPlayer = static_cast<CBasePlayer*>(pOwner);
-
-				if (pOwnerPlayer->m_iTeamNum != pPlayer->m_iTeamNum)
+				if (pOwner->m_iTeamNum != pPlayer->m_iTeamNum)
 				{
 					MESSAGE_BEGIN(MSG_ALL, gmsgCTFScore);
 					WRITE_BYTE(pPlayer->entindex());
 					WRITE_BYTE(pPlayer->m_iCTFScore);
 					MESSAGE_END();
 
-					ClientPrint(pPlayer->pev, HUD_PRINTTALK, "#CTFScorePoint");
+					ClientPrint(pPlayer, HUD_PRINTTALK, "#CTFScorePoint");
 					UTIL_ClientPrintAll(HUD_PRINTNOTIFY, UTIL_VarArgs("%s", STRING(pPlayer->pev->netname)));
 
 					if (pPlayer->m_iTeamNum == CTFTeam::BlackMesa)
@@ -205,7 +200,7 @@ void CDisplacerBall::BallTouch(CBaseEntity* pOther)
 
 		UTIL_TraceLine(pSpawnSpot->pev->origin, pSpawnSpot->pev->origin - Vector(0, 0, 100), ignore_monsters, edict(), &tr);
 
-		UTIL_SetOrigin(pPlayer->pev, tr.vecEndPos + Vector(0, 0, 37));
+		pPlayer->SetOrigin(tr.vecEndPos + Vector(0, 0, 37));
 
 		pPlayer->pev->sequence = pPlayer->LookupActivity(ACT_IDLE);
 
@@ -234,7 +229,7 @@ void CDisplacerBall::BallTouch(CBaseEntity* pOther)
 
 	pev->solid = SOLID_NOT;
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetThink(&CDisplacerBall::KillThink);
 
@@ -279,7 +274,7 @@ void CDisplacerBall::FizzleThink()
 
 	pev->owner = nullptr;
 
-	RadiusDamage(pev->origin, this, pOwner, pev->dmg, 128.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_BLAST);
+	RadiusDamage(pev->origin, this, pOwner, pev->dmg, 128.0, DMG_ALWAYSGIB | DMG_BLAST);
 
 	EmitSound(CHAN_WEAPON, "weapons/displacer_impact.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 
@@ -296,7 +291,7 @@ void CDisplacerBall::ExplodeThink()
 
 	pev->owner = nullptr;
 
-	RadiusDamage(pev->origin, this, pOwner, pev->dmg, GetSkillFloat("plr_displacer_radius"sv), CLASS_NONE, DMG_ALWAYSGIB | DMG_BLAST);
+	RadiusDamage(pev->origin, this, pOwner, pev->dmg, GetSkillFloat("plr_displacer_radius"sv), DMG_ALWAYSGIB | DMG_BLAST);
 
 	EmitSound(CHAN_WEAPON, "weapons/displacer_teleport.wav", RANDOM_FLOAT(0.8, 0.9), ATTN_NORM);
 
@@ -309,7 +304,7 @@ void CDisplacerBall::KillThink()
 	{
 		pTarget->SetThink(&CBaseEntity::SUB_Remove);
 
-		// TODO: no next think? - Solokiller
+		// TODO: no next think?
 	}
 
 	SetThink(&CDisplacerBall::ExplodeThink);
@@ -357,7 +352,7 @@ void CDisplacerBall::ArmBeam(int iSide)
 	{
 		Vector vecAim = gpGlobals->v_right * iSide * RANDOM_FLOAT(0, 1) + gpGlobals->v_up * RANDOM_FLOAT(-1, 1);
 		TraceResult tr1;
-		UTIL_TraceLine(vecSrc, vecSrc + vecAim * 512, dont_ignore_monsters, ENT(pev), &tr1);
+		UTIL_TraceLine(vecSrc, vecSrc + vecAim * 512, dont_ignore_monsters, edict(), &tr1);
 		if (flDist > tr1.flFraction)
 		{
 			tr = tr1;
@@ -369,7 +364,7 @@ void CDisplacerBall::ArmBeam(int iSide)
 	if (flDist == 1.0)
 		return;
 
-	// The beam might already exist if we've created all beams before. - Solokiller
+	// The beam might already exist if we've created all beams before.
 	if (!m_pBeam[m_uiBeams])
 		m_pBeam[m_uiBeams] = CBeam::BeamCreate("sprites/lgtning.spr", 30);
 
@@ -380,14 +375,14 @@ void CDisplacerBall::ArmBeam(int iSide)
 
 	if (pHit && pHit->pev->takedamage != DAMAGE_NO)
 	{
-		// Beam hit something, deal radius damage to it. - Solokiller
+		// Beam hit something, deal radius damage to it.
 		m_pBeam[m_uiBeams]->EntsInit(pHit->entindex(), entindex());
 
 		m_pBeam[m_uiBeams]->SetColor(255, 255, 255);
 
 		m_pBeam[m_uiBeams]->SetBrightness(255);
 
-		RadiusDamage(tr.vecEndPos, this, GetOwner(), 25, 15, CLASS_NONE, DMG_ENERGYBEAM);
+		RadiusDamage(tr.vecEndPos, this, GetOwner(), 25, 15, DMG_ENERGYBEAM);
 	}
 	else
 	{
@@ -407,6 +402,11 @@ bool CDisplacerBall::ClassifyTarget(CBaseEntity* pTarget)
 	if (!pTarget || pTarget->IsPlayer())
 		return false;
 
+	if (pTarget->IsUnkillable())
+	{
+		return false;
+	}
+
 	for (size_t uiIndex = 0; uiIndex < std::size(displace); ++uiIndex)
 	{
 		if (strcmp(STRING(pTarget->pev->classname), displace[uiIndex]) == 0)
@@ -420,7 +420,7 @@ CDisplacerBall* CDisplacerBall::CreateDisplacerBall(const Vector& vecOrigin, con
 {
 	auto pBall = g_EntityDictionary->Create<CDisplacerBall>("displacer_ball");
 
-	UTIL_SetOrigin(pBall->pev, vecOrigin);
+	pBall->SetOrigin(vecOrigin);
 
 	Vector vecNewAngles = vecAngles;
 

@@ -18,11 +18,17 @@
 
 #include "CGrappleTip.h"
 
+BEGIN_DATAMAP(CGrappleTip)
+DEFINE_FUNCTION(FlyThink),
+	DEFINE_FUNCTION(OffsetThink),
+	DEFINE_FUNCTION(TongueTouch),
+	END_DATAMAP();
+
 LINK_ENTITY_TO_CLASS(grapple_tip, CGrappleTip);
 
 namespace
 {
-// TODO: this should be handled differently. A method that returns an overall size, another whether it's fixed, etc. - Solokiller
+// TODO: this should be handled differently. A method that returns an overall size, another whether it's fixed, etc.
 const char* const grapple_small[] =
 	{
 		"monster_bloater",
@@ -100,7 +106,7 @@ void CGrappleTip::Spawn()
 
 	SetSize(g_vecZero, g_vecZero);
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetThink(&CGrappleTip::FlyThink);
 	SetTouch(&CGrappleTip::TongueTouch);
@@ -123,7 +129,6 @@ void CGrappleTip::Spawn()
 
 void CGrappleTip::FlyThink()
 {
-#ifndef CLIENT_DLL
 	UTIL_MakeAimVectors(pev->angles);
 
 	pev->angles = UTIL_VecToAngles(gpGlobals->v_forward);
@@ -132,34 +137,13 @@ void CGrappleTip::FlyThink()
 
 	pev->velocity = pev->velocity * 0.2 + (flNewVel * gpGlobals->v_forward);
 
-	float maxSpeed;
+	const float maxSpeed = g_Skill.GetValue("grapple_fast") != 0 ? 2000 : 1600;
 
-	if (!UTIL_IsMultiplayer())
-	{
-		if (oldgrapple.value != 1)
-		{
-			maxSpeed = 1600;
-		}
-		else
-		{
-			maxSpeed = 750;
-		}
-	}
-	else if (UTIL_IsCTF() || oldgrapple.value != 1)
-	{
-		maxSpeed = 2000;
-	}
-	else
-	{
-		maxSpeed = 1600;
-	}
-
-	// TODO: should probably clamp at sv_maxvelocity to prevent the tip from going off course. - Solokiller
+	// TODO: should probably clamp at sv_maxvelocity to prevent the tip from going off course.
 	if (pev->velocity.Length() > maxSpeed)
 	{
 		pev->velocity = pev->velocity.Normalize() * maxSpeed;
 	}
-#endif
 
 	pev->nextthink = gpGlobals->time + 0.02;
 }
@@ -302,7 +286,7 @@ CGrappleTip::TargetClass CGrappleTip::ClassifyTarget(CBaseEntity* pTarget)
 
 void CGrappleTip::SetPosition(const Vector& vecOrigin, const Vector& vecAngles, CBaseEntity* pOwner)
 {
-	UTIL_SetOrigin(pev, vecOrigin);
+	SetOrigin(vecOrigin);
 	pev->angles = vecAngles;
 	pev->owner = pOwner->edict();
 }

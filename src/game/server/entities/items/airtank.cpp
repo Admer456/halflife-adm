@@ -16,31 +16,28 @@
 
 class CAirtank : public CGrenade
 {
+	DECLARE_CLASS(CAirtank, CGrenade);
+	DECLARE_DATAMAP();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
-	void EXPORT TankThink();
-	void EXPORT TankTouch(CBaseEntity* pOther);
+	void TankThink();
+	void TankTouch(CBaseEntity* pOther);
 	int BloodColor() override { return DONT_BLEED; }
 	void Killed(CBaseEntity* attacker, int iGib) override;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 
 	bool m_state;
 };
 
-
 LINK_ENTITY_TO_CLASS(item_airtank, CAirtank);
-TYPEDESCRIPTION CAirtank::m_SaveData[] =
-	{
-		DEFINE_FIELD(CAirtank, m_state, FIELD_BOOLEAN),
-};
 
-IMPLEMENT_SAVERESTORE(CAirtank, CGrenade);
+BEGIN_DATAMAP(CAirtank)
+DEFINE_FIELD(m_state, FIELD_BOOLEAN),
+	DEFINE_FUNCTION(TankThink),
+	DEFINE_FUNCTION(TankTouch),
+	END_DATAMAP();
 
 void CAirtank::OnCreate()
 {
@@ -59,7 +56,7 @@ void CAirtank::Spawn()
 
 	SetModel(STRING(pev->model));
 	SetSize(Vector(-16, -16, 0), Vector(16, 16, 36));
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetTouch(&CAirtank::TankTouch);
 	SetThink(&CAirtank::TankThink);
@@ -76,7 +73,6 @@ void CAirtank::Precache()
 	PrecacheSound("doors/aliendoor3.wav");
 }
 
-
 void CAirtank::Killed(CBaseEntity* attacker, int iGib)
 {
 	SetOwner(attacker);
@@ -86,14 +82,12 @@ void CAirtank::Killed(CBaseEntity* attacker, int iGib)
 	Explode(pev->origin, Vector(0, 0, -1));
 }
 
-
 void CAirtank::TankThink()
 {
 	// Fire trigger
 	m_state = true;
 	SUB_UseTargets(this, USE_TOGGLE, 0);
 }
-
 
 void CAirtank::TankTouch(CBaseEntity* pOther)
 {

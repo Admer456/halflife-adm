@@ -17,21 +17,21 @@
 
 #include "CBaseEntity.h"
 
-//
-// generic Delay entity.
-//
+/**
+ *	@brief generic Delay entity.
+ */
 class CBaseDelay : public CBaseEntity
 {
+	DECLARE_CLASS(CBaseDelay, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
 	float m_flDelay;
 	string_t m_iszKillTarget;
 
 	bool KeyValue(KeyValueData* pkvd) override;
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
 
-	static TYPEDESCRIPTION m_SaveData[];
 	// common member functions
 	void SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float value);
-	void EXPORT DelayThink();
+	void DelayThink();
 };

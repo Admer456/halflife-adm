@@ -33,19 +33,12 @@ enum SniperRifleAnim
  */
 class CSniperRifle : public CBasePlayerWeapon
 {
+	DECLARE_CLASS(CSniperRifle, CBasePlayerWeapon);
+	DECLARE_DATAMAP();
+
 public:
-	using BaseClass = CBasePlayerWeapon;
-
-#ifndef CLIENT_DLL
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-#endif
-
 	void OnCreate() override;
 	void Precache() override;
-	void Spawn() override;
 
 	bool Deploy() override;
 

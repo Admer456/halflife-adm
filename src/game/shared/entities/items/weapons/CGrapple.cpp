@@ -24,28 +24,25 @@
 
 #include "CGrapple.h"
 
-#ifndef CLIENT_DLL
-TYPEDESCRIPTION CGrapple::m_SaveData[] =
-	{
-		DEFINE_FIELD(CGrapple, m_pBeam, FIELD_CLASSPTR),
-		DEFINE_FIELD(CGrapple, m_flShootTime, FIELD_TIME),
-		DEFINE_FIELD(CGrapple, m_FireState, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(CGrapple, CGrapple::BaseClass);
-#endif
+BEGIN_DATAMAP(CGrapple)
+DEFINE_FIELD(m_pBeam, FIELD_CLASSPTR),
+	DEFINE_FIELD(m_flShootTime, FIELD_TIME),
+	DEFINE_FIELD(m_FireState, FIELD_INTEGER),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(weapon_grapple, CGrapple);
 
 void CGrapple::OnCreate()
 {
 	BaseClass::OnCreate();
-
+	m_iId = WEAPON_GRAPPLE;
+	SetMagazine1(WEAPON_NOCLIP);
 	m_WorldModel = pev->model = MAKE_STRING("models/w_bgrap.mdl");
 }
 
 void CGrapple::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel("models/v_bgrap.mdl");
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/p_bgrap.mdl");
@@ -64,23 +61,6 @@ void CGrapple::Precache()
 	PrecacheModel("sprites/tongue.spr");
 
 	UTIL_PrecacheOther("grapple_tip");
-}
-
-void CGrapple::Spawn()
-{
-	Precache();
-
-	m_iId = WEAPON_GRAPPLE;
-
-	SetModel(STRING(pev->model));
-
-	m_iClip = WEAPON_NOCLIP;
-
-	m_pTip = nullptr;
-
-	m_bGrappling = false;
-
-	FallInit();
 }
 
 bool CGrapple::Deploy()
@@ -163,7 +143,7 @@ void CGrapple::PrimaryAttack()
 			if (m_pTip->GetGrappleType() > CGrappleTip::TargetClass::SMALL)
 			{
 				m_pPlayer->pev->movetype = MOVETYPE_FLY;
-				// Tells the physics code that the player is not on a ladder - Solokiller
+				// Tells the physics code that the player is not on a ladder
 				m_pPlayer->pev->flags |= FL_IMMUNE_LAVA;
 			}
 
@@ -188,7 +168,7 @@ void CGrapple::PrimaryAttack()
 
 			case CGrappleTip::TargetClass::SMALL:
 				// pTarget->BarnacleVictimGrabbed( this );
-				UTIL_SetOrigin(m_pTip->pev, pTarget->Center());
+				m_pTip->SetOrigin(pTarget->Center());
 
 				pTarget->pev->velocity = pTarget->pev->velocity + (m_pPlayer->pev->origin - pTarget->pev->origin);
 
@@ -204,7 +184,7 @@ void CGrapple::PrimaryAttack()
 				// pTarget->BarnacleVictimGrabbed( this );
 
 				if (m_pTip->GetGrappleType() != CGrappleTip::TargetClass::FIXED)
-					UTIL_SetOrigin(m_pTip->pev, pTarget->Center());
+					m_pTip->SetOrigin(pTarget->Center());
 
 				m_pPlayer->pev->velocity = m_pPlayer->pev->velocity + (m_pTip->pev->origin - m_pPlayer->pev->origin);
 
@@ -272,7 +252,7 @@ void CGrapple::PrimaryAttack()
 
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.1;
 
-		if (UTIL_IsMultiplayer())
+		if (g_Skill.GetValue("grapple_fast") != 0)
 		{
 			m_flShootTime = gpGlobals->time;
 		}
@@ -315,7 +295,7 @@ void CGrapple::PrimaryAttack()
 				// If we've hit a solid object see if we're hurting it
 				if (!tr.pHit || FNullEnt(tr.pHit) || GET_PRIVATE<CBaseEntity>(tr.pHit)->IsBSPModel())
 				{
-					FindHullIntersection(vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer->edict());
+					FindHullIntersection(vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer);
 				}
 			}
 		}
@@ -351,11 +331,6 @@ void CGrapple::PrimaryAttack()
 
 						float flDamage = GetSkillFloat("plr_grapple"sv);
 
-						if (g_pGameRules->IsMultiplayer())
-						{
-							flDamage *= 2;
-						}
-
 						pHit->TraceAttack(this, flDamage, gpGlobals->v_forward, &tr, DMG_ALWAYSGIB | DMG_CLUB);
 
 						ApplyMultiDamage(m_pPlayer, m_pPlayer);
@@ -387,15 +362,7 @@ void CGrapple::PrimaryAttack()
 	}
 #endif
 
-	const bool useNewGrapple =
-#ifdef CLIENT_DLL
-		gEngfuncs.pfnGetCvarFloat("sv_oldgrapple") != 1
-#else
-		oldgrapple.value != 1
-#endif
-		;
-
-	if (UTIL_IsMultiplayer() && (UTIL_IsCTF() || useNewGrapple))
+	if (g_Skill.GetValue("grapple_fast") != 0)
 	{
 		m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase();
 	}
@@ -461,15 +428,7 @@ void CGrapple::EndAttack()
 
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase();
 
-	const bool useNewGrapple =
-#ifdef CLIENT_DLL
-		gEngfuncs.pfnGetCvarFloat("sv_oldgrapple") != 1
-#else
-		oldgrapple.value != 1
-#endif
-		;
-
-	if (UTIL_IsMultiplayer() && (UTIL_IsCTF() || useNewGrapple))
+	if (g_Skill.GetValue("grapple_fast") != 0)
 	{
 		m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase();
 	}
@@ -557,10 +516,10 @@ void CGrapple::DestroyEffect()
 bool CGrapple::GetWeaponInfo(WeaponInfo& info)
 {
 	info.Name = STRING(pev->classname);
-	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.AttackModeInfo[0].MagazineSize = WEAPON_NOCLIP;
 	info.Slot = 0;
 	info.Position = 3;
-	info.Id = m_iId = WEAPON_GRAPPLE;
+	info.Id = WEAPON_GRAPPLE;
 	info.Weight = 21;
 
 	return true;

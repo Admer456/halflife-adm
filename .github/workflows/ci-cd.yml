@@ -32,7 +32,7 @@ jobs:
           sudo dpkg --add-architecture i386
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt update
-          sudo apt install -y g++-11-multilib libgl1-mesa-dev:i386
+          sudo apt install -y g++-11-multilib libgcc-s1:i386 libstdc++6:i386 libatomic1:i386 libgl1-mesa-dev:i386
          
       - uses: lukka/get-cmake@latest
       
@@ -41,7 +41,7 @@ jobs:
         with:
           vcpkgDirectory: '${{env.VCPKG_ROOT}}'
           runVcpkgInstall: false
-          vcpkgJsonIgnores: "['**/vcpkg/**', '**/vcpkg_config/**']"
+          vcpkgJsonIgnores: "['**/vcpkg/**', '**/vcpkg_config/**', '**/utils/**']"
          
       - name: Configure
         run: >
@@ -49,7 +49,7 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/cmake/LinuxToolchain.cmake
         
       - name: Build
-        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j2
+        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j3
         
       - name: Install
         run: cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
@@ -76,7 +76,7 @@ jobs:
         with:
           vcpkgDirectory: '${{env.VCPKG_ROOT}}'
           runVcpkgInstall: false
-          vcpkgJsonIgnores: "['**/vcpkg/**', '**/vcpkg_config/**']"
+          vcpkgJsonIgnores: "['**/vcpkg/**', '**/vcpkg_config/**', '**/utils/**']"
         
       - name: Configure
         run: >
@@ -84,7 +84,7 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/cmake/WindowsToolchain.cmake -A Win32
         
       - name: Build
-        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j2
+        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j3
         
       - name: Install
         run: cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}

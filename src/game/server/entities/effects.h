@@ -35,6 +35,9 @@
 
 class CSprite : public CPointEntity
 {
+	DECLARE_CLASS(CSprite, CPointEntity);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	void Precache() override;
@@ -46,8 +49,8 @@ public:
 			flags = FCAP_DONT_SAVE;
 		return (CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION) | flags;
 	}
-	void EXPORT AnimateThink();
-	void EXPORT ExpandThink();
+	void AnimateThink();
+	void ExpandThink();
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
 	void Animate(float frames);
 	void Expand(float scaleSpeed, float fadeSpeed);
@@ -93,11 +96,8 @@ public:
 		pev->nextthink = gpGlobals->time;
 	}
 
-	void EXPORT AnimateUntilDead();
+	void AnimateUntilDead();
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
 	static CSprite* SpriteCreate(const char* pSpriteName, const Vector& origin, bool animate);
 
 private:
@@ -105,9 +105,11 @@ private:
 	float m_maxFrame;
 };
 
-
 class CBeam : public CBaseEntity
 {
+	DECLARE_CLASS(CBeam, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	void Precache() override;
@@ -119,7 +121,7 @@ public:
 		return (CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION) | flags;
 	}
 
-	void EXPORT TriggerTouch(CBaseEntity* pOther);
+	void TriggerTouch(CBaseEntity* pOther);
 
 	// These functions are here to show the way beams are encoded as entities.
 	// Encoding beams as entities simplifies their management in the client/server architecture
@@ -151,6 +153,7 @@ public:
 	inline int GetStartEntity() { return pev->sequence & 0xFFF; }
 	inline int GetEndEntity() { return pev->skin & 0xFFF; }
 
+	// These don't take attachments into account
 	const Vector& GetStartPos();
 	const Vector& GetEndPos();
 
@@ -193,13 +196,14 @@ public:
 	}
 };
 
-
 #define SF_MESSAGE_ONCE 0x0001 // Fade in, not out
 #define SF_MESSAGE_ALL 0x0002  // Send to all clients
 
-
 class CLaser : public CBeam
 {
+	DECLARE_CLASS(CLaser, CBeam);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	void Precache() override;
@@ -211,11 +215,10 @@ public:
 
 	void FireAtPoint(TraceResult& point);
 
-	void EXPORT StrikeThink();
+	void StrikeThink();
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+
+	void UpdateOnRemove() override;
 
 	CSprite* m_pSprite;
 	string_t m_iszSpriteName;

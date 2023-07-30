@@ -18,12 +18,12 @@
 #include "CLaserSpot.h"
 
 /**
- *	@brief Identical to CLaserSpot, different class to avoid RPG laser confusion logic. - Solokiller
+ *	@brief Identical to CLaserSpot, different class to avoid RPG laser confusion logic.
  */
 class CEagleLaser : public CLaserSpot
 {
-public:
-	using BaseClass = CLaserSpot;
+	DECLARE_CLASS(CEagleLaser, CLaserSpot);
 
+public:
 	static CEagleLaser* CreateSpot();
 };

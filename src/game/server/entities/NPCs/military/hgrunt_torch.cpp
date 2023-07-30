@@ -12,9 +12,6 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// hgrunt
-//=========================================================
 
 #include "cbase.h"
 #include "squadmonster.h"
@@ -24,10 +21,7 @@
 #include "explode.h"
 #include "hgrunt_ally_base.h"
 
-//=========================================================
-// monster-specific DEFINE's
-//=========================================================
-#define TORCH_DEAGLE_CLIP_SIZE 8 // how many bullets in a clip?
+#define TORCH_DEAGLE_CLIP_SIZE 8 //!< how many bullets in a clip?
 #define TORCH_BEAM_SPRITE "sprites/xbeam3.spr"
 
 namespace TorchAllyBodygroup
@@ -59,9 +53,6 @@ enum TorchAllyWeaponFlag
 };
 }
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define TORCH_AE_HOLSTER_TORCH 17
 #define TORCH_AE_HOLSTER_GUN 18
 #define TORCH_AE_HOLSTER_BOTH 19
@@ -70,6 +61,9 @@ enum TorchAllyWeaponFlag
 
 class COFTorchAlly : public CBaseHGruntAlly
 {
+	DECLARE_CLASS(COFTorchAlly, CBaseHGruntAlly);
+	DECLARE_DATAMAP();
+
 public:
 	void OnCreate() override;
 
@@ -79,16 +73,11 @@ public:
 	void Shoot();
 	void GibMonster() override;
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
 	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 
 	void Killed(CBaseEntity* attacker, int iGib) override;
 
 	void MonsterThink() override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 
 	bool m_fTorchActive;
 
@@ -103,20 +92,17 @@ protected:
 
 	std::tuple<int, Activity> GetSequenceForActivity(Activity NewActivity) override;
 
-	Schedule_t* GetTorchSchedule() override;
+	const Schedule_t* GetTorchSchedule() override;
 
 	bool CanTakeCoverAndReload() const override { return true; }
 };
 
 LINK_ENTITY_TO_CLASS(monster_human_torch_ally, COFTorchAlly);
 
-TYPEDESCRIPTION COFTorchAlly::m_SaveData[] =
-	{
-		DEFINE_FIELD(COFTorchAlly, m_fTorchActive, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFTorchAlly, m_flLastShot, FIELD_TIME),
-};
-
-IMPLEMENT_SAVERESTORE(COFTorchAlly, CBaseHGruntAlly);
+BEGIN_DATAMAP(COFTorchAlly)
+DEFINE_FIELD(m_fTorchActive, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flLastShot, FIELD_TIME),
+	END_DATAMAP();
 
 void COFTorchAlly::OnCreate()
 {
@@ -148,9 +134,6 @@ void COFTorchAlly::DropWeapon(bool applyVelocity)
 	}
 }
 
-//=========================================================
-// GibMonster - make gun fly through the air.
-//=========================================================
 void COFTorchAlly::GibMonster()
 {
 	if (m_fTorchActive)
@@ -163,9 +146,6 @@ void COFTorchAlly::GibMonster()
 	CBaseHGruntAlly::GibMonster();
 }
 
-//=========================================================
-// TraceAttack - make sure we're not taking it in the helmet
-//=========================================================
 void COFTorchAlly::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	// check for Torch fuel tank hit
@@ -174,15 +154,12 @@ void COFTorchAlly::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vec
 		// Make sure it kills this grunt
 		bitsDamageType = DMG_ALWAYSGIB | DMG_BLAST;
 		flDamage = pev->health;
-		ExplosionCreate(ptr->vecEndPos, pev->angles, edict(), 100, true);
+		ExplosionCreate(ptr->vecEndPos, pev->angles, this, 100, true);
 	}
 
 	CBaseHGruntAlly::TraceAttack(attacker, flDamage, vecDir, ptr, bitsDamageType);
 }
 
-//=========================================================
-// Shoot
-//=========================================================
 void COFTorchAlly::Shoot()
 {
 	// Limit fire rate
@@ -214,10 +191,6 @@ void COFTorchAlly::Shoot()
 	m_flLastShot = gpGlobals->time;
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void COFTorchAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -298,9 +271,6 @@ void COFTorchAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void COFTorchAlly::Spawn()
 {
 	SpawnCore();
@@ -330,9 +300,6 @@ void COFTorchAlly::Spawn()
 	m_flMedicWaitTime = gpGlobals->time;
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void COFTorchAlly::Precache()
 {
 	PrecacheModel(TORCH_BEAM_SPRITE);
@@ -372,7 +339,7 @@ std::tuple<int, Activity> COFTorchAlly::GetSequenceForActivity(Activity NewActiv
 	return {iSequence, NewActivity};
 }
 
-Schedule_t* COFTorchAlly::GetTorchSchedule()
+const Schedule_t* COFTorchAlly::GetTorchSchedule()
 {
 	if (GetBodygroup(TorchAllyBodygroup::Torch) == TorchTorchState::Drawn)
 	{
@@ -384,12 +351,6 @@ Schedule_t* COFTorchAlly::GetTorchSchedule()
 
 void COFTorchAlly::Killed(CBaseEntity* attacker, int iGib)
 {
-	// TODO: is this even correct? Torch grunts have no medic capabilities
-	if (m_hTargetEnt != nullptr)
-	{
-		m_hTargetEnt.Entity<COFSquadTalkMonster>()->m_hWaitMedic = nullptr;
-	}
-
 	if (m_fTorchActive)
 	{
 		m_fTorchActive = false;

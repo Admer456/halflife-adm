@@ -13,10 +13,6 @@
  *
  ****/
 
-//=========================================================
-// icthyosaur - evin, satan fish monster
-//=========================================================
-
 #include "cbase.h"
 #include "flyingmonster.h"
 #include "nodes.h"
@@ -31,42 +27,38 @@
 #define EYE_BACK 3
 #define EYE_LOOK 4
 
-
-
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
-
-// UNDONE: Save/restore here
+/**
+ *	@brief evil, satan fish monster
+ */
 class CIchthyosaur : public CFlyingMonster
 {
+	DECLARE_CLASS(CIchthyosaur, CFlyingMonster);
+	DECLARE_DATAMAP();
+	DECLARE_CUSTOM_SCHEDULES();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
-	int Classify() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
-	CUSTOM_SCHEDULES;
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+	bool HasAlienGibs() override { return true; }
 
-	Schedule_t* GetSchedule() override;
-	Schedule_t* GetScheduleOfType(int Type) override;
+	const Schedule_t* GetSchedule() override;
+	const Schedule_t* GetScheduleOfType(int Type) override;
 
 	void Killed(CBaseEntity* attacker, int iGib) override;
 	void BecomeDead() override;
 
-	void EXPORT CombatUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
-	void EXPORT BiteTouch(CBaseEntity* pOther);
+	void CombatUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void BiteTouch(CBaseEntity* pOther);
 
-	void StartTask(Task_t* pTask) override;
-	void RunTask(Task_t* pTask) override;
+	void StartTask(const Task_t* pTask) override;
+	void RunTask(const Task_t* pTask) override;
 
 	bool CheckMeleeAttack1(float flDot, float flDist) override;
-	bool CheckRangeAttack1(float flDot, float flDist) override;
+	bool CheckRangeAttack1(float flDot, float flDist) override; //!< swim in for a chomp
 
 	float ChangeYaw(int speed) override;
 	Activity GetStoppedActivity() override;
@@ -118,21 +110,19 @@ public:
 
 LINK_ENTITY_TO_CLASS(monster_ichthyosaur, CIchthyosaur);
 
-TYPEDESCRIPTION CIchthyosaur::m_SaveData[] =
-	{
-		DEFINE_FIELD(CIchthyosaur, m_SaveVelocity, FIELD_VECTOR),
-		DEFINE_FIELD(CIchthyosaur, m_idealDist, FIELD_FLOAT),
-		DEFINE_FIELD(CIchthyosaur, m_flBlink, FIELD_FLOAT),
-		DEFINE_FIELD(CIchthyosaur, m_flEnemyTouched, FIELD_FLOAT),
-		DEFINE_FIELD(CIchthyosaur, m_bOnAttack, FIELD_BOOLEAN),
-		DEFINE_FIELD(CIchthyosaur, m_flMaxSpeed, FIELD_FLOAT),
-		DEFINE_FIELD(CIchthyosaur, m_flMinSpeed, FIELD_FLOAT),
-		DEFINE_FIELD(CIchthyosaur, m_flMaxDist, FIELD_FLOAT),
-		DEFINE_FIELD(CIchthyosaur, m_flNextAlert, FIELD_TIME),
-};
-
-IMPLEMENT_SAVERESTORE(CIchthyosaur, CFlyingMonster);
-
+BEGIN_DATAMAP(CIchthyosaur)
+DEFINE_FIELD(m_SaveVelocity, FIELD_VECTOR),
+	DEFINE_FIELD(m_idealDist, FIELD_FLOAT),
+	DEFINE_FIELD(m_flBlink, FIELD_FLOAT),
+	DEFINE_FIELD(m_flEnemyTouched, FIELD_FLOAT),
+	DEFINE_FIELD(m_bOnAttack, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flMaxSpeed, FIELD_FLOAT),
+	DEFINE_FIELD(m_flMinSpeed, FIELD_FLOAT),
+	DEFINE_FIELD(m_flMaxDist, FIELD_FLOAT),
+	DEFINE_FIELD(m_flNextAlert, FIELD_TIME),
+	DEFINE_FUNCTION(CombatUse),
+	DEFINE_FUNCTION(BiteTouch),
+	END_DATAMAP();
 
 const char* CIchthyosaur::pIdleSounds[] =
 	{
@@ -179,11 +169,12 @@ void CIchthyosaur::OnCreate()
 
 	pev->health = GetSkillFloat("ichthyosaur_health"sv);
 	pev->model = MAKE_STRING("models/icky.mdl");
+
+	SetClassification("alien_monster");
 }
 
 #define EMIT_ICKY_SOUND(chan, array) \
 	EmitSoundDyn(chan, array[RANDOM_LONG(0, std::size(array) - 1)], 1.0, 0.6, 0, RANDOM_LONG(95, 105));
-
 
 void CIchthyosaur::IdleSound()
 {
@@ -215,19 +206,12 @@ void CIchthyosaur::PainSound()
 	EMIT_ICKY_SOUND(CHAN_VOICE, pPainSounds);
 }
 
-//=========================================================
-// monster-specific tasks and states
-//=========================================================
 enum
 {
 	TASK_ICHTHYOSAUR_CIRCLE_ENEMY = LAST_COMMON_TASK + 1,
 	TASK_ICHTHYOSAUR_SWIM,
 	TASK_ICHTHYOSAUR_FLOAT,
 };
-
-//=========================================================
-// AI Schedules Specific to this monster
-//=========================================================
 
 static Task_t tlSwimAround[] =
 	{
@@ -265,7 +249,6 @@ static Schedule_t slSwimAgitated[] =
 			"SwimAgitated"},
 };
 
-
 static Task_t tlCircleEnemy[] =
 	{
 		{TASK_SET_ACTIVITY, (float)ACT_WALK},
@@ -284,7 +267,6 @@ static Schedule_t slCircleEnemy[] =
 			0,
 			"CircleEnemy"},
 };
-
 
 Task_t tlTwitchDie[] =
 	{
@@ -316,28 +298,14 @@ Schedule_t slFloat[] =
 			"Float"},
 };
 
-DEFINE_CUSTOM_SCHEDULES(CIchthyosaur){
-	slSwimAround,
+BEGIN_CUSTOM_SCHEDULES(CIchthyosaur)
+slSwimAround,
 	slSwimAgitated,
 	slCircleEnemy,
 	slTwitchDie,
-	slFloat,
-};
-IMPLEMENT_CUSTOM_SCHEDULES(CIchthyosaur, CFlyingMonster);
+	slFloat
+	END_CUSTOM_SCHEDULES();
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int CIchthyosaur::Classify()
-{
-	return CLASS_ALIEN_MONSTER;
-}
-
-
-//=========================================================
-// CheckMeleeAttack1
-//=========================================================
 bool CIchthyosaur::CheckMeleeAttack1(float flDot, float flDist)
 {
 	if (flDot >= 0.7 && m_flEnemyTouched > gpGlobals->time - 0.2)
@@ -365,10 +333,6 @@ void CIchthyosaur::CombatUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_
 	m_bOnAttack = !m_bOnAttack;
 }
 
-//=========================================================
-// CheckRangeAttack1  - swim in for a chomp
-//
-//=========================================================
 bool CIchthyosaur::CheckRangeAttack1(float flDot, float flDist)
 {
 	if (flDot > -0.7 && (m_bOnAttack || (flDist <= 192 && m_idealDist <= 192)))
@@ -379,22 +343,14 @@ bool CIchthyosaur::CheckRangeAttack1(float flDot, float flDist)
 	return false;
 }
 
-//=========================================================
-// SetYawSpeed - allows each sequence to have a different
-// turn rate associated with it.
-//=========================================================
 void CIchthyosaur::SetYawSpeed()
 {
 	pev->yaw_speed = 100;
 }
 
-
-
-//=========================================================
-// Killed - overrides CFlyingMonster.
-//
 void CIchthyosaur::Killed(CBaseEntity* attacker, int iGib)
 {
+	// overrides CFlyingMonster.
 	CBaseMonster::Killed(attacker, iGib);
 	pev->velocity = Vector(0, 0, 0);
 }
@@ -411,11 +367,6 @@ void CIchthyosaur::BecomeDead()
 #define ICHTHYOSAUR_AE_SHAKE_RIGHT 1
 #define ICHTHYOSAUR_AE_SHAKE_LEFT 2
 
-
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void CIchthyosaur::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	bool bDidAttack = false;
@@ -445,7 +396,7 @@ void CIchthyosaur::HandleAnimEvent(MonsterEvent_t* pEvent)
 					pHurt->pev->angles.x += RANDOM_FLOAT(-35, 35);
 					pHurt->pev->angles.y += RANDOM_FLOAT(-90, 90);
 					pHurt->pev->angles.z = 0;
-					pHurt->pev->fixangle = 1;
+					pHurt->pev->fixangle = FIXANGLE_ABSOLUTE;
 				}
 				pHurt->TakeDamage(this, this, GetSkillFloat("ichthyosaur_shake"sv), DMG_SLASH);
 			}
@@ -467,9 +418,6 @@ void CIchthyosaur::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void CIchthyosaur::Spawn()
 {
 	Precache();
@@ -489,6 +437,9 @@ void CIchthyosaur::Spawn()
 
 	m_afCapability = bits_CAP_RANGE_ATTACK1 | bits_CAP_SWIM;
 
+	// Ichthyosaurs have their own use functions so never allow follow.
+	m_AllowFollow = false;
+
 	MonsterInit();
 
 	SetTouch(&CIchthyosaur::BiteTouch);
@@ -505,9 +456,6 @@ void CIchthyosaur::Spawn()
 	m_SaveVelocity = pev->velocity;
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void CIchthyosaur::Precache()
 {
 	PrecacheModel(STRING(pev->model));
@@ -520,10 +468,7 @@ void CIchthyosaur::Precache()
 	PRECACHE_SOUND_ARRAY(pPainSounds);
 }
 
-//=========================================================
-// GetSchedule
-//=========================================================
-Schedule_t* CIchthyosaur::GetSchedule()
+const Schedule_t* CIchthyosaur::GetSchedule()
 {
 	// AILogger->debug("GetSchedule()");
 	switch (m_MonsterState)
@@ -563,10 +508,7 @@ Schedule_t* CIchthyosaur::GetSchedule()
 	return CFlyingMonster::GetSchedule();
 }
 
-
-//=========================================================
-//=========================================================
-Schedule_t* CIchthyosaur::GetScheduleOfType(int Type)
+const Schedule_t* CIchthyosaur::GetScheduleOfType(int Type)
 {
 	// AILogger->debug("GetScheduleOfType({}) {}", Type, m_bOnAttack);
 	switch (Type)
@@ -592,14 +534,7 @@ Schedule_t* CIchthyosaur::GetScheduleOfType(int Type)
 	return CBaseMonster::GetScheduleOfType(Type);
 }
 
-
-
-//=========================================================
-// Start task - selects the correct activity and performs
-// any necessary calculations to start the next task on the
-// schedule.
-//=========================================================
-void CIchthyosaur::StartTask(Task_t* pTask)
+void CIchthyosaur::StartTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -639,7 +574,7 @@ void CIchthyosaur::StartTask(Task_t* pTask)
 	}
 }
 
-void CIchthyosaur::RunTask(Task_t* pTask)
+void CIchthyosaur::RunTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -757,8 +692,6 @@ void CIchthyosaur::RunTask(Task_t* pTask)
 	}
 }
 
-
-
 float CIchthyosaur::VectorToPitch(const Vector& vec)
 {
 	float pitch;
@@ -773,7 +706,6 @@ float CIchthyosaur::VectorToPitch(const Vector& vec)
 	return pitch;
 }
 
-//=========================================================
 void CIchthyosaur::Move(float flInterval)
 {
 	CFlyingMonster::Move(flInterval);
@@ -873,7 +805,6 @@ float CIchthyosaur::ChangeYaw(int speed)
 	return CFlyingMonster::ChangeYaw(speed);
 }
 
-
 Activity CIchthyosaur::GetStoppedActivity()
 {
 	if (pev->movetype != MOVETYPE_FLY) // UNDONE: Ground idle here, IDLE may be something else
@@ -899,7 +830,6 @@ void CIchthyosaur::MoveExecute(CBaseEntity* pTargetEnt, const Vector& vecDir, fl
 {
 	m_SaveVelocity = vecDir * m_flightSpeed;
 }
-
 
 void CIchthyosaur::MonsterThink()
 {
@@ -1119,9 +1049,8 @@ void CIchthyosaur::Swim()
 
 	AngleVectors(Vector(-Angles.x, Angles.y, Angles.z), Forward, Right, Up);
 
-	// UTIL_MoveToOrigin ( ENT(pev), pev->origin + Forward * speed, speed, MOVE_STRAFE );
+	// UTIL_MoveToOrigin ( edict(), pev->origin + Forward * speed, speed, MOVE_STRAFE );
 }
-
 
 Vector CIchthyosaur::DoProbe(const Vector& Probe)
 {

@@ -17,16 +17,17 @@
 
 #include <memory>
 #include <string>
-#include <unordered_set>
+#include <vector>
 
 #include "GameLibrary.h"
-#include "MapState.h"
-#include "ServerConfigContext.h"
-
-#include "config/GameConfig.h"
 
 class CBasePlayer;
 struct cvar_t;
+class MapState;
+struct ServerConfigContext;
+
+template <typename DataContext>
+class GameConfigDefinition;
 
 /**
  *	@brief Handles core server actions
@@ -42,7 +43,13 @@ public:
 	ServerLibrary(ServerLibrary&&) = delete;
 	ServerLibrary& operator=(ServerLibrary&&) = delete;
 
-	MapState* GetMapState() { return &m_MapState; }
+	MapState* GetMapState() { return m_MapState.get(); }
+
+	bool IsCurrentMapLoadedFromSaveGame() const { return m_IsCurrentMapLoadedFromSaveGame; }
+
+	bool HasFinishedLoading() const { return m_HasFinishedLoading; }
+
+	int GetSpawnCount() const { return m_SpawnCount; }
 
 	bool Initialize() override;
 
@@ -80,6 +87,8 @@ public:
 	 */
 	void PostMapActivate();
 
+	void OnUpdateClientData();
+
 	/**
 	 *	@brief Called when the player activates (first UpdateClientData call after ClientPutInServer or Restore).
 	 */
@@ -102,11 +111,13 @@ private:
 
 	void CreateConfigDefinitions();
 
+	void DefineSkillVariables();
+
 	void LoadServerConfigFiles();
 
-	void LoadMapChangeConfigFile();
+	void SendFogMessage(CBasePlayer* player);
 
-	std::unordered_set<std::string> GetMapConfigCommandWhitelist();
+	void LoadAllMaps();
 
 private:
 	cvar_t* m_AllowDownload{};
@@ -115,11 +126,18 @@ private:
 
 	std::shared_ptr<const GameConfigDefinition<ServerConfigContext>> m_ServerConfigDefinition;
 	std::shared_ptr<const GameConfigDefinition<ServerConfigContext>> m_MapConfigDefinition;
-	std::shared_ptr<const GameConfigDefinition<ServerConfigContext>> m_MapChangeConfigDefinition;
 
 	bool m_IsStartingNewMap = true;
+	bool m_IsCurrentMapLoadedFromSaveGame = false;
+	bool m_HasFinishedLoading = true;
 
-	MapState m_MapState;
+	int m_InNewMapStartedCount = 0;
+
+	int m_SpawnCount = 0;
+
+	std::unique_ptr<MapState> m_MapState;
+
+	std::vector<std::string> m_MapsToLoad;
 };
 
 inline ServerLibrary g_Server;

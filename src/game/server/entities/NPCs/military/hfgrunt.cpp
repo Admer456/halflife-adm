@@ -12,24 +12,24 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// friendly hgrunt
-//=========================================================
 
 #include "cbase.h"
 #include "squadmonster.h"
 #include "hgrunt.h"
 
-int g_fFGruntQuestion; // true if an idle grunt asked a question. Cleared when someone answers.
+int g_fFGruntQuestion; //!< true if an idle grunt asked a question. Cleared when someone answers.
 
+/**
+ *	@brief friendly hgrunt
+ */
 class CHFGrunt : public CHGrunt
 {
 public:
-	int IRelationship(CBaseEntity* pTarget) override
+	Relationship IRelationship(CBaseEntity* pTarget) override
 	{
 		// Players are allies
 		if (pTarget->IsPlayer())
-			return R_AL;
+			return Relationship::Ally;
 
 		return CHGrunt::IRelationship(pTarget);
 	}
@@ -45,6 +45,9 @@ LINK_ENTITY_TO_CLASS(monster_human_friendly_grunt, CHFGrunt);
  */
 class CHFGruntRepel : public CHGruntRepel
 {
+	DECLARE_CLASS(CHFGruntRepel, CHGruntRepel);
+	DECLARE_DATAMAP();
+
 public:
 	void Precache() override
 	{
@@ -57,11 +60,15 @@ public:
 		SetUse(&CHFGruntRepel::RepelUse);
 	}
 
-	void EXPORT RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
+	void RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 	{
 		CreateMonster("monster_human_friendly_grunt");
 	}
 };
+
+BEGIN_DATAMAP(CHFGruntRepel)
+DEFINE_FUNCTION(RepelUse),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(monster_fgrunt_repel, CHFGruntRepel);
 

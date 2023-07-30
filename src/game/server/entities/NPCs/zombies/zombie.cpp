@@ -12,9 +12,6 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// Zombie
-//=========================================================
 
 // UNDONE: Don't flinch every time you get hit
 
@@ -29,21 +26,10 @@ void CZombie::OnCreate()
 
 	pev->health = GetSkillFloat("zombie_health"sv);
 	pev->model = MAKE_STRING("models/zombie.mdl");
+
+	SetClassification("alien_monster");
 }
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int CZombie::Classify()
-{
-	return CLASS_ALIEN_MONSTER;
-}
-
-//=========================================================
-// SetYawSpeed - allows each sequence to have a different
-// turn rate associated with it.
-//=========================================================
 void CZombie::SetYawSpeed()
 {
 	int ys;
@@ -139,10 +125,6 @@ void CZombie::ZombieSlashAttack(float damage, const Vector& punchAngle, const Ve
 		AttackSound();
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void CZombie::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -194,12 +176,6 @@ void CZombie::Precache()
 	PRECACHE_SOUND_ARRAY(pAlertSounds);
 	PRECACHE_SOUND_ARRAY(pPainSounds);
 }
-
-//=========================================================
-// AI Schedules Specific to this monster
-//=========================================================
-
-
 
 int CZombie::IgnoreConditions()
 {

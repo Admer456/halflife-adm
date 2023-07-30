@@ -12,9 +12,6 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// pit drone - medium sized, fires sharp teeth like spikes and swipes with sharp appendages
-//=========================================================
 
 #include "cbase.h"
 #include "nodes.h"
@@ -24,10 +21,6 @@
 int iSpikeTrail;
 int iPitdroneSpitSprite;
 
-
-//=========================================================
-// monster-specific schedule types
-//=========================================================
 enum
 {
 	SCHED_PITDRONE_HURTHOP = LAST_COMMON_SCHEDULE + 1,
@@ -40,45 +33,35 @@ enum
 	SCHED_PITDRONE_TAKECOVER_FAILED,
 };
 
-//=========================================================
-// monster-specific tasks
-//=========================================================
 enum
 {
 	TASK_PITDRONE_HOPTURN = LAST_COMMON_TASK + 1,
 };
 
-//=========================================================
-// Bullsquid's spit projectile
-//=========================================================
 class CPitdroneSpike : public CBaseEntity
 {
+	DECLARE_CLASS(CPitdroneSpike, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
 	void Precache() override;
 	void Spawn() override;
 
-	int Classify() override { return CLASS_NONE; }
+	static void Shoot(CBaseEntity* owner, Vector vecStart, Vector vecVelocity, Vector vecAngles);
+	void SpikeTouch(CBaseEntity* pOther);
 
-	static void Shoot(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity, Vector vecAngles);
-	void EXPORT SpikeTouch(CBaseEntity* pOther);
-
-	void EXPORT StartTrail();
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+	void StartTrail();
 
 	int m_maxFrame;
 };
 
 LINK_ENTITY_TO_CLASS(pitdronespike, CPitdroneSpike);
 
-TYPEDESCRIPTION CPitdroneSpike::m_SaveData[] =
-	{
-		DEFINE_FIELD(CPitdroneSpike, m_maxFrame, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(CPitdroneSpike, CBaseEntity);
+BEGIN_DATAMAP(CPitdroneSpike)
+DEFINE_FIELD(m_maxFrame, FIELD_INTEGER),
+	DEFINE_FUNCTION(SpikeTouch),
+	DEFINE_FUNCTION(StartTrail),
+	END_DATAMAP();
 
 void CPitdroneSpike::Precache()
 {
@@ -107,17 +90,17 @@ void CPitdroneSpike::Spawn()
 	m_maxFrame = (float)MODEL_FRAMES(pev->modelindex) - 1;
 }
 
-void CPitdroneSpike::Shoot(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity, Vector vecAngles)
+void CPitdroneSpike::Shoot(CBaseEntity* owner, Vector vecStart, Vector vecVelocity, Vector vecAngles)
 {
 	CPitdroneSpike* pSpit = g_EntityDictionary->Create<CPitdroneSpike>("pitdronespike");
 
 	pSpit->pev->angles = vecAngles;
-	UTIL_SetOrigin(pSpit->pev, vecStart);
+	pSpit->SetOrigin(vecStart);
 
 	pSpit->Spawn();
 
 	pSpit->pev->velocity = vecVelocity;
-	pSpit->pev->owner = ENT(pevOwner);
+	pSpit->pev->owner = owner->edict();
 
 	pSpit->SetThink(&CPitdroneSpike::StartTrail);
 	pSpit->pev->nextthink = gpGlobals->time + 0.1;
@@ -148,7 +131,7 @@ void CPitdroneSpike::SpikeTouch(CBaseEntity* pOther)
 
 		const auto vecOrigin = pev->origin - vecDir * 6;
 
-		UTIL_SetOrigin(pev, vecOrigin);
+		SetOrigin(vecOrigin);
 
 		pev->angles = UTIL_VecToAngles(vecDir);
 		pev->solid = SOLID_NOT;
@@ -188,9 +171,6 @@ void CPitdroneSpike::StartTrail()
 	SetThink(nullptr);
 }
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define PITDRONE_AE_SPIT (1)
 #define PITDRONE_AE_BITE (2)
 #define PITDRONE_AE_TAILWHIP (4)
@@ -216,56 +196,60 @@ enum PitdroneWeapon
 };
 }
 
+/**
+ *	@brief medium sized, fires sharp teeth like spikes and swipes with sharp appendages
+ */
 class CPitdrone : public CBaseMonster
 {
+	DECLARE_CLASS(CPitdrone, CBaseMonster);
+	DECLARE_DATAMAP();
+	DECLARE_CUSTOM_SCHEDULES();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
 	int ISoundMask() override;
-	int Classify() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	void IdleSound() override;
 	void PainSound() override;
 	void AlertSound() override;
-	void StartTask(Task_t* pTask) override;
-	void RunTask(Task_t* pTask) override;
+	void StartTask(const Task_t* pTask) override;
+	void RunTask(const Task_t* pTask) override;
 	bool CheckMeleeAttack1(float flDot, float flDist) override;
 	bool CheckMeleeAttack2(float flDot, float flDist) override;
 	bool CheckRangeAttack1(float flDot, float flDist) override;
+
+	bool HasAlienGibs() override { return true; }
+
+	/**
+	 *	@brief overridden for bullsquid because there are things that need to be checked every think.
+	 */
 	void RunAI() override;
+
 	bool FValidateHintType(short sHint) override;
-	Schedule_t* GetSchedule() override;
-	Schedule_t* GetScheduleOfType(int Type) override;
-	int IRelationship(CBaseEntity* pTarget) override;
+	const Schedule_t* GetSchedule() override;
+	const Schedule_t* GetScheduleOfType(int Type) override;
+	Relationship IRelationship(CBaseEntity* pTarget) override;
 	int IgnoreConditions() override;
 
 	void CheckAmmo() override;
 	void GibMonster() override;
 	bool KeyValue(KeyValueData* pkvd) override;
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	CUSTOM_SCHEDULES;
-	static TYPEDESCRIPTION m_SaveData[];
-
-	float m_flLastHurtTime;	 // we keep track of this, because if something hurts a squid, it will forget about its love of headcrabs for a while.
-	float m_flNextSpikeTime; // last time the pit drone used the spike attack.
+	float m_flLastHurtTime;	 //!< we keep track of this, because if something hurts a squid, it will forget about its love of headcrabs for a while.
+	float m_flNextSpikeTime; //!< last time the pit drone used the spike attack.
 	int m_iInitialAmmo;
 	float m_flNextEatTime;
 };
 LINK_ENTITY_TO_CLASS(monster_pitdrone, CPitdrone);
 
-TYPEDESCRIPTION CPitdrone::m_SaveData[] =
-	{
-		DEFINE_FIELD(CPitdrone, m_flLastHurtTime, FIELD_TIME),
-		DEFINE_FIELD(CPitdrone, m_flNextSpikeTime, FIELD_TIME),
-		DEFINE_FIELD(CPitdrone, m_flNextEatTime, FIELD_TIME),
-};
-
-IMPLEMENT_SAVERESTORE(CPitdrone, CBaseMonster);
+BEGIN_DATAMAP(CPitdrone)
+DEFINE_FIELD(m_flLastHurtTime, FIELD_TIME),
+	DEFINE_FIELD(m_flNextSpikeTime, FIELD_TIME),
+	DEFINE_FIELD(m_flNextEatTime, FIELD_TIME),
+	END_DATAMAP();
 
 void CPitdrone::OnCreate()
 {
@@ -273,11 +257,10 @@ void CPitdrone::OnCreate()
 
 	pev->health = GetSkillFloat("pitdrone_health"sv);
 	pev->model = MAKE_STRING("models/pit_drone.mdl");
+
+	SetClassification("alien_predator");
 }
 
-//=========================================================
-// IgnoreConditions
-//=========================================================
 int CPitdrone::IgnoreConditions()
 {
 	int iIgnore = CBaseMonster::IgnoreConditions();
@@ -291,20 +274,17 @@ int CPitdrone::IgnoreConditions()
 	return iIgnore;
 }
 
-int CPitdrone::IRelationship(CBaseEntity* pTarget)
+Relationship CPitdrone::IRelationship(CBaseEntity* pTarget)
 {
 	// Always mark pit drones as allies
 	if (pTarget->ClassnameIs("monster_pitdrone"))
 	{
-		return R_AL;
+		return Relationship::Ally;
 	}
 
 	return CBaseMonster::IRelationship(pTarget);
 }
 
-//=========================================================
-// CheckRangeAttack1
-//=========================================================
 bool CPitdrone::CheckRangeAttack1(float flDot, float flDist)
 {
 	if (m_iInitialAmmo == -1 || GetBodygroup(PitdroneBodygroup::Weapons) == PitdroneWeapon::Empty || (IsMoving() && flDist >= 512))
@@ -359,9 +339,6 @@ bool CPitdrone::CheckMeleeAttack2(float flDot, float flDist)
 	return false;
 }
 
-//=========================================================
-//  FValidateHintType
-//=========================================================
 bool CPitdrone::FValidateHintType(short sHint)
 {
 	static short sSquidHints[] =
@@ -381,11 +358,6 @@ bool CPitdrone::FValidateHintType(short sHint)
 	return false;
 }
 
-//=========================================================
-// ISoundMask - returns a bit mask indicating which types
-// of sounds this monster regards. In the base class implementation,
-// monsters care about all sounds, but no scents.
-//=========================================================
 int CPitdrone::ISoundMask()
 {
 	return bits_SOUND_WORLD |
@@ -396,25 +368,10 @@ int CPitdrone::ISoundMask()
 		   bits_SOUND_PLAYER;
 }
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int CPitdrone::Classify()
-{
-	return CLASS_ALIEN_PREDATOR;
-}
-
-//=========================================================
-// IdleSound
-//=========================================================
 void CPitdrone::IdleSound()
 {
 }
 
-//=========================================================
-// PainSound
-//=========================================================
 void CPitdrone::PainSound()
 {
 	int iPitch = RANDOM_LONG(85, 120);
@@ -436,9 +393,6 @@ void CPitdrone::PainSound()
 	}
 }
 
-//=========================================================
-// AlertSound
-//=========================================================
 void CPitdrone::AlertSound()
 {
 	int iPitch = RANDOM_LONG(140, 160);
@@ -457,10 +411,6 @@ void CPitdrone::AlertSound()
 	}
 }
 
-//=========================================================
-// SetYawSpeed - allows each sequence to have a different
-// turn rate associated with it.
-//=========================================================
 void CPitdrone::SetYawSpeed()
 {
 	int ys;
@@ -489,10 +439,6 @@ void CPitdrone::SetYawSpeed()
 	pev->yaw_speed = ys;
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void CPitdrone::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -531,7 +477,7 @@ void CPitdrone::HandleAnimEvent(MonsterEvent_t* pEvent)
 			WRITE_BYTE(25);					  // noise ( client will divide by 100 )
 			MESSAGE_END();
 
-			CPitdroneSpike::Shoot(pev, vecSpitOffset, vecSpitDir * 900, UTIL_VecToAngles(vecSpitDir));
+			CPitdroneSpike::Shoot(this, vecSpitOffset, vecSpitDir * 900, UTIL_VecToAngles(vecSpitDir));
 
 			auto ammoSubModel = GetBodygroup(PitdroneBodygroup::Weapons);
 
@@ -654,9 +600,6 @@ void CPitdrone::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void CPitdrone::Spawn()
 {
 	Precache();
@@ -698,9 +641,6 @@ void CPitdrone::Spawn()
 	MonsterInit();
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void CPitdrone::Precache()
 {
 	PrecacheModel(STRING(pev->model));
@@ -741,10 +681,6 @@ void CPitdrone::Precache()
 	PrecacheSound("bullchicken/bc_bite3.wav");
 }
 
-//========================================================
-// RunAI - overridden for bullsquid because there are things
-// that need to be checked every think.
-//========================================================
 void CPitdrone::RunAI()
 {
 	// first, do base class stuff
@@ -759,10 +695,6 @@ void CPitdrone::RunAI()
 		}
 	}
 }
-
-//========================================================
-// AI Schedules Specific to this monster
-//=========================================================
 
 // primary range attack
 Task_t tlPitdroneRangeAttack1[] =
@@ -971,22 +903,18 @@ Schedule_t slPitdroneWaitInCover[] =
 
 			"PitdroneWaitInCover"}};
 
-DEFINE_CUSTOM_SCHEDULES(CPitdrone){
-	slPitdroneRangeAttack1,
+BEGIN_CUSTOM_SCHEDULES(CPitdrone)
+slPitdroneRangeAttack1,
 	slPitdroneChaseEnemy,
 	slPitdroneHurtHop,
 	slPitdroneEat,
 	slPitdroneSniffAndEat,
 	slPitdroneWallow,
 	slPitdroneHideReload,
-	slPitdroneWaitInCover};
+	slPitdroneWaitInCover
+	END_CUSTOM_SCHEDULES();
 
-IMPLEMENT_CUSTOM_SCHEDULES(CPitdrone, CBaseMonster);
-
-//=========================================================
-// GetSchedule
-//=========================================================
-Schedule_t* CPitdrone::GetSchedule()
+const Schedule_t* CPitdrone::GetSchedule()
 {
 	switch (m_MonsterState)
 	{
@@ -1078,10 +1006,7 @@ Schedule_t* CPitdrone::GetSchedule()
 	return CBaseMonster::GetSchedule();
 }
 
-//=========================================================
-// GetScheduleOfType
-//=========================================================
-Schedule_t* CPitdrone::GetScheduleOfType(int Type)
+const Schedule_t* CPitdrone::GetScheduleOfType(int Type)
 {
 	switch (Type)
 	{
@@ -1116,12 +1041,7 @@ Schedule_t* CPitdrone::GetScheduleOfType(int Type)
 	return CBaseMonster::GetScheduleOfType(Type);
 }
 
-//=========================================================
-// Start task - selects the correct activity and performs
-// any necessary calculations to start the next task on the
-// schedule.
-//=========================================================
-void CPitdrone::StartTask(Task_t* pTask)
+void CPitdrone::StartTask(const Task_t* pTask)
 {
 	m_iTaskStatus = TASKSTATUS_RUNNING;
 
@@ -1154,10 +1074,7 @@ void CPitdrone::StartTask(Task_t* pTask)
 	}
 }
 
-//=========================================================
-// RunTask
-//=========================================================
-void CPitdrone::RunTask(Task_t* pTask)
+void CPitdrone::RunTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -1188,17 +1105,19 @@ void CPitdrone::CheckAmmo()
 	}
 }
 
-const GibData PitDroneGibs = {"models/pit_drone_gibs.mdl", 0, 7};
-
 void CPitdrone::GibMonster()
 {
+	/*
 	EmitSound(CHAN_WEAPON, "common/bodysplat.wav", 1, ATTN_NORM);
 
 	if (CVAR_GET_FLOAT("violence_agibs") != 0) // Should never get here, but someone might call it directly
 	{
 		// Note: the original doesn't check for German censorship
-		CGib::SpawnRandomGibs(pev, 6, PitDroneGibs); // Throw alien gibs
+		CGib::SpawnRandomGibs(this, 6, PitDroneGibs); // Throw alien gibs
 	}
+	*/
+
+	CGib::SpawnClientGibs(this, GibType::Pitdrone, 6, true, false);
 
 	// don't remove players!
 	SetThink(&CBaseMonster::SUB_Remove);

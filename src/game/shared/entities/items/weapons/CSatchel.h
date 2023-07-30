@@ -36,15 +36,11 @@ enum satchel_radio_e
 
 class CSatchel : public CBasePlayerWeapon
 {
-public:
-#ifndef CLIENT_DLL
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-#endif
+	DECLARE_CLASS(CSatchel, CBasePlayerWeapon);
+	DECLARE_DATAMAP();
 
+public:
 	void OnCreate() override;
-	void Spawn() override;
 	void Precache() override;
 	bool GetWeaponInfo(WeaponInfo& info) override;
 	void AddToPlayer(CBasePlayer* pPlayer) override;
@@ -67,4 +63,11 @@ public:
 		return false;
 #endif
 	}
+
+	void GetWeaponData(weapon_data_t& data) override;
+
+	void SetWeaponData(const weapon_data_t& data) override;
+
+private:
+	int m_chargeReady;
 };

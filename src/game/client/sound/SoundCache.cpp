@@ -22,24 +22,23 @@
 namespace sound
 {
 SoundCache::SoundCache(std::shared_ptr<spdlog::logger> logger)
-	: m_Logger(logger), m_Loader(std::make_unique<nqr::NyquistIO>())
+	: m_Logger(logger),
+	  m_Loader(std::make_unique<nqr::NyquistIO>())
 {
 }
 
 SoundIndex SoundCache::FindName(const RelativeFilename& fileName)
 {
-	for (const auto& sound : m_Sounds)
+	if (const auto lookup = m_SoundLookup.find(ToStringView(fileName)); lookup != m_SoundLookup.end())
 	{
-		if (sound.Name.comparei(fileName) == 0)
-		{
-			return MakeSoundIndex(&sound);
-		}
+		return SoundIndex(*lookup + 1);
 	}
 
 	if (m_Sounds.size() >= static_cast<std::size_t>(std::numeric_limits<int>::max()))
 	{
 		// Chances are you'll run out of memory before this happens.
-		m_Logger->warn("Out of sound slots, cannot load {} (maximum {})", fileName.c_str(), std::numeric_limits<int>::max());
+		m_Logger->warn("Out of sound slots, cannot load {} (maximum {})",
+			fileName.c_str(), std::numeric_limits<int>::max());
 		return {};
 	}
 
@@ -50,7 +49,11 @@ SoundIndex SoundCache::FindName(const RelativeFilename& fileName)
 
 	m_Sounds.emplace_back(std::move(copy));
 
-	return MakeSoundIndex(&m_Sounds.back());
+	const std::size_t index = m_Sounds.size() - 1;
+
+	m_SoundLookup.insert(index);
+
+	return SoundIndex{static_cast<int>(index) + 1};
 }
 
 Sound* SoundCache::GetSound(SoundIndex index)
@@ -123,10 +126,11 @@ bool SoundCache::LoadSound(Sound& sound)
 
 	m_Logger->trace("Loading sound {} into buffer {}", absolutePath, sound.Buffer.Id);
 
-	alBufferData(sound.Buffer.Id, format, data.samples.data(), data.samples.size() * sizeof(float), data.sampleRate);
+	alBufferData(sound.Buffer.Id, format,
+		data.samples.data(), data.samples.size() * sizeof(float), data.sampleRate);
 
 	// See https://openal-soft.org/openal-extensions/SOFT_loop_points.txt
-	const auto cuePoints = TryLoadCuePoints(absolutePath, data.samples.size());
+	const auto cuePoints = TryLoadCuePoints(absolutePath, data.samples.size(), data.channelCount);
 
 	if (cuePoints)
 	{
@@ -136,7 +140,8 @@ bool SoundCache::LoadSound(Sound& sound)
 
 	if (const auto error = alGetError(); error != AL_NO_ERROR)
 	{
-		m_Logger->error("OpenAL error {} ({}) while initializing buffer", alGetString(error), error);
+		m_Logger->error("OpenAL error {} ({}) while initializing buffer for \"{}\"",
+			alGetString(error), error, absolutePath);
 		sound.Buffer.Delete();
 		return false;
 	}
@@ -160,15 +165,12 @@ void SoundCache::ClearBuffers()
 
 void SoundCache::Clear()
 {
+	m_SoundLookup.clear();
 	m_Sounds.clear();
 }
 
-SoundIndex SoundCache::MakeSoundIndex(const Sound* sound) const
-{
-	return SoundIndex{(sound - m_Sounds.data()) + 1};
-}
-
-std::optional<std::tuple<ALint, ALint>> SoundCache::TryLoadCuePoints(const std::string& fileName, ALint sampleCount)
+std::optional<std::tuple<ALint, ALint>> SoundCache::TryLoadCuePoints(
+	const std::string& fileName, ALint sampleCount, int channelCount)
 {
 	m_Logger->trace("Trying to load loop info from file \"{}\"", fileName);
 
@@ -201,7 +203,7 @@ std::optional<std::tuple<ALint, ALint>> SoundCache::TryLoadCuePoints(const std::
 
 	data.resize(size);
 
-	if (fread(data.data(), 1, size, file.get()) != size)
+	if (fread(data.data(), 1, size, file.get()) != static_cast<std::size_t>(size))
 	{
 		m_Logger->error("Error reading file \"{}\"", fileName);
 		return {};
@@ -243,7 +245,7 @@ std::optional<std::tuple<ALint, ALint>> SoundCache::TryLoadCuePoints(const std::
 		return {};
 	}
 
-	const int width = bitDepth / 8;
+	const int width = (bitDepth / 8) * channelCount;
 
 	chunkReader = fileReader.GetChunkReader();
 
@@ -274,7 +276,7 @@ std::optional<std::tuple<ALint, ALint>> SoundCache::TryLoadCuePoints(const std::
 	const int cuePositionInBytes = *reinterpret_cast<const int*>(cueChunk->Data + 4 + 20);
 
 	// Convert loop start from bytes to 32 bit float samples.
-	std::tuple<ALint, ALint> loopPoints = {convertRawSampleCount(cuePositionInBytes), sampleCount};
+	std::tuple<ALint, ALint> loopPoints = {convertRawSampleCount(cuePositionInBytes), sampleCount / channelCount};
 
 	m_Logger->trace("Loaded loop start point {} from file \"{}\"", std::get<0>(loopPoints), fileName);
 
@@ -319,7 +321,16 @@ std::optional<std::tuple<ALint, ALint>> SoundCache::TryLoadCuePoints(const std::
 	const int remainingSampleCount = *reinterpret_cast<const int*>(ltxtChunk->Data + 4);
 	const int sampleEndInBytes = cuePositionInBytes + remainingSampleCount;
 
-	std::get<1>(loopPoints) = convertRawSampleCount(sampleEndInBytes);
+	int loopSampleCount = convertRawSampleCount(sampleEndInBytes);
+
+	if (loopSampleCount == 0)
+	{
+		m_Logger->debug("Wave file \"{}\" has bad loop length value {}, falling back to total sample length",
+			fileName, remainingSampleCount);
+		loopSampleCount = sampleCount - convertRawSampleCount(cuePositionInBytes);
+	}
+
+	std::get<1>(loopPoints) = loopSampleCount;
 
 	m_Logger->trace("Loaded loop end point {} from file \"{}\"", std::get<1>(loopPoints), fileName);
 

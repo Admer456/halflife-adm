@@ -17,29 +17,23 @@
 
 class CDisplacerBall : public CBaseEntity
 {
+	DECLARE_CLASS(CDisplacerBall, CBaseEntity);
+	DECLARE_DATAMAP();
+
 private:
 	static const size_t NUM_BEAMS = 8;
 
 public:
-	using BaseClass = CBaseEntity;
-
 	void Precache() override;
-
 	void Spawn() override;
 
-	int Classify() override;
+	void BallTouch(CBaseEntity* pOther);
 
-	void EXPORT BallTouch(CBaseEntity* pOther);
-
-	void EXPORT FlyThink();
-
-	void EXPORT FlyThink2();
-
-	void EXPORT FizzleThink();
-
-	void EXPORT ExplodeThink();
-
-	void EXPORT KillThink();
+	void FlyThink();
+	void FlyThink2();
+	void FizzleThink();
+	void ExplodeThink();
+	void KillThink();
 
 	void InitBeams();
 

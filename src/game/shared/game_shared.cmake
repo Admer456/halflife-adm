@@ -6,27 +6,22 @@ function(add_game_shared_sources target)
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/palette.h
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ProjectInfoSystem.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ProjectInfoSystem.h
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/skill.cpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/skill.h
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/voice_common.h
-			
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/ConditionEvaluator.cpp
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/ConditionEvaluator.h
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/GameConfigIncludeStack.h
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/GameConfig.cpp
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/GameConfig.h
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/sections/BaseFileNamesListSection.h
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/sections/CommandsSection.h
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/sections/EchoSection.h
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/sections/GameDataFilesSections.h
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/sections/GlobalReplacementFilesSections.h
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/sections/HudColorSection.h
-			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/config/sections/SuitLightTypeSection.h
 			
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/ehandle.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/ehandle.h
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/EntityClassificationSystem.cpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/EntityClassificationSystem.h
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/EntityDictionary.h
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/entity_shared.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/entity_utils.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/entity_utils.h
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/player_shared.cpp
+			
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/items/CBaseItem.cpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/items/CBaseItem.h
 			
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/items/weapons/AmmoTypeSystem.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/entities/items/weapons/AmmoTypeSystem.h
@@ -98,6 +93,13 @@ function(add_game_shared_sources target)
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/player_movement/pm_shared.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/player_movement/pm_shared.h
 			
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/saverestore/DataFieldSerializers.cpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/saverestore/DataFieldSerializers.h
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/saverestore/DataMap.cpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/saverestore/DataMap.h
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/saverestore/saverestore.cpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/saverestore/saverestore.h
+			
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/scripting/AS/as_addons.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/scripting/AS/as_utils.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/scripting/AS/as_utils.h
@@ -110,6 +112,9 @@ function(add_game_shared_sources target)
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/sound/MaterialSystem.h
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/sound/sentence_utils.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/sound/sentence_utils.h
+			
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ui/hud/HudReplacementSystem.cpp
+			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/ui/hud/HudReplacementSystem.h
 			
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/utils/ConCommandSystem.cpp
 			${CMAKE_CURRENT_FUNCTION_LIST_DIR}/utils/ConCommandSystem.h

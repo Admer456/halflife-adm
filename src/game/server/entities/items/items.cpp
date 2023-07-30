@@ -12,167 +12,10 @@
  *   without written permission from Valve LLC.
  *
  ****/
-/*
-
-===== items.cpp ========================================================
-
-  functions governing the selection/use of weapons for players
-
-*/
 
 #include "cbase.h"
 #include "items.h"
 #include "UserMessages.h"
-
-class CWorldItem : public CBaseEntity
-{
-public:
-	bool KeyValue(KeyValueData* pkvd) override;
-	void Spawn() override;
-	int m_iType;
-};
-
-LINK_ENTITY_TO_CLASS(world_items, CWorldItem);
-
-bool CWorldItem::KeyValue(KeyValueData* pkvd)
-{
-	if (FStrEq(pkvd->szKeyName, "type"))
-	{
-		m_iType = atoi(pkvd->szValue);
-		return true;
-	}
-
-	return CBaseEntity::KeyValue(pkvd);
-}
-
-void CWorldItem::Spawn()
-{
-	CBaseEntity* pEntity = nullptr;
-
-	switch (m_iType)
-	{
-	case 44: // ITEM_BATTERY:
-		pEntity = CBaseEntity::Create("item_battery", pev->origin, pev->angles);
-		break;
-	case 42: // ITEM_ANTIDOTE:
-		pEntity = CBaseEntity::Create("item_antidote", pev->origin, pev->angles);
-		break;
-	case 43: // ITEM_SECURITY:
-		pEntity = CBaseEntity::Create("item_security", pev->origin, pev->angles);
-		break;
-	case 45: // ITEM_SUIT:
-		pEntity = CBaseEntity::Create("item_suit", pev->origin, pev->angles);
-		break;
-	}
-
-	if (!pEntity)
-	{
-		CBaseEntity::Logger->debug("unable to create world_item {}", m_iType);
-	}
-	else
-	{
-		pEntity->pev->target = pev->target;
-		pEntity->pev->targetname = pev->targetname;
-		pEntity->pev->spawnflags = pev->spawnflags;
-	}
-
-	REMOVE_ENTITY(edict());
-}
-
-void CItem::Precache()
-{
-	if (!FStringNull(pev->model))
-	{
-		PrecacheModel(STRING(pev->model));
-	}
-}
-
-void CItem::Spawn()
-{
-	Precache();
-
-	if (!FStringNull(pev->model))
-	{
-		SetModel(STRING(pev->model));
-	}
-
-	pev->movetype = MOVETYPE_TOSS;
-	pev->solid = SOLID_TRIGGER;
-	UTIL_SetOrigin(pev, pev->origin);
-	SetSize(Vector(-16, -16, 0), Vector(16, 16, 16));
-	SetTouch(&CItem::ItemTouch);
-
-	if (DROP_TO_FLOOR(ENT(pev)) == 0)
-	{
-		CBaseEntity::Logger->error("Item {} fell out of level at {}", STRING(pev->classname), pev->origin);
-		UTIL_Remove(this);
-		return;
-	}
-}
-
-void CItem::ItemTouch(CBaseEntity* pOther)
-{
-	// if it's not a player, ignore
-	if (!pOther->IsPlayer())
-	{
-		return;
-	}
-
-	CBasePlayer* pPlayer = (CBasePlayer*)pOther;
-
-	// ok, a player is touching this item, but can he have it?
-	if (!g_pGameRules->CanHaveItem(pPlayer, this))
-	{
-		// no? Ignore the touch.
-		return;
-	}
-
-	if (MyTouch(pPlayer))
-	{
-		SUB_UseTargets(pOther, USE_TOGGLE, 0);
-		SetTouch(nullptr);
-
-		// player grabbed the item.
-		g_pGameRules->PlayerGotItem(pPlayer, this);
-		if (g_pGameRules->ItemShouldRespawn(this) == GR_ITEM_RESPAWN_YES)
-		{
-			Respawn();
-		}
-		else
-		{
-			UTIL_Remove(this);
-		}
-	}
-	else if (gEvilImpulse101)
-	{
-		UTIL_Remove(this);
-	}
-}
-
-CBaseEntity* CItem::Respawn()
-{
-	SetTouch(nullptr);
-	pev->effects |= EF_NODRAW;
-
-	UTIL_SetOrigin(pev, g_pGameRules->VecItemRespawnSpot(this)); // blip to whereever you should respawn.
-
-	SetThink(&CItem::Materialize);
-	pev->nextthink = g_pGameRules->FlItemRespawnTime(this);
-	return this;
-}
-
-void CItem::Materialize()
-{
-	if ((pev->effects & EF_NODRAW) != 0)
-	{
-		// changing from invisible state to visible.
-		EmitSoundDyn(CHAN_WEAPON, "items/suitchargeok1.wav", 1, ATTN_NORM, 0, 150);
-		pev->effects &= ~EF_NODRAW;
-		pev->effects |= EF_MUZZLEFLASH;
-	}
-
-	SetTouch(&CItem::ItemTouch);
-}
 
 #define SF_SUIT_SHORTLOGON 0x0001
 
@@ -185,17 +28,21 @@ public:
 
 		pev->model = MAKE_STRING("models/w_suit.mdl");
 	}
-	bool MyTouch(CBasePlayer* pPlayer) override
+
+	bool AddItem(CBasePlayer* player) override
 	{
-		if (pPlayer->HasSuit())
+		if (player->HasSuit())
 			return false;
 
-		if ((pev->spawnflags & SF_SUIT_SHORTLOGON) != 0)
-			EMIT_SOUND_SUIT(pPlayer, "!HEV_A0"); // short version of suit logon,
-		else
-			EMIT_SOUND_SUIT(pPlayer, "!HEV_AAx"); // long version of suit logon
+		if (m_PlayPickupSound)
+		{
+			if ((pev->spawnflags & SF_SUIT_SHORTLOGON) != 0)
+				EMIT_SOUND_SUIT(player, "!HEV_A0"); // short version of suit logon,
+			else
+				EMIT_SOUND_SUIT(player, "!HEV_AAx"); // long version of suit logon
+		}
 
-		pPlayer->SetHasSuit(true);
+		player->SetHasSuit(true);
 		return true;
 	}
 };
@@ -204,63 +51,6 @@ LINK_ENTITY_TO_CLASS(item_suit, CItemSuit);
 
 // Unused alias of the suit
 LINK_ENTITY_TO_CLASS(item_vest, CItemSuit);
-
-class CItemBattery : public CItem
-{
-public:
-	void OnCreate() override
-	{
-		CItem::OnCreate();
-
-		pev->model = MAKE_STRING("models/w_battery.mdl");
-	}
-	void Precache() override
-	{
-		CItem::Precache();
-		PrecacheSound("items/gunpickup2.wav");
-	}
-	bool MyTouch(CBasePlayer* pPlayer) override
-	{
-		if (pPlayer->pev->deadflag != DEAD_NO)
-		{
-			return false;
-		}
-
-		if ((pPlayer->pev->armorvalue < MAX_NORMAL_BATTERY) &&
-			pPlayer->HasSuit())
-		{
-			int pct;
-			char szcharge[64];
-
-			pPlayer->pev->armorvalue += GetSkillFloat("battery"sv);
-			pPlayer->pev->armorvalue = V_min(pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY);
-
-			pPlayer->EmitSound(CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
-
-			MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, pPlayer->pev);
-			WRITE_STRING(STRING(pev->classname));
-			MESSAGE_END();
-
-
-			// Suit reports new power level
-			// For some reason this wasn't working in release build -- round it.
-			pct = (int)((float)(pPlayer->pev->armorvalue * 100.0) * (1.0 / MAX_NORMAL_BATTERY) + 0.5);
-			pct = (pct / 5);
-			if (pct > 0)
-				pct--;
-
-			sprintf(szcharge, "!HEV_%1dP", pct);
-
-			// EMIT_SOUND_SUIT(this, szcharge);
-			pPlayer->SetSuitUpdate(szcharge, false, SUIT_NEXT_IN_30SEC);
-			return true;
-		}
-		return false;
-	}
-};
-
-LINK_ENTITY_TO_CLASS(item_battery, CItemBattery);
-
 
 class CItemAntidote : public CItem
 {
@@ -271,35 +61,19 @@ public:
 
 		pev->model = MAKE_STRING("models/w_antidote.mdl");
 	}
-	bool MyTouch(CBasePlayer* pPlayer) override
+	bool AddItem(CBasePlayer* player) override
 	{
-		pPlayer->SetSuitUpdate("!HEV_DET4", false, SUIT_NEXT_IN_1MIN);
+		if (m_PlayPickupSound)
+		{
+			player->SetSuitUpdate("!HEV_DET4", SUIT_NEXT_IN_1MIN);
+		}
 
-		pPlayer->m_rgItems[ITEM_ANTIDOTE] += 1;
+		player->m_rgItems[ITEM_ANTIDOTE] += 1;
 		return true;
 	}
 };
 
 LINK_ENTITY_TO_CLASS(item_antidote, CItemAntidote);
-
-
-class CItemSecurity : public CItem
-{
-public:
-	void OnCreate() override
-	{
-		CItem::OnCreate();
-
-		pev->model = MAKE_STRING("models/w_security.mdl");
-	}
-	bool MyTouch(CBasePlayer* pPlayer) override
-	{
-		pPlayer->m_rgItems[ITEM_SECURITY] += 1;
-		return true;
-	}
-};
-
-LINK_ENTITY_TO_CLASS(item_security, CItemSecurity);
 
 class CItemLongJump : public CItem
 {
@@ -310,24 +84,26 @@ public:
 
 		pev->model = MAKE_STRING("models/w_longjump.mdl");
 	}
-	bool MyTouch(CBasePlayer* pPlayer) override
+	bool AddItem(CBasePlayer* player) override
 	{
-		if (pPlayer->m_fLongJump)
+		if (player->HasLongJump())
 		{
 			return false;
 		}
 
-		if (pPlayer->HasSuit())
+		if (player->HasSuit())
 		{
-			pPlayer->m_fLongJump = true; // player now has longjump module
+			player->SetHasLongJump(true); // player now has longjump module
 
-			g_engfuncs.pfnSetPhysicsKeyValue(pPlayer->edict(), "slj", "1");
-
-			MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, pPlayer->pev);
+			MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, player);
 			WRITE_STRING(STRING(pev->classname));
 			MESSAGE_END();
 
-			EMIT_SOUND_SUIT(pPlayer, "!HEV_A1"); // Play the longjump sound UNDONE: Kelly? correct sound?
+			if (m_PlayPickupSound)
+			{
+				EMIT_SOUND_SUIT(player, "!HEV_A1"); // Play the longjump sound UNDONE: Kelly? correct sound?
+			}
+
 			return true;
 		}
 		return false;
@@ -336,103 +112,207 @@ public:
 
 LINK_ENTITY_TO_CLASS(item_longjump, CItemLongJump);
 
-class CItemHelmet : public CItem
+class CHealthKit : public CItem
 {
+	DECLARE_CLASS(CHealthKit, CItem);
+	DECLARE_DATAMAP();
+
 public:
+	static constexpr float RefillHealthAmount = -1;
+
 	void OnCreate() override
 	{
 		CItem::OnCreate();
-
-		pev->model = MAKE_STRING("models/Barney_Helmet.mdl");
+		m_HealthAmount = GetSkillFloat("healthkit"sv);
+		pev->model = MAKE_STRING("models/w_medkit.mdl");
 	}
+
+	void Precache() override
+	{
+		CItem::Precache();
+		PrecacheSound("items/smallmedkit1.wav");
+	}
+
+	bool KeyValue(KeyValueData* pkvd) override
+	{
+		if (FStrEq(pkvd->szKeyName, "health_amount"))
+		{
+			m_HealthAmount = std::max(RefillHealthAmount, static_cast<float>(atof(pkvd->szValue)));
+			return true;
+		}
+
+		return CItem::KeyValue(pkvd);
+	}
+
+	bool AddItem(CBasePlayer* player) override
+	{
+		if (player->pev->deadflag != DEAD_NO)
+		{
+			return false;
+		}
+
+		float amount = m_HealthAmount;
+
+		if (amount == RefillHealthAmount)
+		{
+			amount = player->pev->max_health;
+		}
+
+		if (player->GiveHealth(amount, DMG_GENERIC))
+		{
+			MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, player);
+			WRITE_STRING(STRING(pev->classname));
+			MESSAGE_END();
+
+			if (m_PlayPickupSound)
+			{
+				player->EmitSound(CHAN_ITEM, "items/smallmedkit1.wav", 1, ATTN_NORM);
+			}
+
+			return true;
+		}
+
+		return false;
+	}
+
+protected:
+	float m_HealthAmount = 0;
+};
+
+LINK_ENTITY_TO_CLASS(item_healthkit, CHealthKit);
+
+BEGIN_DATAMAP(CHealthKit)
+DEFINE_FIELD(m_HealthAmount, FIELD_FLOAT),
+	END_DATAMAP();
+
+class CItemBattery : public CItem
+{
+	DECLARE_CLASS(CItemBattery, CItem);
+	DECLARE_DATAMAP();
+
+public:
+	static constexpr float RefillArmorAmount = -1;
+
+	void OnCreate() override
+	{
+		CItem::OnCreate();
+		m_ArmorAmount = GetSkillFloat("battery"sv);
+		pev->model = MAKE_STRING("models/w_battery.mdl");
+	}
+
+	bool KeyValue(KeyValueData* pkvd) override
+	{
+		if (FStrEq(pkvd->szKeyName, "armor_amount"))
+		{
+			m_ArmorAmount = std::max(RefillArmorAmount, static_cast<float>(atof(pkvd->szValue)));
+			return true;
+		}
+
+		return CItem::KeyValue(pkvd);
+	}
+
 	void Precache() override
 	{
 		CItem::Precache();
 		PrecacheSound("items/gunpickup2.wav");
 	}
-	bool MyTouch(CBasePlayer* pPlayer) override
+
+	bool AddItem(CBasePlayer* player) override
 	{
-		if ((pPlayer->pev->armorvalue < MAX_NORMAL_BATTERY) && pPlayer->HasSuit())
+		return AddItemCore(player, true);
+	}
+
+protected:
+	bool AddItemCore(CBasePlayer* player, bool playHEVSound)
+	{
+		if (player->pev->deadflag != DEAD_NO)
 		{
-			int pct;
-			char szcharge[64];
+			return false;
+		}
 
-			pPlayer->pev->armorvalue += 40;
-			pPlayer->pev->armorvalue = V_min(pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY);
+		float amount = m_ArmorAmount;
 
-			pPlayer->EmitSound(CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
+		if (amount == RefillArmorAmount)
+		{
+			amount = MAX_NORMAL_BATTERY;
+		}
 
-			MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, pPlayer->pev);
+		if (player->pev->armorvalue < MAX_NORMAL_BATTERY && player->HasSuit())
+		{
+			player->pev->armorvalue += amount;
+			player->pev->armorvalue = std::min(player->pev->armorvalue, static_cast<float>(MAX_NORMAL_BATTERY));
+
+			MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, player);
 			WRITE_STRING(STRING(pev->classname));
 			MESSAGE_END();
 
+			if (m_PlayPickupSound)
+			{
+				player->EmitSound(CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
 
-			// Suit reports new power level
-			// For some reason this wasn't working in release build -- round it.
-			pct = (int)((float)(pPlayer->pev->armorvalue * 100.0) * (1.0 / MAX_NORMAL_BATTERY) + 0.5);
-			pct = (pct / 5);
-			if (pct > 0)
-				pct--;
+				if (playHEVSound)
+				{
+					// Suit reports new power level
+					// For some reason this wasn't working in release build -- round it.
+					int pct = (int)((float)(player->pev->armorvalue * 100.0) * (1.0 / MAX_NORMAL_BATTERY) + 0.5);
+					pct = (pct / 5);
+					if (pct > 0)
+						pct--;
 
-			sprintf(szcharge, "!HEV_%1dP", pct);
+					char szcharge[64];
+					sprintf(szcharge, "!HEV_%1dP", pct);
 
-			// EMIT_SOUND_SUIT(this, szcharge);
-			pPlayer->SetSuitUpdate(szcharge, false, SUIT_NEXT_IN_30SEC);
+					// EMIT_SOUND_SUIT(this, szcharge);
+					player->SetSuitUpdate(szcharge, SUIT_NEXT_IN_30SEC);
+				}
+			}
+
 			return true;
 		}
-
 		return false;
+	}
+
+protected:
+	float m_ArmorAmount = 0;
+};
+
+LINK_ENTITY_TO_CLASS(item_battery, CItemBattery);
+
+BEGIN_DATAMAP(CItemBattery)
+DEFINE_FIELD(m_ArmorAmount, FIELD_FLOAT),
+	END_DATAMAP();
+
+class CItemHelmet : public CItemBattery
+{
+public:
+	void OnCreate() override
+	{
+		CItem::OnCreate();
+		m_ArmorAmount = 40; // TODO: add to skill.json
+		pev->model = MAKE_STRING("models/barney_helmet.mdl");
+	}
+
+	bool AddItem(CBasePlayer* player) override
+	{
+		return AddItemCore(player, false);
 	}
 };
 
 LINK_ENTITY_TO_CLASS(item_helmet, CItemHelmet);
 
-class CItemArmorVest : public CItem
+class CItemArmorVest : public CItemBattery
 {
 public:
 	void OnCreate() override
 	{
 		CItem::OnCreate();
-
-		pev->model = MAKE_STRING("models/Barney_Vest.mdl");
+		m_ArmorAmount = 60; // TODO: add to skill.json
+		pev->model = MAKE_STRING("models/barney_vest.mdl");
 	}
-	void Precache() override
+
+	bool AddItem(CBasePlayer* player) override
 	{
-		CItem::Precache();
-		PrecacheSound("items/gunpickup2.wav");
-	}
-	bool MyTouch(CBasePlayer* pPlayer) override
-	{
-		if ((pPlayer->pev->armorvalue < MAX_NORMAL_BATTERY) && pPlayer->HasSuit())
-		{
-			int pct;
-			char szcharge[64];
-
-			pPlayer->pev->armorvalue += 60;
-			pPlayer->pev->armorvalue = V_min(pPlayer->pev->armorvalue, MAX_NORMAL_BATTERY);
-
-			pPlayer->EmitSound(CHAN_ITEM, "items/gunpickup2.wav", 1, ATTN_NORM);
-
-			MESSAGE_BEGIN(MSG_ONE, gmsgItemPickup, nullptr, pPlayer->pev);
-			WRITE_STRING(STRING(pev->classname));
-			MESSAGE_END();
-
-
-			// Suit reports new power level
-			// For some reason this wasn't working in release build -- round it.
-			pct = (int)((float)(pPlayer->pev->armorvalue * 100.0) * (1.0 / MAX_NORMAL_BATTERY) + 0.5);
-			pct = (pct / 5);
-			if (pct > 0)
-				pct--;
-
-			sprintf(szcharge, "!HEV_%1dP", pct);
-
-			// EMIT_SOUND_SUIT(this, szcharge);
-			pPlayer->SetSuitUpdate(szcharge, false, SUIT_NEXT_IN_30SEC);
-			return true;
-		}
-
-		return false;
+		return AddItemCore(player, false);
 	}
 };
 

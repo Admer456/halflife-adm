@@ -21,26 +21,23 @@
 
 #include "CSporeLauncher.h"
 
-#ifndef CLIENT_DLL
-TYPEDESCRIPTION CSporeLauncher::m_SaveData[] =
-	{
-		DEFINE_FIELD(CSporeLauncher, m_ReloadState, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(CSporeLauncher, CSporeLauncher::BaseClass);
-#endif
+BEGIN_DATAMAP(CSporeLauncher)
+DEFINE_FIELD(m_ReloadState, FIELD_INTEGER),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(weapon_sporelauncher, CSporeLauncher);
 
 void CSporeLauncher::OnCreate()
 {
 	CBasePlayerWeapon::OnCreate();
-
+	m_iId = WEAPON_SPORELAUNCHER;
+	m_iDefaultAmmo = SPORELAUNCHER_DEFAULT_GIVE;
 	m_WorldModel = pev->model = MAKE_STRING("models/w_spore_launcher.mdl");
 }
 
 void CSporeLauncher::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/v_spore_launcher.mdl");
 	PrecacheModel("models/p_spore_launcher.mdl");
@@ -58,20 +55,10 @@ void CSporeLauncher::Precache()
 
 void CSporeLauncher::Spawn()
 {
-	Precache();
-
-	m_iId = WEAPON_SPORELAUNCHER;
-
-	SetModel(STRING(pev->model));
-
-	m_iDefaultAmmo = SPORELAUNCHER_DEFAULT_GIVE;
-
-	FallInit();
+	CBasePlayerWeapon::Spawn();
 
 	pev->sequence = 0;
-
 	pev->animtime = gpGlobals->time;
-
 	pev->framerate = 1;
 }
 
@@ -102,7 +89,9 @@ void CSporeLauncher::WeaponIdle()
 
 	if (m_flTimeWeaponIdle < UTIL_WeaponTimeBase())
 	{
-		if (m_iClip == 0 && m_ReloadState == ReloadState::NOT_RELOADING && 0 != m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+		if (GetMagazine1() == 0 &&
+			m_ReloadState == ReloadState::NOT_RELOADING &&
+			0 != m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType))
 		{
 			Reload();
 		}
@@ -115,7 +104,7 @@ void CSporeLauncher::WeaponIdle()
 				maxClip *= 2;
 			}
 
-			if (m_iClip != maxClip && 0 != m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+			if (GetMagazine1() != maxClip && 0 != m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType))
 			{
 				Reload();
 			}
@@ -157,7 +146,7 @@ void CSporeLauncher::WeaponIdle()
 
 void CSporeLauncher::PrimaryAttack()
 {
-	if (0 != m_iClip)
+	if (0 != GetMagazine1())
 	{
 		m_pPlayer->m_iWeaponVolume = LOUD_GUN_VOLUME;
 		m_pPlayer->m_iWeaponFlash = BRIGHT_GUN_FLASH;
@@ -197,7 +186,7 @@ void CSporeLauncher::PrimaryAttack()
 
 		PLAYBACK_EVENT(flags, m_pPlayer->edict(), m_usFireSpore);
 
-		--m_iClip;
+		AdjustMagazine1(-1);
 	}
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.5;
@@ -207,7 +196,7 @@ void CSporeLauncher::PrimaryAttack()
 
 void CSporeLauncher::SecondaryAttack()
 {
-	if (0 != m_iClip)
+	if (0 != GetMagazine1())
 	{
 		m_pPlayer->m_iWeaponVolume = LOUD_GUN_VOLUME;
 		m_pPlayer->m_iWeaponFlash = BRIGHT_GUN_FLASH;
@@ -247,7 +236,7 @@ void CSporeLauncher::SecondaryAttack()
 
 		PLAYBACK_EVENT(flags, m_pPlayer->edict(), m_usFireSpore);
 
-		--m_iClip;
+		AdjustMagazine1(-1);
 	}
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.5;
@@ -264,7 +253,7 @@ void CSporeLauncher::Reload()
 		maxClip *= 2;
 	}
 
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 || m_iClip == maxClip)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0 || GetMagazine1() == maxClip)
 		return;
 
 	// don't reload until recoil is done
@@ -299,20 +288,20 @@ void CSporeLauncher::Reload()
 	else
 	{
 		// Add them to the clip
-		m_iClip += 1;
-		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= 1;
+		AdjustMagazine1(1);
+		m_pPlayer->AdjustAmmoByIndex(m_iPrimaryAmmoType, -1);
 		m_ReloadState = ReloadState::DO_RELOAD_EFFECTS;
 	}
 }
 
 bool CSporeLauncher::GetWeaponInfo(WeaponInfo& info)
 {
-	info.AmmoType1 = "spores";
+	info.AttackModeInfo[0].AmmoType = "spores";
 	info.Name = STRING(pev->classname);
-	info.MagazineSize1 = SPORELAUNCHER_MAX_CLIP;
+	info.AttackModeInfo[0].MagazineSize = SPORELAUNCHER_MAX_CLIP;
 	info.Slot = 6;
 	info.Position = 0;
-	info.Id = m_iId = WEAPON_SPORELAUNCHER;
+	info.Id = WEAPON_SPORELAUNCHER;
 	info.Weight = SPORELAUNCHER_WEIGHT;
 
 	return true;
@@ -330,7 +319,7 @@ void CSporeLauncher::GetWeaponData(weapon_data_t& data)
 {
 	BaseClass::GetWeaponData(data);
 
-	// m_ReloadState is called m_fInSpecialReload in Op4. - Solokiller
+	// m_ReloadState is called m_fInSpecialReload in Op4.
 	data.m_fInSpecialReload = static_cast<int>(m_ReloadState);
 }
 
@@ -361,19 +350,23 @@ enum SporeAmmoBody
 
 class CSporeAmmo : public CBasePlayerAmmo
 {
-public:
-	using BaseClass = CBasePlayerAmmo;
+	DECLARE_CLASS(CSporeAmmo, CBasePlayerAmmo);
+	DECLARE_DATAMAP();
 
+public:
 	void OnCreate() override
 	{
 		CBasePlayerAmmo::OnCreate();
-
+		m_AmmoAmount = AMMO_SPORE_GIVE;
+		m_AmmoName = MAKE_STRING("spores");
 		pev->model = MAKE_STRING("models/spore_ammo.mdl");
+		m_SoundOffset.z = 1;
 	}
 
 	void Precache() override
 	{
-		CBasePlayerAmmo::Precache();
+		// Don't precache default pickup sound.
+		CBaseItem::Precache();
 		PrecacheSound("weapons/spore_ammo.wav");
 	}
 
@@ -389,7 +382,7 @@ public:
 
 		pev->origin.z += 16;
 
-		UTIL_SetOrigin(pev, pev->origin);
+		SetOrigin(pev->origin);
 
 		pev->angles.x -= 90;
 
@@ -432,7 +425,7 @@ public:
 		auto vecLaunchDir = pev->angles;
 
 		vecLaunchDir.x -= 90;
-		// Rotate it so spores that aren't rotated in Hammer point in the right direction. - Solokiller
+		// Rotate it so spores that aren't rotated in Hammer point in the right direction.
 		vecLaunchDir.y += 180;
 
 		vecLaunchDir.x += RANDOM_FLOAT(-20, 20);
@@ -448,19 +441,12 @@ public:
 		return false;
 	}
 
-	bool AddAmmo(CBasePlayer* pOther) override
+	bool AddAmmo(CBasePlayer* player) override
 	{
-		if (pOther->GiveAmmo(AMMO_SPORE_GIVE, "spores") != -1)
-		{
-			EmitSound(CHAN_ITEM, "weapons/spore_ammo.wav", VOL_NORM, ATTN_NORM);
-
-			return true;
-		}
-
-		return false;
+		return GiveAmmo(player, m_AmmoAmount, STRING(m_AmmoName), "weapons/spore_ammo.wav");
 	}
 
-	void EXPORT Idling()
+	void Idling()
 	{
 		switch (pev->sequence)
 		{
@@ -496,12 +482,12 @@ public:
 		}
 	}
 
-	void EXPORT SporeTouch(CBaseEntity* pOther)
+	void SporeTouch(CBaseEntity* pOther)
 	{
-		if (!pOther->IsPlayer() || pev->body == SPOREAMMOBODY_EMPTY)
-			return;
+		auto player = ToBasePlayer(pOther);
 
-		auto player = static_cast<CBasePlayer*>(pOther);
+		if (!player || pev->body == SPOREAMMOBODY_EMPTY)
+			return;
 
 		if (AddAmmo(player))
 		{
@@ -515,6 +501,11 @@ public:
 		}
 	}
 };
+
+BEGIN_DATAMAP(CSporeAmmo)
+DEFINE_FUNCTION(Idling),
+	DEFINE_FUNCTION(SporeTouch),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(ammo_spore, CSporeAmmo);
 #endif

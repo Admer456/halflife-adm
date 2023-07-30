@@ -38,6 +38,8 @@
 #include "CSqueak.h"
 #include "CTripmine.h"
 
+#include "ClientLibrary.h"
+#include "com_weapons.h"
 #include "const.h"
 #include "entity_state.h"
 #include "cl_entity.h"
@@ -59,7 +61,7 @@
 
 extern engine_studio_api_t IEngineStudio;
 
-static int tracerCount[MAX_PLAYERS];
+static int g_tracerCount[MAX_PLAYERS];
 
 #include "pm_shared.h"
 
@@ -263,7 +265,7 @@ void EV_HLDM_GunshotDecalTrace(pmtrace_t* pTrace, char* decalName)
 	// Only decal brush models such as the world etc.
 	if (decalName && '\0' != decalName[0] && pe && (pe->solid == SOLID_BSP || pe->movetype == MOVETYPE_PUSHSTEP))
 	{
-		if (0 != CVAR_GET_FLOAT("r_decals"))
+		if (0 != r_decals->value)
 		{
 			gEngfuncs.pEfxAPI->R_DecalShoot(
 				gEngfuncs.pEfxAPI->Draw_DecalIndex(gEngfuncs.pEfxAPI->Draw_DecalIndexFromName(decalName)),
@@ -299,7 +301,7 @@ void EV_HLDM_DecalGunshot(pmtrace_t* pTrace, int iBulletType)
 	}
 }
 
-void EV_HLDM_CheckTracer(int idx, const Vector& vecSrc, const Vector& end, const Vector& forward, const Vector& right, 
+void EV_HLDM_CheckTracer(int idx, const Vector& vecSrc, const Vector& end, const Vector& forward, const Vector& right,
 	int iBulletType, int iTracerFreq, int* tracerCount)
 {
 	int i;
@@ -495,7 +497,7 @@ void EV_FireGlock1(event_args_t* args)
 
 	vecAiming = forward;
 
-	EV_HLDM_FireBullets(idx, forward, right, up, 1, vecSrc, vecAiming, 8192, BULLET_PLAYER_9MM, 0, &tracerCount[idx - 1], args->fparam1, args->fparam2);
+	EV_HLDM_FireBullets(idx, forward, right, up, 1, vecSrc, vecAiming, 8192, BULLET_PLAYER_9MM, 0, &g_tracerCount[idx - 1], args->fparam1, args->fparam2);
 }
 
 void EV_FireGlock2(event_args_t* args)
@@ -540,7 +542,7 @@ void EV_FireGlock2(event_args_t* args)
 
 	vecAiming = forward;
 
-	EV_HLDM_FireBullets(idx, forward, right, up, 1, vecSrc, vecAiming, 8192, BULLET_PLAYER_9MM, 0, &tracerCount[idx - 1], args->fparam1, args->fparam2);
+	EV_HLDM_FireBullets(idx, forward, right, up, 1, vecSrc, vecAiming, 8192, BULLET_PLAYER_9MM, 0, &g_tracerCount[idx - 1], args->fparam1, args->fparam2);
 }
 //======================
 //	   GLOCK END
@@ -592,13 +594,15 @@ void EV_FireShotGunDouble(event_args_t* args)
 	EV_GetGunPosition(args, vecSrc, origin);
 	vecAiming = forward;
 
-	if (gEngfuncs.GetMaxClients() > 1)
+	if (g_Skill.GetValue("shotgun_double_wide_spread") != 0)
 	{
-		EV_HLDM_FireBullets(idx, forward, right, up, 8, vecSrc, vecAiming, 2048, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], 0.17365, 0.04362);
+		EV_HLDM_FireBullets(idx, forward, right, up, 8, vecSrc, vecAiming, 2048, BULLET_PLAYER_BUCKSHOT, 0,
+			&g_tracerCount[idx - 1], VECTOR_CONE_DM_DOUBLESHOTGUN.x, VECTOR_CONE_DM_DOUBLESHOTGUN.y);
 	}
 	else
 	{
-		EV_HLDM_FireBullets(idx, forward, right, up, 12, vecSrc, vecAiming, 2048, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], 0.08716, 0.08716);
+		EV_HLDM_FireBullets(idx, forward, right, up, 12, vecSrc, vecAiming, 2048, BULLET_PLAYER_BUCKSHOT, 0,
+			&g_tracerCount[idx - 1], VECTOR_CONE_10DEGREES.x, VECTOR_CONE_10DEGREES.y);
 	}
 }
 
@@ -642,13 +646,15 @@ void EV_FireShotGunSingle(event_args_t* args)
 	EV_GetGunPosition(args, vecSrc, origin);
 	vecAiming = forward;
 
-	if (gEngfuncs.GetMaxClients() > 1)
+	if (g_Skill.GetValue("shotgun_single_tight_spread") != 0)
 	{
-		EV_HLDM_FireBullets(idx, forward, right, up, 4, vecSrc, vecAiming, 2048, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], 0.08716, 0.04362);
+		EV_HLDM_FireBullets(idx, forward, right, up, 4, vecSrc, vecAiming, 2048, BULLET_PLAYER_BUCKSHOT, 0,
+			&g_tracerCount[idx - 1], VECTOR_CONE_DM_SHOTGUN.x, VECTOR_CONE_DM_SHOTGUN.y);
 	}
 	else
 	{
-		EV_HLDM_FireBullets(idx, forward, right, up, 6, vecSrc, vecAiming, 2048, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], 0.08716, 0.08716);
+		EV_HLDM_FireBullets(idx, forward, right, up, 6, vecSrc, vecAiming, 2048, BULLET_PLAYER_BUCKSHOT, 0,
+			&g_tracerCount[idx - 1], VECTOR_CONE_10DEGREES.x, VECTOR_CONE_10DEGREES.y);
 	}
 }
 //======================
@@ -706,7 +712,7 @@ void EV_FireMP5(event_args_t* args)
 	EV_GetGunPosition(args, vecSrc, origin);
 	vecAiming = forward;
 
-	EV_HLDM_FireBullets(idx, forward, right, up, 1, vecSrc, vecAiming, 8192, BULLET_PLAYER_MP5, 2, &tracerCount[idx - 1], args->fparam1, args->fparam2);
+	EV_HLDM_FireBullets(idx, forward, right, up, 1, vecSrc, vecAiming, 8192, BULLET_PLAYER_MP5, 2, &g_tracerCount[idx - 1], args->fparam1, args->fparam2);
 }
 
 // We only predict the animation and sound
@@ -762,10 +768,7 @@ void EV_FirePython(event_args_t* args)
 
 	if (EV_IsLocal(idx))
 	{
-		// Python uses different body in multiplayer versus single player
-		const bool multiplayer = gEngfuncs.GetMaxClients() != 1;
-
-		const auto body = multiplayer ? 1 : 0;
+		const int body = g_Skill.GetValue("revolver_laser_sight") != 0 ? 1 : 0;
 
 		// Add muzzle flash to current weapon model
 		EV_MuzzleFlash();
@@ -790,7 +793,7 @@ void EV_FirePython(event_args_t* args)
 
 	vecAiming = forward;
 
-	EV_HLDM_FireBullets(idx, forward, right, up, 1, vecSrc, vecAiming, 8192, BULLET_PLAYER_357, 0, &tracerCount[idx - 1], args->fparam1, args->fparam2);
+	EV_HLDM_FireBullets(idx, forward, right, up, 1, vecSrc, vecAiming, 8192, BULLET_PLAYER_357, 0, &g_tracerCount[idx - 1], args->fparam1, args->fparam2);
 }
 //======================
 //	    PHYTON END
@@ -1026,22 +1029,19 @@ void EV_FireGauss(event_args_t* args)
 
 					if (0 == beam_tr.allsolid)
 					{
-						Vector delta;
-						float n;
-
 						// trace backwards to find exit point
 
 						gEngfuncs.pEventAPI->EV_PlayerTrace(beam_tr.endpos, tr.endpos, PM_STUDIO_BOX, -1, &beam_tr);
 
-						delta = beam_tr.endpos - tr.endpos;
+						const Vector delta = beam_tr.endpos - tr.endpos;
 
-						n = delta.Length();
+						float deltaLength = delta.Length();
 
-						if (n < flDamage)
+						if (deltaLength < flDamage)
 						{
-							if (n == 0)
-								n = 1;
-							flDamage -= n;
+							if (deltaLength == 0)
+								deltaLength = 1;
+							flDamage -= deltaLength;
 
 							// absorption balls
 							{
@@ -1470,6 +1470,12 @@ void EV_EgonStop(event_args_t* args)
 
 			pFlare = nullptr;
 		}
+
+		// HACK: only reset animation if the Egon is still equipped.
+		if (g_CurrentWeaponId == WEAPON_EGON)
+		{
+			gEngfuncs.pEventAPI->EV_WeaponAnimation(EGON_IDLE1, 0);
+		}
 	}
 }
 //======================
@@ -1825,7 +1831,7 @@ void EV_FireDisplacer(event_args_t* args)
 
 	case DisplacerMode::FIRED:
 	{
-		// bparam1 indicates whether it's a primary or secondary attack. - Solokiller
+		// bparam1 indicates whether it's a primary or secondary attack.
 		if (0 == args->bparam1)
 		{
 			EV_PlaySound(

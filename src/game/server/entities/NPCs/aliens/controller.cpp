@@ -13,47 +13,41 @@
  *
  ****/
 
-//=========================================================
-// CONTROLLER
-//=========================================================
-
 #include "cbase.h"
 #include "squadmonster.h"
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define CONTROLLER_AE_HEAD_OPEN 1
 #define CONTROLLER_AE_BALL_SHOOT 2
 #define CONTROLLER_AE_SMALL_SHOOT 3
 #define CONTROLLER_AE_POWERUP_FULL 4
 #define CONTROLLER_AE_POWERUP_HALF 5
 
-#define CONTROLLER_FLINCH_DELAY 2 // at most one flinch every n secs
+#define CONTROLLER_FLINCH_DELAY 2 //!< at most one flinch every n secs
 
 class CController : public CSquadMonster
 {
+	DECLARE_CLASS(CController, CSquadMonster);
+	DECLARE_DATAMAP();
+	DECLARE_CUSTOM_SCHEDULES();
+
 public:
 	void OnCreate() override;
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+
+	bool HasAlienGibs() override { return true; }
 
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
-	int Classify() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 
 	void RunAI() override;
-	bool CheckRangeAttack1(float flDot, float flDist) override; // balls
-	bool CheckRangeAttack2(float flDot, float flDist) override; // head
-	bool CheckMeleeAttack1(float flDot, float flDist) override; // block, throw
-	Schedule_t* GetSchedule() override;
-	Schedule_t* GetScheduleOfType(int Type) override;
-	void StartTask(Task_t* pTask) override;
-	void RunTask(Task_t* pTask) override;
-	CUSTOM_SCHEDULES;
+	bool CheckRangeAttack1(float flDot, float flDist) override; //!< shoot a bigass energy ball out of their head
+	bool CheckRangeAttack2(float flDot, float flDist) override; //!< head
+	bool CheckMeleeAttack1(float flDot, float flDist) override; //!< block, throw
+	const Schedule_t* GetSchedule() override;
+	const Schedule_t* GetScheduleOfType(int Type) override;
+	void StartTask(const Task_t* pTask) override;
+	void RunTask(const Task_t* pTask) override;
 
 	void Stop() override;
 	void Move(float flInterval) override;
@@ -84,6 +78,10 @@ public:
 	void Killed(CBaseEntity* attacker, int iGib) override;
 	void GibMonster() override;
 
+	void UpdateOnRemove() override;
+
+	void RemoveBalls();
+
 	CSprite* m_pBall[2];   // hand balls
 	int m_iBall[2];		   // how bright it should be
 	float m_iBallTime[2];  // when it should be that color
@@ -97,16 +95,13 @@ public:
 
 LINK_ENTITY_TO_CLASS(monster_alien_controller, CController);
 
-TYPEDESCRIPTION CController::m_SaveData[] =
-	{
-		DEFINE_ARRAY(CController, m_pBall, FIELD_CLASSPTR, 2),
-		DEFINE_ARRAY(CController, m_iBall, FIELD_INTEGER, 2),
-		DEFINE_ARRAY(CController, m_iBallTime, FIELD_TIME, 2),
-		DEFINE_ARRAY(CController, m_iBallCurrent, FIELD_INTEGER, 2),
-		DEFINE_FIELD(CController, m_vecEstVelocity, FIELD_VECTOR),
-};
-IMPLEMENT_SAVERESTORE(CController, CSquadMonster);
-
+BEGIN_DATAMAP(CController)
+DEFINE_ARRAY(m_pBall, FIELD_CLASSPTR, 2),
+	DEFINE_ARRAY(m_iBall, FIELD_INTEGER, 2),
+	DEFINE_ARRAY(m_iBallTime, FIELD_TIME, 2),
+	DEFINE_ARRAY(m_iBallCurrent, FIELD_INTEGER, 2),
+	DEFINE_FIELD(m_vecEstVelocity, FIELD_VECTOR),
+	END_DATAMAP();
 
 const char* CController::pAttackSounds[] =
 	{
@@ -150,21 +145,10 @@ void CController::OnCreate()
 
 	pev->health = GetSkillFloat("controller_health"sv);
 	pev->model = MAKE_STRING("models/controller.mdl");
+
+	SetClassification("alien_military");
 }
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int CController::Classify()
-{
-	return CLASS_ALIEN_MILITARY;
-}
-
-//=========================================================
-// SetYawSpeed - allows each sequence to have a different
-// turn rate associated with it.
-//=========================================================
 void CController::SetYawSpeed()
 {
 	int ys;
@@ -187,7 +171,6 @@ bool CController::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, floa
 		PainSound();
 	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
-
 
 void CController::Killed(CBaseEntity* attacker, int iGib)
 {
@@ -214,10 +197,20 @@ void CController::Killed(CBaseEntity* attacker, int iGib)
 	CSquadMonster::Killed(attacker, iGib);
 }
 
-
 void CController::GibMonster()
 {
-	// delete balls
+	RemoveBalls();
+	CSquadMonster::GibMonster();
+}
+
+void CController::UpdateOnRemove()
+{
+	RemoveBalls();
+	CSquadMonster::UpdateOnRemove();
+}
+
+void CController::RemoveBalls()
+{
 	if (m_pBall[0])
 	{
 		UTIL_Remove(m_pBall[0]);
@@ -228,11 +221,7 @@ void CController::GibMonster()
 		UTIL_Remove(m_pBall[1]);
 		m_pBall[1] = nullptr;
 	}
-	CSquadMonster::GibMonster();
 }
-
-
-
 
 void CController::PainSound()
 {
@@ -260,10 +249,6 @@ void CController::DeathSound()
 	EMIT_SOUND_ARRAY_DYN(CHAN_VOICE, pDeathSounds);
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void CController::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -315,7 +300,7 @@ void CController::HandleAnimEvent(MonsterEvent_t* pEvent)
 		WRITE_COORD(32); // decay
 		MESSAGE_END();
 
-		CBaseMonster* pBall = (CBaseMonster*)Create("controller_head_ball", vecStart, pev->angles, edict());
+		CBaseMonster* pBall = (CBaseMonster*)Create("controller_head_ball", vecStart, pev->angles, this);
 
 		pBall->pev->velocity = Vector(0, 0, 32);
 		pBall->m_hEnemy = m_hEnemy;
@@ -354,9 +339,6 @@ void CController::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void CController::Spawn()
 {
 	Precache();
@@ -375,9 +357,6 @@ void CController::Spawn()
 	MonsterInit();
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void CController::Precache()
 {
 	PrecacheModel(STRING(pev->model));
@@ -394,12 +373,6 @@ void CController::Precache()
 	UTIL_PrecacheOther("controller_head_ball");
 }
 
-//=========================================================
-// AI Schedules Specific to this monster
-//=========================================================
-
-
-// Chase enemy schedule
 Task_t tlControllerChaseEnemy[] =
 	{
 		{TASK_GET_PATH_TO_ENEMY, (float)128},
@@ -416,8 +389,6 @@ Schedule_t slControllerChaseEnemy[] =
 			0,
 			"ControllerChaseEnemy"},
 };
-
-
 
 Task_t tlControllerStrafe[] =
 	{
@@ -436,7 +407,6 @@ Schedule_t slControllerStrafe[] =
 			"ControllerStrafe"},
 };
 
-
 Task_t tlControllerTakeCover[] =
 	{
 		{TASK_WAIT, (float)0.2},
@@ -453,7 +423,6 @@ Schedule_t slControllerTakeCover[] =
 			0,
 			"ControllerTakeCover"},
 };
-
 
 Task_t tlControllerFail[] =
 	{
@@ -472,23 +441,14 @@ Schedule_t slControllerFail[] =
 			"ControllerFail"},
 };
 
-
-
-DEFINE_CUSTOM_SCHEDULES(CController){
-	slControllerChaseEnemy,
+BEGIN_CUSTOM_SCHEDULES(CController)
+slControllerChaseEnemy,
 	slControllerStrafe,
 	slControllerTakeCover,
-	slControllerFail,
-};
+	slControllerFail
+	END_CUSTOM_SCHEDULES();
 
-IMPLEMENT_CUSTOM_SCHEDULES(CController, CSquadMonster);
-
-
-
-//=========================================================
-// StartTask
-//=========================================================
-void CController::StartTask(Task_t* pTask)
+void CController::StartTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -537,7 +497,6 @@ void CController::StartTask(Task_t* pTask)
 	}
 }
 
-
 Vector Intersect(Vector vecSrc, Vector vecDst, Vector vecMove, float flSpeed)
 {
 	Vector vecTo = vecDst - vecSrc;
@@ -575,7 +534,6 @@ Vector Intersect(Vector vecSrc, Vector vecDst, Vector vecMove, float flSpeed)
 	return vecHit.Normalize() * flSpeed;
 }
 
-
 int CController::LookupFloat()
 {
 	if (m_velocity.Length() < 32.0)
@@ -611,11 +569,7 @@ int CController::LookupFloat()
 	}
 }
 
-
-//=========================================================
-// RunTask
-//=========================================================
-void CController::RunTask(Task_t* pTask)
+void CController::RunTask(const Task_t* pTask)
 {
 
 	if (m_flShootEnd > gpGlobals->time)
@@ -644,7 +598,7 @@ void CController::RunTask(Task_t* pTask)
 				vecDir = vecDir + Vector(RANDOM_FLOAT(-delta, delta), RANDOM_FLOAT(-delta, delta), RANDOM_FLOAT(-delta, delta)) * GetSkillFloat("controller_speedball"sv);
 
 				vecSrc = vecSrc + vecDir * (gpGlobals->time - m_flShootTime);
-				CBaseMonster* pBall = (CBaseMonster*)Create("controller_energy_ball", vecSrc, pev->angles, edict());
+				CBaseMonster* pBall = (CBaseMonster*)Create("controller_energy_ball", vecSrc, pev->angles, this);
 				pBall->pev->velocity = vecDir;
 			}
 			m_flShootTime += 0.2;
@@ -713,14 +667,7 @@ void CController::RunTask(Task_t* pTask)
 	}
 }
 
-
-//=========================================================
-// GetSchedule - Decides which type of schedule best suits
-// the monster's current state and conditions. Then calls
-// monster's member function to get a pointer to a schedule
-// of the proper type.
-//=========================================================
-Schedule_t* CController::GetSchedule()
+const Schedule_t* CController::GetSchedule()
 {
 	switch (m_MonsterState)
 	{
@@ -748,11 +695,7 @@ Schedule_t* CController::GetSchedule()
 	return CSquadMonster::GetSchedule();
 }
 
-
-
-//=========================================================
-//=========================================================
-Schedule_t* CController::GetScheduleOfType(int Type)
+const Schedule_t* CController::GetScheduleOfType(int Type)
 {
 	// AILogger->debug( "{}", m_iFrustration);
 	switch (Type)
@@ -773,14 +716,6 @@ Schedule_t* CController::GetScheduleOfType(int Type)
 	return CBaseMonster::GetScheduleOfType(Type);
 }
 
-
-
-
-
-//=========================================================
-// CheckRangeAttack1  - shoot a bigass energy ball out of their head
-//
-//=========================================================
 bool CController::CheckRangeAttack1(float flDot, float flDist)
 {
 	if (flDot > 0.5 && flDist > 256 && flDist <= 2048)
@@ -789,7 +724,6 @@ bool CController::CheckRangeAttack1(float flDot, float flDist)
 	}
 	return false;
 }
-
 
 bool CController::CheckRangeAttack2(float flDot, float flDist)
 {
@@ -800,12 +734,10 @@ bool CController::CheckRangeAttack2(float flDot, float flDist)
 	return false;
 }
 
-
 bool CController::CheckMeleeAttack1(float flDot, float flDist)
 {
 	return false;
 }
-
 
 void CController::SetActivity(Activity NewActivity)
 {
@@ -822,11 +754,6 @@ void CController::SetActivity(Activity NewActivity)
 	}
 }
 
-
-
-//=========================================================
-// RunAI
-//=========================================================
 void CController::RunAI()
 {
 	CBaseMonster::RunAI();
@@ -856,7 +783,7 @@ void CController::RunAI()
 		m_pBall[i]->SetBrightness(m_iBallCurrent[i]);
 
 		GetAttachment(i + 2, vecStart, angleGun);
-		UTIL_SetOrigin(m_pBall[i]->pev, vecStart);
+		m_pBall[i]->SetOrigin(vecStart);
 
 		MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);
 		WRITE_BYTE(TE_ELIGHT);
@@ -874,14 +801,10 @@ void CController::RunAI()
 	}
 }
 
-
-void DrawRoute(entvars_t* pev, WayPoint_t* m_Route, int m_iRouteIndex, int r, int g, int b);
-
 void CController::Stop()
 {
 	m_IdealActivity = GetStoppedActivity();
 }
-
 
 #define DIST_TO_CHECK 200
 void CController::Move(float flInterval)
@@ -918,7 +841,7 @@ void CController::Move(float flInterval)
 	}
 #else
 // Debug, draw the route
-//	DrawRoute( pev, m_Route, m_iRouteIndex, 0, 0, 255 );
+//	DrawRoute(this, m_Route, m_iRouteIndex, 0, 0, 255);
 #endif
 
 	// if the monster is moving directly towards an entity (enemy for instance), we'll set this pointer
@@ -1064,8 +987,6 @@ void CController::Move(float flInterval)
 	}
 }
 
-
-
 bool CController::ShouldAdvanceRoute(float flWaypointDist)
 {
 	if (flWaypointDist <= 32)
@@ -1075,7 +996,6 @@ bool CController::ShouldAdvanceRoute(float flWaypointDist)
 
 	return false;
 }
-
 
 int CController::CheckLocalMove(const Vector& vecStart, const Vector& vecEnd, CBaseEntity* pTarget, float* pflDist)
 {
@@ -1101,7 +1021,6 @@ int CController::CheckLocalMove(const Vector& vecStart, const Vector& vecEnd, CB
 	return LOCALMOVE_VALID;
 }
 
-
 void CController::MoveExecute(CBaseEntity* pTargetEnt, const Vector& vecDir, float flInterval)
 {
 	if (m_IdealActivity != m_movementActivity)
@@ -1110,36 +1029,44 @@ void CController::MoveExecute(CBaseEntity* pTargetEnt, const Vector& vecDir, flo
 	// AILogger->debug("move {:.4f} : {}", vecDir, flInterval);
 
 	// float flTotal = m_flGroundSpeed * pev->framerate * flInterval;
-	// UTIL_MoveToOrigin ( ENT(pev), m_Route[ m_iRouteIndex ].vecLocation, flTotal, MOVE_STRAFE );
+	// UTIL_MoveToOrigin ( edict(), m_Route[ m_iRouteIndex ].vecLocation, flTotal, MOVE_STRAFE );
 
 	m_velocity = m_velocity * 0.8 + m_flGroundSpeed * vecDir * 0.2;
 
-	UTIL_MoveToOrigin(ENT(pev), pev->origin + m_velocity, m_velocity.Length() * flInterval, MOVE_STRAFE);
+	UTIL_MoveToOrigin(edict(), pev->origin + m_velocity, m_velocity.Length() * flInterval, MOVE_STRAFE);
 }
 
-
-
-
-//=========================================================
-// Controller bouncy ball attack
-//=========================================================
+/**
+ *	@brief Controller bouncy ball attack
+ */
 class CControllerHeadBall : public CBaseMonster
 {
+	DECLARE_CLASS(CControllerHeadBall, CBaseMonster);
+	DECLARE_DATAMAP();
+
+public:
 	void Spawn() override;
 	void Precache() override;
-	void EXPORT HuntThink();
-	void EXPORT DieThink();
-	void EXPORT BounceTouch(CBaseEntity* pOther);
+	void HuntThink();
+	void DieThink();
+	void BounceTouch(CBaseEntity* pOther);
 	void MovetoTarget(Vector vecTarget);
 	void Crawl();
+
+private:
 	int m_iTrail;
 	int m_flNextAttack;
 	Vector m_vecIdeal;
 	EHANDLE m_hOwner;
 };
+
+BEGIN_DATAMAP(CControllerHeadBall)
+DEFINE_FUNCTION(HuntThink),
+	DEFINE_FUNCTION(DieThink),
+	DEFINE_FUNCTION(BounceTouch),
+	END_DATAMAP();
+
 LINK_ENTITY_TO_CLASS(controller_head_ball, CControllerHeadBall);
-
-
 
 void CControllerHeadBall::Spawn()
 {
@@ -1157,7 +1084,7 @@ void CControllerHeadBall::Spawn()
 	pev->scale = 2.0;
 
 	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetThink(&CControllerHeadBall::HuntThink);
 	SetTouch(&CControllerHeadBall::BounceTouch);
@@ -1170,14 +1097,12 @@ void CControllerHeadBall::Spawn()
 	pev->dmgtime = gpGlobals->time;
 }
 
-
 void CControllerHeadBall::Precache()
 {
 	PrecacheModel("sprites/xspark1.spr");
 	PrecacheSound("debris/zap4.wav");
 	PrecacheSound("weapons/electro4.wav");
 }
-
 
 void CControllerHeadBall::HuntThink()
 {
@@ -1213,7 +1138,7 @@ void CControllerHeadBall::HuntThink()
 	{
 		TraceResult tr;
 
-		UTIL_TraceLine(pev->origin, m_hEnemy->Center(), dont_ignore_monsters, ENT(pev), &tr);
+		UTIL_TraceLine(pev->origin, m_hEnemy->Center(), dont_ignore_monsters, edict(), &tr);
 
 		CBaseEntity* pEntity = CBaseEntity::Instance(tr.pHit);
 		if (pEntity != nullptr && 0 != pEntity->pev->takedamage)
@@ -1253,12 +1178,10 @@ void CControllerHeadBall::HuntThink()
 	// Crawl( );
 }
 
-
 void CControllerHeadBall::DieThink()
 {
 	UTIL_Remove(this);
 }
-
 
 void CControllerHeadBall::MovetoTarget(Vector vecTarget)
 {
@@ -1277,8 +1200,6 @@ void CControllerHeadBall::MovetoTarget(Vector vecTarget)
 	m_vecIdeal = m_vecIdeal + (vecTarget - pev->origin).Normalize() * 100;
 	pev->velocity = m_vecIdeal;
 }
-
-
 
 void CControllerHeadBall::Crawl()
 {
@@ -1306,7 +1227,6 @@ void CControllerHeadBall::Crawl()
 	MESSAGE_END();
 }
 
-
 void CControllerHeadBall::BounceTouch(CBaseEntity* pOther)
 {
 	Vector vecDir = m_vecIdeal.Normalize();
@@ -1320,20 +1240,27 @@ void CControllerHeadBall::BounceTouch(CBaseEntity* pOther)
 	m_vecIdeal = vecDir * m_vecIdeal.Length();
 }
 
-
-
-
 class CControllerZapBall : public CBaseMonster
 {
+	DECLARE_CLASS(CControllerZapBall, CBaseMonster);
+	DECLARE_DATAMAP();
+
+public:
 	void Spawn() override;
 	void Precache() override;
-	void EXPORT AnimateThink();
-	void EXPORT ExplodeTouch(CBaseEntity* pOther);
+	void AnimateThink();
+	void ExplodeTouch(CBaseEntity* pOther);
 
+private:
 	EHANDLE m_hOwner;
 };
-LINK_ENTITY_TO_CLASS(controller_energy_ball, CControllerZapBall);
 
+BEGIN_DATAMAP(CControllerZapBall)
+DEFINE_FUNCTION(AnimateThink),
+	DEFINE_FUNCTION(ExplodeTouch),
+	END_DATAMAP();
+
+LINK_ENTITY_TO_CLASS(controller_energy_ball, CControllerZapBall);
 
 void CControllerZapBall::Spawn()
 {
@@ -1351,7 +1278,7 @@ void CControllerZapBall::Spawn()
 	pev->scale = 0.5;
 
 	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetThink(&CControllerZapBall::AnimateThink);
 	SetTouch(&CControllerZapBall::ExplodeTouch);
@@ -1361,14 +1288,12 @@ void CControllerZapBall::Spawn()
 	pev->nextthink = gpGlobals->time + 0.1;
 }
 
-
 void CControllerZapBall::Precache()
 {
 	PrecacheModel("sprites/xspark4.spr");
 	// PrecacheSound("debris/zap4.wav");
 	// PrecacheSound("weapons/electro4.wav");
 }
-
 
 void CControllerZapBall::AnimateThink()
 {
@@ -1383,14 +1308,13 @@ void CControllerZapBall::AnimateThink()
 	}
 }
 
-
 void CControllerZapBall::ExplodeTouch(CBaseEntity* pOther)
 {
 	if (0 != pOther->pev->takedamage)
 	{
 		TraceResult tr = UTIL_GetGlobalTrace();
 
-		auto owner = m_hOwner.Entity<CBaseEntity>();
+		CBaseEntity* owner = m_hOwner;
 		if (!owner)
 		{
 			owner = this;

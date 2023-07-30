@@ -33,8 +33,6 @@
 #define MAX_NODE_INITIAL_LINKS 128
 #define MAX_NODES 1024
 
-Vector VecBModelOrigin(entvars_t* pevBModel);
-
 CGraph WorldGraph;
 
 LINK_ENTITY_TO_CLASS(info_node, CNodeEnt);
@@ -162,7 +160,7 @@ entvars_t* CGraph::LinkEntForLink(CLink* pLink, CNode* pNode)
 
 				// trace from the node to the trigger, make sure it's one we can see from the node.
 				// !!!HACKHACK Use bodyqueue here cause there are no ents we really wish to ignore!
-				UTIL_TraceLine(pNode->m_vecOrigin, VecBModelOrigin(trigger->pev), ignore_monsters, g_pBodyQueueHead->edict(), &tr);
+				UTIL_TraceLine(pNode->m_vecOrigin, VecBModelOrigin(trigger), ignore_monsters, g_pBodyQueueHead->edict(), &tr);
 
 				if (tr.pHit == trigger->edict())
 				{ // good to go!
@@ -210,8 +208,9 @@ bool CGraph::HandleLinkEnt(int iNode, entvars_t* pevLinkEnt, int afCapMask, NODE
 	// func_door
 	if (entity->ClassnameIs("func_door") || entity->ClassnameIs("func_door_rotating"))
 	{ // ent is a door.
+		auto door = static_cast<CBaseToggle*>(entity);
 
-		if ((entity->pev->spawnflags & SF_DOOR_USE_ONLY) != 0)
+		if ((door->pev->spawnflags & SF_DOOR_USE_ONLY) != 0)
 		{ // door is use only.
 
 			if ((afCapMask & bits_CAP_OPEN_DOORS) != 0)
@@ -221,7 +220,7 @@ bool CGraph::HandleLinkEnt(int iNode, entvars_t* pevLinkEnt, int afCapMask, NODE
 			else
 			{
 				// monster should try for it if the door is open and looks as if it will stay that way
-				if (entity->GetToggleState() == TS_AT_TOP && (entity->pev->spawnflags & SF_DOOR_NO_AUTO_RETURN) != 0)
+				if (door->m_toggle_state == TS_AT_TOP && (door->pev->spawnflags & SF_DOOR_NO_AUTO_RETURN) != 0)
 				{
 					return true;
 				}
@@ -233,13 +232,13 @@ bool CGraph::HandleLinkEnt(int iNode, entvars_t* pevLinkEnt, int afCapMask, NODE
 		{ // door must be opened with a button or trigger field.
 
 			// monster should try for it if the door is open and looks as if it will stay that way
-			if (entity->GetToggleState() == TS_AT_TOP && (entity->pev->spawnflags & SF_DOOR_NO_AUTO_RETURN) != 0)
+			if (door->m_toggle_state == TS_AT_TOP && (door->pev->spawnflags & SF_DOOR_NO_AUTO_RETURN) != 0)
 			{
 				return true;
 			}
 			if ((afCapMask & bits_CAP_OPEN_DOORS) != 0)
 			{
-				if ((entity->pev->spawnflags & SF_DOOR_NOMONSTERS) == 0 || queryType == NODEGRAPH_STATIC)
+				if ((door->pev->spawnflags & SF_DOOR_NOMONSTERS) == 0 || queryType == NODEGRAPH_STATIC)
 					return true;
 			}
 
@@ -256,8 +255,6 @@ bool CGraph::HandleLinkEnt(int iNode, entvars_t* pevLinkEnt, int afCapMask, NODE
 		Logger->trace("Unhandled Ent in Path {}", entity->GetClassname());
 		return false;
 	}
-
-	return false;
 }
 
 #if 0
@@ -621,6 +618,7 @@ int CGraph::FindShortestPath(int* piPath, int iStart, int iDest, int iHull, int 
 
 		switch (iHull)
 		{
+		default:
 		case NODE_SMALL_HULL:
 			iHullMask = bits_LINK_SMALL_HULL;
 			break;
@@ -767,12 +765,12 @@ void inline CalcBounds(int& Lower, int& Upper, int Goal, int Best)
 	int Temp = 2 * Goal - Best;
 	if (Best > Goal)
 	{
-		Lower = V_max(0, Temp);
+		Lower = std::max(0, Temp);
 		Upper = Best;
 	}
 	else
 	{
-		Upper = V_min(255, Temp);
+		Upper = std::min(255, Temp);
 		Lower = Best;
 	}
 }
@@ -846,8 +844,6 @@ int CGraph::FindNearestNode(const Vector& vecOrigin, CBaseEntity* pEntity)
 
 int CGraph::FindNearestNode(const Vector& vecOrigin, int afNodeTypes)
 {
-	int i;
-
 	if (0 == m_fGraphPresent || 0 == m_fGraphPointersSet)
 	{ // protect us in the case that the node graph isn't available
 		Logger->error("Graph not ready!");
@@ -916,7 +912,7 @@ int CGraph::FindNearestNode(const Vector& vecOrigin, int afNodeTypes)
 
 	int j;
 
-	for (i = halfX; i >= m_minX; i--)
+	for (int i = halfX; i >= m_minX; i--)
 	{
 		for (j = m_RangeStart[0][i]; j <= m_RangeEnd[0][i]; j++)
 		{
@@ -938,7 +934,7 @@ int CGraph::FindNearestNode(const Vector& vecOrigin, int afNodeTypes)
 		}
 	}
 
-	for (i = V_max(m_minY, halfY + 1); i <= m_maxY; i++)
+	for (int i = std::max(m_minY, halfY + 1); i <= m_maxY; i++)
 	{
 		for (j = m_RangeStart[1][i]; j <= m_RangeEnd[1][i]; j++)
 		{
@@ -959,7 +955,7 @@ int CGraph::FindNearestNode(const Vector& vecOrigin, int afNodeTypes)
 		}
 	}
 
-	for (i = V_min(m_maxZ, halfZ); i >= m_minZ; i--)
+	for (int i = std::min(m_maxZ, halfZ); i >= m_minZ; i--)
 	{
 		for (j = m_RangeStart[2][i]; j <= m_RangeEnd[2][i]; j++)
 		{
@@ -980,7 +976,7 @@ int CGraph::FindNearestNode(const Vector& vecOrigin, int afNodeTypes)
 		}
 	}
 
-	for (i = V_max(m_minX, halfX + 1); i <= m_maxX; i++)
+	for (int i = std::max(m_minX, halfX + 1); i <= m_maxX; i++)
 	{
 		for (j = m_RangeStart[0][i]; j <= m_RangeEnd[0][i]; j++)
 		{
@@ -1002,7 +998,7 @@ int CGraph::FindNearestNode(const Vector& vecOrigin, int afNodeTypes)
 		}
 	}
 
-	for (i = V_min(m_maxY, halfY); i >= m_minY; i--)
+	for (int i = std::min(m_maxY, halfY); i >= m_minY; i--)
 	{
 		for (j = m_RangeStart[1][i]; j <= m_RangeEnd[1][i]; j++)
 		{
@@ -1023,7 +1019,7 @@ int CGraph::FindNearestNode(const Vector& vecOrigin, int afNodeTypes)
 		}
 	}
 
-	for (i = V_max(m_minZ, halfZ + 1); i <= m_maxZ; i++)
+	for (int i = std::max(m_minZ, halfZ + 1); i <= m_maxZ; i++)
 	{
 		for (j = m_RangeStart[2][i]; j <= m_RangeEnd[2][i]; j++)
 		{
@@ -1050,7 +1046,7 @@ int CGraph::FindNearestNode(const Vector& vecOrigin, int afNodeTypes)
 	int iNearestCheck = -1;
 	m_flShortest = 8192;// find nodes within this radius
 
-	for (i = 0; i < m_cNodes; i++)
+	for (int i = 0; i < m_cNodes; i++)
 	{
 		float flDist = (vecOrigin - m_pNodes[i].m_vecOriginPeek).Length();
 
@@ -1448,25 +1444,34 @@ int CGraph::RejectInlineLinks(CLink* pLinkPool, FSFile& file)
 //=========================================================
 class CTestHull : public CBaseMonster
 {
+	DECLARE_CLASS(CTestHull, CBaseMonster);
+	DECLARE_DATAMAP();
 
 public:
-	void Spawn(entvars_t* pevMasterNode);
+	void Spawn(CBaseEntity* masterNode);
 	int ObjectCaps() override { return CBaseMonster::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
-	void EXPORT CallBuildNodeGraph();
+	void CallBuildNodeGraph();
 	void BuildNodeGraph();
-	void EXPORT ShowBadNode();
-	void EXPORT DropDelay();
-	void EXPORT PathFind();
+	void ShowBadNode();
+	void DropDelay();
+	void PathFind();
 
 	Vector vecBadNodeOrigin;
 };
+
+BEGIN_DATAMAP(CTestHull)
+DEFINE_FUNCTION(CallBuildNodeGraph),
+	DEFINE_FUNCTION(ShowBadNode),
+	DEFINE_FUNCTION(DropDelay),
+	DEFINE_FUNCTION(PathFind),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(testhull, CTestHull);
 
 //=========================================================
 // CTestHull::Spawn
 //=========================================================
-void CTestHull::Spawn(entvars_t* pevMasterNode)
+void CTestHull::Spawn(CBaseEntity* masterNode)
 {
 	SetModel("models/player.mdl");
 	SetSize(VEC_HUMAN_HULL_MIN, VEC_HUMAN_HULL_MAX);
@@ -1502,7 +1507,7 @@ void CTestHull::DropDelay()
 {
 	//	UTIL_CenterPrintAll( "Node Graph out of Date. Rebuilding..." );
 
-	UTIL_SetOrigin(pev, WorldGraph.m_pNodes[0].m_vecOrigin);
+	SetOrigin(WorldGraph.m_pNodes[0].m_vecOrigin);
 
 	SetThink(&CTestHull::CallBuildNodeGraph);
 
@@ -1546,7 +1551,7 @@ void CNodeEnt::Spawn()
 	if (WorldGraph.m_cNodes == 0)
 	{ // this is the first node to spawn, spawn the test hull entity that builds and walks the node tree
 		CTestHull* pHull = g_EntityDictionary->Create<CTestHull>("testhull");
-		pHull->Spawn(pev);
+		pHull->Spawn(this);
 	}
 
 	if (WorldGraph.m_cNodes >= MAX_NODES)
@@ -1794,7 +1799,7 @@ void CTestHull::BuildNodeGraph()
 					break;
 				}
 
-				UTIL_SetOrigin(pev, pSrcNode->m_vecOrigin); // place the hull on the node
+				SetOrigin(pSrcNode->m_vecOrigin); // place the hull on the node
 
 				if (!FBitSet(pev->flags, FL_ONGROUND))
 				{
@@ -1828,7 +1833,7 @@ void CTestHull::BuildNodeGraph()
 						MoveMode = WALKMOVE_NORMAL;
 					}
 
-					flYaw = UTIL_VecToYaw(pDestNode->m_vecOrigin - pev->origin);
+					flYaw = VectorToYaw(pDestNode->m_vecOrigin - pev->origin);
 
 					flDist = (vecSpot - pev->origin).Length2D();
 
@@ -1843,7 +1848,7 @@ void CTestHull::BuildNodeGraph()
 						if ((step + stepSize) >= (flDist - 1))
 							stepSize = (flDist - step) - 1;
 
-						if (!WALK_MOVE(ENT(pev), flYaw, stepSize, MoveMode))
+						if (!WALK_MOVE(edict(), flYaw, stepSize, MoveMode))
 						{ // can't take the next step
 
 							fWalkFailed = true;
@@ -1888,7 +1893,7 @@ void CTestHull::BuildNodeGraph()
 				{
 					TraceResult tr;
 
-					UTIL_TraceHull(pSrcNode->m_vecOrigin + Vector(0, 0, 32), pDestNode->m_vecOriginPeek + Vector(0, 0, 32), ignore_monsters, large_hull, ENT(pev), &tr);
+					UTIL_TraceHull(pSrcNode->m_vecOrigin + Vector(0, 0, 32), pDestNode->m_vecOriginPeek + Vector(0, 0, 32), ignore_monsters, large_hull, edict(), &tr);
 					if (0 != tr.fStartSolid || tr.flFraction < 1.0)
 					{
 						pTempPool[pSrcNode->m_iFirstLink + j].m_afLinkInfo &= ~bits_LINK_FLY_HULL;
@@ -2575,7 +2580,7 @@ bool CGraph::CheckNODFile(const char* szMapName)
 	bool retValue = true;
 
 	int iCompare;
-	if (COMPARE_FILE_TIME(bspFileName.c_str(), graphFileName.c_str(), &iCompare))
+	if (FileSystem_CompareFileTime(bspFileName.c_str(), graphFileName.c_str(), &iCompare))
 	{
 		if (iCompare > 0)
 		{ // BSP file is newer.
@@ -2899,7 +2904,7 @@ void CGraph::BuildRegionTables()
 			int jCode;
 			switch (i)
 			{
-			case 0:
+			default:
 				jCode = (jCodeX << 16) + (jCodeY << 8) + jCodeZ;
 				break;
 			case 1:
@@ -2919,7 +2924,7 @@ void CGraph::BuildRegionTables()
 				int kCode;
 				switch (i)
 				{
-				case 0:
+				default:
 					kCode = (kCodeX << 16) + (kCodeY << 8) + kCodeZ;
 					break;
 				case 1:
@@ -3002,7 +3007,7 @@ void CGraph::ComputeStaticRoutingTables()
 				int iCapMask;
 				switch (iCap)
 				{
-				case 0:
+				default:
 					iCapMask = 0;
 					break;
 
@@ -3301,7 +3306,7 @@ void CGraph::TestRoutingTables()
 				int iCapMask;
 				switch (iCap)
 				{
-				case 0:
+				default:
 					iCapMask = 0;
 					break;
 
@@ -3429,6 +3434,9 @@ EnoughSaid:
 //=========================================================
 class CNodeViewer : public CBaseEntity
 {
+	DECLARE_CLASS(CNodeViewer, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 
@@ -3443,8 +3451,13 @@ public:
 
 	void FindNodeConnections(int iNode);
 	void AddNode(int iFrom, int iTo);
-	void EXPORT DrawThink();
+	void DrawThink();
 };
+
+BEGIN_DATAMAP(CNodeViewer)
+DEFINE_FUNCTION(DrawThink),
+	END_DATAMAP();
+
 LINK_ENTITY_TO_CLASS(node_viewer, CNodeViewer);
 LINK_ENTITY_TO_CLASS(node_viewer_human, CNodeViewer);
 LINK_ENTITY_TO_CLASS(node_viewer_fly, CNodeViewer);

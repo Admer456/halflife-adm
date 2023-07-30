@@ -14,15 +14,11 @@
  ****/
 #include "cbase.h"
 
-//=========================================================
-// DEAD SKELETON PROP
-//=========================================================
 class COFSkeleton : public CBaseMonster
 {
 public:
 	void OnCreate() override;
 	void Spawn() override;
-	int Classify() override { return CLASS_HUMAN_MILITARY; }
 
 	bool KeyValue(KeyValueData* pkvd) override;
 
@@ -39,6 +35,8 @@ void COFSkeleton::OnCreate()
 	// Corpses have less health
 	pev->health = 8;
 	pev->model = MAKE_STRING("models/skeleton.mdl");
+
+	SetClassification("human_military");
 }
 
 bool COFSkeleton::KeyValue(KeyValueData* pkvd)
@@ -54,9 +52,6 @@ bool COFSkeleton::KeyValue(KeyValueData* pkvd)
 
 LINK_ENTITY_TO_CLASS(monster_skeleton_dead, COFSkeleton);
 
-//=========================================================
-// ********** Skeleton SPAWN **********
-//=========================================================
 void COFSkeleton::Spawn()
 {
 	PrecacheModel(STRING(pev->model));

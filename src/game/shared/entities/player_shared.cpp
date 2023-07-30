@@ -14,8 +14,86 @@
  ****/
 
 #include "cbase.h"
+#include "AmmoTypeSystem.h"
 
 LINK_ENTITY_TO_CLASS(player, CBasePlayer);
+
+void CBasePlayer::OnCreate()
+{
+	BaseClass::OnCreate();
+
+	SetClassification("player");
+}
+
+int CBasePlayer::GetAmmoIndex(const char* psz)
+{
+	if (!psz)
+		return -1;
+
+	return g_AmmoTypes.IndexOf(psz);
+}
+
+int CBasePlayer::GetAmmoCount(const char* ammoName) const
+{
+	return GetAmmoCountByIndex(GetAmmoIndex(ammoName));
+}
+
+int CBasePlayer::GetAmmoCountByIndex(int ammoIndex) const
+{
+	if (ammoIndex < 0 || ammoIndex >= MAX_AMMO_TYPES)
+	{
+		return - 1;
+	}
+
+	if (g_Skill.GetValue("infinite_ammo") != 0)
+	{
+		return g_AmmoTypes.GetByIndex(ammoIndex)->MaximumCapacity;
+	}
+
+	return m_rgAmmo[ammoIndex];
+}
+
+void CBasePlayer::SetAmmoCount(const char* ammoName, int count)
+{
+	SetAmmoCountByIndex(GetAmmoIndex(ammoName), count);
+}
+
+void CBasePlayer::SetAmmoCountByIndex(int ammoIndex, int count)
+{
+	if (ammoIndex < 0 || ammoIndex >= MAX_AMMO_TYPES)
+	{
+		return;
+	}
+
+	if (g_Skill.GetValue("infinite_ammo") != 0)
+	{
+		count = g_AmmoTypes.GetByIndex(ammoIndex)->MaximumCapacity;
+	}
+
+	m_rgAmmo[ammoIndex] = std::max(0, count);
+}
+
+int CBasePlayer::AdjustAmmoByIndex(int ammoIndex, int count)
+{
+	if (ammoIndex < 0 || ammoIndex >= MAX_AMMO_TYPES)
+	{
+		return 0;
+	}
+
+	const auto ammoType = g_AmmoTypes.GetByIndex(ammoIndex);
+
+	if (g_Skill.GetValue("infinite_ammo") != 0)
+	{
+		m_rgAmmo[ammoIndex] = ammoType->MaximumCapacity;
+		return count;
+	}
+
+	// Don't allow ammo to overflow capacity.
+	const int old = m_rgAmmo[ammoIndex];
+	m_rgAmmo[ammoIndex] = std::clamp(old + count, 0, ammoType->MaximumCapacity);
+
+	return m_rgAmmo[ammoIndex] - old;
+}
 
 void CBasePlayer::SelectItem(const char* pstr)
 {

@@ -30,21 +30,13 @@ enum M249Anim
 
 class CM249 : public CBasePlayerWeapon
 {
+	DECLARE_CLASS(CM249, CBasePlayerWeapon);
+	DECLARE_DATAMAP();
+
 public:
-	using BaseClass = CBasePlayerWeapon;
-
-#ifndef CLIENT_DLL
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-#endif
-
 	void OnCreate() override;
 
 	void Precache() override;
-
-	void Spawn() override;
 
 	bool Deploy() override;
 
@@ -83,8 +75,8 @@ private:
 
 	int m_iShell;
 
-	// Used to alternate between ejecting shells and links. - Solokiller
-	bool m_bAlternatingEject;
+	// Used to alternate between ejecting shells and links.
+	bool m_bAlternatingEject = false;
 	int m_iLink;
 	int m_iSmoke;
 	int m_iFire;

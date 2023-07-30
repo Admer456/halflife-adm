@@ -59,7 +59,7 @@ public:
 		_image[1]->getTextSize(w2, t2);
 
 		wide = w1 + w2;
-		tall = V_max(t1, t2);
+		tall = std::max(t1, t2);
 		setSize(wide, tall);
 	}
 
@@ -101,7 +101,8 @@ private:
 class CLabelHeader : public Label
 {
 public:
-	CLabelHeader() : Label("")
+	CLabelHeader()
+		: Label("")
 	{
 		_dualImage = new CTextImage2();
 		_dualImage->setColor2(Color(255, 170, 0, 0));
@@ -234,6 +235,13 @@ private:
 		void internalMousePressed(MouseCode code) override;
 	};
 
+	enum class TeamType
+	{
+		No = 0,
+		Yes = 1,
+		Spectators = 2,
+		Blank = 3,
+	};
 
 private:
 	Label m_TitleLabel;
@@ -267,7 +275,7 @@ public:
 
 	int m_iRows;
 	int m_iSortedRows[NUM_ROWS];
-	int m_iIsATeam[NUM_ROWS];
+	TeamType m_iIsATeam[NUM_ROWS];
 	bool m_bHasBeenSorted[MAX_PLAYERS_HUD];
 	int m_iLastKilledBy;
 	int m_fLastKillTime;
@@ -279,7 +287,7 @@ public:
 	void Update();
 
 	void SortTeams();
-	void SortPlayers(int iTeam, char* team);
+	void SortPlayers(TeamType iTeam, char* team);
 	int RebuildTeams();
 
 	void FillGrid();

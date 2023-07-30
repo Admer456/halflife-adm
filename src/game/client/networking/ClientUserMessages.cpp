@@ -74,14 +74,15 @@ bool ClientUserMessages::DispatchUserMessage(const char* pszName, int iSize, voi
 
 	if (auto it = m_Handlers.find(pszName); it != m_Handlers.end())
 	{
-		it->second.Handler(pszName, iSize, pbuf);
-		return 1;
+		BufferReader reader{{reinterpret_cast<std::byte*>(pbuf), static_cast<std::size_t>(iSize)}};
+		it->second.Handler(pszName, reader);
+		return true;
 	}
 
-	// Don't spawn the console with error messages; this is a developer error.
+	// Don't spam the console with error messages; this is a developer error.
 	g_GameLogger->debug("No user message handler for message \"{}\"", pszName);
 
 	assert(!"No user message handler for message");
 
-	return 0;
+	return false;
 }

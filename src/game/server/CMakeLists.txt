@@ -16,6 +16,7 @@ target_include_directories(server PRIVATE
 	../../common
 	../shared
 	../shared/player_movement
+	../shared/saverestore
 	../shared/utils
 	../../public)
 	
@@ -26,6 +27,8 @@ target_sources(server PRIVATE
 	activity.h
 	activitymap.h
 	cdll_dll.h
+	CGlobalState.cpp
+	CGlobalState.h
 	client.cpp
 	client.h
 	ClientCommandRegistry.cpp
@@ -41,12 +44,9 @@ target_sources(server PRIVATE
 	nodes.h
 	plane.cpp
 	plane.h
-	saverestore.h
 	ServerConfigContext.h
 	ServerLibrary.cpp
 	ServerLibrary.h
-	skill.cpp
-	skill.h
 	UserMessages.cpp
 	UserMessages.h
 	util.cpp
@@ -54,6 +54,28 @@ target_sources(server PRIVATE
 	vector.h
 	voice_gamemgr.cpp
 	voice_gamemgr.h
+	
+	bot/BotSystem.cpp
+	bot/BotSystem.h
+	
+	config/CommandWhitelist.cpp
+	config/CommandWhitelist.h
+	config/ConditionEvaluator.cpp
+	config/ConditionEvaluator.h
+	config/GameConfigIncludeStack.h
+	config/GameConfig.cpp
+	config/GameConfig.h
+	config/sections/BaseFileNamesListSection.h
+	config/sections/CommandsSection.h
+	config/sections/EchoSection.h
+	config/sections/EntityClassificationsSection.h
+	config/sections/EntityTemplatesSection.h
+	config/sections/GameDataFilesSections.h
+	config/sections/GlobalReplacementFilesSections.h
+	config/sections/HudColorSection.h
+	config/sections/HudReplacementSection.h
+	config/sections/SpawnInventorySection.h
+	config/sections/SuitLightTypeSection.h
 	
 	entities/animating.cpp
 	entities/animation.cpp
@@ -68,8 +90,14 @@ target_sources(server PRIVATE
 	entities/CBaseDelay.h
 	entities/CBaseEntity.h
 	entities/CBaseToggle.h
+	entities/CBaseTrigger.cpp
+	entities/CBaseTrigger.h
+	entities/CClientFog.cpp
+	entities/CClientFog.h
 	entities/CCorpse.cpp
 	entities/CCorpse.h
+	entities/changelevel.cpp
+	entities/changelevel.h
 	entities/CMultiSource.h
 	entities/CPointEntity.h
 	entities/CTriggerChangeKeyValue.cpp
@@ -79,6 +107,8 @@ target_sources(server PRIVATE
 	entities/effects.h
 	entities/EnvModel.cpp
 	entities/EnvModel.h
+	entities/EntityTemplateSystem.cpp
+	entities/EntityTemplateSystem.h
 	entities/explode.cpp
 	entities/explode.h
 	entities/FilterDateHMS.cpp
@@ -92,6 +122,7 @@ target_sources(server PRIVATE
 	entities/func_tank.cpp
 	entities/h_cycler.cpp
 	entities/lights.cpp
+	entities/logic_entities.cpp
 	entities/maprules.cpp
 	entities/maprules.h
 	entities/monsterevent.h
@@ -102,19 +133,20 @@ target_sources(server PRIVATE
 	entities/plats.cpp
 	entities/player.cpp
 	entities/player.h
-	entities/player_sethudcolor.cpp
+	entities/player_entities.cpp
 	entities/spawnpoints.cpp
 	entities/spawnpoints.h
 	entities/sound.cpp
 	entities/soundent.cpp
 	entities/soundent.h
 	entities/subs.cpp
+	entities/teleport_entities.cpp
 	entities/trains.h
 	entities/triggers.cpp
 	entities/TriggerTimer.cpp
 	entities/TriggerTimer.h
-    entities/UtilMoveWith.cpp
-    entities/UtilMoveWith.h
+	entities/UtilMoveWith.cpp
+	entities/UtilMoveWith.h
 	entities/UtilPrint.cpp
 	entities/UtilPrint.h
 	entities/UtilServerCommand.cpp
@@ -125,38 +157,23 @@ target_sources(server PRIVATE
 	
 	entities/ctf/CHUDIconTrigger.cpp
 	entities/ctf/CHUDIconTrigger.h
-	entities/ctf/CItemAcceleratorCTF.cpp
-	entities/ctf/CItemAcceleratorCTF.h
-	entities/ctf/CItemBackpackCTF.cpp
-	entities/ctf/CItemBackpackCTF.h
-	entities/ctf/CItemCTF.cpp
-	entities/ctf/CItemCTF.h
-	entities/ctf/CItemLongJumpCTF.cpp
-	entities/ctf/CItemLongJumpCTF.h
-	entities/ctf/CItemPortableHEVCTF.cpp
-	entities/ctf/CItemPortableHEVCTF.h
-	entities/ctf/CItemRegenerationCTF.cpp
-	entities/ctf/CItemRegenerationCTF.h
-	entities/ctf/CItemSpawnCTF.cpp
-	entities/ctf/CItemSpawnCTF.h
+	entities/ctf/ctf_goals.cpp
+	entities/ctf/ctf_goals.h
+	entities/ctf/ctf_items.cpp
+	entities/ctf/ctf_items.h
 	entities/ctf/CTFDefs.h
 	entities/ctf/CTFDetect.cpp
 	entities/ctf/CTFDetect.h
-	entities/ctf/CTFGoal.cpp
-	entities/ctf/CTFGoal.h
-	entities/ctf/CTFGoalBase.cpp
-	entities/ctf/CTFGoalBase.h
-	entities/ctf/CTFGoalFlag.cpp
-	entities/ctf/CTFGoalFlag.h
 	entities/ctf/CTFSpawn.cpp
 	entities/ctf/CTFSpawn.h
 	
 	entities/items/airtank.cpp
+	entities/items/CAmmoAll.cpp
+	entities/items/CAmmoGeneric.cpp
 	entities/items/CWeaponBox.cpp
 	entities/items/CWeaponBox.h
 	entities/items/ggrenade.cpp
-	entities/items/healthkit.cpp
-	entities/items/h_battery.cpp
+	entities/items/chargers.cpp
 	entities/items/item_generic.cpp
 	entities/items/items.cpp
 	entities/items/items.h
@@ -169,6 +186,10 @@ target_sources(server PRIVATE
 	entities/items/weapons/CGrappleTip.h
 	entities/items/weapons/CLaserSpot.cpp
 	entities/items/weapons/CLaserSpot.h
+	entities/items/weapons/CRpgRocket.cpp
+	entities/items/weapons/CRpgRocket.h
+	entities/items/weapons/CSatchelCharge.cpp
+	entities/items/weapons/CSatchelCharge.h
 	entities/items/weapons/CShockBeam.cpp
 	entities/items/weapons/CShockBeam.h
 	entities/items/weapons/CSpore.cpp
@@ -278,22 +299,32 @@ target_sources(server PRIVATE
 	entities/NPCs/zombies/zombie_barney.cpp
 	entities/NPCs/zombies/zombie_soldier.cpp
 	
-	gamerules/coopplay_gamerules.cpp
-	gamerules/coopplay_gamerules.h
-	gamerules/ctfplay_gamerules.cpp
-	gamerules/ctfplay_gamerules.h
-	gamerules/gamerules.cpp
-	gamerules/gamerules.h
-	gamerules/multiplay_gamerules.cpp
-	gamerules/singleplay_gamerules.cpp
-	gamerules/teamplay_gamerules.cpp
-	gamerules/teamplay_gamerules.h
+	gamerules/CGameRules.cpp
+	gamerules/CGameRules.h
+	gamerules/CHalfLifeCoopplay.cpp
+	gamerules/CHalfLifeCoopplay.h
+	gamerules/CHalfLifeCTFplay.cpp
+	gamerules/CHalfLifeCTFplay.h
+	gamerules/CHalfLifeMultiplay.cpp
+	gamerules/CHalfLifeMultiplay.h
+	gamerules/CHalfLifeRules.cpp
+	gamerules/CHalfLifeRules.h
+	gamerules/CHalfLifeTeamplay.cpp
+	gamerules/CHalfLifeTeamplay.h
+	gamerules/MapCycleSystem.cpp
+	gamerules/MapCycleSystem.h
+	gamerules/PersistentInventorySystem.cpp
+	gamerules/PersistentInventorySystem.h
+	gamerules/PlayerInventory.cpp
+	gamerules/PlayerInventory.h
+	gamerules/SpawnInventorySystem.h
 	
 	sound/SentencesSystem.cpp
 	sound/SentencesSystem.h
 	sound/ServerSoundSystem.cpp
 	sound/ServerSoundSystem.h
 	
+	../../common/ClassData.h
 	../../common/com_model.h
 	../../common/common_types.h
 	../../common/const.h

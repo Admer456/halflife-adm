@@ -15,9 +15,6 @@
 
 #pragma once
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define ZOMBIE_AE_ATTACK_RIGHT 0x01
 #define ZOMBIE_AE_ATTACK_LEFT 0x02
 #define ZOMBIE_AE_ATTACK_BOTH 0x03
@@ -31,9 +28,10 @@ public:
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
-	int Classify() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	int IgnoreConditions() override;
+
+	bool HasAlienGibs() override { return true; }
 
 	float m_flNextFlinch = 0;
 

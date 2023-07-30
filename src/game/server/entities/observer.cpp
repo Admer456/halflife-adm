@@ -19,7 +19,6 @@
 #include "pm_shared.h"
 #include "UserMessages.h"
 
-// Find the next client in the game for this player to spectate
 void CBasePlayer::Observer_FindNextPlayer(bool bReverse)
 {
 	// MOD AUTHORS: Modify the logic of this function if you want to restrict the observer to watching
@@ -44,13 +43,13 @@ void CBasePlayer::Observer_FindNextPlayer(bool bReverse)
 		if (iCurrent < 1)
 			iCurrent = gpGlobals->maxClients;
 
-		CBaseEntity* pEnt = UTIL_PlayerByIndex(iCurrent);
+		CBasePlayer* pEnt = UTIL_PlayerByIndex(iCurrent);
 		if (!pEnt)
 			continue;
 		if (pEnt == this)
 			continue;
 		// Don't spec observers or players who haven't picked a class yet
-		if (((CBasePlayer*)pEnt)->IsObserver() || (pEnt->pev->effects & EF_NODRAW) != 0)
+		if (pEnt->IsObserver() || (pEnt->pev->effects & EF_NODRAW) != 0)
 			continue;
 
 		// MOD AUTHORS: Add checks on target here.
@@ -64,7 +63,7 @@ void CBasePlayer::Observer_FindNextPlayer(bool bReverse)
 	if (m_hObserverTarget)
 	{
 		// Move to the target
-		UTIL_SetOrigin(pev, m_hObserverTarget->pev->origin);
+		SetOrigin(m_hObserverTarget->pev->origin);
 
 		// Logger->debug("Now Tracking {}", STRING(m_hObserverTarget->pev->netname));
 
@@ -74,7 +73,6 @@ void CBasePlayer::Observer_FindNextPlayer(bool bReverse)
 	}
 }
 
-// Handle buttons in observer mode
 void CBasePlayer::Observer_HandleButtons()
 {
 	// Slow down mouse clicks
@@ -183,14 +181,14 @@ void CBasePlayer::Observer_CheckProperties()
 			m_iFOV = target->m_iFOV;
 			m_iClientFOV = m_iFOV;
 			// write fov before wepon data, so zoomed crosshair is set correctly
-			MESSAGE_BEGIN(MSG_ONE, gmsgSetFOV, nullptr, pev);
+			MESSAGE_BEGIN(MSG_ONE, gmsgSetFOV, nullptr, this);
 			WRITE_BYTE(m_iFOV);
 			MESSAGE_END();
 
 
 			m_iObserverWeapon = weapon;
 			// send weapon update
-			MESSAGE_BEGIN(MSG_ONE, gmsgCurWeapon, nullptr, pev);
+			MESSAGE_BEGIN(MSG_ONE, gmsgCurWeapon, nullptr, this);
 			WRITE_BYTE(1); // 1 = current weapon, not on target
 			WRITE_BYTE(m_iObserverWeapon);
 			WRITE_BYTE(0); // clip
@@ -205,7 +203,7 @@ void CBasePlayer::Observer_CheckProperties()
 		{
 			m_iObserverWeapon = 0;
 
-			MESSAGE_BEGIN(MSG_ONE, gmsgCurWeapon, nullptr, pev);
+			MESSAGE_BEGIN(MSG_ONE, gmsgCurWeapon, nullptr, this);
 			WRITE_BYTE(1); // 1 = current weapon
 			WRITE_BYTE(m_iObserverWeapon);
 			WRITE_BYTE(0); // clip
@@ -214,7 +212,6 @@ void CBasePlayer::Observer_CheckProperties()
 	}
 }
 
-// Attempt to change the observer mode
 void CBasePlayer::Observer_SetMode(int iMode)
 {
 
@@ -228,11 +225,11 @@ void CBasePlayer::Observer_SetMode(int iMode)
 	// verify observer target again
 	if (m_hObserverTarget != nullptr)
 	{
-		CBaseEntity* pEnt = m_hObserverTarget;
+		CBasePlayer* pEnt = ToBasePlayer(m_hObserverTarget);
 
-		if ((pEnt == this) || (pEnt == nullptr))
+		if (pEnt == this || pEnt == nullptr)
 			m_hObserverTarget = nullptr;
-		else if (((CBasePlayer*)pEnt)->IsObserver() || (pEnt->pev->effects & EF_NODRAW) != 0)
+		else if (pEnt->IsObserver() || (pEnt->pev->effects & EF_NODRAW) != 0)
 			m_hObserverTarget = nullptr;
 	}
 
@@ -247,7 +244,7 @@ void CBasePlayer::Observer_SetMode(int iMode)
 		// if we didn't find a valid target switch to roaming
 		if (m_hObserverTarget == nullptr)
 		{
-			ClientPrint(pev, HUD_PRINTCENTER, "#Spec_NoTarget");
+			ClientPrint(this, HUD_PRINTCENTER, "#Spec_NoTarget");
 			pev->iuser1 = OBS_ROAMING;
 		}
 	}
@@ -266,7 +263,7 @@ void CBasePlayer::Observer_SetMode(int iMode)
 
 	char modemsg[16];
 	sprintf(modemsg, "#Spec_Mode%i", pev->iuser1);
-	ClientPrint(pev, HUD_PRINTCENTER, modemsg);
+	ClientPrint(this, HUD_PRINTCENTER, modemsg);
 
 	m_iObserverLastMode = iMode;
 }

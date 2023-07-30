@@ -15,7 +15,9 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <concepts>
 #include <ranges>
 #include <string_view>
@@ -23,6 +25,7 @@
 
 #include "CBaseEntity.h"
 #include "weapons.h"
+#include "items/CBaseItem.h"
 
 /**
  *	@file
@@ -130,16 +133,16 @@ protected:
 		// allocate entity if necessary
 		if (pev == nullptr)
 		{
-			pev = VARS(CREATE_ENTITY());
+			pev = &CREATE_ENTITY()->v;
 		}
 
-		// Replicate the ALLOC_PRIVATE engine function's behavior.
+		// Replicate the pfnPvAllocEntPrivateData engine function's behavior.
 		pev->pContainingEntity->pvPrivateData = entity;
 
 		entity->pev = pev;
 		entity->pev->classname = ALLOC_STRING_VIEW(className);
 
-		entity->OnCreate();
+		entity->Construct();
 
 		return entity;
 	}
@@ -178,8 +181,8 @@ public:
 	}
 
 	/**
-	*	@brief Destroys the CBaseEntity object. Does not free the associated edict.
-	*/
+	 *	@brief Destroys the CBaseEntity object. Does not free the associated edict.
+	 */
 	void Destroy(CBaseEntity* entity)
 	{
 		if (!entity)
@@ -187,7 +190,7 @@ public:
 			return;
 		}
 
-		entity->OnDestroy();
+		entity->Destruct();
 		delete entity;
 	}
 
@@ -236,8 +239,9 @@ struct EntityDictionaryLocator final
 };
 
 // Used at runtime to look up entities of specific types.
-inline EntityDictionary<CBaseEntity>* g_EntityDictionary = EntityDictionaryLocator<CBaseEntity>::Get();
-inline EntityDictionary<CBasePlayerWeapon>* g_WeaponDictionary = EntityDictionaryLocator<CBasePlayerWeapon>::Get();
+inline EntityDictionary<CBaseEntity>* const g_EntityDictionary = EntityDictionaryLocator<CBaseEntity>::Get();
+inline EntityDictionary<CBaseItem>* const g_ItemDictionary = EntityDictionaryLocator<CBaseItem>::Get();
+inline EntityDictionary<CBasePlayerWeapon>* const g_WeaponDictionary = EntityDictionaryLocator<CBasePlayerWeapon>::Get();
 
 namespace detail
 {
@@ -255,11 +259,22 @@ void RegisterEntityDescriptor(EntityDescriptor<TEntity>* descriptor)
 {
 	assert(descriptor);
 
+#ifndef NDEBUG
+	const auto name = descriptor->GetClassName();
+
+	if (std::find_if(name.begin(), name.end(), [](auto c)
+			{ return std::isupper(c) != 0; }) != name.end())
+	{
+		assert(!"Entity classnames should not contain uppercase letters");
+	}
+#endif
+
 	// This is where each dictionary is initially constructed and built to add all entity classes.
 	// Ideally some form of reflection would be used to build these dictionaries after the initial dictionary has been created,
 	// but since we don't have reflection available and existing libraries require loads of refactoring this will have to do for now.
 	detail::RegisterEntityDescriptorToDictionaries(descriptor,
 		EntityDictionaryLocator<CBaseEntity>::Get(),
+		EntityDictionaryLocator<CBaseItem>::Get(),
 		EntityDictionaryLocator<CBasePlayerWeapon>::Get());
 }
 

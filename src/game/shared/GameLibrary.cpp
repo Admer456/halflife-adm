@@ -18,16 +18,18 @@
 #include "AmmoTypeSystem.h"
 #include "GameLibrary.h"
 #include "ProjectInfoSystem.h"
+#include "skill.h"
 #include "WeaponDataSystem.h"
 
-#include "config/ConditionEvaluator.h"
-#include "config/GameConfig.h"
+#include "entities/EntityClassificationSystem.h"
 
 #include "networking/NetworkDataSystem.h"
 
 #include "scripting/AS/ASManager.h"
 
 #include "sound/MaterialSystem.h"
+
+#include "ui/hud/HudReplacementSystem.h"
 
 #include "utils/ConCommandSystem.h"
 #include "utils/GameSystem.h"
@@ -90,14 +92,14 @@ void GameLibrary::AddGameSystems()
 	g_GameSystems.Add(&g_Logging);
 	g_GameSystems.Add(&g_NetworkData);
 	g_GameSystems.Add(&g_ASManager);
-	// Depends on Angelscript
-	g_GameSystems.Add(&g_ConditionEvaluator);
-	g_GameSystems.Add(&g_GameConfigSystem);
 	g_GameSystems.Add(&g_ReplacementMaps);
 	g_GameSystems.Add(&g_MaterialSystem);
 	g_GameSystems.Add(&g_ProjectInfo);
 	g_GameSystems.Add(&g_WeaponData);
 	g_GameSystems.Add(&g_AmmoTypes);
+	g_GameSystems.Add(&g_Skill);
+	g_GameSystems.Add(&g_HudReplacements);
+	g_GameSystems.Add(&g_EntityClassifications);
 }
 
 void GameLibrary::SetEntLogLevels(spdlog::level::level_enum level)

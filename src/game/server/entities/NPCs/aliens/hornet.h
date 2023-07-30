@@ -12,15 +12,9 @@
  *   without written permission from Valve LLC.
  *
  ****/
-//=========================================================
-// Hornets
-//=========================================================
 
 #pragma once
 
-//=========================================================
-// Hornet Defines
-//=========================================================
 #define HORNET_TYPE_RED 0
 #define HORNET_TYPE_ORANGE 1
 #define HORNET_RED_SPEED (float)600
@@ -29,27 +23,45 @@
 
 extern int iHornetPuff;
 
-//=========================================================
-// Hornet - this is the projectile that the Alien Grunt fires.
-//=========================================================
+/**
+ *	@brief this is the projectile that the Alien Grunt fires.
+ */
 class CHornet : public CBaseMonster
 {
+	DECLARE_CLASS(CHornet, CBaseMonster);
+	DECLARE_DATAMAP();
+
 public:
+	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
-	int Classify() override;
-	int IRelationship(CBaseEntity* pTarget) override;
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+
+	bool IsBioWeapon() const override { return true; }
+
+	/**
+	 *	@brief hornets will never get mad at each other, no matter who the owner is.
+	 */
+	Relationship IRelationship(CBaseEntity* pTarget) override;
 
 	void IgniteTrail();
-	void EXPORT StartTrack();
-	void EXPORT StartDart();
-	void EXPORT TrackTarget();
-	void EXPORT TrackTouch(CBaseEntity* pOther);
-	void EXPORT DartTouch(CBaseEntity* pOther);
-	void EXPORT DieTouch(CBaseEntity* pOther);
+
+	/**
+	 *	@brief starts a hornet out tracking its target
+	 */
+	void StartTrack();
+
+	/**
+	 *	@brief starts a hornet out just flying straight.
+	 */
+	void StartDart();
+
+	/**
+	 *	@brief Hornet is flying, gently tracking target
+	 */
+	void TrackTarget();
+	void TrackTouch(CBaseEntity* pOther);
+	void DartTouch(CBaseEntity* pOther);
+	void DieTouch(CBaseEntity* pOther);
 
 	bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType) override;
 

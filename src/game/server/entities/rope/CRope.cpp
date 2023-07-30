@@ -21,6 +21,19 @@
 
 #include "CRope.h"
 
+/**
+*	@brief The framerate that the rope aims to run at.
+*	Clamping simulation to this also fixes ropes being invisible in multiplayer.
+*/
+constexpr float RopeFrameRate = 60.f;
+
+/**
+*	@brief Account for varying frame rates; adjust force to apply what was previously applied at 30 FPS.
+*	HL1 games were developed on machines running around 30 FPS so this is about right.
+*	This is independent of the framerate to allow for smoother ropes.
+*/
+constexpr float RopeForceMultiplier = 30.f;
+
 static const char* const g_pszCreakSounds[] =
 	{
 		"items/rope1.wav",
@@ -28,31 +41,30 @@ static const char* const g_pszCreakSounds[] =
 		"items/rope3.wav"};
 
 // TODO: make sure boolean types are correctly used here
-TYPEDESCRIPTION CRope::m_SaveData[] =
-	{
-		DEFINE_FIELD(CRope, m_uiSegments, FIELD_INTEGER),
-		DEFINE_FIELD(CRope, m_bToggle, FIELD_BOOLEAN),
-		DEFINE_FIELD(CRope, m_bInitialDeltaTime, FIELD_BOOLEAN),
-		DEFINE_FIELD(CRope, m_flLastTime, FIELD_TIME),
-		DEFINE_FIELD(CRope, m_vecLastEndPos, FIELD_POSITION_VECTOR),
-		DEFINE_FIELD(CRope, m_vecGravity, FIELD_VECTOR),
-		DEFINE_FIELD(CRope, m_flHookConstant, FIELD_FLOAT),
-		DEFINE_FIELD(CRope, m_flSpringDampning, FIELD_FLOAT),
-		DEFINE_FIELD(CRope, m_uiNumSamples, FIELD_INTEGER),
-		DEFINE_FIELD(CRope, m_SpringCnt, FIELD_INTEGER),
-		DEFINE_FIELD(CRope, m_bObjectAttached, FIELD_BOOLEAN),
-		DEFINE_FIELD(CRope, m_uiAttachedObjectsSegment, FIELD_INTEGER),
-		DEFINE_FIELD(CRope, m_flDetachTime, FIELD_TIME),
-		DEFINE_ARRAY(CRope, seg, FIELD_CLASSPTR, CRope::MAX_SEGMENTS),
-		DEFINE_ARRAY(CRope, altseg, FIELD_CLASSPTR, CRope::MAX_SEGMENTS),
-		DEFINE_ARRAY(CRope, m_CurrentSys, FIELD_CLASSPTR, CRope::MAX_SAMPLES),
-		DEFINE_ARRAY(CRope, m_TargetSys, FIELD_CLASSPTR, CRope::MAX_SAMPLES),
-		DEFINE_FIELD(CRope, m_bDisallowPlayerAttachment, FIELD_BOOLEAN),
-		DEFINE_FIELD(CRope, m_iszBodyModel, FIELD_STRING),
-		DEFINE_FIELD(CRope, m_iszEndingModel, FIELD_STRING),
-		DEFINE_FIELD(CRope, m_flAttachedObjectsOffset, FIELD_FLOAT),
-		DEFINE_FIELD(CRope, m_bMakeSound, FIELD_BOOLEAN),
-};
+BEGIN_DATAMAP(CRope)
+DEFINE_FIELD(m_uiSegments, FIELD_INTEGER),
+	DEFINE_FIELD(m_bToggle, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_bInitialDeltaTime, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flLastTime, FIELD_TIME),
+	DEFINE_FIELD(m_vecLastEndPos, FIELD_POSITION_VECTOR),
+	DEFINE_FIELD(m_vecGravity, FIELD_VECTOR),
+	DEFINE_FIELD(m_flHookConstant, FIELD_FLOAT),
+	DEFINE_FIELD(m_flSpringDampning, FIELD_FLOAT),
+	DEFINE_FIELD(m_uiNumSamples, FIELD_INTEGER),
+	DEFINE_FIELD(m_SpringCnt, FIELD_INTEGER),
+	DEFINE_FIELD(m_bObjectAttached, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_uiAttachedObjectsSegment, FIELD_INTEGER),
+	DEFINE_FIELD(m_flDetachTime, FIELD_TIME),
+	DEFINE_ARRAY(seg, FIELD_CLASSPTR, CRope::MAX_SEGMENTS),
+	DEFINE_ARRAY(altseg, FIELD_CLASSPTR, CRope::MAX_SEGMENTS),
+	DEFINE_ARRAY(m_CurrentSys, FIELD_CLASSPTR, CRope::MAX_SAMPLES),
+	DEFINE_ARRAY(m_TargetSys, FIELD_CLASSPTR, CRope::MAX_SAMPLES),
+	DEFINE_FIELD(m_bDisallowPlayerAttachment, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_iszBodyModel, FIELD_STRING),
+	DEFINE_FIELD(m_iszEndingModel, FIELD_STRING),
+	DEFINE_FIELD(m_flAttachedObjectsOffset, FIELD_FLOAT),
+	DEFINE_FIELD(m_bMakeSound, FIELD_BOOLEAN),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(env_rope, CRope);
 
@@ -141,11 +153,11 @@ void CRope::Spawn()
 	{
 		CRopeSegment* pSegment = seg[0] = CRopeSegment::CreateSegment(m_CurrentSys[0], GetBodyModel());
 
-		UTIL_SetOrigin(pSegment->pev, pev->origin);
+		pSegment->SetOrigin(pev->origin);
 
 		pSegment = altseg[0] = CRopeSegment::CreateSegment(m_CurrentSys[0], GetBodyModel());
 
-		UTIL_SetOrigin(pSegment->pev, pev->origin);
+		pSegment->SetOrigin(pev->origin);
 	}
 
 	Vector origin;
@@ -174,8 +186,8 @@ void CRope::Spawn()
 
 			origin = flLength * vecGravity + pCurrent->pev->origin;
 
-			UTIL_SetOrigin(seg[uiSeg]->pev, origin);
-			UTIL_SetOrigin(altseg[uiSeg]->pev, origin);
+			seg[uiSeg]->SetOrigin(origin);
+			altseg[uiSeg]->SetOrigin(origin);
 		}
 	}
 
@@ -194,8 +206,8 @@ void CRope::Spawn()
 
 	origin = flLength * vecGravity + pCurrent->pev->origin;
 
-	UTIL_SetOrigin(seg[m_uiSegments - 1]->pev, origin);
-	UTIL_SetOrigin(altseg[m_uiSegments - 1]->pev, origin);
+	seg[m_uiSegments - 1]->SetOrigin(origin);
+	altseg[m_uiSegments - 1]->SetOrigin(origin);
 
 	memset(seg + m_uiSegments, 0, sizeof(CRopeSegment*) * (MAX_SEGMENTS - m_uiSegments));
 	memset(altseg + m_uiSegments, 0, sizeof(CRopeSegment*) * (MAX_SEGMENTS - m_uiSegments));
@@ -211,6 +223,47 @@ void CRope::Spawn()
 	InitializeRopeSim();
 
 	pev->nextthink = gpGlobals->time + 0.01;
+}
+
+void CRope::UpdateOnRemove()
+{
+	for (auto& segment : seg)
+	{
+		if (segment)
+		{
+			UTIL_Remove(segment);
+			segment = nullptr;
+		}
+	}
+
+	for (auto& segment : altseg)
+	{
+		if (segment)
+		{
+			UTIL_Remove(segment);
+			segment = nullptr;
+		}
+	}
+
+	for (auto& system : m_CurrentSys)
+	{
+		if (system)
+		{
+			UTIL_Remove(system);
+			system = nullptr;
+		}
+	}
+
+	for (auto& system : m_TargetSys)
+	{
+		if (system)
+		{
+			UTIL_Remove(system);
+			system = nullptr;
+		}
+	}
+
+	BaseClass::UpdateOnRemove();
 }
 
 void CRope::Think()
@@ -245,7 +298,7 @@ void CRope::Think()
 		Creak();
 	}
 
-	pev->nextthink = gpGlobals->time + 0.001;
+	pev->nextthink = gpGlobals->time + (1 / RopeFrameRate);
 }
 
 void CRope::Touch(CBaseEntity* pOther)
@@ -253,22 +306,9 @@ void CRope::Touch(CBaseEntity* pOther)
 	// Nothing.
 }
 
-bool CRope::Save(CSave& save)
+void CRope::PostRestore()
 {
-	if (!BaseClass::Save(save))
-		return false;
-
-	return save.WriteFields("CRope", this, m_SaveData, std::size(m_SaveData));
-}
-
-bool CRope::Restore(CRestore& restore)
-{
-	if (!BaseClass::Restore(restore))
-	{
-		return false;
-	}
-
-	auto status = restore.ReadFields("CRope", this, m_SaveData, std::size(m_SaveData));
+	BaseClass::PostRestore();
 
 	for (size_t uiIndex = 0; uiIndex < MAX_TEMP_SAMPLES; ++uiIndex)
 	{
@@ -277,8 +317,6 @@ bool CRope::Restore(CRestore& restore)
 
 	m_bSpringsInitialized = false;
 	m_bInitialDeltaTime = true;
-
-	return status;
 }
 
 void CRope::InitializeRopeSim()
@@ -607,7 +645,7 @@ void CRope::RK4Integrate(const float flDeltaTime, CRopeSample** ppSampleSource, 
 	}
 }
 
-// TODO move to common header - Solokiller
+// TODO move to common header
 static const Vector DOWN(0, 0, -1);
 
 static const Vector RIGHT(0, 1, 0);
@@ -682,7 +720,7 @@ void CRope::TraceModels(CRopeSegment** ppPrimarySegs, CRopeSegment** ppHiddenSeg
 
 				TruncateEpsilon(vecOrigin);
 
-				UTIL_SetOrigin(ppPrimarySegs[uiSeg]->pev, vecOrigin);
+				ppPrimarySegs[uiSeg]->SetOrigin(vecOrigin);
 
 				Vector vecNormal = tr.vecPlaneNormal.Normalize() * 20000.0;
 
@@ -700,7 +738,7 @@ void CRope::TraceModels(CRopeSegment** ppPrimarySegs, CRopeSegment** ppHiddenSeg
 
 				TruncateEpsilon(vecOrigin);
 
-				UTIL_SetOrigin(ppPrimarySegs[uiSeg]->pev, vecOrigin);
+				ppPrimarySegs[uiSeg]->SetOrigin(vecOrigin);
 			}
 		}
 	}
@@ -719,7 +757,7 @@ void CRope::TraceModels(CRopeSegment** ppPrimarySegs, CRopeSegment** ppHiddenSeg
 
 				TruncateEpsilon(vecOrigin);
 
-				UTIL_SetOrigin(ppPrimarySegs[uiSeg]->pev, vecOrigin);
+				ppPrimarySegs[uiSeg]->SetOrigin(vecOrigin);
 			}
 			else
 			{
@@ -730,7 +768,7 @@ void CRope::TraceModels(CRopeSegment** ppPrimarySegs, CRopeSegment** ppHiddenSeg
 
 				TruncateEpsilon(vecOrigin);
 
-				UTIL_SetOrigin(ppPrimarySegs[uiSeg]->pev, vecOrigin);
+				ppPrimarySegs[uiSeg]->SetOrigin(vecOrigin);
 
 				ppPrimarySegs[uiSeg]->GetSample()->GetData().mApplyExternalForce = true;
 
@@ -788,9 +826,7 @@ void CRope::SetRopeSegments(const size_t uiNumSegments,
 		CRopeSegment** ppVisible = ppPrimarySegs;
 		CRopeSegment** ppActualHidden = ppHiddenSegs;
 
-		// In multiplayer, the constant toggling of visible segments makes them completely invisible.
-		// So always make the seg segments visible. - Solokiller
-		if (m_bToggle && g_pGameRules->IsMultiplayer())
+		if (m_bToggle)
 		{
 			std::swap(ppVisible, ppActualHidden);
 		}
@@ -818,7 +854,7 @@ void CRope::SetRopeSegments(const size_t uiNumSegments,
 			// vecOrigin.x += 10.0;
 			// vecOrigin.y += 10.0;
 
-			UTIL_SetOrigin(pHidden->pev, vecOrigin);
+			pHidden->SetOrigin(vecOrigin);
 		}
 	}
 }
@@ -949,7 +985,7 @@ void CRope::ApplyForceFromPlayer(const Vector& vecForce)
 	if (!m_bObjectAttached)
 		return;
 
-	float flForce = 20000.0;
+	float flForce = 20000.0 * RopeForceMultiplier * gpGlobals->frametime;
 
 	if (m_uiSegments < 26)
 		flForce *= (m_uiSegments / 26.0);

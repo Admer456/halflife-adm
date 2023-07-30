@@ -12,20 +12,6 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// male assassin
-//=========================================================
-
-//=========================================================
-// Hit groups!
-//=========================================================
-/*
-
-  1 - Head
-  2 - Stomach
-  3 - Gun
-
-*/
 
 #include "cbase.h"
 #include "squadmonster.h"
@@ -74,6 +60,9 @@ enum MAssassinWeaponFlag
 
 class CMOFAssassin : public CHGrunt
 {
+	DECLARE_CLASS(CMOFAssassin, CHGrunt);
+	DECLARE_DATAMAP();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
@@ -86,17 +75,12 @@ public:
 	void Shoot(bool firstShotInBurst) override;
 	void GibMonster() override;
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
 	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
 
 	// Male Assassin never speaks
 	bool FOkToSpeak() override { return false; }
 
 	bool KeyValue(KeyValueData* pkvd) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 
 	float m_flLastShot;
 	bool m_fStandingGround;
@@ -110,15 +94,12 @@ protected:
 
 LINK_ENTITY_TO_CLASS(monster_male_assassin, CMOFAssassin);
 
-TYPEDESCRIPTION CMOFAssassin::m_SaveData[] =
-	{
-		DEFINE_FIELD(CMOFAssassin, m_iAssassinHead, FIELD_INTEGER),
-		DEFINE_FIELD(CMOFAssassin, m_flLastShot, FIELD_TIME),
-		DEFINE_FIELD(CMOFAssassin, m_fStandingGround, FIELD_BOOLEAN),
-		DEFINE_FIELD(CMOFAssassin, m_flStandGroundRange, FIELD_FLOAT),
-};
-
-IMPLEMENT_SAVERESTORE(CMOFAssassin, CHGrunt);
+BEGIN_DATAMAP(CMOFAssassin)
+DEFINE_FIELD(m_iAssassinHead, FIELD_INTEGER),
+	DEFINE_FIELD(m_flLastShot, FIELD_TIME),
+	DEFINE_FIELD(m_fStandingGround, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flStandGroundRange, FIELD_FLOAT),
+	END_DATAMAP();
 
 void CMOFAssassin::OnCreate()
 {
@@ -128,9 +109,6 @@ void CMOFAssassin::OnCreate()
 	pev->model = MAKE_STRING("models/massn.mdl");
 }
 
-//=========================================================
-// GibMonster - make gun fly through the air.
-//=========================================================
 void CMOFAssassin::GibMonster()
 {
 	Vector vecGunPos;
@@ -143,7 +121,7 @@ void CMOFAssassin::GibMonster()
 		CBaseEntity* pGun;
 		if (FBitSet(pev->weapons, HGRUNT_9MMAR))
 		{
-			pGun = DropItem("weapon_9mmAR", vecGunPos, vecGunAngles);
+			pGun = DropItem("weapon_9mmar", vecGunPos, vecGunAngles);
 		}
 		else
 		{
@@ -157,7 +135,7 @@ void CMOFAssassin::GibMonster()
 
 		if (FBitSet(pev->weapons, HGRUNT_GRENADELAUNCHER))
 		{
-			pGun = DropItem("ammo_ARgrenades", vecGunPos, vecGunAngles);
+			pGun = DropItem("ammo_argrenades", vecGunPos, vecGunAngles);
 			if (pGun)
 			{
 				pGun->pev->velocity = Vector(RANDOM_FLOAT(-100, 100), RANDOM_FLOAT(-100, 100), RANDOM_FLOAT(200, 300));
@@ -169,14 +147,6 @@ void CMOFAssassin::GibMonster()
 	CBaseMonster::GibMonster();
 }
 
-//=========================================================
-// CheckRangeAttack1 - overridden for HGrunt, cause
-// FCanCheckAttacks() doesn't disqualify all attacks based
-// on whether or not the enemy is occluded because unlike
-// the base class, the HGrunt can attack when the enemy is
-// occluded (throw grenade over wall, etc). We must
-// disqualify the machine gun attack if the enemy is occluded.
-//=========================================================
 bool CMOFAssassin::CheckRangeAttack1(float flDot, float flDist)
 {
 	if (0 != pev->weapons)
@@ -192,18 +162,11 @@ bool CMOFAssassin::CheckRangeAttack1(float flDot, float flDist)
 	return false;
 }
 
-//=========================================================
-// CheckRangeAttack2 - this checks the Grunt's grenade
-// attack.
-//=========================================================
 bool CMOFAssassin::CheckRangeAttack2(float flDot, float flDist)
 {
 	return CheckRangeAttack2Core(flDot, flDist, GetSkillFloat("massassin_gspeed"sv));
 }
 
-//=========================================================
-// TraceAttack - make sure we're not taking it in the helmet
-//=========================================================
 void CMOFAssassin::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	// check for helmet shot
@@ -221,10 +184,6 @@ void CMOFAssassin::IdleSound()
 	// Male Assassin doesn't make idle chat
 }
 
-//=========================================================
-// CheckAmmo - overridden for the grunt because he actually
-// uses ammo! (base class doesn't)
-//=========================================================
 void CMOFAssassin::CheckAmmo()
 {
 	if (0 != pev->weapons)
@@ -233,9 +192,6 @@ void CMOFAssassin::CheckAmmo()
 	}
 }
 
-//=========================================================
-// Shoot
-//=========================================================
 void CMOFAssassin::Shoot(bool firstShotInBurst)
 {
 	if (m_hEnemy)
@@ -291,10 +247,6 @@ void CMOFAssassin::Shoot(bool firstShotInBurst)
 	}
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void CMOFAssassin::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	// Override grunt events that require assassin-specific behavior
@@ -313,7 +265,7 @@ void CMOFAssassin::HandleAnimEvent(MonsterEvent_t* pEvent)
 		// now spawn a gun.
 		if (FBitSet(pev->weapons, HGRUNT_9MMAR))
 		{
-			DropItem("weapon_9mmAR", vecGunPos, vecGunAngles);
+			DropItem("weapon_9mmar", vecGunPos, vecGunAngles);
 		}
 		else
 		{
@@ -321,7 +273,7 @@ void CMOFAssassin::HandleAnimEvent(MonsterEvent_t* pEvent)
 		}
 		if (FBitSet(pev->weapons, HGRUNT_GRENADELAUNCHER))
 		{
-			DropItem("ammo_ARgrenades", BodyTarget(pev->origin), vecGunAngles);
+			DropItem("ammo_argrenades", BodyTarget(pev->origin), vecGunAngles);
 		}
 	}
 	break;
@@ -347,9 +299,6 @@ void CMOFAssassin::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void CMOFAssassin::Spawn()
 {
 	Precache();
@@ -419,9 +368,6 @@ void CMOFAssassin::Spawn()
 	MonsterInit();
 }
 
-//=========================================================
-// PainSound
-//=========================================================
 void CMOFAssassin::PainSound()
 {
 	// Male Assassin doesn't make pain sounds
@@ -472,11 +418,18 @@ bool CMOFAssassin::KeyValue(KeyValueData* pkvd)
 
 class CMOFAssassinRepel : public CHGruntRepel
 {
+	DECLARE_CLASS(CMOFAssassinRepel, CHGruntRepel);
+	DECLARE_DATAMAP();
+
 public:
 	void Precache() override;
 	void Spawn() override;
-	void EXPORT RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void RepelUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 };
+
+BEGIN_DATAMAP(CMOFAssassinRepel)
+DEFINE_FUNCTION(RepelUse),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(monster_assassin_repel, CMOFAssassinRepel);
 void CMOFAssassinRepel::Precache()

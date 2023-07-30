@@ -33,7 +33,6 @@ class CHandGrenade : public CBasePlayerWeapon
 {
 public:
 	void OnCreate() override;
-	void Spawn() override;
 	void Precache() override;
 	bool GetWeaponInfo(WeaponInfo& info) override;
 	void IncrementAmmo(CBasePlayer* pPlayer) override;
@@ -52,4 +51,12 @@ public:
 		return false;
 #endif
 	}
+
+	void GetWeaponData(weapon_data_t& data) override;
+
+	void SetWeaponData(const weapon_data_t& data) override;
+
+private:
+	float m_flStartThrow;
+	float m_flReleaseThrow;
 };

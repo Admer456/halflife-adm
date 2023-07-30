@@ -12,48 +12,35 @@
  *   without written permission from Valve LLC.
  *
  ****/
-/*
-
-===== lights.cpp ========================================================
-
-  spawn and think functions for editor-placed lights
-
-*/
+/**
+ *	@file
+ *	spawn and think functions for editor-placed lights
+ */
 
 #include "cbase.h"
 
-
-
 class CLight : public CPointEntity
 {
+	DECLARE_CLASS(CLight, CPointEntity);
+	DECLARE_DATAMAP();
+
 public:
 	bool KeyValue(KeyValueData* pkvd) override;
 	void Spawn() override;
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-
 private:
 	int m_iStyle;
 	string_t m_iszPattern;
 };
+
 LINK_ENTITY_TO_CLASS(light, CLight);
 
-TYPEDESCRIPTION CLight::m_SaveData[] =
-	{
-		DEFINE_FIELD(CLight, m_iStyle, FIELD_INTEGER),
-		DEFINE_FIELD(CLight, m_iszPattern, FIELD_STRING),
-};
+BEGIN_DATAMAP(CLight)
+DEFINE_FIELD(m_iStyle, FIELD_INTEGER),
+	DEFINE_FIELD(m_iszPattern, FIELD_STRING),
+	END_DATAMAP();
 
-IMPLEMENT_SAVERESTORE(CLight, CPointEntity);
-
-
-//
-// Cache user-entity-field values until spawn is called.
-//
 bool CLight::KeyValue(KeyValueData* pkvd)
 {
 	if (FStrEq(pkvd->szKeyName, "style"))
@@ -75,24 +62,17 @@ bool CLight::KeyValue(KeyValueData* pkvd)
 	return CPointEntity::KeyValue(pkvd);
 }
 
-/*QUAKED light (0 1 0) (-8 -8 -8) (8 8 8) LIGHT_START_OFF
-Non-displayed light.
-Default light value is 300
-Default style is 0
-If targeted, it will toggle between on or off.
-*/
-
 void CLight::Spawn()
 {
 	if (FStringNull(pev->targetname))
 	{ // inert light
-		REMOVE_ENTITY(ENT(pev));
+		REMOVE_ENTITY(edict());
 		return;
 	}
 
 	if (m_iStyle >= 32)
 	{
-		//		CHANGE_METHOD(ENT(pev), em_use, light_use);
+		//		CHANGE_METHOD(edict(), em_use, light_use);
 		if (FBitSet(pev->spawnflags, SF_LIGHT_START_OFF))
 			LIGHT_STYLE(m_iStyle, "a");
 		else if (!FStringNull(m_iszPattern))
@@ -101,7 +81,6 @@ void CLight::Spawn()
 			LIGHT_STYLE(m_iStyle, "m");
 	}
 }
-
 
 void CLight::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
@@ -126,11 +105,10 @@ void CLight::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType
 	}
 }
 
-//
-// shut up spawn functions for new spotlights
-//
+/**
+ *	@brief shut up spawn functions for new spotlights
+ */
 LINK_ENTITY_TO_CLASS(light_spot, CLight);
-
 
 class CEnvLight : public CLight
 {
@@ -176,7 +154,6 @@ bool CEnvLight::KeyValue(KeyValueData* pkvd)
 
 	return CLight::KeyValue(pkvd);
 }
-
 
 void CEnvLight::Spawn()
 {

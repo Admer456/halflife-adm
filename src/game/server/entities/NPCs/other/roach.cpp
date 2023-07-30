@@ -12,9 +12,6 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// cockroach
-//=========================================================
 
 #include "cbase.h"
 
@@ -25,26 +22,40 @@
 #define ROACH_SMELL_FOOD 4
 #define ROACH_EAT 5
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
+/**
+ *	@brief cockroach
+ */
 class CRoach : public CBaseMonster
 {
+	DECLARE_CLASS(CRoach, CBaseMonster);
+	DECLARE_DATAMAP();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
-	void EXPORT MonsterThink() override;
+	void MonsterThink() override;
 	void Move(float flInterval) override;
+
+	bool HasAlienGibs() override { return true; }
+
+	/**
+	 *	@brief Picks a new spot for roach to run to.
+	 */
 	void PickNewDest(int iCondition);
-	void EXPORT Touch(CBaseEntity* pOther) override;
+
+	void Touch(CBaseEntity* pOther) override;
 	void Killed(CBaseEntity* attacker, int iGib) override;
 
 	float m_flLastLightLevel;
 	float m_flNextSmellTime;
-	int Classify() override;
+
+	/**
+	 *	@brief overridden for the roach, which can virtually see 360 degrees.
+	 */
 	void Look(int iDistance) override;
+
 	int ISoundMask() override;
 
 	// UNDONE: These don't necessarily need to be save/restored, but if we add more data, it may
@@ -52,6 +63,12 @@ public:
 	int m_iMode;
 	// -----------------------------
 };
+
+BEGIN_DATAMAP(CRoach)
+DEFINE_FUNCTION(MonsterThink),
+	DEFINE_FUNCTION(Touch),
+	END_DATAMAP();
+
 LINK_ENTITY_TO_CLASS(monster_cockroach, CRoach);
 
 void CRoach::OnCreate()
@@ -60,30 +77,15 @@ void CRoach::OnCreate()
 
 	pev->health = 1;
 	pev->model = MAKE_STRING("models/roach.mdl");
+
+	SetClassification("insect");
 }
 
-//=========================================================
-// ISoundMask - returns a bit mask indicating which types
-// of sounds this monster regards. In the base class implementation,
-// monsters care about all sounds, but no scents.
-//=========================================================
 int CRoach::ISoundMask()
 {
 	return bits_SOUND_CARCASS | bits_SOUND_MEAT;
 }
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int CRoach::Classify()
-{
-	return CLASS_INSECT;
-}
-
-//=========================================================
-// Touch
-//=========================================================
 void CRoach::Touch(CBaseEntity* pOther)
 {
 	Vector vecSpot;
@@ -95,7 +97,7 @@ void CRoach::Touch(CBaseEntity* pOther)
 	}
 
 	vecSpot = pev->origin + Vector(0, 0, 8); // move up a bit, and trace down.
-	UTIL_TraceLine(vecSpot, vecSpot + Vector(0, 0, -24), ignore_monsters, ENT(pev), &tr);
+	UTIL_TraceLine(vecSpot, vecSpot + Vector(0, 0, -24), ignore_monsters, edict(), &tr);
 
 	// This isn't really blood.  So you don't have to screen it out based on violence levels (UTIL_ShouldShowBlood())
 	UTIL_DecalTrace(&tr, DECAL_YBLOOD1 + RANDOM_LONG(0, 5));
@@ -103,10 +105,6 @@ void CRoach::Touch(CBaseEntity* pOther)
 	TakeDamage(pOther, pOther, pev->health, DMG_CRUSH);
 }
 
-//=========================================================
-// SetYawSpeed - allows each sequence to have a different
-// turn rate associated with it.
-//=========================================================
 void CRoach::SetYawSpeed()
 {
 	int ys;
@@ -116,9 +114,6 @@ void CRoach::SetYawSpeed()
 	pev->yaw_speed = ys;
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void CRoach::Spawn()
 {
 	Precache();
@@ -133,6 +128,8 @@ void CRoach::Spawn()
 	m_flFieldOfView = 0.5; // indicates the width of this monster's forward view cone ( as a dotproduct result )
 	m_MonsterState = MONSTERSTATE_NONE;
 
+	m_AllowFollow = false;
+
 	MonsterInit();
 	SetActivity(ACT_IDLE);
 
@@ -144,9 +141,6 @@ void CRoach::Spawn()
 	m_flNextSmellTime = gpGlobals->time;
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void CRoach::Precache()
 {
 	PrecacheModel(STRING(pev->model));
@@ -156,10 +150,6 @@ void CRoach::Precache()
 	PrecacheSound("roach/rch_smash.wav");
 }
 
-
-//=========================================================
-// Killed.
-//=========================================================
 void CRoach::Killed(CBaseEntity* attacker, int iGib)
 {
 	pev->solid = SOLID_NOT;
@@ -178,20 +168,13 @@ void CRoach::Killed(CBaseEntity* attacker, int iGib)
 
 	CSoundEnt::InsertSound(bits_SOUND_WORLD, pev->origin, 128, 1);
 
-	CBaseEntity* pOwner = CBaseEntity::Instance(pev->owner);
-	if (pOwner)
-	{
-		pOwner->DeathNotice(this);
-	}
+	MaybeNotifyOwnerOfDeath();
 	UTIL_Remove(this);
 }
 
-//=========================================================
-// MonsterThink, overridden for roaches.
-//=========================================================
 void CRoach::MonsterThink()
 {
-	if (FNullEnt(FIND_CLIENT_IN_PVS(edict())))
+	if (!UTIL_FindClientInPVS(this))
 		pev->nextthink = gpGlobals->time + RANDOM_FLOAT(1, 1.5);
 	else
 		pev->nextthink = gpGlobals->time + 0.1; // keep monster thinking
@@ -211,7 +194,7 @@ void CRoach::MonsterThink()
 	else if (m_flLastLightLevel < 0)
 	{
 		// collect light level for the first time, now that all of the lightmaps in the roach's area have been calculated.
-		m_flLastLightLevel = GETENTITYILLUM(ENT(pev));
+		m_flLastLightLevel = GETENTITYILLUM(edict());
 	}
 
 	switch (m_iMode)
@@ -254,7 +237,7 @@ void CRoach::MonsterThink()
 				Listen();
 			}
 
-			if (GETENTITYILLUM(ENT(pev)) > m_flLastLightLevel)
+			if (GETENTITYILLUM(edict()) > m_flLastLightLevel)
 			{
 				// someone turned on lights!
 				// AILogger->debug("Lights!");
@@ -281,10 +264,10 @@ void CRoach::MonsterThink()
 	case ROACH_SCARED_BY_LIGHT:
 	{
 		// if roach was scared by light, then stop if we're over a spot at least as dark as where we started!
-		if (GETENTITYILLUM(ENT(pev)) <= m_flLastLightLevel)
+		if (GETENTITYILLUM(edict()) <= m_flLastLightLevel)
 		{
 			SetActivity(ACT_IDLE);
-			m_flLastLightLevel = GETENTITYILLUM(ENT(pev)); // make this our new light level.
+			m_flLastLightLevel = GETENTITYILLUM(edict()); // make this our new light level.
 		}
 		break;
 	}
@@ -296,9 +279,6 @@ void CRoach::MonsterThink()
 	}
 }
 
-//=========================================================
-// Picks a new spot for roach to run to.(
-//=========================================================
 void CRoach::PickNewDest(int iCondition)
 {
 	Vector vecNewDir;
@@ -350,9 +330,6 @@ void CRoach::PickNewDest(int iCondition)
 	}
 }
 
-//=========================================================
-// roach's move function
-//=========================================================
 void CRoach::Move(float flInterval)
 {
 	float flWaypointDist;
@@ -367,14 +344,14 @@ void CRoach::Move(float flInterval)
 	if (RANDOM_LONG(0, 7) == 1)
 	{
 		// randomly check for blocked path.(more random load balancing)
-		if (!WALK_MOVE(ENT(pev), pev->ideal_yaw, 4, WALKMOVE_NORMAL))
+		if (!WALK_MOVE(edict(), pev->ideal_yaw, 4, WALKMOVE_NORMAL))
 		{
 			// stuck, so just pick a new spot to run off to
 			PickNewDest(m_iMode);
 		}
 	}
 
-	WALK_MOVE(ENT(pev), pev->ideal_yaw, m_flGroundSpeed * flInterval, WALKMOVE_NORMAL);
+	WALK_MOVE(edict(), pev->ideal_yaw, m_flGroundSpeed * flInterval, WALKMOVE_NORMAL);
 
 	// if the waypoint is closer than step size, then stop after next step (ok for roach to overshoot)
 	if (flWaypointDist <= m_flGroundSpeed * flInterval)
@@ -382,7 +359,7 @@ void CRoach::Move(float flInterval)
 		// take truncated step and stop
 
 		SetActivity(ACT_IDLE);
-		m_flLastLightLevel = GETENTITYILLUM(ENT(pev)); // this is roach's new comfortable light level
+		m_flLastLightLevel = GETENTITYILLUM(edict()); // this is roach's new comfortable light level
 
 		if (m_iMode == ROACH_SMELL_FOOD)
 		{
@@ -401,10 +378,6 @@ void CRoach::Move(float flInterval)
 	}
 }
 
-//=========================================================
-// Look - overriden for the roach, which can virtually see
-// 360 degrees.
-//=========================================================
 void CRoach::Look(int iDistance)
 {
 	CBaseEntity* pSightEnt = nullptr; // the current visible entity that we're dealing with
@@ -416,7 +389,7 @@ void CRoach::Look(int iDistance)
 
 	// don't let monsters outside of the player's PVS act up, or most of the interesting
 	// things will happen before the player gets there!
-	if (FNullEnt(FIND_CLIENT_IN_PVS(edict())))
+	if (!UTIL_FindClientInPVS(this))
 	{
 		return;
 	}
@@ -444,10 +417,10 @@ void CRoach::Look(int iDistance)
 				// we see monsters other than the Enemy.
 				switch (IRelationship(pSightEnt))
 				{
-				case R_FR:
+				case Relationship::Fear:
 					iSighted |= bits_COND_SEE_FEAR;
 					break;
-				case R_NO:
+				case Relationship::None:
 					break;
 				default:
 					AILogger->debug("{} can't asses {}", STRING(pev->classname), STRING(pSightEnt->pev->classname));
@@ -458,7 +431,3 @@ void CRoach::Look(int iDistance)
 	}
 	SetConditions(iSighted);
 }
-
-//=========================================================
-// AI Schedules Specific to this monster
-//=========================================================

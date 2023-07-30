@@ -18,28 +18,32 @@
 
 LINK_ENTITY_TO_CLASS(monster_apache, CApache);
 
-TYPEDESCRIPTION CApache::m_SaveData[] =
-	{
-		DEFINE_FIELD(CApache, m_iRockets, FIELD_INTEGER),
-		DEFINE_FIELD(CApache, m_flForce, FIELD_FLOAT),
-		DEFINE_FIELD(CApache, m_flNextRocket, FIELD_TIME),
-		DEFINE_FIELD(CApache, m_vecTarget, FIELD_VECTOR),
-		DEFINE_FIELD(CApache, m_posTarget, FIELD_POSITION_VECTOR),
-		DEFINE_FIELD(CApache, m_vecDesired, FIELD_VECTOR),
-		DEFINE_FIELD(CApache, m_posDesired, FIELD_POSITION_VECTOR),
-		DEFINE_FIELD(CApache, m_vecGoal, FIELD_VECTOR),
-		DEFINE_FIELD(CApache, m_angGun, FIELD_VECTOR),
-		DEFINE_FIELD(CApache, m_flLastSeen, FIELD_TIME),
-		DEFINE_FIELD(CApache, m_flPrevSeen, FIELD_TIME),
-		//	DEFINE_FIELD( CApache, m_iSoundState, FIELD_INTEGER ),		// Don't save, precached
-		//	DEFINE_FIELD( CApache, m_iSpriteTexture, FIELD_INTEGER ),
-		//	DEFINE_FIELD( CApache, m_iExplode, FIELD_INTEGER ),
-		//	DEFINE_FIELD( CApache, m_iBodyGibs, FIELD_INTEGER ),
-		DEFINE_FIELD(CApache, m_pBeam, FIELD_CLASSPTR),
-		DEFINE_FIELD(CApache, m_flGoalSpeed, FIELD_FLOAT),
-		DEFINE_FIELD(CApache, m_iDoSmokePuff, FIELD_INTEGER),
-};
-IMPLEMENT_SAVERESTORE(CApache, CBaseMonster);
+BEGIN_DATAMAP(CApache)
+DEFINE_FIELD(m_iRockets, FIELD_INTEGER),
+	DEFINE_FIELD(m_flForce, FIELD_FLOAT),
+	DEFINE_FIELD(m_flNextRocket, FIELD_TIME),
+	DEFINE_FIELD(m_vecTarget, FIELD_VECTOR),
+	DEFINE_FIELD(m_posTarget, FIELD_POSITION_VECTOR),
+	DEFINE_FIELD(m_vecDesired, FIELD_VECTOR),
+	DEFINE_FIELD(m_posDesired, FIELD_POSITION_VECTOR),
+	DEFINE_FIELD(m_vecGoal, FIELD_VECTOR),
+	DEFINE_FIELD(m_angGun, FIELD_VECTOR),
+	DEFINE_FIELD(m_flLastSeen, FIELD_TIME),
+	DEFINE_FIELD(m_flPrevSeen, FIELD_TIME),
+	//	DEFINE_FIELD(m_iSoundState, FIELD_INTEGER),		// Don't save, precached
+	//	DEFINE_FIELD(m_iSpriteTexture, FIELD_INTEGER),
+	//	DEFINE_FIELD(m_iExplode, FIELD_INTEGER),
+	//	DEFINE_FIELD(m_iBodyGibs, FIELD_INTEGER),
+	DEFINE_FIELD(m_pBeam, FIELD_CLASSPTR),
+	DEFINE_FIELD(m_flGoalSpeed, FIELD_FLOAT),
+	DEFINE_FIELD(m_iDoSmokePuff, FIELD_INTEGER),
+	DEFINE_FUNCTION(HuntThink),
+	DEFINE_FUNCTION(FlyTouch),
+	DEFINE_FUNCTION(CrashTouch),
+	DEFINE_FUNCTION(DyingThink),
+	DEFINE_FUNCTION(StartupUse),
+	DEFINE_FUNCTION(NullThink),
+	END_DATAMAP();
 
 void CApache::OnCreate()
 {
@@ -47,6 +51,8 @@ void CApache::OnCreate()
 
 	pev->health = GetSkillFloat("apache_health"sv);
 	pev->model = MAKE_STRING("models/apache.mdl");
+
+	SetClassification("human_military");
 }
 
 void CApache::Spawn()
@@ -58,7 +64,7 @@ void CApache::Spawn()
 
 	SetModel(STRING(pev->model));
 	SetSize(Vector(-32, -32, -64), Vector(32, 32, 0));
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	pev->flags |= FL_MONSTER;
 	pev->takedamage = DAMAGE_AIM;
@@ -286,7 +292,7 @@ void CApache::DyingThink()
 
 		EmitSound(CHAN_STATIC, "weapons/mortarhit.wav", 1.0, 0.3);
 
-		RadiusDamage(pev->origin, this, this, 300, CLASS_NONE, DMG_BLAST);
+		RadiusDamage(pev->origin, this, this, 300, DMG_BLAST);
 
 		if (/*(pev->spawnflags & SF_NOWRECKAGE) == 0 && */ (pev->flags & FL_ONGROUND) != 0)
 		{
@@ -341,7 +347,6 @@ void CApache::DyingThink()
 	}
 }
 
-
 void CApache::FlyTouch(CBaseEntity* pOther)
 {
 	// bounce if we hit something solid
@@ -354,7 +359,6 @@ void CApache::FlyTouch(CBaseEntity* pOther)
 	}
 }
 
-
 void CApache::CrashTouch(CBaseEntity* pOther)
 {
 	// only crash if we hit something solid
@@ -366,13 +370,10 @@ void CApache::CrashTouch(CBaseEntity* pOther)
 	}
 }
 
-
-
 void CApache::GibMonster()
 {
 	// EmitSoundDyn(CHAN_VOICE, "common/bodysplat.wav", 0.75, ATTN_NORM, 0, 200);
 }
-
 
 void CApache::HuntThink()
 {
@@ -537,7 +538,6 @@ void CApache::HuntThink()
 	FCheckAITrigger();
 }
 
-
 void CApache::Flight()
 {
 	// tilt model 5 degrees
@@ -662,36 +662,34 @@ void CApache::Flight()
 	}
 	else
 	{
-		CBaseEntity* pPlayer = nullptr;
+		int pitch = 110;
 
-		pPlayer = UTIL_GetLocalPlayer();
-		// UNDONE: this needs to send different sounds to every player for multiplayer.
-		if (pPlayer)
+		if (!g_pGameRules->IsMultiplayer())
 		{
+			CBaseEntity* pPlayer = UTIL_GetLocalPlayer();
+			// UNDONE: this needs to send different sounds to every player for multiplayer.
+			if (pPlayer)
+			{
+				pitch = int(DotProduct(pev->velocity - pPlayer->pev->velocity, (pPlayer->pev->origin - pev->origin).Normalize()));
 
-			float pitch = DotProduct(pev->velocity - pPlayer->pev->velocity, (pPlayer->pev->origin - pev->origin).Normalize());
+				pitch = 100 + (pitch / 50);
 
-			pitch = (int)(100 + pitch / 50.0);
+				pitch = std::clamp(pitch, 50, 250);
 
-			if (pitch > 250)
-				pitch = 250;
-			if (pitch < 50)
-				pitch = 50;
-			if (pitch == 100)
-				pitch = 101;
+				if (pitch == 100)
+					pitch = 101;
 
-			float flVol = (m_flForce / 100.0) + .1;
-			if (flVol > 1.0)
-				flVol = 1.0;
-
-			EmitSoundDyn(CHAN_STATIC, "apache/ap_rotor2.wav", 1.0, 0.3, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
+				//float flVol = std::min(1.f, (m_flForce / 100.0f) + .1f);
+			}
 		}
+
+		EmitSoundDyn(CHAN_STATIC, "apache/ap_rotor2.wav", 1.0, 0.3, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
+
 		// EmitSoundDyn(CHAN_STATIC, "apache/ap_whine1.wav", flVol, 0.2, SND_CHANGE_PITCH | SND_CHANGE_VOL, pitch);
 
 		// AILogger->debug("{:.0f} {:.2f}", pitch, flVol);
 	}
 }
-
 
 void CApache::FireRocket()
 {
@@ -721,7 +719,7 @@ void CApache::FireRocket()
 		break;
 	}
 
-	CBaseEntity* pRocket = CBaseEntity::Create("hvr_rocket", vecSrc, pev->angles, edict());
+	CBaseEntity* pRocket = CBaseEntity::Create("hvr_rocket", vecSrc, pev->angles, this);
 	if (pRocket)
 	{
 		MESSAGE_BEGIN(MSG_PVS, SVC_TEMPENTITY, vecSrc);
@@ -741,8 +739,6 @@ void CApache::FireRocket()
 		side = -side;
 	}
 }
-
-
 
 bool CApache::FireGun()
 {
@@ -772,13 +768,13 @@ bool CApache::FireGun()
 		angles.x = angles.x + 360;
 
 	if (angles.x > m_angGun.x)
-		m_angGun.x = V_min(angles.x, m_angGun.x + 12);
+		m_angGun.x = std::min(angles.x, m_angGun.x + 12);
 	if (angles.x < m_angGun.x)
-		m_angGun.x = V_max(angles.x, m_angGun.x - 12);
+		m_angGun.x = std::max(angles.x, m_angGun.x - 12);
 	if (angles.y > m_angGun.y)
-		m_angGun.y = V_min(angles.y, m_angGun.y + 12);
+		m_angGun.y = std::min(angles.y, m_angGun.y + 12);
 	if (angles.y < m_angGun.y)
-		m_angGun.y = V_max(angles.y, m_angGun.y - 12);
+		m_angGun.y = std::max(angles.y, m_angGun.y - 12);
 
 	m_angGun.y = SetBoneController(0, m_angGun.y);
 	m_angGun.x = SetBoneController(1, m_angGun.x);
@@ -795,7 +791,7 @@ bool CApache::FireGun()
 #else
 		static float flNext;
 		TraceResult tr;
-		UTIL_TraceLine(posGun, posGun + vecGun * 8192, dont_ignore_monsters, ENT(pev), &tr);
+		UTIL_TraceLine(posGun, posGun + vecGun * 8192, dont_ignore_monsters, edict(), &tr);
 
 		if (!m_pBeam)
 		{
@@ -825,8 +821,6 @@ bool CApache::FireGun()
 	return false;
 }
 
-
-
 void CApache::ShowDamage()
 {
 	if (m_iDoSmokePuff > 0 || RANDOM_LONG(0, 99) > pev->health)
@@ -844,7 +838,6 @@ void CApache::ShowDamage()
 	if (m_iDoSmokePuff > 0)
 		m_iDoSmokePuff--;
 }
-
 
 bool CApache::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
@@ -893,8 +886,6 @@ bool CApache::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float fl
 	return result;
 }
 
-
-
 void CApache::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	// AILogger->debug("{} {:.0f}", ptr->iHitgroup, flDamage);
@@ -918,33 +909,29 @@ void CApache::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, 
 	}
 }
 
-
-
-
-
 class CApacheHVR : public CGrenade
 {
+	DECLARE_CLASS(CApacheHVR, CGrenade);
+	DECLARE_DATAMAP();
+
+public:
 	void Spawn() override;
 	void Precache() override;
-	void EXPORT IgniteThink();
-	void EXPORT AccelerateThink();
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+	void IgniteThink();
+	void AccelerateThink();
 
 	int m_iTrail;
 	Vector m_vecForward;
 };
+
 LINK_ENTITY_TO_CLASS(hvr_rocket, CApacheHVR);
 
-TYPEDESCRIPTION CApacheHVR::m_SaveData[] =
-	{
-		//	DEFINE_FIELD( CApacheHVR, m_iTrail, FIELD_INTEGER ),	// Dont' save, precache
-		DEFINE_FIELD(CApacheHVR, m_vecForward, FIELD_VECTOR),
-};
-
-IMPLEMENT_SAVERESTORE(CApacheHVR, CGrenade);
+BEGIN_DATAMAP(CApacheHVR)
+//	DEFINE_FIELD(m_iTrail, FIELD_INTEGER),	// Dont' save, precache
+DEFINE_FIELD(m_vecForward, FIELD_VECTOR),
+	DEFINE_FUNCTION(IgniteThink),
+	DEFINE_FUNCTION(AccelerateThink),
+	END_DATAMAP();
 
 void CApacheHVR::Spawn()
 {
@@ -955,7 +942,7 @@ void CApacheHVR::Spawn()
 
 	SetModel("models/HVR.mdl");
 	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetThink(&CApacheHVR::IgniteThink);
 	SetTouch(&CApacheHVR::ExplodeTouch);
@@ -969,14 +956,12 @@ void CApacheHVR::Spawn()
 	pev->dmg = 150;
 }
 
-
 void CApacheHVR::Precache()
 {
 	PrecacheModel("models/HVR.mdl");
 	m_iTrail = PrecacheModel("sprites/smoke.spr");
 	PrecacheSound("weapons/rocket1.wav");
 }
-
 
 void CApacheHVR::IgniteThink()
 {
@@ -1007,7 +992,6 @@ void CApacheHVR::IgniteThink()
 	SetThink(&CApacheHVR::AccelerateThink);
 	pev->nextthink = gpGlobals->time + 0.1;
 }
-
 
 void CApacheHVR::AccelerateThink()
 {

@@ -31,6 +31,7 @@
 
 // Misc C-runtime library headers
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cctype>
 #include <climits>
@@ -41,11 +42,17 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <iterator>
+#include <memory>
+#include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <unordered_map>
 
 #include <EASTL/fixed_string.h>
+#include <EASTL/fixed_vector.h>
 
 using namespace std::string_view_literals;
 
@@ -92,34 +99,23 @@ static_assert(sizeof(string_t) == sizeof(string_t_value), "string_t must not con
 #define DLLEXPORT __declspec(dllexport)
 #define DLLHIDDEN
 
-#define stackalloc(size) _alloca(size)
-
-// Note: an implementation of stackfree must safely ignore null pointers
-#define stackfree(address)
+#define SINGLE_INHERITANCE __single_inheritance
 
 #else // WIN32
-#include <alloca.h>
 
 #define stricmp strcasecmp
 #define strnicmp strncasecmp
-#define _alloca alloca
 
 #define DLLEXPORT __attribute__((visibility("default")))
 #define DLLHIDDEN __attribute__((visibility("hidden")))
 
-#define stackalloc(size) alloca(size)
-
-// Note: an implementation of stackfree must safely ignore null pointers
-#define stackfree(address)
+#define SINGLE_INHERITANCE
 
 #endif // WIN32
 
 constexpr std::size_t MAX_PATH_LENGTH = 260;
 constexpr std::size_t MAX_QPATH = 64; // Must match value in quakedefs.h
 constexpr std::size_t MaxUserMessageLength = 192;
-
-#define V_min(a, b) (((a) < (b)) ? (a) : (b))
-#define V_max(a, b) (((a) > (b)) ? (a) : (b))
 
 /**
  *	@brief Type to efficiently store an absolute filename. Stores the string in a buffer with automatic lifetime if possible.

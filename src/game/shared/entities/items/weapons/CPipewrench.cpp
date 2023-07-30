@@ -19,39 +19,28 @@
 #define PIPEWRENCH_BODYHIT_VOLUME 128
 #define PIPEWRENCH_WALLHIT_VOLUME 512
 
-#ifndef CLIENT_DLL
-TYPEDESCRIPTION CPipewrench::m_SaveData[] =
-	{
-		DEFINE_FIELD(CPipewrench, m_flBigSwingStart, FIELD_TIME),
-		DEFINE_FIELD(CPipewrench, m_iSwing, FIELD_INTEGER),
-		DEFINE_FIELD(CPipewrench, m_iSwingMode, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(CPipewrench, CPipewrench::BaseClass);
-#endif
+BEGIN_DATAMAP(CPipewrench)
+DEFINE_FIELD(m_flBigSwingStart, FIELD_TIME),
+	DEFINE_FIELD(m_iSwing, FIELD_INTEGER),
+	DEFINE_FIELD(m_iSwingMode, FIELD_INTEGER),
+	DEFINE_FUNCTION(SwingAgain),
+	DEFINE_FUNCTION(Smack),
+	DEFINE_FUNCTION(BigSwing),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(weapon_pipewrench, CPipewrench);
 
 void CPipewrench::OnCreate()
 {
 	BaseClass::OnCreate();
-
-	m_WorldModel = pev->model = MAKE_STRING("models/w_pipe_wrench.mdl");
-}
-
-void CPipewrench::Spawn()
-{
-	Precache();
 	m_iId = WEAPON_PIPEWRENCH;
-	SetModel(STRING(pev->model));
-	m_iClip = WEAPON_NOCLIP;
-	m_iSwingMode = SWING_NONE;
-
-	FallInit(); // get ready to fall down.
+	SetMagazine1(WEAPON_NOCLIP);
+	m_WorldModel = pev->model = MAKE_STRING("models/w_pipe_wrench.mdl");
 }
 
 void CPipewrench::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel("models/v_pipe_wrench.mdl");
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/p_pipe_wrench.mdl");
@@ -134,19 +123,19 @@ bool CPipewrench::Swing(const bool bFirst)
 	Vector vecSrc = m_pPlayer->GetGunPosition();
 	Vector vecEnd = vecSrc + gpGlobals->v_forward * 32;
 
-	UTIL_TraceLine(vecSrc, vecEnd, dont_ignore_monsters, ENT(m_pPlayer->pev), &tr);
+	UTIL_TraceLine(vecSrc, vecEnd, dont_ignore_monsters, m_pPlayer->edict(), &tr);
 
 #ifndef CLIENT_DLL
 	if (tr.flFraction >= 1.0)
 	{
-		UTIL_TraceHull(vecSrc, vecEnd, dont_ignore_monsters, head_hull, ENT(m_pPlayer->pev), &tr);
+		UTIL_TraceHull(vecSrc, vecEnd, dont_ignore_monsters, head_hull, m_pPlayer->edict(), &tr);
 		if (tr.flFraction < 1.0)
 		{
 			// Calculate the point of intersection of the line (or hull) and the object we hit
 			// This is and approximation of the "best" intersection
 			CBaseEntity* pHit = CBaseEntity::Instance(tr.pHit);
 			if (!pHit || pHit->IsBSPModel())
-				FindHullIntersection(vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer->edict());
+				FindHullIntersection(vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer);
 			vecEnd = tr.vecEndPos; // This is the point on the actual surface (the hull could have hit space)
 		}
 	}
@@ -214,7 +203,7 @@ bool CPipewrench::Swing(const bool bFirst)
 		{
 			ClearMultiDamage();
 
-			if ((m_flNextPrimaryAttack + 1 < UTIL_WeaponTimeBase()) || g_pGameRules->IsMultiplayer())
+			if ((m_flNextPrimaryAttack + 1 < UTIL_WeaponTimeBase()) || g_Skill.GetValue("pipewrench_full_damage") != 0)
 			{
 				// first swing does full damage
 				pEntity->TraceAttack(m_pPlayer, GetSkillFloat("plr_pipewrench"sv), gpGlobals->v_forward, &tr, DMG_CLUB);
@@ -230,8 +219,12 @@ bool CPipewrench::Swing(const bool bFirst)
 
 #endif
 
-		m_flNextPrimaryAttack = GetNextAttackDelay(0.5);
-		m_flNextSecondaryAttack = GetNextAttackDelay(0.5);
+		if (GetSkillFloat("chainsaw_melee") == 0)
+		{
+			m_flNextPrimaryAttack = GetNextAttackDelay(0.5);
+			m_flNextSecondaryAttack = GetNextAttackDelay(0.5);
+		}
+
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 1.0;
 
 #ifndef CLIENT_DLL
@@ -242,7 +235,7 @@ bool CPipewrench::Swing(const bool bFirst)
 
 		if (pEntity)
 		{
-			if (pEntity->Classify() != CLASS_NONE && pEntity->Classify() != CLASS_MACHINE)
+			if (pEntity->Classify() != ENTCLASS_NONE && !pEntity->IsMachine())
 			{
 				// play thwack or smack sound
 				switch (RANDOM_LONG(0, 2))
@@ -302,6 +295,12 @@ bool CPipewrench::Swing(const bool bFirst)
 		SetThink(&CPipewrench::Smack);
 		pev->nextthink = gpGlobals->time + 0.2;
 #endif
+
+		if (GetSkillFloat("chainsaw_melee") != 0)
+		{
+			m_flNextPrimaryAttack = GetNextAttackDelay(0.5);
+			m_flNextSecondaryAttack = GetNextAttackDelay(0.5);
+		}
 	}
 	return bDidHit;
 }
@@ -314,19 +313,19 @@ void CPipewrench::BigSwing()
 	Vector vecSrc = m_pPlayer->GetGunPosition();
 	Vector vecEnd = vecSrc + gpGlobals->v_forward * 32;
 
-	UTIL_TraceLine(vecSrc, vecEnd, dont_ignore_monsters, ENT(m_pPlayer->pev), &tr);
+	UTIL_TraceLine(vecSrc, vecEnd, dont_ignore_monsters, m_pPlayer->edict(), &tr);
 
 #ifndef CLIENT_DLL
 	if (tr.flFraction >= 1.0)
 	{
-		UTIL_TraceHull(vecSrc, vecEnd, dont_ignore_monsters, head_hull, ENT(m_pPlayer->pev), &tr);
+		UTIL_TraceHull(vecSrc, vecEnd, dont_ignore_monsters, head_hull, m_pPlayer->edict(), &tr);
 		if (tr.flFraction < 1.0)
 		{
 			// Calculate the point of intersection of the line (or hull) and the object we hit
 			// This is and approximation of the "best" intersection
 			CBaseEntity* pHit = CBaseEntity::Instance(tr.pHit);
 			if (!pHit || pHit->IsBSPModel())
-				FindHullIntersection(vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer->edict());
+				FindHullIntersection(vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer);
 			vecEnd = tr.vecEndPos; // This is the point on the actual surface (the hull could have hit space)
 		}
 	}
@@ -367,7 +366,7 @@ void CPipewrench::BigSwing()
 			ClearMultiDamage();
 
 			float flDamage = (gpGlobals->time - m_flBigSwingStart) * GetSkillFloat("plr_pipewrench"sv) + 25.0f;
-			if ((m_flNextPrimaryAttack + 1 < UTIL_WeaponTimeBase()) || g_pGameRules->IsMultiplayer())
+			if ((m_flNextPrimaryAttack + 1 < UTIL_WeaponTimeBase()) || g_Skill.GetValue("pipewrench_full_damage") != 0)
 			{
 				// first swing does full damage
 				pEntity->TraceAttack(m_pPlayer, flDamage, gpGlobals->v_forward, &tr, DMG_CLUB);
@@ -386,7 +385,7 @@ void CPipewrench::BigSwing()
 
 		if (pEntity)
 		{
-			if (pEntity->Classify() != CLASS_NONE && pEntity->Classify() != CLASS_MACHINE)
+			if (pEntity->Classify() != ENTCLASS_NONE && !pEntity->IsMachine())
 			{
 				// play thwack or smack sound
 				switch (RANDOM_LONG(0, 1))
@@ -517,10 +516,10 @@ void CPipewrench::SetWeaponData(const weapon_data_t& data)
 bool CPipewrench::GetWeaponInfo(WeaponInfo& info)
 {
 	info.Name = STRING(pev->classname);
-	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.AttackModeInfo[0].MagazineSize = WEAPON_NOCLIP;
 	info.Slot = 0;
 	info.Position = 1;
-	info.Id = m_iId = WEAPON_PIPEWRENCH;
+	info.Id = WEAPON_PIPEWRENCH;
 	info.Weight = PIPEWRENCH_WEIGHT;
 
 	return true;

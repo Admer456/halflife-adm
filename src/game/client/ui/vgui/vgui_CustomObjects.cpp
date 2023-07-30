@@ -39,33 +39,10 @@ const char* sArrowFilenames[] =
 		"arrowrt",
 };
 
-// Get the name of TGA file, without a gamedir
-char* GetTGANameForRes(const char* pszName)
-{
-	char sz[256];
-	static char gd[256];
-	sprintf(sz, pszName, CHud::m_iRes);
-	sprintf(gd, "gfx/vgui/%s.tga", sz);
-	return gd;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Loads a .tga file and returns a pointer to the VGUI tga object
-//-----------------------------------------------------------------------------
-BitmapTGA* LoadTGAForRes(const char* pImageName)
-{
-	BitmapTGA* pTGA;
-
-	char sz[256];
-	sprintf(sz, "%%d_%s", pImageName);
-	pTGA = vgui_LoadTGA(GetTGANameForRes(sz));
-
-	return pTGA;
-}
-
 //===========================================================
 // All TFC Hud buttons are derived from this one.
-CommandButton::CommandButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight) : Button("", x, y, wide, tall)
+CommandButton::CommandButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight)
+	: Button("", x, y, wide, tall)
 {
 	m_iPlayerClass = 0;
 	m_bNoHighlight = bNoHighlight;
@@ -74,7 +51,8 @@ CommandButton::CommandButton(const char* text, int x, int y, int wide, int tall,
 	setText(text);
 }
 
-CommandButton::CommandButton(int iPlayerClass, const char* text, int x, int y, int wide, int tall, bool bFlat) : Button("", x, y, wide, tall)
+CommandButton::CommandButton(int iPlayerClass, const char* text, int x, int y, int wide, int tall, bool bFlat)
+	: Button("", x, y, wide, tall)
 {
 	m_iPlayerClass = iPlayerClass;
 	m_bNoHighlight = false;
@@ -83,7 +61,8 @@ CommandButton::CommandButton(int iPlayerClass, const char* text, int x, int y, i
 	setText(text);
 }
 
-CommandButton::CommandButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight, bool bFlat) : Button("", x, y, wide, tall)
+CommandButton::CommandButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight, bool bFlat)
+	: Button("", x, y, wide, tall)
 {
 	m_iPlayerClass = 0;
 	m_bFlat = bFlat;
@@ -122,7 +101,7 @@ void CommandButton::RecalculateText()
 
 	if (m_cBoundKey != 0)
 	{
-		if (m_cBoundKey == (char)255)
+		if (m_cBoundKey == UnboundKey)
 		{
 			strcpy(szBuf, m_sMainText);
 		}
@@ -312,17 +291,19 @@ bool ClassButton::IsNotValid()
 
 //===========================================================
 // Button with Class image beneath it
-CImageLabel::CImageLabel(const char* pImageName, int x, int y) : Label("", x, y)
+CImageLabel::CImageLabel(const char* pImageName, int x, int y)
+	: Label("", x, y)
 {
 	setContentFitted(true);
-	m_pTGA = LoadTGAForRes(pImageName);
+	m_pTGA = vgui_LoadTGAWithDirectory(pImageName, true);
 	Label::setImage(m_pTGA);
 }
 
-CImageLabel::CImageLabel(const char* pImageName, int x, int y, int wide, int tall) : Label("", x, y, wide, tall)
+CImageLabel::CImageLabel(const char* pImageName, int x, int y, int wide, int tall)
+	: Label("", x, y, wide, tall)
 {
 	setContentFitted(true);
-	m_pTGA = LoadTGAForRes(pImageName);
+	m_pTGA = vgui_LoadTGAWithDirectory(pImageName, true);
 	Label::setImage(m_pTGA);
 }
 
@@ -361,18 +342,13 @@ void CImageLabel::LoadImage(const char* pImageName)
 	delete m_pTGA;
 
 	// Load the Image
-	m_pTGA = LoadTGAForRes(pImageName);
+	m_pTGA = vgui_LoadTGAWithDirectory(pImageName, true);
 
 	if (m_pTGA == nullptr)
 	{
 		// we didn't find a matching image file for this resolution
 		// try to load file resolution independent
-
-		char sz[256];
-		sprintf(sz, "%s/%s", gEngfuncs.pfnGetGameDirectory(), pImageName);
-		FileInputStream fis(sz, false);
-		m_pTGA = new BitmapTGA(&fis, true);
-		fis.close();
+		m_pTGA = vgui_LoadTGAWithDirectory(pImageName);
 	}
 
 	if (m_pTGA == nullptr)
@@ -391,11 +367,7 @@ void CImageLabel::setImage(const char* pImageName)
 	delete m_pTGA;
 
 	// Load the Image
-	char sz[256];
-	sprintf(sz, "%%d_%s", pImageName);
-	FileInputStream* fis = new FileInputStream(GetVGUITGAName(sz), false);
-	m_pTGA = new BitmapTGA(fis, true);
-	fis->close();
+	m_pTGA = vgui_LoadTGAWithDirectory(pImageName, true);
 	Label::setImage(m_pTGA);
 }
 
@@ -416,13 +388,14 @@ void CCommandMenu::paintBackground()
 //=================================================================================
 // CUSTOM SCROLLPANEL
 //=================================================================================
-CTFScrollButton::CTFScrollButton(int iArrow, const char* text, int x, int y, int wide, int tall) : CommandButton(text, x, y, wide, tall)
+CTFScrollButton::CTFScrollButton(int iArrow, const char* text, int x, int y, int wide, int tall)
+	: CommandButton(text, x, y, wide, tall)
 {
 	// Set text color to orange
 	setFgColor(Scheme::sc_primary1);
 
 	// Load in the arrow
-	m_pTGA = LoadTGAForRes(sArrowFilenames[iArrow]);
+	m_pTGA = vgui_LoadTGAWithDirectory(sArrowFilenames[iArrow], true);
 	setImage(m_pTGA);
 
 	// Highlight signal
@@ -496,7 +469,8 @@ void CTFSlider::paintBackground()
 	}
 }
 
-CTFScrollPanel::CTFScrollPanel(int x, int y, int wide, int tall) : ScrollPanel(x, y, wide, tall)
+CTFScrollPanel::CTFScrollPanel(int x, int y, int wide, int tall)
+	: ScrollPanel(x, y, wide, tall)
 {
 	ScrollBar* pScrollBar = getVerticalScrollBar();
 	pScrollBar->setButton(new CTFScrollButton(ARROW_UP, "", 0, 0, 16, 16), 0);

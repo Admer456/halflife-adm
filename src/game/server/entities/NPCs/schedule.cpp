@@ -12,19 +12,17 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// schedule.cpp - functions and data pertaining to the
-// monsters' AI scheduling system.
-//=========================================================
+
+/**
+ *	@file
+ *	functions and data pertaining to the monsters' AI scheduling system.
+ */
+
 #include "cbase.h"
 #include "scripted.h"
 #include "nodes.h"
 #include "defaultai.h"
 
-//=========================================================
-// FHaveSchedule - Returns true if monster's m_pSchedule
-// is anything other than nullptr.
-//=========================================================
 bool CBaseMonster::FHaveSchedule()
 {
 	if (m_pSchedule == nullptr)
@@ -35,10 +33,6 @@ bool CBaseMonster::FHaveSchedule()
 	return true;
 }
 
-//=========================================================
-// ClearSchedule - blanks out the caller's schedule pointer
-// and index.
-//=========================================================
 void CBaseMonster::ClearSchedule()
 {
 	m_iTaskStatus = TASKSTATUS_NEW;
@@ -46,10 +40,6 @@ void CBaseMonster::ClearSchedule()
 	m_iScheduleIndex = 0;
 }
 
-//=========================================================
-// FScheduleDone - Returns true if the caller is on the
-// last task in the schedule
-//=========================================================
 bool CBaseMonster::FScheduleDone()
 {
 	ASSERT(m_pSchedule != nullptr);
@@ -62,12 +52,7 @@ bool CBaseMonster::FScheduleDone()
 	return false;
 }
 
-//=========================================================
-// ChangeSchedule - replaces the monster's schedule pointer
-// with the passed pointer, and sets the ScheduleIndex back
-// to 0
-//=========================================================
-void CBaseMonster::ChangeSchedule(Schedule_t* pNewSchedule)
+void CBaseMonster::ChangeSchedule(const Schedule_t* pNewSchedule)
 {
 	ASSERT(pNewSchedule != nullptr);
 
@@ -98,7 +83,7 @@ void CBaseMonster::ChangeSchedule(Schedule_t* pNewSchedule)
 #if 0
 	if (ClassnameIs("monster_human_grunt"))
 	{
-		Task_t* pTask = GetTask();
+		const Task_t* pTask = GetTask();
 
 		if (pTask)
 		{
@@ -124,9 +109,6 @@ void CBaseMonster::ChangeSchedule(Schedule_t* pNewSchedule)
 #endif // 0
 }
 
-//=========================================================
-// NextScheduledTask - increments the ScheduleIndex
-//=========================================================
 void CBaseMonster::NextScheduledTask()
 {
 	ASSERT(m_pSchedule != nullptr);
@@ -142,11 +124,6 @@ void CBaseMonster::NextScheduledTask()
 	}
 }
 
-//=========================================================
-// IScheduleFlags - returns an integer with all Conditions
-// bits that are currently set and also set in the current
-// schedule's Interrupt mask.
-//=========================================================
 int CBaseMonster::IScheduleFlags()
 {
 	if (!m_pSchedule)
@@ -158,11 +135,6 @@ int CBaseMonster::IScheduleFlags()
 	return m_afConditions & m_pSchedule->iInterruptMask;
 }
 
-//=========================================================
-// FScheduleValid - returns true as long as the current
-// schedule is still the proper schedule to be executing,
-// taking into account all conditions
-//=========================================================
 bool CBaseMonster::FScheduleValid()
 {
 	if (m_pSchedule == nullptr)
@@ -173,17 +145,18 @@ bool CBaseMonster::FScheduleValid()
 
 	if (HasConditions(m_pSchedule->iInterruptMask | bits_COND_SCHEDULE_DONE | bits_COND_TASK_FAILED))
 	{
-#ifdef DEBUG
-		if (HasConditions(bits_COND_TASK_FAILED) && m_failSchedule == SCHED_NONE)
+		if (sv_schedule_debug.value != 0)
 		{
-			// fail! Send a visual indicator.
-			AILogger->debug("Schedule: {} Failed", m_pSchedule->pName);
+			if (HasConditions(bits_COND_TASK_FAILED) && m_failSchedule == SCHED_NONE)
+			{
+				// fail! Send a visual indicator.
+				AILogger->debug("Schedule: {} Failed", m_pSchedule->pName);
 
-			Vector tmp = pev->origin;
-			tmp.z = pev->absmax.z + 16;
-			UTIL_Sparks(tmp);
+				Vector tmp = pev->origin;
+				tmp.z = pev->absmax.z + 16;
+				UTIL_Sparks(tmp);
+			}
 		}
-#endif // DEBUG
 
 		// some condition has interrupted the schedule, or the schedule is done
 		return false;
@@ -192,14 +165,9 @@ bool CBaseMonster::FScheduleValid()
 	return true;
 }
 
-//=========================================================
-// MaintainSchedule - does all the per-think schedule maintenance.
-// ensures that the monster leaves this function with a valid
-// schedule!
-//=========================================================
 void CBaseMonster::MaintainSchedule()
 {
-	Schedule_t* pNewSchedule;
+	const Schedule_t* pNewSchedule;
 	int i;
 
 	// UNDONE: Tune/fix this 10... This is just here so infinite loops are impossible
@@ -259,7 +227,7 @@ void CBaseMonster::MaintainSchedule()
 
 		if (m_iTaskStatus == TASKSTATUS_NEW)
 		{
-			Task_t* pTask = GetTask();
+			const Task_t* pTask = GetTask();
 			ASSERT(pTask != nullptr);
 			TaskBegin();
 			StartTask(pTask);
@@ -277,7 +245,7 @@ void CBaseMonster::MaintainSchedule()
 
 	if (TaskIsRunning())
 	{
-		Task_t* pTask = GetTask();
+		const Task_t* pTask = GetTask();
 		ASSERT(pTask != nullptr);
 		RunTask(pTask);
 	}
@@ -291,10 +259,7 @@ void CBaseMonster::MaintainSchedule()
 	}
 }
 
-//=========================================================
-// RunTask
-//=========================================================
-void CBaseMonster::RunTask(Task_t* pTask)
+void CBaseMonster::RunTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -321,7 +286,7 @@ void CBaseMonster::RunTask(Task_t* pTask)
 			pTarget = m_hEnemy;
 		if (pTarget)
 		{
-			pev->ideal_yaw = UTIL_VecToYaw(pTarget->pev->origin - pev->origin);
+			pev->ideal_yaw = VectorToYaw(pTarget->pev->origin - pev->origin);
 			ChangeYaw(pev->yaw_speed);
 		}
 		if (m_fSequenceFinished)
@@ -368,7 +333,7 @@ void CBaseMonster::RunTask(Task_t* pTask)
 	}
 	case TASK_WAIT_PVS:
 	{
-		if (!FNullEnt(FIND_CLIENT_IN_PVS(edict())))
+		if (UTIL_FindClientInPVS(this))
 		{
 			TaskComplete();
 		}
@@ -543,11 +508,6 @@ void CBaseMonster::RunTask(Task_t* pTask)
 	}
 }
 
-//=========================================================
-// SetTurnActivity - measures the difference between the way
-// the monster is facing and determines whether or not to
-// select one of the 180 turn animations.
-//=========================================================
 void CBaseMonster::SetTurnActivity()
 {
 	float flYD;
@@ -563,12 +523,7 @@ void CBaseMonster::SetTurnActivity()
 	}
 }
 
-//=========================================================
-// Start task - selects the correct activity and performs
-// any necessary calculations to start the next task on the
-// schedule.
-//=========================================================
-void CBaseMonster::StartTask(Task_t* pTask)
+void CBaseMonster::StartTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -661,9 +616,7 @@ void CBaseMonster::StartTask(Task_t* pTask)
 	}
 	case TASK_SET_SCHEDULE:
 	{
-		Schedule_t* pNewSchedule;
-
-		pNewSchedule = GetScheduleOfType((int)pTask->flData);
+		const Schedule_t* pNewSchedule = GetScheduleOfType((int)pTask->flData);
 
 		if (pNewSchedule)
 		{
@@ -738,25 +691,25 @@ void CBaseMonster::StartTask(Task_t* pTask)
 	}
 	case TASK_FIND_COVER_FROM_ENEMY:
 	{
-		entvars_t* pevCover;
+		CBaseEntity* cover;
 
 		if (m_hEnemy == nullptr)
 		{
 			// Find cover from self if no enemy available
-			pevCover = pev;
+			cover = this;
 			//				TaskFail();
 			//				return;
 		}
 		else
-			pevCover = m_hEnemy->pev;
+			cover = m_hEnemy;
 
-		if (FindLateralCover(pevCover->origin, pevCover->view_ofs))
+		if (FindLateralCover(cover->pev->origin, cover->pev->view_ofs))
 		{
 			// try lateral first
 			m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
 			TaskComplete();
 		}
-		else if (FindCover(pevCover->origin, pevCover->view_ofs, 0, CoverRadius()))
+		else if (FindCover(cover->pev->origin, cover->pev->view_ofs, 0, CoverRadius()))
 		{
 			// then try for plain ole cover
 			m_flMoveWaitFinished = gpGlobals->time + pTask->flData;
@@ -1057,15 +1010,9 @@ void CBaseMonster::StartTask(Task_t* pTask)
 	break;
 	case TASK_GET_PATH_TO_SPOT:
 	{
-		CBaseEntity* pPlayer = UTIL_GetLocalPlayer();
+		CBaseEntity* pPlayer = UTIL_FindNearestPlayer(EyePosition());
 
-		// Fall back to using the world if no player exists (Matches original behavior).
-		if (!pPlayer)
-		{
-			pPlayer = World;
-		}
-
-		if (BuildRoute(m_vecMoveGoal, bits_MF_TO_LOCATION, pPlayer))
+		if (pPlayer && BuildRoute(m_vecMoveGoal, bits_MF_TO_LOCATION, pPlayer))
 		{
 			TaskComplete();
 		}
@@ -1359,11 +1306,7 @@ void CBaseMonster::StartTask(Task_t* pTask)
 	}
 }
 
-//=========================================================
-// GetTask - returns a pointer to the current
-// scheduled task. nullptr if there's a problem.
-//=========================================================
-Task_t* CBaseMonster::GetTask()
+const Task_t* CBaseMonster::GetTask()
 {
 	if (m_iScheduleIndex < 0 || m_iScheduleIndex >= m_pSchedule->cTasks)
 	{
@@ -1376,13 +1319,7 @@ Task_t* CBaseMonster::GetTask()
 	}
 }
 
-//=========================================================
-// GetSchedule - Decides which type of schedule best suits
-// the monster's current state and conditions. Then calls
-// monster's member function to get a pointer to a schedule
-// of the proper type.
-//=========================================================
-Schedule_t* CBaseMonster::GetSchedule()
+const Schedule_t* CBaseMonster::GetSchedule()
 {
 	switch (m_MonsterState)
 	{
@@ -1398,6 +1335,19 @@ Schedule_t* CBaseMonster::GetSchedule()
 	}
 	case MONSTERSTATE_IDLE:
 	{
+		if (m_hEnemy == nullptr && IsFollowing())
+		{
+			if (!m_hTargetEnt->IsAlive())
+			{
+				// UNDONE: Comment about the recently dead player here?
+				StopFollowing(false);
+			}
+			else
+			{
+				return GetScheduleOfType(SCHED_TARGET_FACE);
+			}
+		}
+
 		if (HasConditions(bits_COND_HEAR_SOUND))
 		{
 			return GetScheduleOfType(SCHED_ALERT_FACE);

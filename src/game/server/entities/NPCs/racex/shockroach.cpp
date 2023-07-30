@@ -12,15 +12,9 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// headcrab.cpp - tiny, jumpy alien parasite
-//=========================================================
 
 #include "cbase.h"
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define SR_AE_JUMPATTACK (2)
 
 Task_t tlSRRangeAttack1[] =
@@ -63,22 +57,37 @@ Schedule_t slRCRangeAttack1Fast[] =
 
 class COFShockRoach : public CBaseMonster
 {
+	DECLARE_CLASS(COFShockRoach, CBaseMonster);
+	DECLARE_DATAMAP();
+	DECLARE_CUSTOM_SCHEDULES();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
-	void RunTask(Task_t* pTask) override;
-	void StartTask(Task_t* pTask) override;
+	void RunTask(const Task_t* pTask) override;
+	void StartTask(const Task_t* pTask) override;
 	void SetYawSpeed() override;
-	void EXPORT LeapTouch(CBaseEntity* pOther);
+
+	bool HasAlienGibs() override { return true; }
+
+	/**
+	 *	@brief this is the shock roach's touch function when it is in the air
+	 */
+	void LeapTouch(CBaseEntity* pOther);
+
+	/**
+	 *	@brief returns the real center of the shock roach.
+	 *	The bounding box is much larger than the actual creature so this is needed for targeting
+	 */
 	Vector Center() override;
+
 	Vector BodyTarget(const Vector& posSrc) override;
 	void PainSound() override;
 	void DeathSound() override;
 	void IdleSound() override;
 	void AlertSound() override;
 	void PrescheduleThink() override;
-	int Classify() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	bool CheckRangeAttack1(float flDot, float flDist) override;
 	bool CheckRangeAttack2(float flDot, float flDist) override;
@@ -87,18 +96,12 @@ public:
 	virtual float GetDamageAmount() { return GetSkillFloat("shockroach_dmg_bite"sv); }
 	virtual int GetVoicePitch() { return 100; }
 	virtual float GetSoundVolue() { return 1.0; }
-	Schedule_t* GetScheduleOfType(int Type) override;
+	const Schedule_t* GetScheduleOfType(int Type) override;
 
 	void MonsterThink() override;
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-
 	float m_flBirthTime;
 	bool m_fRoachSolid;
-
-	CUSTOM_SCHEDULES;
 
 	static const char* pIdleSounds[];
 	static const char* pAlertSounds[];
@@ -109,19 +112,15 @@ public:
 };
 LINK_ENTITY_TO_CLASS(monster_shockroach, COFShockRoach);
 
-TYPEDESCRIPTION COFShockRoach::m_SaveData[] =
-	{
-		DEFINE_FIELD(COFShockRoach, m_flBirthTime, FIELD_TIME),
-};
+BEGIN_DATAMAP(COFShockRoach)
+DEFINE_FIELD(m_flBirthTime, FIELD_TIME),
+	DEFINE_FUNCTION(LeapTouch),
+	END_DATAMAP();
 
-IMPLEMENT_SAVERESTORE(COFShockRoach, CBaseMonster);
-
-DEFINE_CUSTOM_SCHEDULES(COFShockRoach){
-	slRCRangeAttack1,
-	slRCRangeAttack1Fast,
-};
-
-IMPLEMENT_CUSTOM_SCHEDULES(COFShockRoach, CBaseMonster);
+BEGIN_CUSTOM_SCHEDULES(COFShockRoach)
+slRCRangeAttack1,
+	slRCRangeAttack1Fast
+	END_CUSTOM_SCHEDULES();
 
 const char* COFShockRoach::pIdleSounds[] =
 	{
@@ -159,37 +158,20 @@ void COFShockRoach::OnCreate()
 
 	pev->health = GetSkillFloat("shockroach_health"sv);
 	pev->model = MAKE_STRING("models/w_shock_rifle.mdl");
+
+	SetClassification("alien_prey");
 }
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int COFShockRoach::Classify()
-{
-	return CLASS_ALIEN_PREY;
-}
-
-//=========================================================
-// Center - returns the real center of the headcrab.  The
-// bounding box is much larger than the actual creature so
-// this is needed for targeting
-//=========================================================
 Vector COFShockRoach::Center()
 {
 	return Vector(pev->origin.x, pev->origin.y, pev->origin.z + 6);
 }
-
 
 Vector COFShockRoach::BodyTarget(const Vector& posSrc)
 {
 	return Center();
 }
 
-//=========================================================
-// SetYawSpeed - allows each sequence to have a different
-// turn rate associated with it.
-//=========================================================
 void COFShockRoach::SetYawSpeed()
 {
 	int ys;
@@ -211,10 +193,6 @@ void COFShockRoach::SetYawSpeed()
 	pev->yaw_speed = ys;
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void COFShockRoach::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -223,7 +201,7 @@ void COFShockRoach::HandleAnimEvent(MonsterEvent_t* pEvent)
 	{
 		ClearBits(pev->flags, FL_ONGROUND);
 
-		UTIL_SetOrigin(pev, pev->origin + Vector(0, 0, 1)); // take him off ground so engine doesn't instantly reset onground
+		SetOrigin(pev->origin + Vector(0, 0, 1)); // take him off ground so engine doesn't instantly reset onground
 		UTIL_MakeVectors(pev->angles);
 
 		Vector vecJumpDir;
@@ -277,9 +255,6 @@ void COFShockRoach::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void COFShockRoach::Spawn()
 {
 	Precache();
@@ -302,9 +277,6 @@ void COFShockRoach::Spawn()
 	MonsterInit();
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void COFShockRoach::Precache()
 {
 	PRECACHE_SOUND_ARRAY(pIdleSounds);
@@ -319,11 +291,7 @@ void COFShockRoach::Precache()
 	PrecacheModel(STRING(pev->model));
 }
 
-
-//=========================================================
-// RunTask
-//=========================================================
-void COFShockRoach::RunTask(Task_t* pTask)
+void COFShockRoach::RunTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -345,10 +313,6 @@ void COFShockRoach::RunTask(Task_t* pTask)
 	}
 }
 
-//=========================================================
-// LeapTouch - this is the headcrab's touch function when it
-// is in the air
-//=========================================================
 void COFShockRoach::LeapTouch(CBaseEntity* pOther)
 {
 	if (0 == pOther->pev->takedamage)
@@ -362,13 +326,11 @@ void COFShockRoach::LeapTouch(CBaseEntity* pOther)
 	}
 
 	// Give the player a shock rifle if they don't have one
-	if (pOther->IsPlayer())
+	if (auto player = ToBasePlayer(pOther); player)
 	{
-		auto pPlayer = static_cast<CBasePlayer*>(pOther);
-
-		if (!pPlayer->HasNamedPlayerWeapon("weapon_shockrifle"))
+		if (!player->HasNamedPlayerWeapon("weapon_shockrifle"))
 		{
-			pPlayer->GiveNamedItem("weapon_shockrifle");
+			player->GiveNamedItem("weapon_shockrifle");
 			SetTouch(nullptr);
 			UTIL_Remove(this);
 			return;
@@ -386,9 +348,6 @@ void COFShockRoach::LeapTouch(CBaseEntity* pOther)
 	SetTouch(nullptr);
 }
 
-//=========================================================
-// PrescheduleThink
-//=========================================================
 void COFShockRoach::PrescheduleThink()
 {
 	// make the crab coo a little bit in combat state
@@ -398,7 +357,7 @@ void COFShockRoach::PrescheduleThink()
 	}
 }
 
-void COFShockRoach::StartTask(Task_t* pTask)
+void COFShockRoach::StartTask(const Task_t* pTask)
 {
 	m_iTaskStatus = TASKSTATUS_RUNNING;
 
@@ -418,10 +377,6 @@ void COFShockRoach::StartTask(Task_t* pTask)
 	}
 }
 
-
-//=========================================================
-// CheckRangeAttack1
-//=========================================================
 bool COFShockRoach::CheckRangeAttack1(float flDot, float flDist)
 {
 	if (FBitSet(pev->flags, FL_ONGROUND) && flDist <= 256 && flDot >= 0.65)
@@ -431,9 +386,6 @@ bool COFShockRoach::CheckRangeAttack1(float flDot, float flDist)
 	return false;
 }
 
-//=========================================================
-// CheckRangeAttack2
-//=========================================================
 bool COFShockRoach::CheckRangeAttack2(float flDot, float flDist)
 {
 	return false;
@@ -461,35 +413,23 @@ bool COFShockRoach::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, fl
 	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, (bitsDamageType & ~DMG_ALWAYSGIB) | DMG_NEVERGIB);
 }
 
-//=========================================================
-// IdleSound
-//=========================================================
 void COFShockRoach::IdleSound()
 {
 }
 
-//=========================================================
-// AlertSound
-//=========================================================
 void COFShockRoach::AlertSound()
 {
 }
 
-//=========================================================
-// AlertSound
-//=========================================================
 void COFShockRoach::PainSound()
 {
 }
 
-//=========================================================
-// DeathSound
-//=========================================================
 void COFShockRoach::DeathSound()
 {
 }
 
-Schedule_t* COFShockRoach::GetScheduleOfType(int Type)
+const Schedule_t* COFShockRoach::GetScheduleOfType(int Type)
 {
 	switch (Type)
 	{

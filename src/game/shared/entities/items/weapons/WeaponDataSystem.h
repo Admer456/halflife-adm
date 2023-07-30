@@ -23,6 +23,12 @@
 #include "networking/NetworkDataSystem.h"
 #include "utils/GameSystem.h"
 
+struct WeaponAttackMode
+{
+	eastl::fixed_string<char, 32> AmmoType;
+	int MagazineSize{WEAPON_NOCLIP};
+};
+
 struct WeaponInfo
 {
 	int Id{WEAPON_NONE};
@@ -32,16 +38,16 @@ struct WeaponInfo
 	int Position{0};
 	int Weight{0}; //!< this value used to determine this weapon's importance in autoselection.
 	int Flags{0};
-	
-	eastl::fixed_string<char, 32> AmmoType1;
-	int MagazineSize1{WEAPON_NOCLIP};
 
-	eastl::fixed_string<char, 32> AmmoType2;
+	std::array<WeaponAttackMode, MAX_WEAPON_ATTACK_MODES> AttackModeInfo;
+
+	// Initialized from map config.
+	std::string HudConfigFileName{};
 };
 
 /**
-*	@brief Handles the networking of weapon metadata from server to client.
-*/
+ *	@brief Handles the networking of weapon metadata from server to client.
+ */
 class WeaponDataSystem final : public IGameSystem, public INetworkDataBlockHandler
 {
 public:
@@ -71,6 +77,11 @@ public:
 	 *	@brief Registers a new weapon.
 	 */
 	int Register(WeaponInfo&& info);
+
+	void SetWeaponHudConfigFileName(std::string_view className, std::string&& fileName);
+
+private:
+	WeaponInfo* GetMutableByName(std::string_view name);
 
 private:
 	// Public indices are 1-based, private ones are 0-based.

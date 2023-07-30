@@ -13,11 +13,9 @@
  *
  ****/
 
-#include "Platform.h"
+#include "cbase.h"
 
-#include "mathlib.h"
-#include "cdll_dll.h"
-#include "const.h"
+#include "com_model.h"
 #include "usercmd.h"
 #include "pm_defs.h"
 #include "pm_shared.h"
@@ -43,41 +41,7 @@ Vector vJumpAngles;
 
 static bool pm_shared_initialized = false;
 
-// TODO: already defined in com_model.h
-enum modtype_t
-{
-	mod_brush,
-	mod_sprite,
-	mod_alias,
-	mod_studio
-};
-
 playermove_t* pmove = nullptr;
-
-struct dclipnode_t
-{
-	int planenum;
-	short children[2]; // negative numbers are contents
-};
-
-struct mplane_t
-{
-	Vector normal; // surface normal
-	float dist;	   // closest appoach to origin
-	byte type;	   // for texture axis selection and fast side tests
-	byte signbits; // signx + signy<<1 + signz<<1
-	byte pad[2];
-};
-
-struct hull_t
-{
-	dclipnode_t* clipnodes;
-	mplane_t* planes;
-	int firstclipnode;
-	int lastclipnode;
-	Vector clip_mins;
-	Vector clip_maxs;
-};
 
 // Ducking time
 #define TIME_TO_DUCK 0.4
@@ -97,24 +61,9 @@ struct hull_t
 #define STEP_LADDER 8	// climbing ladder
 #define STEP_SNOW 9		// snow
 
-#define PLAYER_FATAL_FALL_SPEED 1024															  // approx 60 feet
-#define PLAYER_MAX_SAFE_FALL_SPEED 580															  // approx 20 feet
-#define DAMAGE_FOR_FALL_SPEED (float)100 / (PLAYER_FATAL_FALL_SPEED - PLAYER_MAX_SAFE_FALL_SPEED) // damage per unit per second.
-#define PLAYER_MIN_BOUNCE_SPEED 200
-#define PLAYER_FALL_PUNCH_THRESHHOLD (float)350 // won't punch player's screen/make scrape noise unless player falling at least this fast.
-
-#define PLAYER_LONGJUMP_SPEED 350 // how fast we longjump
-
-#define PLAYER_DUCKING_MULTIPLIER 0.333
-
-#define CONTENTS_CURRENT_0 -9
-#define CONTENTS_CURRENT_90 -10
-#define CONTENTS_CURRENT_180 -11
-#define CONTENTS_CURRENT_270 -12
-#define CONTENTS_CURRENT_UP -13
-#define CONTENTS_CURRENT_DOWN -14
-
-#define CONTENTS_TRANSLUCENT -15
+const float MaxJetpackSpeed = 400.f;
+const float JetpackVerticalAccelerationPerSecond = MaxJetpackSpeed * 8;
+const float JetpackForwardAccelerationPerSecond = MaxJetpackSpeed * 2;
 
 static Vector rgv3tStuckTable[54];
 static int rgStuckLast[MAX_PLAYERS][2];
@@ -140,17 +89,15 @@ void PM_PlaySound(int channel, const char* sample, float volume, float attenuati
 	// It's possible for this to execute before the client has received the replacement map.
 	// The engine will load the sound even if it wasn't precached, so it's not a problem.
 #ifndef CLIENT_DLL
-	sample = sound::g_ServerSound.CheckForSoundReplacement(sample);
-
 	EMIT_SOUND_PREDICTED(UTIL_PlayerByIndex(pmove->player_index + 1), channel, sample, volume, attenuation, fFlags, pitch);
 #else
-	if (pmove->runfuncs)
+	if (pmove->runfuncs != 0)
 	{
 		CL_StartSound(pmove->player_index + 1, channel, sample, pmove->origin, volume, attenuation, pitch, fFlags);
 	}
 #endif
 
-	//pmove->PM_PlaySound(channel, sample, volume, attenuation, fFlags, pitch);
+	// pmove->PM_PlaySound(channel, sample, volume, attenuation, fFlags, pitch);
 }
 
 void PM_PlayStepSound(int step, float fvol)
@@ -477,7 +424,7 @@ void PM_UpdateStepSound()
 	speed = pmove->velocity.Length();
 
 	// determine if we are on a ladder
-	// The Barnacle Grapple sets the FL_IMMUNE_LAVA flag to indicate that the player is not on a ladder - Solokiller
+	// The Barnacle Grapple sets the FL_IMMUNE_LAVA flag to indicate that the player is not on a ladder
 	const bool fLadder = (pmove->movetype == MOVETYPE_FLY) && (pmove->flags & FL_IMMUNE_LAVA) == 0; // IsOnLadder();
 
 	// UNDONE: need defined numbers for run, walk, crouch, crouch run velocities!!!!
@@ -766,8 +713,8 @@ int PM_FlyMove()
 
 	numbumps = 4; // Bump up to four times
 
-	blocked = 0;									// Assume not blocked
-	numplanes = 0;									//  and not sliding along any planes
+	blocked = 0;						 // Assume not blocked
+	numplanes = 0;						 //  and not sliding along any planes
 	original_velocity = pmove->velocity; // Store original velocity
 	primal_velocity = pmove->velocity;
 
@@ -1079,7 +1026,7 @@ void PM_WalkMove()
 
 	// Try sliding forward both on ground and up 16 pixels
 	//  take the move that goes farthest
-	original = pmove->origin;	  // Save out original pos &
+	original = pmove->origin;	   // Save out original pos &
 	originalvel = pmove->velocity; //  velocity.
 
 	// Slide move
@@ -1943,8 +1890,8 @@ void PM_Duck()
 	int buttonsChanged = (pmove->oldbuttons ^ pmove->cmd.buttons); // These buttons have changed this frame
 	int nButtonPressed = buttonsChanged & pmove->cmd.buttons;	   // The changed ones still down are "pressed"
 
-	bool duckchange = (buttonsChanged & IN_DUCK) != 0;
-	bool duckpressed = (nButtonPressed & IN_DUCK) != 0;
+	// const bool duckchange = (buttonsChanged & IN_DUCK) != 0;
+	// const bool duckpressed = (nButtonPressed & IN_DUCK) != 0;
 
 	if ((pmove->cmd.buttons & IN_DUCK) != 0)
 	{
@@ -1984,7 +1931,7 @@ void PM_Duck()
 				pmove->bInDuck = 1;
 			}
 
-			time = V_max(0.0, (1.0 - (float)pmove->flDuckTime / 1000.0));
+			time = std::max(0.0, (1.0 - (float)pmove->flDuckTime / 1000.0));
 
 			if (0 != pmove->bInDuck)
 			{
@@ -2503,6 +2450,24 @@ void PM_Jump()
 	// No more effect
 	if (pmove->onground == -1)
 	{
+		if (atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "cjp")) == 1)
+		{
+			// Apply additional jump force every frame.
+			float force = pmove->velocity.z;
+			force += JetpackVerticalAccelerationPerSecond * pmove->frametime;
+			force = std::min(force, MaxJetpackSpeed);
+			pmove->velocity.z = force;
+
+			if ((pmove->cmd.buttons & IN_FORWARD) != 0)
+			{
+				// Add some extra forward velocity so players can move in the air.
+				for (i = 0; i < 2; i++)
+				{
+					pmove->velocity[i] += pmove->forward[i] * JetpackForwardAccelerationPerSecond * pmove->frametime;
+				}
+			}
+		}
+
 		// Flag that we jumped.
 		// HACK HACK HACK
 		// Remove this when the game .dll no longer does physics code!!!!
@@ -2518,13 +2483,17 @@ void PM_Jump()
 
 	PM_PreventMegaBunnyJumping();
 
-	if (tfc)
+	// Don't play jump sounds while frozen.
+	if ((pmove->flags & FL_FROZEN) == 0)
 	{
-		PM_PlaySound(CHAN_BODY, "player/plyrjmp8.wav", 0.5, ATTN_NORM, 0, PITCH_NORM);
-	}
-	else
-	{
-		PM_PlayStepSound(PM_MapTextureTypeStepType(pmove->chtexturetype), 1.0);
+		if (tfc)
+		{
+			PM_PlaySound(CHAN_BODY, "player/plyrjmp8.wav", 0.5, ATTN_NORM, 0, PITCH_NORM);
+		}
+		else
+		{
+			PM_PlayStepSound(PM_MapTextureTypeStepType(pmove->chtexturetype), 1.0);
+		}
 	}
 
 	// See if user can super long jump?
@@ -2788,7 +2757,7 @@ void PM_DropPunchAngle(Vector& punchangle)
 
 	len = VectorNormalize(punchangle);
 	len -= (10.0 + len * 0.5) * pmove->frametime;
-	len = V_max(len, 0.0);
+	len = std::max(len, 0.0f);
 	punchangle = punchangle * len;
 }
 
@@ -2812,7 +2781,7 @@ void PM_CheckParamters()
 	maxspeed = pmove->clientmaxspeed; // atof( pmove->PM_Info_ValueForKey( pmove->physinfo, "maxspd" ) );
 	if (maxspeed != 0.0)
 	{
-		pmove->maxspeed = V_min(maxspeed, pmove->maxspeed);
+		pmove->maxspeed = std::min(maxspeed, pmove->maxspeed);
 	}
 
 	if ((spd != 0.0) &&

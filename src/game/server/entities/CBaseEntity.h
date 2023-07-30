@@ -22,9 +22,12 @@
 #include "Platform.h"
 #include "extdll.h"
 #include "util.h"
+#include "DataMap.h"
+#include "EntityClassificationSystem.h"
 #include "skill.h"
 
 class CBaseEntity;
+class CBaseItem;
 class CBaseMonster;
 class CBasePlayerWeapon;
 class CCineMonster;
@@ -32,6 +35,7 @@ class COFSquadTalkMonster;
 class CSound;
 class CSquadMonster;
 class CTalkMonster;
+class CItemCTF;
 struct ReplacementMap;
 
 #define MAX_PATH_SIZE 10 // max number of nodes available for a path.
@@ -50,54 +54,13 @@ struct ReplacementMap;
 // UNDONE: This will ignore transition volumes (trigger_transition), but not the PVS!!!
 #define FCAP_FORCE_TRANSITION 0x00000080 // ALWAYS goes across transitions
 
-#define SF_NORESPAWN (1 << 30) // !!!set this bit on guns and stuff that should never respawn.
-
-#define EXPORT DLLEXPORT
-
-enum USE_TYPE
+enum USE_TYPE : int
 {
 	USE_OFF = 0,
 	USE_ON = 1,
 	USE_SET = 2,
 	USE_TOGGLE = 3
 };
-
-template <typename T>
-using TBASEPTR = void (T::*)();
-
-template <typename T>
-using TENTITYFUNCPTR = void (T::*)(CBaseEntity* pOther);
-
-template <typename T>
-using TUSEPTR = void (T::*)(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
-
-using BASEPTR = TBASEPTR<CBaseEntity>;
-using ENTITYFUNCPTR = TENTITYFUNCPTR<CBaseEntity>;
-using USEPTR = TUSEPTR<CBaseEntity>;
-
-// For CLASSIFY
-#define CLASS_NONE 0
-#define CLASS_MACHINE 1
-#define CLASS_PLAYER 2
-#define CLASS_HUMAN_PASSIVE 3
-#define CLASS_HUMAN_MILITARY 4
-#define CLASS_ALIEN_MILITARY 5
-#define CLASS_ALIEN_PASSIVE 6
-#define CLASS_ALIEN_MONSTER 7
-#define CLASS_ALIEN_PREY 8
-#define CLASS_ALIEN_PREDATOR 9
-#define CLASS_INSECT 10
-#define CLASS_PLAYER_ALLY 11
-#define CLASS_PLAYER_BIOWEAPON 12		 // hornets and snarks.launched by players
-#define CLASS_ALIEN_BIOWEAPON 13		 // hornets and snarks.launched by the alien menace
-#define CLASS_HUMAN_MILITARY_FRIENDLY 14 // Opposing Force friendlies
-#define CLASS_ALIEN_RACE_X 15
-#define CLASS_CTFITEM 30
-#define CLASS_BARNACLE 99 // special because no one pays attention to it, and it eats a wide cross-section of creatures.
-
-// Defines the range of valid class values for use in IRelationship.
-constexpr int CLASS_FIRST = CLASS_MACHINE;
-constexpr int CLASS_LAST = CLASS_ALIEN_RACE_X;
 
 // people gib if their health is <= this at the time of death
 #define GIB_HEALTH_VALUE -30
@@ -134,11 +97,14 @@ constexpr int CLASS_LAST = CLASS_ALIEN_RACE_X;
 
 void FireTargets(const char* targetName, CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 
-//
-// Base Entity.  All entity types derive from this
-//
-class CBaseEntity
+/**
+ *	@brief Base Entity. All entity types derive from this
+ */
+class SINGLE_INHERITANCE CBaseEntity
 {
+	DECLARE_CLASS_NOBASE(CBaseEntity);
+	DECLARE_DATAMAP_NOBASE();
+
 public:
 	static inline std::shared_ptr<spdlog::logger> Logger;
 	static inline std::shared_ptr<spdlog::logger> IOLogger;
@@ -181,6 +147,8 @@ public:
 
 	const char* GetMessage() const { return STRING(pev->message); }
 
+	void SetOrigin(const Vector& origin);
+
 	int PrecacheModel(const char* s);
 	void SetModel(const char* s);
 
@@ -216,13 +184,21 @@ public:
 	 */
 	virtual void OnCreate();
 
+	void Construct();
+
 	/**
 	 *	@brief Called immediately before the destructor is executed.
 	 *	@details Call the base class version at the end when overriding this function.
 	 */
 	virtual void OnDestroy();
 
+	void Destruct();
+
 	virtual void Spawn() {}
+
+	/**
+	 *	@brief precaches all resources this entity needs
+	 */
 	virtual void Precache() {}
 
 	/**
@@ -233,26 +209,107 @@ public:
 
 	void LoadReplacementFiles();
 
-	virtual bool KeyValue(KeyValueData* pkvd) { return false; }
-	virtual bool Save(CSave& save);
-	virtual bool Restore(CRestore& restore);
+	/**
+	 *	@brief Cache user-entity-field values until spawn is called.
+	 */
+	virtual bool KeyValue(KeyValueData* pkvd);
+	bool Save(CSave& save);
+	bool Restore(CRestore& restore);
+	virtual void PostRestore();
 	virtual int ObjectCaps() { return FCAP_ACROSS_TRANSITION; }
 	virtual void Activate() {}
 
-	// Setup the object->object collision box (pev->mins / pev->maxs is the object->world collision box)
+	/**
+	 *	@brief Setup the object->object collision box (pev->mins / pev->maxs is the object->world collision box)
+	 */
 	virtual void SetObjectCollisionBox();
 
-	// Classify - returns the type of group (i.e, "houndeye", or "human military" so that monsters with different classnames
-	// still realize that they are teammates. (overridden for monsters that form groups)
-	virtual int Classify() { return CLASS_NONE; }
+private:
+	string_t m_ClassificationName = MAKE_STRING(ENTCLASS_NONE_NAME);
+	EntityClassification m_Classification = ENTCLASS_NONE; // Not saved; reset on load.
+	bool m_HasCustomClassification = false;
+
+	// For entities that create other entities; stores the classification they get.
+	string_t m_ChildClassificationName;
+
+public:
+	const char* GetClassificationName() const
+	{
+		return STRING(m_ClassificationName);
+	}
+
+	EntityClassification GetClassification() const
+	{
+		return m_Classification;
+	}
+
+	bool HasCustomClassification() const
+	{
+		return m_HasCustomClassification;
+	}
+
+	void SetClassification(std::string_view name)
+	{
+		m_Classification = g_EntityClassifications.GetClass(name);
+
+		// If the classification doesn't exist then the name has to be changed as well.
+		if (m_Classification != ENTCLASS_NONE)
+		{
+			m_ClassificationName = ALLOC_STRING_VIEW(name);
+		}
+		else
+		{
+			m_ClassificationName = MAKE_STRING(ENTCLASS_NONE_NAME);
+		}
+	}
+
+	void SetCustomClassification(std::string_view name)
+	{
+		SetClassification(name);
+		m_HasCustomClassification = true;
+	}
+
+	/**
+	 *	@brief returns the type of group (i.e, "houndeye", or "human military") so that monsters
+	 *	with different classnames still realize that they are teammates. (overridden for monsters that form groups)
+	 */
+	virtual EntityClassification Classify()
+	{
+		return m_Classification;
+	}
+
+	void MaybeSetChildClassification(CBaseEntity* child);
+
+protected:
+	bool m_IsUnkillable = false;
+
+public:
+	bool IsUnkillable() const { return m_IsUnkillable; }
+
+	/**
+	 *	@brief Is this some kind of machine?
+	 */
+	virtual bool IsMachine() const { return false; }
+
+	bool m_InformedOwnerOfDeath = false;
+
 	virtual void DeathNotice(CBaseEntity* child) {} // monster maker children use this to tell the monster maker that they have died.
 
-
-	static TYPEDESCRIPTION m_SaveData[];
+	void MaybeNotifyOwnerOfDeath();
 
 	virtual void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType);
+
+	/**
+	 *	@brief inflict damage on this entity.
+	 *	This should be the only function that ever reduces health.
+	 *	@param inflictor The entity doing the damage
+	 *	@param attacker The entity actually attacking
+	 *	@param flDamage Damage done
+	 *	@param bitsDamageType indicates type of damage inflicted, ie: DMG_CRUSH
+	 */
 	virtual bool TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType);
-	virtual bool TakeHealth(float flHealth, int bitsDamageType);
+
+	virtual bool GiveHealth(float flHealth, int bitsDamageType);
 	virtual void Killed(CBaseEntity* attacker, int iGib);
 	virtual int BloodColor() { return DONT_BLEED; }
 	virtual void TraceBleed(float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType);
@@ -261,17 +318,13 @@ public:
 	virtual CTalkMonster* MyTalkMonsterPointer() { return nullptr; }
 	virtual CSquadMonster* MySquadMonsterPointer() { return nullptr; }
 	virtual COFSquadTalkMonster* MySquadTalkMonsterPointer() { return nullptr; }
-	virtual int GetToggleState() { return TS_AT_TOP; }
+	virtual CBaseItem* MyItemPointer() { return nullptr; }
+	virtual CItemCTF* MyItemCTFPointer() { return nullptr; }
 	virtual float GetDelay() { return 0; }
 	virtual bool IsMoving() { return pev->velocity != g_vecZero; }
 	virtual void OverrideReset() {}
 	virtual int DamageDecal(int bitsDamageType);
-	// This is ONLY used by the node graph to test movement through a door
-	virtual void SetToggleState(int state) {}
-	virtual void StartSneaking() {}
-	virtual void StopSneaking() {}
 	virtual bool OnControls(CBaseEntity* controller) { return false; }
-	virtual bool IsSneaking() { return false; }
 	virtual bool IsAlive() { return (pev->deadflag == DEAD_NO) && pev->health > 0; }
 	virtual bool IsBSPModel() { return pev->solid == SOLID_BSP || pev->movetype == MOVETYPE_PUSHSTEP; }
 	virtual bool ReflectGauss() { return (IsBSPModel() && !pev->takedamage); }
@@ -326,26 +379,58 @@ public:
 		::operator delete(pMem);
 	}
 
-	void UpdateOnRemove();
+	/**
+	 *	@brief This updates global tables that need to know about entities being removed
+	 *	Entities should override this to clean up any effects they create that do not remove themselves.
+	 */
+	virtual void UpdateOnRemove();
 
 	// common member functions
-	void EXPORT SUB_Remove();
-	void EXPORT SUB_DoNothing();
-	void EXPORT SUB_StartFadeOut();
-	void EXPORT SUB_FadeOut();
-	void EXPORT SUB_CallUseToggle() { this->Use(this, this, USE_TOGGLE, 0); }
+	/**
+	 *	@brief Convenient way to delay removing oneself
+	 */
+	void SUB_Remove();
+
+	/**
+	 *	@brief slowly fades a entity out, then removes it.
+	 *	DON'T USE ME FOR GIBS AND STUFF IN MULTIPLAYER!
+	 *	SET A FUTURE THINK AND A RENDERMODE!!
+	 */
+	void SUB_StartFadeOut();
+	void SUB_FadeOut();
+	void SUB_CallUseToggle() { this->Use(this, this, USE_TOGGLE, 0); }
 	bool ShouldToggle(USE_TYPE useType, bool currentState);
-	void FireBullets(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, CBaseEntity* attacker = nullptr);
-	Vector FireBulletsPlayer(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread, float flDistance, int iBulletType, int iTracerFreq = 4, int iDamage = 0, CBaseEntity* attacker = nullptr, int shared_rand = 0);
 
-	virtual CBaseEntity* Respawn() { return nullptr; }
+	/**
+	 *	@brief Go to the trouble of combining multiple pellets into a single damage call.
+	 *	This version is used by Monsters.
+	 */
+	void FireBullets(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread,
+		float flDistance, int iBulletType,
+		int iTracerFreq = 4, int iDamage = 0, CBaseEntity* attacker = nullptr);
 
+	/**
+	 *	@brief Go to the trouble of combining multiple pellets into a single damage call.
+	 *	This version is used by Players, uses the random seed generator to sync client and server side shots.
+	 */
+	Vector FireBulletsPlayer(unsigned int cShots, Vector vecSrc, Vector vecDirShooting, Vector vecSpread,
+		float flDistance, int iBulletType,
+		int iTracerFreq = 4, int iDamage = 0, CBaseEntity* attacker = nullptr, int shared_rand = 0);
+
+	/**
+	 *	@brief If self.delay is set, a delayed_use entity will be created that will actually
+	 *	do the SUB_UseTargets after that many seconds have passed.
+	 *	Removes all entities with a targetname that match self.killtarget,
+	 *	and removes them, so some events can remove other triggers.
+	 *	Search for (string)targetname in all entities that
+	 *	match (string)self.target and call their .use function (if they have one)
+	 */
 	void SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float value);
 	// Do the bounding boxes of these two intersect?
 	bool Intersects(CBaseEntity* pOther);
 	void MakeDormant();
 	bool IsDormant();
-	bool IsLockedByMaster() { return false; }
+	bool IsLockedByMaster();
 
 	static CBaseEntity* Instance(edict_t* pent)
 	{
@@ -370,30 +455,26 @@ public:
 		return ent;
 	}
 
-	template <typename T>
-	static T* Instance(edict_t* pent)
-	{
-		if (!pent)
-			pent = INDEXENT(0);
-		CBaseEntity* pEnt = (CBaseEntity*)GET_PRIVATE(pent);
-		return static_cast<T*>(pEnt);
-	}
-
-	template <typename T>
-	static T* Instance(entvars_t* pev) { return Instance<T>(ENT(pev)); }
-
 	// Ugly technique to override base member functions
 	// Normally it's illegal to cast a pointer to a member function of a derived class to a pointer to a
 	// member function of a base class.  static_cast is a sleezy way around that problem.
 
 private:
 	// Ugly code to lookup all functions to make sure they are exported when set.
-	void FunctionCheck(const void* pFunction, const char* name)
+	void FunctionCheck(const BASEPTR pFunction, const char* name)
 	{
-		if (pFunction && !NAME_FOR_FUNCTION((uint32)pFunction))
-			CBaseEntity::Logger->error("No EXPORT: {}:{} ({:#08X})", GetClassname(), name, (uint32)pFunction);
+		if (pFunction && !DataMap_FindFunctionName(*GetDataMap(), pFunction))
+		{
+			// Pointer to member functions store the function address as a pointer at the start of the variable,
+			// so this extracts that and turns it into an address we can use.
+			// This only works if the function is non-virtual.
+			// Note that this is incredibly ugly and should be changed when possible to not rely on implementation details.
+			CBaseEntity::Logger->error("No DEFINE_FUNCTION for: {}:{} ({})",
+				GetClassname(), name, *reinterpret_cast<const void* const*>(&pFunction));
+		}
 	}
 
+public:
 	template <typename T, typename Dest, typename Source>
 	Dest FunctionSet(Dest& pointer, Source func, const char* name)
 	{
@@ -409,19 +490,12 @@ private:
 		pointer = static_cast<Dest>(func);
 
 #ifdef _DEBUG
-		// Pointer to member functions store the function address as a pointer at the start of the variable,
-		// so this extracts that and turns it into an address we can use.
-		// This only works if the function is non-virtual.
-		// Note that this is incredibly ugly and should be changed when possible to not rely on implementation details.
-		const void* address = reinterpret_cast<const void*>(*reinterpret_cast<const int*>(&pointer));
-
-		FunctionCheck(address, name);
+		FunctionCheck(DataMap_ConvertFunctionPointer(pointer), name);
 #endif
 
 		return pointer;
 	}
 
-public:
 	template <typename T>
 	BASEPTR ThinkSet(TBASEPTR<T> func, const char* name)
 	{
@@ -478,10 +552,10 @@ public:
 
 
 	//
-	static CBaseEntity* Create(const char* szName, const Vector& vecOrigin, const Vector& vecAngles, edict_t* pentOwner = nullptr);
+	static CBaseEntity* Create(const char* szName, const Vector& vecOrigin, const Vector& vecAngles, CBaseEntity* owner = nullptr, bool callSpawn = true);
 
 	virtual bool FBecomeProne() { return false; }
-	edict_t* edict() { return ENT(pev); }
+	edict_t* edict() const { return ENT(pev); }
 	int entindex() { return ENTINDEX(edict()); }
 
 	virtual Vector Center() { return (pev->absmax + pev->absmin) * 0.5; } // center point of entity
@@ -489,9 +563,16 @@ public:
 	virtual Vector EarPosition() { return pev->origin + pev->view_ofs; }  // position of ears
 	virtual Vector BodyTarget(const Vector& posSrc) { return Center(); }  // position to shoot at
 
-	virtual int Illumination() { return GETENTITYILLUM(ENT(pev)); }
+	virtual int Illumination() { return GETENTITYILLUM(edict()); }
 
+	/**
+	 *	@brief returns true if a line can be traced from the caller's eyes to the target
+	 */
 	virtual bool FVisible(CBaseEntity* pEntity);
+
+	/**
+	 *	@brief returns true if a line can be traced from the caller's eyes to the target vector
+	 */
 	virtual bool FVisible(const Vector& vecOrigin);
 
 	static float GetSkillFloat(std::string_view name)
@@ -504,6 +585,16 @@ public:
 	void EmitSoundDyn(int channel, const char* sample, float volume, float attenuation, int flags, int pitch);
 	void EmitAmbientSound(const Vector& vecOrigin, const char* samp, float vol, float attenuation, int fFlags, int pitch);
 	void StopSound(int channel, const char* sample);
+
+	/**
+	 *	@brief If this entity has a master switch, this is the targetname.
+	 *	A master switch must be of the multisource or game_team_master type.
+	 *	If all of the switches in the multisource have been triggered,
+	 *	then the entity will be allowed to operate.
+	 *	Otherwise, it will be deactivated.
+	 */
+	string_t m_sMaster;
+	EHANDLE m_hActivator;
 
 	string_t m_ModelReplacementFileName;
 	string_t m_SoundReplacementFileName;
@@ -518,24 +609,14 @@ public:
 	bool m_HasCustomHullMin{false};
 	bool m_HasCustomHullMax{false};
 
-	// We use this variables to store each ammo count.
-	int ammo_9mm;
-	int ammo_357;
-	int ammo_bolts;
-	int ammo_buckshot;
-	int ammo_rockets;
-	int ammo_uranium;
-	int ammo_hornets;
-	int ammo_argrens;
-	int ammo_spores;
-	int ammo_762;
-	// Special stuff for grenades and satchels.
-	float m_flStartThrow;
-	float m_flReleaseThrow;
-	int m_chargeReady;
-	int m_fInAttack;
-
-	int m_fireState;
+	/**
+	 *	@brief If not a zero vector, the entity's origin will be offset by this much when performing PAS checks.
+	 *	Used by entities that were originally designed to have their origin flush with a surface
+	 *	which causes MSG_PAS messages to skip them in multiplayer.
+	 *	This should be set in the entity's CBaseEntity::OnCreate method.
+	 *	@details The entity's angles affect this offset.
+	 */
+	Vector m_SoundOffset{};
 };
 
 inline bool FNullEnt(CBaseEntity* ent) { return (ent == nullptr) || FNullEnt(ent->edict()); }

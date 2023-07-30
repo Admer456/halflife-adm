@@ -12,55 +12,48 @@
  *   without written permission from Valve LLC.
  *
  ****/
-/*
 
-===== subs.cpp ========================================================
-
-  frequently used global functions
-
-*/
+/**
+ *	@file
+ *	frequently used global functions
+ */
 
 #include "cbase.h"
 #include "nodes.h"
 #include "doors.h"
 
-bool FEntIsVisible(entvars_t* pev, entvars_t* pevTarget);
-
-// Landmark class
 void CPointEntity::Spawn()
 {
 	pev->solid = SOLID_NOT;
 	//	SetSize(g_vecZero, g_vecZero);
 }
 
-
+/**
+ *	@brief Null Entity, remove on startup
+ */
 class CNullEntity : public CBaseEntity
 {
 public:
 	void Spawn() override;
 };
 
-
-// Null Entity, remove on startup
 void CNullEntity::Spawn()
 {
-	REMOVE_ENTITY(ENT(pev));
+	REMOVE_ENTITY(edict());
 }
+
 LINK_ENTITY_TO_CLASS(info_null, CNullEntity);
 
-// These are the new entry points to entities.
-LINK_ENTITY_TO_CLASS(info_landmark, CPointEntity);
-
-// This updates global tables that need to know about entities being removed
 void CBaseEntity::UpdateOnRemove()
 {
-	int i;
+	// tell owner (if any) that we're dead.This is mostly for MonsterMaker functionality.
+	MaybeNotifyOwnerOfDeath();
 
 	if (FBitSet(pev->flags, FL_GRAPHED))
 	{
 		// this entity was a LinkEnt in the world node graph, so we must remove it from
 		// the graph since we are removing it from the world.
-		for (i = 0; i < WorldGraph.m_cLinks; i++)
+		for (int i = 0; i < WorldGraph.m_cLinks; i++)
 		{
 			if (WorldGraph.m_pLinkPool[i].m_pLinkEnt == pev)
 			{
@@ -73,7 +66,6 @@ void CBaseEntity::UpdateOnRemove()
 		gGlobalState.EntitySetState(pev->globalname, GLOBAL_DEAD);
 }
 
-// Convenient way to delay removing oneself
 void CBaseEntity::SUB_Remove()
 {
 	UpdateOnRemove();
@@ -84,24 +76,14 @@ void CBaseEntity::SUB_Remove()
 		Logger->debug("SUB_Remove called on entity \"{}\" ({}) with health > 0", STRING(pev->targetname), STRING(pev->classname));
 	}
 
-	REMOVE_ENTITY(ENT(pev));
+	REMOVE_ENTITY(edict());
 }
 
-
-// Convenient way to explicitly do nothing (passed to functions that require a method)
-void CBaseEntity::SUB_DoNothing()
-{
-}
-
-
-// Global Savedata for Delay
-TYPEDESCRIPTION CBaseDelay::m_SaveData[] =
-	{
-		DEFINE_FIELD(CBaseDelay, m_flDelay, FIELD_FLOAT),
-		DEFINE_FIELD(CBaseDelay, m_iszKillTarget, FIELD_STRING),
-};
-
-IMPLEMENT_SAVERESTORE(CBaseDelay, CBaseEntity);
+BEGIN_DATAMAP(CBaseDelay)
+DEFINE_FIELD(m_flDelay, FIELD_FLOAT),
+	DEFINE_FIELD(m_iszKillTarget, FIELD_STRING),
+	DEFINE_FUNCTION(DelayThink),
+	END_DATAMAP();
 
 bool CBaseDelay::KeyValue(KeyValueData* pkvd)
 {
@@ -119,33 +101,13 @@ bool CBaseDelay::KeyValue(KeyValueData* pkvd)
 	return CBaseEntity::KeyValue(pkvd);
 }
 
-
-/*
-==============================
-SUB_UseTargets
-
-If self.delay is set, a DelayedUse entity will be created that will actually
-do the SUB_UseTargets after that many seconds have passed.
-
-Removes all entities with a targetname that match self.killtarget,
-and removes them, so some events can remove other triggers.
-
-Search for (string)targetname in all entities that
-match (string)self.target and call their .use function (if they have one)
-
-==============================
-*/
 void CBaseEntity::SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float value)
 {
-	//
-	// fire targets
-	//
 	if (!FStringNull(pev->target))
 	{
 		FireTargets(STRING(pev->target), pActivator, this, useType, value);
 	}
 }
-
 
 void FireTargets(const char* targetName, CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
@@ -154,7 +116,9 @@ void FireTargets(const char* targetName, CBaseEntity* pActivator, CBaseEntity* p
 
 	CBaseEntity::IOLogger->debug("Firing: ({})", targetName);
 
-	for (auto target : UTIL_FindEntitiesByTargetname(targetName))
+	CBaseEntity* target = nullptr;
+
+	while ((target = UTIL_FindEntityByTargetname(target, targetName, pActivator, pCaller)) != nullptr)
 	{
 		if (target && (target->pev->flags & FL_KILLME) == 0) // Don't use dying ents
 		{
@@ -164,8 +128,7 @@ void FireTargets(const char* targetName, CBaseEntity* pActivator, CBaseEntity* p
 	}
 }
 
-LINK_ENTITY_TO_CLASS(DelayedUse, CBaseDelay);
-
+LINK_ENTITY_TO_CLASS(delayed_use, CBaseDelay);
 
 void CBaseDelay::SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float value)
 {
@@ -181,7 +144,7 @@ void CBaseDelay::SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float
 	if (m_flDelay != 0)
 	{
 		// create a temp object to fire at a later time
-		CBaseDelay* pTemp = g_EntityDictionary->Create<CBaseDelay>("DelayedUse");
+		CBaseDelay* pTemp = g_EntityDictionary->Create<CBaseDelay>("delayed_use");
 
 		pTemp->pev->nextthink = gpGlobals->time + m_flDelay;
 
@@ -192,19 +155,7 @@ void CBaseDelay::SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float
 		pTemp->m_iszKillTarget = m_iszKillTarget;
 		pTemp->m_flDelay = 0; // prevent "recursion"
 		pTemp->pev->target = pev->target;
-
-		// HACKHACK
-		// This wasn't in the release build of Half-Life.  We should have moved m_hActivator into this class
-		// but changing member variable hierarchy would break save/restore without some ugly code.
-		// This code is not as ugly as that code
-		if (pActivator && pActivator->IsPlayer()) // If a player activates, then save it
-		{
-			pTemp->pev->owner = pActivator->edict();
-		}
-		else
-		{
-			pTemp->pev->owner = nullptr;
-		}
+		pTemp->m_hActivator = pActivator;
 
 		return;
 	}
@@ -217,10 +168,20 @@ void CBaseDelay::SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float
 	{
 		CBaseEntity::IOLogger->debug("KillTarget: {}", STRING(m_iszKillTarget));
 
-		for (auto killTarget : UTIL_FindEntitiesByTargetname(STRING(m_iszKillTarget)))
+		CBaseEntity* killTarget = nullptr;
+
+		while ((killTarget = UTIL_FindEntityByTargetname(killTarget, STRING(m_iszKillTarget), pActivator, this)) != nullptr)
 		{
-			UTIL_Remove(killTarget);
-			CBaseEntity::IOLogger->debug("killing {}", STRING(killTarget->pev->classname));
+			if (UTIL_IsRemovableEntity(killTarget))
+			{
+				UTIL_Remove(killTarget);
+				CBaseEntity::IOLogger->debug("killing {}", STRING(killTarget->pev->classname));
+			}
+			else
+			{
+				CBaseEntity::IOLogger->debug("Can't kill \"{}\": not allowed to remove entities of this type",
+					STRING(killTarget->pev->classname));
+			}
 		}
 	}
 
@@ -233,79 +194,32 @@ void CBaseDelay::SUB_UseTargets(CBaseEntity* pActivator, USE_TYPE useType, float
 	}
 }
 
-
-/*
-void CBaseDelay :: SUB_UseTargetsEntMethod()
-{
-	SUB_UseTargets(pev);
-}
-*/
-
-/*
-QuakeEd only writes a single float for angles (bad idea), so up and down are
-just constant angles.
-*/
-void SetMovedir(entvars_t* pev)
-{
-	if (pev->angles == Vector(0, -1, 0))
-	{
-		pev->movedir = Vector(0, 0, 1);
-	}
-	else if (pev->angles == Vector(0, -2, 0))
-	{
-		pev->movedir = Vector(0, 0, -1);
-	}
-	else
-	{
-		UTIL_MakeVectors(pev->angles);
-		pev->movedir = gpGlobals->v_forward;
-	}
-
-	pev->angles = g_vecZero;
-}
-
-
-
-
 void CBaseDelay::DelayThink()
 {
-	CBaseEntity* pActivator = nullptr;
+	// If a player activated this on delay
+	CBaseEntity* pActivator = m_hActivator;
 
-	if (pev->owner != nullptr) // A player activated this on delay
-	{
-		pActivator = CBaseEntity::Instance(pev->owner);
-	}
 	// The use type is cached (and stashed) in pev->button
 	SUB_UseTargets(pActivator, (USE_TYPE)pev->button, 0);
-	REMOVE_ENTITY(ENT(pev));
+	REMOVE_ENTITY(edict());
 }
 
-
-// Global Savedata for Toggle
-TYPEDESCRIPTION CBaseToggle::m_SaveData[] =
-	{
-		DEFINE_FIELD(CBaseToggle, m_toggle_state, FIELD_INTEGER),
-		DEFINE_FIELD(CBaseToggle, m_flActivateFinished, FIELD_TIME),
-		DEFINE_FIELD(CBaseToggle, m_flMoveDistance, FIELD_FLOAT),
-		DEFINE_FIELD(CBaseToggle, m_flWait, FIELD_FLOAT),
-		DEFINE_FIELD(CBaseToggle, m_flLip, FIELD_FLOAT),
-		DEFINE_FIELD(CBaseToggle, m_flTWidth, FIELD_FLOAT),
-		DEFINE_FIELD(CBaseToggle, m_flTLength, FIELD_FLOAT),
-		DEFINE_FIELD(CBaseToggle, m_vecPosition1, FIELD_POSITION_VECTOR),
-		DEFINE_FIELD(CBaseToggle, m_vecPosition2, FIELD_POSITION_VECTOR),
-		DEFINE_FIELD(CBaseToggle, m_vecAngle1, FIELD_VECTOR), // UNDONE: Position could go through transition, but also angle?
-		DEFINE_FIELD(CBaseToggle, m_vecAngle2, FIELD_VECTOR), // UNDONE: Position could go through transition, but also angle?
-		DEFINE_FIELD(CBaseToggle, m_cTriggersLeft, FIELD_INTEGER),
-		DEFINE_FIELD(CBaseToggle, m_flHeight, FIELD_FLOAT),
-		DEFINE_FIELD(CBaseToggle, m_hActivator, FIELD_EHANDLE),
-		DEFINE_FIELD(CBaseToggle, m_pfnCallWhenMoveDone, FIELD_FUNCTION),
-		DEFINE_FIELD(CBaseToggle, m_vecFinalDest, FIELD_POSITION_VECTOR),
-		DEFINE_FIELD(CBaseToggle, m_vecFinalAngle, FIELD_VECTOR),
-		DEFINE_FIELD(CBaseToggle, m_sMaster, FIELD_STRING),
-		DEFINE_FIELD(CBaseToggle, m_bitsDamageInflict, FIELD_INTEGER), // damage type inflicted
-};
-IMPLEMENT_SAVERESTORE(CBaseToggle, CBaseAnimating);
-
+BEGIN_DATAMAP(CBaseToggle)
+DEFINE_FIELD(m_toggle_state, FIELD_INTEGER),
+	DEFINE_FIELD(m_flActivateFinished, FIELD_TIME),
+	DEFINE_FIELD(m_flMoveDistance, FIELD_FLOAT),
+	DEFINE_FIELD(m_flWait, FIELD_FLOAT),
+	DEFINE_FIELD(m_flLip, FIELD_FLOAT),
+	DEFINE_FIELD(m_vecPosition1, FIELD_POSITION_VECTOR),
+	DEFINE_FIELD(m_vecPosition2, FIELD_POSITION_VECTOR),
+	DEFINE_FIELD(m_vecAngle1, FIELD_VECTOR), // UNDONE: Position could go through transition, but also angle?
+	DEFINE_FIELD(m_vecAngle2, FIELD_VECTOR), // UNDONE: Position could go through transition, but also angle?
+	DEFINE_FIELD(m_pfnCallWhenMoveDone, FIELD_FUNCTIONPOINTER),
+	DEFINE_FIELD(m_vecFinalDest, FIELD_POSITION_VECTOR),
+	DEFINE_FIELD(m_vecFinalAngle, FIELD_VECTOR),
+	DEFINE_FUNCTION(LinearMoveDone),
+	DEFINE_FUNCTION(AngularMoveDone),
+	END_DATAMAP();
 
 bool CBaseToggle::KeyValue(KeyValueData* pkvd)
 {
@@ -319,11 +233,6 @@ bool CBaseToggle::KeyValue(KeyValueData* pkvd)
 		m_flWait = atof(pkvd->szValue);
 		return true;
 	}
-	else if (FStrEq(pkvd->szKeyName, "master"))
-	{
-		m_sMaster = ALLOC_STRING(pkvd->szValue);
-		return true;
-	}
 	else if (FStrEq(pkvd->szKeyName, "distance"))
 	{
 		m_flMoveDistance = atof(pkvd->szValue);
@@ -333,14 +242,6 @@ bool CBaseToggle::KeyValue(KeyValueData* pkvd)
 	return CBaseDelay::KeyValue(pkvd);
 }
 
-/*
-=============
-LinearMove
-
-calculate pev->velocity and pev->nextthink to reach vecDest from
-pev->origin traveling at flSpeed
-===============
-*/
 void CBaseToggle::LinearMove(Vector vecDest, float flSpeed)
 {
 	ASSERTSZ(flSpeed != 0, "LinearMove:  no speed is defined!");
@@ -369,12 +270,6 @@ void CBaseToggle::LinearMove(Vector vecDest, float flSpeed)
 	pev->velocity = vecDestDelta / flTravelTime;
 }
 
-
-/*
-============
-After moving, set origin to exact final destination, call "move done" function
-============
-*/
 void CBaseToggle::LinearMoveDone()
 {
 	Vector delta = m_vecFinalDest - pev->origin;
@@ -385,27 +280,13 @@ void CBaseToggle::LinearMoveDone()
 		return;
 	}
 
-	UTIL_SetOrigin(pev, m_vecFinalDest);
+	SetOrigin(m_vecFinalDest);
 	pev->velocity = g_vecZero;
 	pev->nextthink = -1;
 	if (m_pfnCallWhenMoveDone)
 		(this->*m_pfnCallWhenMoveDone)();
 }
 
-bool CBaseToggle::IsLockedByMaster()
-{
-	return !FStringNull(m_sMaster) && !UTIL_IsMasterTriggered(m_sMaster, m_hActivator);
-}
-
-/*
-=============
-AngularMove
-
-calculate pev->velocity and pev->nextthink to reach vecDest from
-pev->origin traveling at flSpeed
-Just like LinearMove, but rotational.
-===============
-*/
 void CBaseToggle::AngularMove(Vector vecDestAngle, float flSpeed)
 {
 	ASSERTSZ(flSpeed != 0, "AngularMove:  no speed is defined!");
@@ -434,12 +315,6 @@ void CBaseToggle::AngularMove(Vector vecDestAngle, float flSpeed)
 	pev->avelocity = vecDestDelta / flTravelTime;
 }
 
-
-/*
-============
-After rotating, set angle to exact final angle, call "move done" function
-============
-*/
 void CBaseToggle::AngularMoveDone()
 {
 	pev->angles = m_vecFinalAngle;
@@ -448,7 +323,6 @@ void CBaseToggle::AngularMoveDone()
 	if (m_pfnCallWhenMoveDone)
 		(this->*m_pfnCallWhenMoveDone)();
 }
-
 
 float CBaseToggle::AxisValue(int flags, const Vector& angles)
 {
@@ -460,17 +334,15 @@ float CBaseToggle::AxisValue(int flags, const Vector& angles)
 	return angles.y;
 }
 
-
-void CBaseToggle::AxisDir(entvars_t* pev)
+void CBaseToggle::AxisDir(CBaseEntity* entity)
 {
-	if (FBitSet(pev->spawnflags, SF_DOOR_ROTATE_Z))
-		pev->movedir = Vector(0, 0, 1); // around z-axis
-	else if (FBitSet(pev->spawnflags, SF_DOOR_ROTATE_X))
-		pev->movedir = Vector(1, 0, 0); // around x-axis
+	if (FBitSet(entity->pev->spawnflags, SF_DOOR_ROTATE_Z))
+		entity->pev->movedir = Vector(0, 0, 1); // around z-axis
+	else if (FBitSet(entity->pev->spawnflags, SF_DOOR_ROTATE_X))
+		entity->pev->movedir = Vector(1, 0, 0); // around x-axis
 	else
-		pev->movedir = Vector(0, 1, 0); // around y-axis
+		entity->pev->movedir = Vector(0, 1, 0); // around y-axis
 }
-
 
 float CBaseToggle::AxisDelta(int flags, const Vector& angle1, const Vector& angle2)
 {
@@ -483,23 +355,16 @@ float CBaseToggle::AxisDelta(int flags, const Vector& angle1, const Vector& angl
 	return angle1.y - angle2.y;
 }
 
-
-/*
-=============
-FEntIsVisible
-
-returns true if the passed entity is visible to caller, even if not infront ()
-=============
-*/
-bool FEntIsVisible(
-	entvars_t* pev,
-	entvars_t* pevTarget)
+/**
+ *	@brief returns true if the passed entity is visible to caller, even if not infront ()
+ */
+bool FEntIsVisible(CBaseEntity* entity, CBaseEntity* target)
 {
-	Vector vecSpot1 = pev->origin + pev->view_ofs;
-	Vector vecSpot2 = pevTarget->origin + pevTarget->view_ofs;
+	Vector vecSpot1 = entity->pev->origin + entity->pev->view_ofs;
+	Vector vecSpot2 = target->pev->origin + target->pev->view_ofs;
 	TraceResult tr;
 
-	UTIL_TraceLine(vecSpot1, vecSpot2, ignore_monsters, ENT(pev), &tr);
+	UTIL_TraceLine(vecSpot1, vecSpot2, ignore_monsters, entity->edict(), &tr);
 
 	if (0 != tr.fInOpen && 0 != tr.fInWater)
 		return false; // sight line crossed contents

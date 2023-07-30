@@ -20,6 +20,9 @@
 
 class CBlowerCannon : public CBaseToggle
 {
+	DECLARE_CLASS(CBlowerCannon, CBaseToggle);
+	DECLARE_DATAMAP();
+
 private:
 	enum class WeaponType
 	{
@@ -36,20 +39,14 @@ private:
 	};
 
 public:
-	using BaseClass = CBaseToggle;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-
 	bool KeyValue(KeyValueData* pkvd) override;
 
 	void Precache() override;
 	void Spawn() override;
 
-	void EXPORT BlowerCannonStart(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
-	void EXPORT BlowerCannonStop(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
-	void EXPORT BlowerCannonThink();
+	void BlowerCannonStart(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void BlowerCannonStop(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void BlowerCannonThink();
 
 	// TODO: probably shadowing CBaseDelay
 	float m_flDelay;
@@ -58,15 +55,15 @@ public:
 	FireType m_iFireType;
 };
 
-TYPEDESCRIPTION CBlowerCannon::m_SaveData[] =
-	{
-		DEFINE_FIELD(CBlowerCannon, m_flDelay, FIELD_FLOAT),
-		DEFINE_FIELD(CBlowerCannon, m_iZOffset, FIELD_INTEGER),
-		DEFINE_FIELD(CBlowerCannon, m_iWeaponType, FIELD_INTEGER),
-		DEFINE_FIELD(CBlowerCannon, m_iFireType, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(CBlowerCannon, CBlowerCannon::BaseClass);
+BEGIN_DATAMAP(CBlowerCannon)
+DEFINE_FIELD(m_flDelay, FIELD_FLOAT),
+	DEFINE_FIELD(m_iZOffset, FIELD_INTEGER),
+	DEFINE_FIELD(m_iWeaponType, FIELD_INTEGER),
+	DEFINE_FIELD(m_iFireType, FIELD_INTEGER),
+	DEFINE_FUNCTION(BlowerCannonStart),
+	DEFINE_FUNCTION(BlowerCannonStop),
+	DEFINE_FUNCTION(BlowerCannonThink),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(env_blowercannon, CBlowerCannon);
 
@@ -135,33 +132,35 @@ void CBlowerCannon::BlowerCannonStop(CBaseEntity* pActivator, CBaseEntity* pCall
 
 void CBlowerCannon::BlowerCannonThink()
 {
-	// TODO: can crash if target has been removed
-	auto pTarget = GetNextTarget()->pev;
-
-	auto distance = pTarget->origin - pev->origin;
-	distance.z += m_iZOffset;
-
-	auto angles = UTIL_VecToAngles(distance);
-	angles.z = -angles.z;
-
-	switch (m_iWeaponType)
+	// The target may be spawned later on so keep the cannon going.
+	if (auto pTarget = GetNextTarget(); pTarget)
 	{
-	case WeaponType::SporeRocket:
-	case WeaponType::SporeGrenade:
-		// TODO: simplify
-		CSpore::CreateSpore(pev->origin, angles, this, static_cast<CSpore::SporeType>((m_iWeaponType != WeaponType::SporeRocket ? 1 : 0) + static_cast<int>(CSpore::SporeType::ROCKET)), false, false);
-		break;
+		Vector distance = pTarget->pev->origin - pev->origin;
+		distance.z += m_iZOffset;
 
-	case WeaponType::ShockBeam:
-		CShockBeam::CreateShockBeam(pev->origin, angles, this);
-		break;
+		Vector angles = UTIL_VecToAngles(distance);
+		angles.z = -angles.z;
 
-	case WeaponType::DisplacerBall:
-		CDisplacerBall::CreateDisplacerBall(pev->origin, angles, this);
-		break;
+		switch (m_iWeaponType)
+		{
+		case WeaponType::SporeRocket:
+		case WeaponType::SporeGrenade:
+			CSpore::CreateSpore(pev->origin, angles, this,
+				m_iWeaponType == WeaponType::SporeRocket ? CSpore::SporeType::ROCKET : CSpore::SporeType::GRENADE,
+				false, false);
+			break;
 
-	default:
-		break;
+		case WeaponType::ShockBeam:
+			CShockBeam::CreateShockBeam(pev->origin, angles, this);
+			break;
+
+		case WeaponType::DisplacerBall:
+			CDisplacerBall::CreateDisplacerBall(pev->origin, angles, this);
+			break;
+
+		default:
+			break;
+		}
 	}
 
 	if (m_iFireType == FireType::FireOnTrigger)

@@ -24,12 +24,35 @@
 
 #include "palette.h"
 
+constexpr int MAX_COORD_INTEGER = 4096;
+constexpr int MAX_EXTENT = 2 * MAX_COORD_INTEGER;
+
+constexpr int MAX_TEMPENTS = 2048;
+
+constexpr int MAX_HUDMSG_TEXT_LENGTH = 512;
+
+/**
+ *	@brief Default sky to set if the map does not provide one.
+ *	Should match the default value of the engine's @c sv_skyname cvar.
+ */
+constexpr char DefaultSkyName[] = "desert";
+
 #define MAX_WEAPONS 64 // ???
+
+/**
+ *	@brief Maximum number of attack modes that weapons can have.
+ *	@details These are PrimaryAttack, SecondaryAttack.
+ *	If more are added then this needs to be changed so ammo types can be associated with them.
+ */
+constexpr int MAX_WEAPON_ATTACK_MODES = 2;
+
 constexpr int MAX_PLAYERS = 32;
 
-#define MAX_WEAPON_SLOTS 7 // hud item selection slots
+constexpr int MAX_ALWAYS_VISIBLE_WEAPON_SLOTS = 5;
+#define MAX_WEAPON_SLOTS 10 // hud item selection slots
 
-#define MAX_ITEMS 5 // hard coded item types
+static_assert(MAX_WEAPON_SLOTS >= MAX_ALWAYS_VISIBLE_WEAPON_SLOTS);
+static_assert(MAX_WEAPON_SLOTS <= 10);
 
 #define HIDEHUD_WEAPONS (1 << 0)
 #define HIDEHUD_FLASHLIGHT (1 << 1)
@@ -43,6 +66,30 @@ constexpr int MAX_PLAYERS = 32;
 #define HUD_PRINTTALK 3
 #define HUD_PRINTCENTER 4
 
+enum class GibVelocityMultiplier
+{
+	Fraction = 0,
+	Double = 1,
+	Quadruple = 2
+};
+
+// Hack: so we can select model + gib limit data
+enum class GibType
+{
+	None = 0, // Sound only
+	Human,
+	Alien,
+	Pitdrone,
+	Voltigore,
+	ShockTrooper,
+};
+
+// Flags are stored in the type variable to save a byte.
+constexpr int GibFlag_GibSound = 1 << 6;
+constexpr int GibFlag_SpawnHead = 1 << 7;
+
+constexpr int GibFlag_Mask = GibFlag_GibSound | GibFlag_SpawnHead;
+
 enum WeaponId
 {
 	WEAPON_NONE = 0,
@@ -50,7 +97,6 @@ enum WeaponId
 	WEAPON_GLOCK,
 	WEAPON_PYTHON,
 	WEAPON_MP5,
-	WEAPON_CHAINGUN,
 	WEAPON_CROSSBOW,
 	WEAPON_SHOTGUN,
 	WEAPON_RPG,
@@ -71,13 +117,16 @@ enum WeaponId
 	WEAPON_SNIPERRIFLE,
 	WEAPON_KNIFE,
 	WEAPON_PENGUIN,
+};
 
-	WEAPON_SUIT = 31
+enum HudFlag
+{
+	HUD_HASSUIT = 0, //!< The player has the HEV suit.
 };
 
 /**
-*	@brief Indicates that a weapon does not use magazines.
-*/
+ *	@brief Indicates that a weapon does not use magazines.
+ */
 constexpr int WEAPON_NOCLIP = -1;
 
 enum class SuitLightType
@@ -158,7 +207,7 @@ constexpr std::optional<SuitLightType> SuitLightTypeFromString(std::string_view 
 #define DMG_CALTROP (1 << 30)
 #define DMG_HALLUC (1 << 31)
 
-// TF Healing Additions for TakeHealth
+// TF Healing Additions for GiveHealth
 #define DMG_IGNORE_MAXHEALTH DMG_IGNITE
 // TF Redefines since we never use the originals
 #define DMG_NAIL DMG_SLASH

@@ -19,17 +19,24 @@
 #define KNIFE_BODYHIT_VOLUME 128
 #define KNIFE_WALLHIT_VOLUME 512
 
+BEGIN_DATAMAP(CKnife)
+DEFINE_FUNCTION(SwingAgain),
+	DEFINE_FUNCTION(Smack),
+	END_DATAMAP();
+
 LINK_ENTITY_TO_CLASS(weapon_knife, CKnife);
 
 void CKnife::OnCreate()
 {
 	BaseClass::OnCreate();
-
+	m_iId = WEAPON_KNIFE;
+	SetMagazine1(WEAPON_NOCLIP);
 	m_WorldModel = pev->model = MAKE_STRING("models/w_knife.mdl");
 }
 
 void CKnife::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel("models/v_knife.mdl");
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/p_knife.mdl");
@@ -43,19 +50,6 @@ void CKnife::Precache()
 	PrecacheSound("weapons/knife_hit_wall2.wav");
 
 	m_usKnife = PRECACHE_EVENT(1, "events/knife.sc");
-}
-
-void CKnife::Spawn()
-{
-	Precache();
-
-	m_iId = WEAPON_KNIFE;
-
-	SetModel(STRING(pev->model));
-
-	m_iClip = WEAPON_NOCLIP;
-
-	FallInit();
 }
 
 bool CKnife::Deploy()
@@ -93,19 +87,19 @@ bool CKnife::Swing(const bool bFirst)
 	Vector vecSrc = m_pPlayer->GetGunPosition();
 	Vector vecEnd = vecSrc + gpGlobals->v_forward * 32;
 
-	UTIL_TraceLine(vecSrc, vecEnd, dont_ignore_monsters, ENT(m_pPlayer->pev), &tr);
+	UTIL_TraceLine(vecSrc, vecEnd, dont_ignore_monsters, m_pPlayer->edict(), &tr);
 
 #ifndef CLIENT_DLL
 	if (tr.flFraction >= 1.0)
 	{
-		UTIL_TraceHull(vecSrc, vecEnd, dont_ignore_monsters, head_hull, ENT(m_pPlayer->pev), &tr);
+		UTIL_TraceHull(vecSrc, vecEnd, dont_ignore_monsters, head_hull, m_pPlayer->edict(), &tr);
 		if (tr.flFraction < 1.0)
 		{
 			// Calculate the point of intersection of the line (or hull) and the object we hit
 			// This is and approximation of the "best" intersection
 			CBaseEntity* pHit = CBaseEntity::Instance(tr.pHit);
 			if (!pHit || pHit->IsBSPModel())
-				FindHullIntersection(vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer->edict());
+				FindHullIntersection(vecSrc, tr, VEC_DUCK_HULL_MIN, VEC_DUCK_HULL_MAX, m_pPlayer);
 			vecEnd = tr.vecEndPos; // This is the point on the actual surface (the hull could have hit space)
 		}
 	}
@@ -162,10 +156,9 @@ bool CKnife::Swing(const bool bFirst)
 
 			int damageTypes = DMG_CLUB;
 
-			if (g_pGameRules->IsMultiplayer())
+			if (g_Skill.GetValue("knife_allow_backstab") != 0)
 			{
-				// TODO: This code assumes the target is a player and not some NPC. Rework it to support NPC backstabbing.
-				UTIL_MakeVectors(pEntity->pev->v_angle);
+				UTIL_MakeVectors(pEntity->pev->angles);
 
 				const Vector targetRightDirection = gpGlobals->v_right;
 
@@ -173,7 +166,6 @@ bool CKnife::Swing(const bool bFirst)
 
 				const Vector ownerForwardDirection = gpGlobals->v_forward;
 
-				// In multiplayer the knife can backstab targets.
 				const bool isBehindTarget = CrossProduct(targetRightDirection, ownerForwardDirection).z > 0;
 
 				if (isBehindTarget)
@@ -190,7 +182,10 @@ bool CKnife::Swing(const bool bFirst)
 
 #endif
 
-		m_flNextPrimaryAttack = GetNextAttackDelay(0.25);
+		if (GetSkillFloat("chainsaw_melee") == 0)
+		{
+			m_flNextPrimaryAttack = GetNextAttackDelay(0.25);
+		}
 
 #ifndef CLIENT_DLL
 
@@ -200,7 +195,7 @@ bool CKnife::Swing(const bool bFirst)
 
 		if (pEntity)
 		{
-			if (pEntity->Classify() != CLASS_NONE && pEntity->Classify() != CLASS_MACHINE)
+			if (pEntity->Classify() != ENTCLASS_NONE && !pEntity->IsMachine())
 			{
 				// play thwack or smack sound
 				switch (RANDOM_LONG(0, 1))
@@ -257,6 +252,11 @@ bool CKnife::Swing(const bool bFirst)
 		SetThink(&CKnife::Smack);
 		pev->nextthink = gpGlobals->time + 0.2;
 #endif
+
+		if (GetSkillFloat("chainsaw_melee") != 0)
+		{
+			m_flNextPrimaryAttack = GetNextAttackDelay(0.25);
+		}
 	}
 	return bDidHit;
 }
@@ -274,10 +274,10 @@ void CKnife::Smack()
 bool CKnife::GetWeaponInfo(WeaponInfo& info)
 {
 	info.Name = STRING(pev->classname);
-	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.AttackModeInfo[0].MagazineSize = WEAPON_NOCLIP;
 	info.Slot = 0;
 	info.Position = 2;
-	info.Id = m_iId = WEAPON_KNIFE;
+	info.Id = WEAPON_KNIFE;
 	info.Weight = 0;
 	return true;
 }

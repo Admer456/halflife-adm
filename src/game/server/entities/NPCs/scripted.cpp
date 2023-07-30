@@ -12,35 +12,10 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-/*
-
-
-===== scripted.cpp ========================================================
-
-*/
 
 #include "cbase.h"
 #include "scripted.h"
 #include "defaultai.h"
-
-
-
-/*
-classname "scripted_sequence"
-targetname "me" - there can be more than one with the same name, and they act in concert
-target "the_entity_I_want_to_start_playing" or "class entity_classname" will pick the closest inactive scientist
-play "name_of_sequence"
-idle "name of idle sequence to play before starting"
-donetrigger "whatever" - can be any other triggerable entity such as another sequence, train, door, or a special case like "die" or "remove"
-moveto - if set the monster first moves to this nodes position
-range # - only search this far to find the target
-spawnflags - (stop if blocked, stop if player seen)
-*/
-
-
-//
-// Cache user-entity-field values until spawn is called.
-//
 
 bool CCineMonster::KeyValue(KeyValueData* pkvd)
 {
@@ -79,37 +54,45 @@ bool CCineMonster::KeyValue(KeyValueData* pkvd)
 		m_iFinishSchedule = atoi(pkvd->szValue);
 		return true;
 	}
+	else if (FStrEq(pkvd->szKeyName, "allow_follow"))
+	{
+		// Make sure nobody tries to change this at runtime.
+		AIScriptLogger->warn("Cannot set \"allow_follow\" on scripts!");
+		return true;
+	}
 
 	return CBaseMonster::KeyValue(pkvd);
 }
 
-TYPEDESCRIPTION CCineMonster::m_SaveData[] =
-	{
-		DEFINE_FIELD(CCineMonster, m_iszIdle, FIELD_STRING),
-		DEFINE_FIELD(CCineMonster, m_iszPlay, FIELD_STRING),
-		DEFINE_FIELD(CCineMonster, m_iszEntity, FIELD_STRING),
-		DEFINE_FIELD(CCineMonster, m_fMoveTo, FIELD_INTEGER),
-		DEFINE_FIELD(CCineMonster, m_flRepeat, FIELD_FLOAT),
-		DEFINE_FIELD(CCineMonster, m_flRadius, FIELD_FLOAT),
+BEGIN_DATAMAP(CCineMonster)
+DEFINE_FIELD(m_iszIdle, FIELD_STRING),
+	DEFINE_FIELD(m_iszPlay, FIELD_STRING),
+	DEFINE_FIELD(m_iszEntity, FIELD_STRING),
+	DEFINE_FIELD(m_fMoveTo, FIELD_INTEGER),
+	DEFINE_FIELD(m_flRepeat, FIELD_FLOAT),
+	DEFINE_FIELD(m_flRadius, FIELD_FLOAT),
 
-		DEFINE_FIELD(CCineMonster, m_iDelay, FIELD_INTEGER),
-		DEFINE_FIELD(CCineMonster, m_startTime, FIELD_TIME),
+	DEFINE_FIELD(m_iDelay, FIELD_INTEGER),
+	DEFINE_FIELD(m_startTime, FIELD_TIME),
 
-		DEFINE_FIELD(CCineMonster, m_saved_movetype, FIELD_INTEGER),
-		DEFINE_FIELD(CCineMonster, m_saved_solid, FIELD_INTEGER),
-		DEFINE_FIELD(CCineMonster, m_saved_effects, FIELD_INTEGER),
-		DEFINE_FIELD(CCineMonster, m_iFinishSchedule, FIELD_INTEGER),
-		DEFINE_FIELD(CCineMonster, m_interruptable, FIELD_BOOLEAN),
-};
-
-
-IMPLEMENT_SAVERESTORE(CCineMonster, CBaseMonster);
+	DEFINE_FIELD(m_saved_movetype, FIELD_INTEGER),
+	DEFINE_FIELD(m_saved_solid, FIELD_INTEGER),
+	DEFINE_FIELD(m_saved_effects, FIELD_INTEGER),
+	DEFINE_FIELD(m_iFinishSchedule, FIELD_INTEGER),
+	DEFINE_FIELD(m_interruptable, FIELD_BOOLEAN),
+	DEFINE_FUNCTION(CineThink),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(scripted_sequence, CCineMonster);
 #define CLASSNAME "scripted_sequence"
 
 LINK_ENTITY_TO_CLASS(aiscripted_sequence, CCineAI);
 
+void CCineMonster::OnCreate()
+{
+	BaseClass::OnCreate();
+	m_AllowFollow = false; // So nothing gets confused about what we can do.
+}
 
 void CCineMonster::Spawn()
 {
@@ -132,10 +115,6 @@ void CCineMonster::Spawn()
 		m_interruptable = true;
 }
 
-//=========================================================
-// FCanOverrideState - returns false, scripted sequences
-// cannot possess entities regardless of state.
-//=========================================================
 bool CCineMonster::FCanOverrideState()
 {
 	if ((pev->spawnflags & SF_SCRIPT_OVERRIDESTATE) != 0)
@@ -143,19 +122,11 @@ bool CCineMonster::FCanOverrideState()
 	return false;
 }
 
-//=========================================================
-// FCanOverrideState - returns true because scripted AI can
-// possess entities regardless of their state.
-//=========================================================
 bool CCineAI::FCanOverrideState()
 {
 	return true;
 }
 
-
-//
-// CineStart
-//
 void CCineMonster::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
 	// do I already know who I should use
@@ -181,7 +152,6 @@ void CCineMonster::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE u
 	}
 }
 
-
 // This doesn't really make sense since only MOVETYPE_PUSH get 'Blocked' events
 void CCineMonster::Blocked(CBaseEntity* pOther)
 {
@@ -191,26 +161,15 @@ void CCineMonster::Touch(CBaseEntity* pOther)
 {
 }
 
-//
-// ********** Cinematic DIE **********
-//
 void CCineMonster::Die()
 {
 	SetThink(&CCineMonster::SUB_Remove);
 }
 
-//
-// ********** Cinematic PAIN **********
-//
 void CCineMonster::Pain()
 {
 }
 
-//
-// ********** Cinematic Think **********
-//
-
-// find a viable entity
 bool CCineMonster::FindEntity()
 {
 	m_hTargetEnt = nullptr;
@@ -255,7 +214,6 @@ bool CCineMonster::FindEntity()
 	return false;
 }
 
-// make the entity enter a scripted sequence
 void CCineMonster::PossessEntity()
 {
 	CBaseEntity* pEntity = m_hTargetEnt;
@@ -301,7 +259,7 @@ void CCineMonster::PossessEntity()
 			break;
 
 		case 4:
-			UTIL_SetOrigin(pTarget->pev, pev->origin);
+			pTarget->SetOrigin(pev->origin);
 			pTarget->pev->ideal_yaw = pev->angles.y;
 			pTarget->pev->avelocity = Vector(0, 0, 0);
 			pTarget->pev->velocity = Vector(0, 0, 0);
@@ -327,12 +285,8 @@ void CCineMonster::PossessEntity()
 	}
 }
 
-// make the entity carry out the scripted sequence instructions, but without
-// destroying the monster's state.
 void CCineAI::PossessEntity()
 {
-	Schedule_t* pNewSchedule;
-
 	CBaseEntity* pEntity = m_hTargetEnt;
 	CBaseMonster* pTarget = nullptr;
 	if (pEntity)
@@ -372,7 +326,7 @@ void CCineAI::PossessEntity()
 
 		case 4:
 			// zap the monster instantly to the site of the script entity.
-			UTIL_SetOrigin(pTarget->pev, pev->origin);
+			pTarget->SetOrigin(pev->origin);
 			pTarget->pev->ideal_yaw = pev->angles.y;
 			pTarget->pev->avelocity = Vector(0, 0, 0);
 			pTarget->pev->velocity = Vector(0, 0, 0);
@@ -405,7 +359,7 @@ void CCineAI::PossessEntity()
 		// Already in a scripted state?
 		if (pTarget->m_MonsterState == MONSTERSTATE_SCRIPT)
 		{
-			pNewSchedule = pTarget->GetScheduleOfType(SCHED_AISCRIPT);
+			const Schedule_t* pNewSchedule = pTarget->GetScheduleOfType(SCHED_AISCRIPT);
 			pTarget->ChangeSchedule(pNewSchedule);
 		}
 	}
@@ -426,8 +380,6 @@ void CCineMonster::CineThink()
 	}
 }
 
-
-// lookup a sequence name and setup the target monster to play it
 bool CCineMonster::StartSequence(CBaseMonster* pTarget, string_t iszSeq, bool completeOnEmpty)
 {
 	if (FStringNull(iszSeq) && completeOnEmpty)
@@ -459,9 +411,6 @@ bool CCineMonster::StartSequence(CBaseMonster* pTarget, string_t iszSeq, bool co
 	return true;
 }
 
-// lookup a sequence name and setup the target monster to play it
-// overridden for CCineAI because it's ok for them to not have an animation sequence
-// for the monster to play. For a regular Scripted Sequence, that situation is an error.
 bool CCineAI::StartSequence(CBaseMonster* pTarget, string_t iszSeq, bool completeOnEmpty)
 {
 	if (FStringNull(iszSeq) && completeOnEmpty)
@@ -489,13 +438,6 @@ bool CCineAI::StartSequence(CBaseMonster* pTarget, string_t iszSeq, bool complet
 	return true;
 }
 
-//=========================================================
-// SequenceDone - called when a scripted sequence animation
-// sequence is done playing ( or when an AI Scripted Sequence
-// doesn't supply an animation sequence to play ). Expects
-// the CBaseMonster pointer to the monster that the sequence
-// possesses.
-//=========================================================
 void CCineMonster::SequenceDone(CBaseMonster* pMonster)
 {
 	// AIScriptLogger->debug("Sequence {} finished", STRING(m_pCine->m_iszPlay));
@@ -517,14 +459,6 @@ void CCineMonster::SequenceDone(CBaseMonster* pMonster)
 	SUB_UseTargets(nullptr, USE_TOGGLE, 0);
 }
 
-//=========================================================
-// When a monster finishes a scripted sequence, we have to
-// fix up its state and schedule for it to return to a
-// normal AI monster.
-//
-// Scripted sequences just dirty the Schedule and drop the
-// monster in Idle State.
-//=========================================================
 void CCineMonster::FixScriptMonsterSchedule(CBaseMonster* pMonster)
 {
 	if (pMonster->m_IdealMonsterState != MONSTERSTATE_DEAD)
@@ -532,19 +466,6 @@ void CCineMonster::FixScriptMonsterSchedule(CBaseMonster* pMonster)
 	pMonster->ClearSchedule();
 }
 
-//=========================================================
-// When a monster finishes a scripted sequence, we have to
-// fix up its state and schedule for it to return to a
-// normal AI monster.
-//
-// AI Scripted sequences will, depending on what the level
-// designer selects:
-//
-// -Dirty the monster's schedule and drop out of the
-//  sequence in their current state.
-//
-// -Select a specific AMBUSH schedule, regardless of state.
-//=========================================================
 void CCineAI::FixScriptMonsterSchedule(CBaseMonster* pMonster)
 {
 	switch (m_iFinishSchedule)
@@ -580,14 +501,12 @@ bool CBaseMonster::ExitScriptedSequence()
 	return true;
 }
 
-
 void CCineMonster::AllowInterrupt(bool fAllow)
 {
 	if ((pev->spawnflags & SF_SCRIPT_NOINTERRUPT) != 0)
 		return;
 	m_interruptable = fAllow;
 }
-
 
 bool CCineMonster::CanInterrupt()
 {
@@ -602,14 +521,12 @@ bool CCineMonster::CanInterrupt()
 	return false;
 }
 
-
 int CCineMonster::IgnoreConditions()
 {
 	if (CanInterrupt())
 		return 0;
 	return SCRIPT_BREAK_CONDITIONS;
 }
-
 
 void ScriptEntityCancel(CBaseEntity* cine)
 {
@@ -637,8 +554,6 @@ void ScriptEntityCancel(CBaseEntity* cine)
 	}
 }
 
-
-// find all the cinematic entities with my targetname and stop them from playing
 void CCineMonster::CancelScript()
 {
 	AIScriptLogger->debug("Cancelling script: {}", STRING(m_iszPlay));
@@ -655,8 +570,6 @@ void CCineMonster::CancelScript()
 	}
 }
 
-
-// find all the cinematic entities with my targetname and tell them to wait before starting
 void CCineMonster::DelayStart(bool state)
 {
 	for (auto cine : UTIL_FindEntitiesByTargetname(STRING(pev->targetname)))
@@ -678,9 +591,6 @@ void CCineMonster::DelayStart(bool state)
 	}
 }
 
-
-
-// Find an entity that I'm interested in and precache the sounds he'll need in the sequence.
 void CCineMonster::Activate()
 {
 	// The entity name could be a target name or a classname
@@ -727,7 +637,6 @@ void CCineMonster::Activate()
 	}
 }
 
-
 bool CBaseMonster::CineCleanup()
 {
 	CCineMonster* pOldCine = m_pCine;
@@ -767,7 +676,7 @@ bool CBaseMonster::CineCleanup()
 			SetTouch(nullptr);
 		}
 		else
-			SUB_StartFadeOut(); // SetThink( SUB_DoNothing );
+			SUB_StartFadeOut(); // SetThink(nullptr);
 		// This turns off animation & physics in case their origin ends up stuck in the world or something
 		StopAnimation();
 		pev->movetype = MOVETYPE_NONE;
@@ -807,7 +716,7 @@ bool CBaseMonster::CineCleanup()
 			pev->origin.z += 1;
 
 			pev->flags |= FL_ONGROUND;
-			int drop = DROP_TO_FLOOR(ENT(pev));
+			int drop = DROP_TO_FLOOR(edict());
 
 			// Origin in solid?  Set to org at the end of the sequence
 			if (drop < 0)
@@ -821,7 +730,7 @@ bool CBaseMonster::CineCleanup()
 
 			// pEntity->pev->origin.z = new_origin.z + 5.0; // damn, got to fix this
 
-			UTIL_SetOrigin(pev, pev->origin);
+			SetOrigin(pev->origin);
 			pev->effects |= EF_NOINTERP;
 		}
 
@@ -854,23 +763,18 @@ bool CBaseMonster::CineCleanup()
 	return true;
 }
 
-
-
-
 class CScriptedSentence : public CBaseToggle
 {
+	DECLARE_CLASS(CScriptedSentence, CBaseToggle);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	bool KeyValue(KeyValueData* pkvd) override;
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
-	void EXPORT FindThink();
-	void EXPORT DelayThink();
+	void FindThink();
+	void DelayThink();
 	int ObjectCaps() override { return (CBaseToggle::ObjectCaps() & ~FCAP_ACROSS_TRANSITION); }
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 
 	CBaseMonster* FindEntity();
 	bool AcceptableSpeaker(CBaseMonster* pMonster);
@@ -894,21 +798,19 @@ private:
 #define SF_SENTENCE_INTERRUPT 0x0004  // force talking except when dead
 #define SF_SENTENCE_CONCURRENT 0x0008 // allow other people to keep talking
 
-TYPEDESCRIPTION CScriptedSentence::m_SaveData[] =
-	{
-		DEFINE_FIELD(CScriptedSentence, m_iszSentence, FIELD_STRING),
-		DEFINE_FIELD(CScriptedSentence, m_iszEntity, FIELD_STRING),
-		DEFINE_FIELD(CScriptedSentence, m_flRadius, FIELD_FLOAT),
-		DEFINE_FIELD(CScriptedSentence, m_flDuration, FIELD_FLOAT),
-		DEFINE_FIELD(CScriptedSentence, m_flRepeat, FIELD_FLOAT),
-		DEFINE_FIELD(CScriptedSentence, m_flAttenuation, FIELD_FLOAT),
-		DEFINE_FIELD(CScriptedSentence, m_flVolume, FIELD_FLOAT),
-		DEFINE_FIELD(CScriptedSentence, m_active, FIELD_BOOLEAN),
-		DEFINE_FIELD(CScriptedSentence, m_iszListener, FIELD_STRING),
-};
-
-
-IMPLEMENT_SAVERESTORE(CScriptedSentence, CBaseToggle);
+BEGIN_DATAMAP(CScriptedSentence)
+DEFINE_FIELD(m_iszSentence, FIELD_STRING),
+	DEFINE_FIELD(m_iszEntity, FIELD_STRING),
+	DEFINE_FIELD(m_flRadius, FIELD_FLOAT),
+	DEFINE_FIELD(m_flDuration, FIELD_FLOAT),
+	DEFINE_FIELD(m_flRepeat, FIELD_FLOAT),
+	DEFINE_FIELD(m_flAttenuation, FIELD_FLOAT),
+	DEFINE_FIELD(m_flVolume, FIELD_FLOAT),
+	DEFINE_FIELD(m_active, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_iszListener, FIELD_STRING),
+	DEFINE_FUNCTION(FindThink),
+	DEFINE_FUNCTION(DelayThink),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(scripted_sentence, CScriptedSentence);
 
@@ -958,7 +860,6 @@ bool CScriptedSentence::KeyValue(KeyValueData* pkvd)
 	return CBaseToggle::KeyValue(pkvd);
 }
 
-
 void CScriptedSentence::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
 	if (!m_active)
@@ -967,7 +868,6 @@ void CScriptedSentence::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_T
 	SetThink(&CScriptedSentence::FindThink);
 	pev->nextthink = gpGlobals->time;
 }
-
 
 void CScriptedSentence::Spawn()
 {
@@ -1007,7 +907,6 @@ void CScriptedSentence::Spawn()
 		m_flVolume = 1.0;
 }
 
-
 void CScriptedSentence::FindThink()
 {
 	CBaseMonster* pMonster = FindEntity();
@@ -1028,7 +927,6 @@ void CScriptedSentence::FindThink()
 	}
 }
 
-
 void CScriptedSentence::DelayThink()
 {
 	m_active = true;
@@ -1036,7 +934,6 @@ void CScriptedSentence::DelayThink()
 		pev->nextthink = gpGlobals->time + 0.1;
 	SetThink(&CScriptedSentence::FindThink);
 }
-
 
 bool CScriptedSentence::AcceptableSpeaker(CBaseMonster* pMonster)
 {
@@ -1057,7 +954,6 @@ bool CScriptedSentence::AcceptableSpeaker(CBaseMonster* pMonster)
 	}
 	return false;
 }
-
 
 CBaseMonster* CScriptedSentence::FindEntity()
 {
@@ -1090,7 +986,6 @@ CBaseMonster* CScriptedSentence::FindEntity()
 
 	return nullptr;
 }
-
 
 bool CScriptedSentence::StartSentence(CBaseMonster* pTarget)
 {
@@ -1125,19 +1020,24 @@ bool CScriptedSentence::StartSentence(CBaseMonster* pTarget)
 	return true;
 }
 
-//=========================================================
-// Furniture - this is the cool comment I cut-and-pasted
-//=========================================================
+/**
+ *	@brief this is the cool comment I cut-and-pasted
+ */
 class CFurniture : public CBaseMonster
 {
 public:
 	void OnCreate() override;
+
+	/**
+	 *	@brief This used to have something to do with bees flying,
+	 *	but now it only initializes moving furniture in scripted sequences
+	 */
 	void Spawn() override;
+
 	void Die();
-	int Classify() override;
+
 	int ObjectCaps() override { return (CBaseMonster::ObjectCaps() & ~FCAP_ACROSS_TRANSITION); }
 };
-
 
 LINK_ENTITY_TO_CLASS(monster_furniture, CFurniture);
 
@@ -1146,21 +1046,17 @@ void CFurniture::OnCreate()
 	CBaseMonster::OnCreate();
 
 	pev->health = 80000;
+
+	// ID's Furniture as neutral (noone will attack it)
+	SetClassification("none");
 }
 
-//=========================================================
-// Furniture is killed
-//=========================================================
 void CFurniture::Die()
 {
 	SetThink(&CFurniture::SUB_Remove);
 	pev->nextthink = gpGlobals->time;
 }
 
-//=========================================================
-// This used to have something to do with bees flying, but
-// now it only initializes moving furniture in scripted sequences
-//=========================================================
 void CFurniture::Spawn()
 {
 	PrecacheModel(STRING(pev->model));
@@ -1180,12 +1076,4 @@ void CFurniture::Spawn()
 	ResetSequenceInfo();
 	pev->frame = 0;
 	MonsterInit();
-}
-
-//=========================================================
-// ID's Furniture as neutral (noone will attack it)
-//=========================================================
-int CFurniture::Classify()
-{
-	return CLASS_NONE;
 }

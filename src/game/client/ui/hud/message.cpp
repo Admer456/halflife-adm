@@ -25,14 +25,23 @@ client_textmessage_t g_pCustomMessage;
 const char* g_pCustomName = "Custom";
 char g_pCustomText[1024];
 
+constexpr std::string_view NetMessagePrefix{"__NETMESSAGE__"sv};
+
 bool CHudMessage::Init()
 {
+	m_CustomMessageText = g_ConCommands.CreateCVar("custom_message_text", "");
+	m_CustomMessageX = g_ConCommands.CreateCVar("custom_message_x", "0.1");
+	m_CustomMessageY = g_ConCommands.CreateCVar("custom_message_y", "-1");
+
 	g_ClientUserMessages.RegisterHandler("HudText", &CHudMessage::MsgFunc_HudText, this);
 	g_ClientUserMessages.RegisterHandler("GameTitle", &CHudMessage::MsgFunc_GameTitle, this);
 
 	gHUD.AddHudElem(this);
 
 	Reset();
+
+	// Always run so custom messages can draw.
+	m_iFlags |= HUD_ACTIVE;
 
 	return true;
 }
@@ -244,9 +253,9 @@ void CHudMessage::MessageScanStart()
 
 void CHudMessage::MessageDrawScan(client_textmessage_t* pMessage, float time)
 {
-	int i, j, length, width;
+	int i, length, width;
 	const char* pText;
-	unsigned char line[80];
+	eastl::fixed_string<char, MAX_HUDMSG_TEXT_LENGTH> line;
 
 	pText = pMessage->pMessage;
 	// Count lines
@@ -283,22 +292,20 @@ void CHudMessage::MessageDrawScan(client_textmessage_t* pMessage, float time)
 
 	for (i = 0; i < m_parms.lines; i++)
 	{
-		m_parms.lineLength = 0;
+		line.clear();
 		m_parms.width = 0;
 		while ('\0' != *pText && *pText != '\n')
 		{
 			unsigned char c = *pText;
-			line[m_parms.lineLength] = c;
+			line.push_back(c);
 			m_parms.width += gHUD.m_scrinfo.charWidths[c];
-			m_parms.lineLength++;
 			pText++;
 		}
 		pText++; // Skip LF
-		line[m_parms.lineLength] = 0;
 
 		m_parms.x = XPosition(pMessage->x, m_parms.width, m_parms.totalWidth);
 
-		for (j = 0; j < m_parms.lineLength; j++)
+		for (std::size_t j = 0; j < line.size(); j++)
 		{
 			m_parms.text = line[j];
 			int next = m_parms.x + gHUD.m_scrinfo.charWidths[m_parms.text];
@@ -316,11 +323,9 @@ void CHudMessage::MessageDrawScan(client_textmessage_t* pMessage, float time)
 
 bool CHudMessage::Draw(float fTime)
 {
-	int i, drawn;
+	int i;
 	client_textmessage_t* pMessage;
 	float endTime;
-
-	drawn = 0;
 
 	if (m_gameTitleTime > 0)
 	{
@@ -351,8 +356,6 @@ bool CHudMessage::Draw(float fTime)
 
 			SPR_Set(gHUD.GetSprite(m_TitleToDisplay->Right), color);
 			SPR_DrawAdditive(0, x + halfWidth, y, &gHUD.GetSpriteRect(m_TitleToDisplay->Right));
-
-			drawn = 1;
 		}
 	}
 	// Fixup level transitions
@@ -397,8 +400,6 @@ bool CHudMessage::Draw(float fTime)
 				// effect 1 is flickery credits
 				// effect 2 is write out (training room)
 				MessageDrawScan(pMessage, messageTime);
-
-				drawn++;
 			}
 			else
 			{
@@ -408,11 +409,33 @@ bool CHudMessage::Draw(float fTime)
 		}
 	}
 
+	if (m_CustomMessageText->string[0] != '\0')
+	{
+		client_textmessage_t customMessage
+		{
+			.effect = 0,
+			.r1 = 255,
+			.g1 = 255,
+			.b1 = 255,
+			.a1 = 0,
+			.r2 = 0,
+			.g2 = 0,
+			.b2 = 0,
+			.a2 = 0,
+			.x = m_CustomMessageX->value,
+			.y = m_CustomMessageY->value,
+			.fadein = 0,
+			.fadeout = 0,
+			.holdtime = 0,
+			.pName = "#CustomMessage",
+			.pMessage = m_CustomMessageText->string
+		};
+
+		MessageDrawScan(&customMessage, 0);
+	}
+
 	// Remember the time -- to fix up level transitions
 	m_parms.time = gHUD.m_flTime;
-	// Don't call until we get another message
-	if (0 == drawn)
-		m_iFlags &= ~HUD_ACTIVE;
 
 	return true;
 }
@@ -420,41 +443,50 @@ bool CHudMessage::Draw(float fTime)
 
 void CHudMessage::MessageAdd(const char* pName, float time)
 {
-	int i, j;
 	client_textmessage_t* tempMessage;
 
-	for (i = 0; i < maxHUDMessages; i++)
+	// Trim off a leading # if it's there
+	if (pName[0] == '#')
+		tempMessage = TextMessageGet(pName + 1);
+	else
+		tempMessage = TextMessageGet(pName);
+
+	// If we couldnt find it in the titles.txt, just create it
+	if (!tempMessage)
 	{
+		g_pCustomMessage.effect = 2;
+		g_pCustomMessage.r1 = g_pCustomMessage.g1 = g_pCustomMessage.b1 = g_pCustomMessage.a1 = 100;
+		g_pCustomMessage.r2 = 240;
+		g_pCustomMessage.g2 = 110;
+		g_pCustomMessage.b2 = 0;
+		g_pCustomMessage.a2 = 0;
+		g_pCustomMessage.x = -1; // Centered
+		g_pCustomMessage.y = 0.7;
+		g_pCustomMessage.fadein = 0.01;
+		g_pCustomMessage.fadeout = 1.5;
+		g_pCustomMessage.fxtime = 0.25;
+		g_pCustomMessage.holdtime = 5;
+		g_pCustomMessage.pName = g_pCustomName;
+		strcpy(g_pCustomText, pName);
+		g_pCustomMessage.pMessage = g_pCustomText;
+
+		tempMessage = &g_pCustomMessage;
+	}
+
+	for (int i = 0; i < maxHUDMessages; i++)
+	{
+		// If this is a net message (game_text or plugin) then the same object is overwritten,
+		// so clear out the original message to reuse it.
+		// This fixes certain effects not resetting correctly.
+		if (tempMessage == m_pMessages[i] &&
+			strncmp(tempMessage->pName, NetMessagePrefix.data(), NetMessagePrefix.size()) == 0)
+		{
+			m_pMessages[i] = nullptr;
+		}
+
 		if (!m_pMessages[i])
 		{
-			// Trim off a leading # if it's there
-			if (pName[0] == '#')
-				tempMessage = TextMessageGet(pName + 1);
-			else
-				tempMessage = TextMessageGet(pName);
-			// If we couldnt find it in the titles.txt, just create it
-			if (!tempMessage)
-			{
-				g_pCustomMessage.effect = 2;
-				g_pCustomMessage.r1 = g_pCustomMessage.g1 = g_pCustomMessage.b1 = g_pCustomMessage.a1 = 100;
-				g_pCustomMessage.r2 = 240;
-				g_pCustomMessage.g2 = 110;
-				g_pCustomMessage.b2 = 0;
-				g_pCustomMessage.a2 = 0;
-				g_pCustomMessage.x = -1; // Centered
-				g_pCustomMessage.y = 0.7;
-				g_pCustomMessage.fadein = 0.01;
-				g_pCustomMessage.fadeout = 1.5;
-				g_pCustomMessage.fxtime = 0.25;
-				g_pCustomMessage.holdtime = 5;
-				g_pCustomMessage.pName = g_pCustomName;
-				strcpy(g_pCustomText, pName);
-				g_pCustomMessage.pMessage = g_pCustomText;
-
-				tempMessage = &g_pCustomMessage;
-			}
-
-			for (j = 0; j < maxHUDMessages; j++)
+			for (int j = 0; j < maxHUDMessages; j++)
 			{
 				if (m_pMessages[j])
 				{
@@ -483,29 +515,21 @@ void CHudMessage::MessageAdd(const char* pName, float time)
 }
 
 
-void CHudMessage::MsgFunc_HudText(const char* pszName, int iSize, void* pbuf)
+void CHudMessage::MsgFunc_HudText(const char* pszName, BufferReader& reader)
 {
-	BEGIN_READ(pbuf, iSize);
-
-	char* pString = READ_STRING();
+	char* pString = reader.ReadString();
 
 	MessageAdd(pString, gHUD.m_flTime);
 	// Remember the time -- to fix up level transitions
 	m_parms.time = gHUD.m_flTime;
-
-	// Turn on drawing
-	if ((m_iFlags & HUD_ACTIVE) == 0)
-		m_iFlags |= HUD_ACTIVE;
 }
 
 
-void CHudMessage::MsgFunc_GameTitle(const char* pszName, int iSize, void* pbuf)
+void CHudMessage::MsgFunc_GameTitle(const char* pszName, BufferReader& reader)
 {
-	BEGIN_READ(pbuf, iSize);
-
 	// Pick the right title.
 	// This is a temporary hack. The UI needs to be rewritten so this supports the official games and uses the HL1 title for everything else.
-	const std::string gameName = READ_STRING();
+	const std::string gameName = reader.ReadString();
 
 	std::string titleName = gameName;
 
@@ -537,20 +561,12 @@ void CHudMessage::MsgFunc_GameTitle(const char* pszName, int iSize, void* pbuf)
 		}
 
 		m_gameTitleTime = gHUD.m_flTime;
-
-		// Turn on drawing
-		if ((m_iFlags & HUD_ACTIVE) == 0)
-			m_iFlags |= HUD_ACTIVE;
 	}
 }
 
 void CHudMessage::MessageAdd(client_textmessage_t* newMessage)
 {
 	m_parms.time = gHUD.m_flTime;
-
-	// Turn on drawing
-	if ((m_iFlags & HUD_ACTIVE) == 0)
-		m_iFlags |= HUD_ACTIVE;
 
 	for (int i = 0; i < maxHUDMessages; i++)
 	{

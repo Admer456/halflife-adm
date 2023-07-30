@@ -81,4 +81,13 @@ void LinkUserMessages()
 	gmsgEntityInfo = REG_USER_MSG("EntityInfo", -1);
 	gmsgEmitSound = REG_USER_MSG("EmitSound", -1);
 	gmsgTempEntity = REG_USER_MSG("TempEntity", -1);
+	gmsgSkillVars = REG_USER_MSG("SkillVars", -1);
+
+	gmsgCampaignSelect = REG_USER_MSG("CmpgnSlct", 0);
+
+	gmsgTgtLaser = REG_USER_MSG("TgtLaser", -1);
+
+	gmsgFog = REG_USER_MSG("Fog", 14);
+
+	gmsgClientGibs = REG_USER_MSG("ClientGibs", 18);
 }

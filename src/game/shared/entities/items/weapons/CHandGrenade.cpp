@@ -23,28 +23,17 @@ LINK_ENTITY_TO_CLASS(weapon_handgrenade, CHandGrenade);
 void CHandGrenade::OnCreate()
 {
 	CBasePlayerWeapon::OnCreate();
-
-	m_WorldModel = pev->model = MAKE_STRING("models/w_grenade.mdl");
-}
-
-void CHandGrenade::Spawn()
-{
-	Precache();
 	m_iId = WEAPON_HANDGRENADE;
-	SetModel(STRING(pev->model));
-
+	m_iDefaultAmmo = HANDGRENADE_DEFAULT_GIVE;
 #ifndef CLIENT_DLL
 	pev->dmg = GetSkillFloat("plr_hand_grenade"sv);
 #endif
-
-	m_iDefaultAmmo = HANDGRENADE_DEFAULT_GIVE;
-
-	FallInit(); // get ready to fall down.
+	m_WorldModel = pev->model = MAKE_STRING("models/w_grenade.mdl");
 }
-
 
 void CHandGrenade::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/v_grenade.mdl");
 	PrecacheModel("models/p_grenade.mdl");
@@ -53,11 +42,11 @@ void CHandGrenade::Precache()
 bool CHandGrenade::GetWeaponInfo(WeaponInfo& info)
 {
 	info.Name = STRING(pev->classname);
-	info.AmmoType1 = "Hand Grenade";
-	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.AttackModeInfo[0].AmmoType = "Hand Grenade";
+	info.AttackModeInfo[0].MagazineSize = WEAPON_NOCLIP;
 	info.Slot = 4;
 	info.Position = 0;
-	info.Id = m_iId = WEAPON_HANDGRENADE;
+	info.Id = WEAPON_HANDGRENADE;
 	info.Weight = HANDGRENADE_WEIGHT;
 	info.Flags = ITEM_FLAG_LIMITINWORLD | ITEM_FLAG_EXHAUSTIBLE;
 
@@ -99,7 +88,7 @@ void CHandGrenade::Holster()
 
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
 
-	if (0 != m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+	if (0 != m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType))
 	{
 		SendWeaponAnim(HANDGRENADE_HOLSTER);
 	}
@@ -116,7 +105,7 @@ void CHandGrenade::Holster()
 
 void CHandGrenade::PrimaryAttack()
 {
-	if (0 == m_flStartThrow && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] > 0)
+	if (0 == m_flStartThrow && m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) > 0)
 	{
 		m_flStartThrow = gpGlobals->time;
 		m_flReleaseThrow = 0;
@@ -125,7 +114,6 @@ void CHandGrenade::PrimaryAttack()
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.5;
 	}
 }
-
 
 void CHandGrenade::WeaponIdle()
 {
@@ -159,7 +147,7 @@ void CHandGrenade::WeaponIdle()
 		if (time < 0)
 			time = 0;
 
-		CGrenade::ShootTimed(m_pPlayer->pev, vecSrc, vecThrow, time);
+		CGrenade::ShootTimed(m_pPlayer, vecSrc, vecThrow, time);
 
 		if (flVel < 500)
 		{
@@ -182,9 +170,9 @@ void CHandGrenade::WeaponIdle()
 		m_flNextPrimaryAttack = GetNextAttackDelay(0.5);
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.5;
 
-		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]--;
+		m_pPlayer->AdjustAmmoByIndex(m_iPrimaryAmmoType, -1);
 
-		if (0 == m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+		if (0 == m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType))
 		{
 			// just threw last grenade
 			// set attack times in the future, and weapon idle in the future so we can see the whole throw
@@ -198,7 +186,7 @@ void CHandGrenade::WeaponIdle()
 		// we've finished the throw, restart.
 		m_flStartThrow = 0;
 
-		if (0 != m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+		if (0 != m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType))
 		{
 			SendWeaponAnim(HANDGRENADE_DRAW);
 		}
@@ -213,7 +201,7 @@ void CHandGrenade::WeaponIdle()
 		return;
 	}
 
-	if (0 != m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+	if (0 != m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType))
 	{
 		int iAnim;
 		float flRand = UTIL_SharedRandomFloat(m_pPlayer->random_seed, 0, 1);
@@ -230,4 +218,16 @@ void CHandGrenade::WeaponIdle()
 
 		SendWeaponAnim(iAnim);
 	}
+}
+
+void CHandGrenade::GetWeaponData(weapon_data_t& data)
+{
+	data.fuser2 = m_flStartThrow;
+	data.fuser3 = m_flReleaseThrow;
+}
+
+void CHandGrenade::SetWeaponData(const weapon_data_t& data)
+{
+	m_flStartThrow = data.fuser2;
+	m_flReleaseThrow = data.fuser3;
 }

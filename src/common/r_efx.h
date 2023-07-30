@@ -116,7 +116,7 @@ struct efx_api_t
 	void (*R_BubbleTrail)(float* start, float* end, float height, int modelIndex, int count, float speed);
 	void (*R_BulletImpactParticles)(const float* pos);
 	void (*R_EntityParticles)(cl_entity_t* ent);
-	[[deprecated("Use R_Explosion in ISoundSystem.h instead")]]  void (*R_Explosion)(const float* pos, int model, float scale, float framerate, int flags);
+	[[deprecated("Use R_Explosion in ISoundSystem.h instead")]] void (*R_Explosion)(const float* pos, int model, float scale, float framerate, int flags);
 	void (*R_FizzEffect)(cl_entity_t* pent, int modelIndex, int density);
 	void (*R_FireField)(float* org, int radius, int modelIndex, int count, int flags, float life);
 	void (*R_FlickerParticles)(const float* org);
@@ -151,8 +151,8 @@ struct efx_api_t
 	void (*R_StreakSplash)(float* pos, float* dir, int color, int count, float speed, int velocityMin, int velocityMax);
 
 	/**
-	*	@param start Modified by function.
-	*/
+	 *	@param start Modified by function.
+	 */
 	void (*R_TracerEffect)(float* start, const float* end);
 
 	void (*R_UserTracerParticle)(float* org, float* vel, float life, int colorIndex, float length, unsigned char deathcontext, void (*deathfunc)(particle_t* particle));
@@ -163,12 +163,12 @@ struct efx_api_t
 	TEMPENTITY* (*R_DefaultSprite)(const float* pos, int spriteIndex, float framerate);
 	TEMPENTITY* (*R_TempSprite)(float* pos, const float* dir, float scale, int modelIndex, int rendermode, int renderfx, float a, float life, int flags);
 	int (*Draw_DecalIndex)(int id);
-	int (*Draw_DecalIndexFromName)(char* name);
+	int (*Draw_DecalIndexFromName)(const char* name);
 	void (*R_DecalShoot)(int textureIndex, int entity, int modelIndex, const float* position, int flags);
 	void (*R_AttachTentToPlayer)(int client, int modelIndex, float zoffset, float life);
 	void (*R_KillAttachedTents)(int client);
 	BEAM* (*R_BeamCirclePoints)(int type, float* start, float* end, int modelIndex, float life, float width, float amplitude, float brightness, float speed, int startFrame, float framerate, float r, float g, float b);
-	BEAM* (*R_BeamEntPoint)(int startEnt, float* end, int modelIndex, float life, float width, float amplitude, float brightness, float speed, int startFrame, float framerate, float r, float g, float b);
+	BEAM* (*R_BeamEntPoint)(int startEnt, const float* end, int modelIndex, float life, float width, float amplitude, float brightness, float speed, int startFrame, float framerate, float r, float g, float b);
 	BEAM* (*R_BeamEnts)(int startEnt, int endEnt, int modelIndex, float life, float width, float amplitude, float brightness, float speed, int startFrame, float framerate, float r, float g, float b);
 	BEAM* (*R_BeamFollow)(int startEnt, int modelIndex, float life, float width, float r, float g, float b, float brightness);
 	void (*R_BeamKill)(int deadEntity);

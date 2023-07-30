@@ -285,6 +285,12 @@ This page lists all changes made since the last release in the current developme
 
 # Half-Life: Blue Shift Updated changelog
 
+## Changes in V1.0.0 Beta 011
+
+All changes from Half-Life Updated up until Beta 14 are included: https://github.com/SamVanheer/halflife-updated/wiki/Changelog#changes-in-v100-beta-014
+
+* Applied bug fixing work done for Half-Life Updated to this project as well
+
 ## Changes in V1.0.0 Beta 010
 
 All changes from Half-Life Updated up until Beta 13 are included: https://github.com/SamVanheer/halflife-updated/wiki/Changelog#changes-in-v100-beta-013
@@ -821,6 +827,14 @@ Many changes have been made since 2019. All changes made after [[this|https://gi
 
 * Force Pitworm animations to interpolate to fix stuttering movement [Unified SDK #434](SamVanheer/halflife-unified-sdk#434) (Thanks [malortie](https://github.com/malortie))
 * Implemented snow footsteps and impact sounds, changed snow material type ID to `O` to match Opposing Force
+* Added missing EXPORT to a few Opposing Force entities
+* Fixed M249 using wrong spread in singleplayer when standing still and ducking
+* Fixed Capture The Flag items crashing on respawn
+* Fixed Health Charger recharge time not using the correct value in Co-op
+* Fixed Desert Eagle laser position not updating when holding down reload button [#95](https://github.com/SamVanheer/halflife-op4-updated/issues/95) (Thanks Ronin4862)
+* Fixed Voltigore creating beams on death connecting to wrong entity [#97](https://github.com/SamVanheer/halflife-op4-updated/issues/97) (Thanks LambdaLuke87)
+* Fixed ropes breaking at high framerates
+* Fixed allied human grunts continuing to fire for a few seconds after killing the last enemy in an area [#100](https://github.com/SamVanheer/halflife-op4-updated/issues/100) (Thanks Ronin4862)
 
 ## Changes in V1.0.0 Beta 011
 
@@ -1480,7 +1494,7 @@ Fixes that have been reported but not yet fixed in the original game:
 
 # Half-Life Updated changelog
 
-## Changges in V1.0.0 Beta 015
+## Changes in V1.0.0 Beta 015
 
 > Note: this beta has not been released yet.
 
@@ -1488,6 +1502,28 @@ Fixes that have been reported but not yet fixed in the original game:
 
 * Fixed tripmines not detonating if placed on breakable and a save game is loaded [#192](https://github.com/SamVanheer/halflife-updated/issues/192) (Thanks forklift.mdl)
 * Fixed func_friction not working properly in multiplayer (halflife issue [#1542](https://github.com/ValveSoftware/halflife/issues/1542)) (Thanks L453rh4wk)
+* Fixed spray logo using wrong decal after save game load when not using custom spray [#193](https://github.com/SamVanheer/halflife-updated/issues/193) (Thanks Ronin4862)
+* Fixed ammo pickup sound playing when picking up a weapon for the first time (bug introduced by [#153](https://github.com/SamVanheer/halflife-updated/issues/153) in Beta 12)
+* Fixed Gauss gun sometimes settting player uranium ammo to -1 (halflife issue [#3343](https://github.com/ValveSoftware/halflife/issues/3343))
+* Fixed pistol not playing empty sound when using secondary attack
+* Fixed user interface coordinates and sizes being incorrectly adjusted for resolution (halflife issue [#3344](https://github.com/ValveSoftware/halflife/issues/3344))
+* Fixed player weapons still receiving input when starting to use a func_tank (halflife issue [#3345](https://github.com/ValveSoftware/halflife/issues/3345)) (Thanks Oxofemple.)
+* Fixed alien slave beams staying forever if they exist during a level change (halflife issue [#3104](https://github.com/ValveSoftware/halflife/issues/3104))
+* Fixed cycler_wreckage storing time value in int instead of float
+* Fixed limit in world weapons (e.g. Hand Grenade) respawning at wrong time if server is near edict limit
+* Fixed shotgun starting idle animations too quickly after exhausting all ammo using primary attack [#195](https://github.com/SamVanheer/halflife-updated/issues/195) (Thanks Ronin4862)
+* Fixed RPG not playing empty sound when attempting to fire with no ammo left [#196](https://github.com/SamVanheer/halflife-updated/issues/196) (Thanks Ronin4862)
+* Fixed Human Grunts dropping weapons again if the game is saved and loaded while the grunt is dying (Thanks Oxofemple.)
+* Added missing monster state name to ReportAIState (halflife issue [#3220](https://github.com/ValveSoftware/halflife/issues/3220)) (Thanks Shepard)
+* Fixed mouse movement during map load affecting initial view angles
+* Fixed being able to break scripted_sequence by +using friendly NPCs to make them follow player [#200](https://github.com/SamVanheer/halflife-updated/issues/200) (Thanks Oxofemple. for reporting this and FreeSlave for finding the solution)
+* Fixed potential incorrect facing in scripted sequence (Thanks FreeSlave)
+* Made the Linux version link statically to the C++ runtime to help avoid problems when running mods on older systems (Thanks a1ba and FreeSlave)
+* Fixed Egon not stopping its attack animation if the attack button is held down and ammo runs out (Thanks the man)
+* Fixed scientists crashing when speaking fear dialogue when enemy has been removed
+* Disabled fall think function for weapons when the player picks it up to prevent possible double-pickup which removes the weapon and crashes the game
+* Disabled jump sounds while player is frozen (e.g. trigger_camera, trigger_playerfreeze)
+* Fixed node graph code incorrectly flagging node graphs as out of date if an outdated graph exists in a search path other than the mod directory (e.g. a graph in `halflife_updated_addon/map/graphs`)
 
 ## Changes in V1.0.0 Beta 014
 
@@ -1502,7 +1538,7 @@ Fixes that have been reported but not yet fixed in the original game:
 * Removed unnecessary semicolons (Thanks Shepard)
 * Updated source file encoding to UTF-8 [#183](https://github.com/SamVanheer/halflife-updated/issues/183) (Thanks anchurcn)
 * Renamed `CWorld::Instance` to `CWorld::World` to avoid conflicting with `CBaseEntity::Instance` function name
-* Added `-flifetime-dse=1` flag to Linux Makefile to disable compiler optimization that removed entity memory zero-initialization, resulting in the game crashing when any entity touches the world  [#187](https://github.com/SamVanheer/halflife-updated/issues/187)(Thanks FreeSlave)
+* Added `-flifetime-dse=1` flag to Linux Makefile to disable compiler optimization that removed entity memory zero-initialization, resulting in the game crashing when any entity touches the world [#187](https://github.com/SamVanheer/halflife-updated/issues/187) (Thanks FreeSlave)
 * Fixed game_player_equip crashing when given a null activator [#189](https://github.com/SamVanheer/halflife-updated/issues/189)
 * Fixed Hornet gun recharging to full ammo after loading a save game [#190](https://github.com/SamVanheer/halflife-updated/issues/190)
 * Fixed explosives that impact the underside of a brush dealing damage to entities on the other side of that brush (halflife issue [#3244](https://github.com/ValveSoftware/halflife/issues/3244))
@@ -1519,8 +1555,8 @@ Fixes that have been reported but not yet fixed in the original game:
 
 ### Project changes
 
-* Added `delta.lst` to the archive again (was accidentally removed in the previous beta)
-* Added game icons to the archive
+* Added `delta.lst` to the game installation again (was accidentally removed in the previous beta)
+* Added game icons to the game installation
 
 ## Changes in V1.0.0 Beta 013
 
@@ -1802,7 +1838,7 @@ Fixes that have been reported but not yet fixed in the original game:
 * Reverted "Fixed multisource having off-by-one error in trigger handling" (halflife issue [[#1737|https://github.com/ValveSoftware/halflife/issues/1737]]) to avoid edge cases where entities triggering the multisource use a delayed trigger which is not supported by fixed code
 * Fixed func_breakable keyvalue "explosion" not working (#24) (Thanks ArroganceJustified)
 * Fixed saytext message handling potentially causing buffer overflow (halflife issue [[#3095|https://github.com/ValveSoftware/halflife/issues/3095]])
-* Implemented skill cvars sk_plr_hornet_dmg1/2/3 for player Hornet gun damage
+* Implemented skill cvars `sk_plr_hornet_dmg1/2/3` for player Hornet gun damage
 * Fixed memory leak in VGUI1 image loading code (halflife issue [[#3101|https://github.com/ValveSoftware/halflife/issues/3101]])
 * Fixed underwater breathing sounds playing when standing in shallow water (halflife issue [[#3110|https://github.com/ValveSoftware/halflife/issues/3110]])
 * Fixed camera not being consistently centered when raw mouse input is enabled (Thanks IntriguingTiles) [#32](https://github.com/SamVanheer/halflife-updated/pull/32)

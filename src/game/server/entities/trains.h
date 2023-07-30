@@ -36,6 +36,9 @@
 // #define PATH_SPARKLE_DEBUG		1	// This makes a particle effect around path_track entities for debugging
 class CPathTrack : public CPointEntity
 {
+	DECLARE_CLASS(CPathTrack, CPointEntity);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	void Activate() override;
@@ -56,12 +59,8 @@ public:
 	CPathTrack* GetNext();
 	CPathTrack* GetPrevious();
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 #if PATH_SPARKLE_DEBUG
-	void EXPORT Sparkle();
+	void Sparkle();
 #endif
 
 	float m_length;
@@ -71,9 +70,11 @@ public:
 	CPathTrack* m_paltpath;
 };
 
-
 class CFuncTrackTrain : public CBaseEntity
 {
+	DECLARE_CLASS(CFuncTrackTrain, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	void Precache() override;
@@ -82,10 +83,10 @@ public:
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
 	bool KeyValue(KeyValueData* pkvd) override;
 
-	void EXPORT Next();
-	void EXPORT Find();
-	void EXPORT NearestPath();
-	void EXPORT DeadEnd();
+	void Next();
+	void Find();
+	void NearestPath();
+	void DeadEnd();
 
 	void NextThink(float thinkTime, bool alwaysThink);
 
@@ -94,14 +95,16 @@ public:
 	bool OnControls(CBaseEntity* controller) override;
 
 	void StopTrainSound();
+
+	/**
+	 *	@brief update pitch based on speed, start sound if not playing
+	 *	NOTE: when train goes through transition, m_soundPlaying should go to 0,
+	 *	which will cause the looped sound to restart.
+	 */
 	void UpdateTrainSound();
 
 	static CFuncTrackTrain* Instance(CBaseEntity* pent);
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 	int ObjectCaps() override { return (CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION) | FCAP_DIRECTIONAL_USE; }
 
 	void OverrideReset() override;

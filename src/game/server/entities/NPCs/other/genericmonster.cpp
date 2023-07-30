@@ -12,40 +12,38 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// Generic Monster - purely for scripted sequence work.
-//=========================================================
+
 #include "cbase.h"
 
-// For holograms, make them not solid so the player can walk through them
+/**
+ *	@brief For holograms, make them not solid so the player can walk through them
+ */
 #define SF_GENERICMONSTER_NOTSOLID 4
 
 const int SF_GENERICMONSTER_CONTROLLER = 8;
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
-
+/**
+ *	@brief purely for scripted sequence work.
+ */
 class CGenericMonster : public CBaseMonster
 {
+	DECLARE_CLASS(CGenericMonster, CBaseMonster);
+	DECLARE_DATAMAP();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
-	int Classify() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	int ISoundMask() override;
+
+	bool HasHumanGibs() override { return true; }
 
 	void PlayScriptedSentence(const char* pszSentence, float duration, float volume, float attenuation, bool bConcurrent, CBaseEntity* pListener) override;
 
 	void MonsterThink() override;
 	void IdleHeadTurn(Vector& vecFriend);
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 
 	float m_talkTime;
 	EHANDLE m_hTalkTarget;
@@ -54,37 +52,25 @@ public:
 };
 LINK_ENTITY_TO_CLASS(monster_generic, CGenericMonster);
 
-TYPEDESCRIPTION CGenericMonster::m_SaveData[] =
-	{
-		// TODO: should be FIELD_TIME
-		DEFINE_FIELD(CGenericMonster, m_talkTime, FIELD_FLOAT),
-		DEFINE_FIELD(CGenericMonster, m_hTalkTarget, FIELD_EHANDLE),
-		DEFINE_FIELD(CGenericMonster, m_flIdealYaw, FIELD_FLOAT),
-		DEFINE_FIELD(CGenericMonster, m_flCurrentYaw, FIELD_FLOAT),
-};
-
-IMPLEMENT_SAVERESTORE(CGenericMonster, CBaseMonster);
+BEGIN_DATAMAP(CGenericMonster)
+// TODO: should be FIELD_TIME
+DEFINE_FIELD(m_talkTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_hTalkTarget, FIELD_EHANDLE),
+	DEFINE_FIELD(m_flIdealYaw, FIELD_FLOAT),
+	DEFINE_FIELD(m_flCurrentYaw, FIELD_FLOAT),
+	END_DATAMAP();
 
 void CGenericMonster::OnCreate()
 {
 	CBaseMonster::OnCreate();
 
 	pev->health = 8;
+
+	SetClassification("player_ally");
+
+	m_AllowFollow = false;
 }
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int CGenericMonster::Classify()
-{
-	return CLASS_PLAYER_ALLY;
-}
-
-//=========================================================
-// SetYawSpeed - allows each sequence to have a different
-// turn rate associated with it.
-//=========================================================
 void CGenericMonster::SetYawSpeed()
 {
 	int ys;
@@ -99,10 +85,6 @@ void CGenericMonster::SetYawSpeed()
 	pev->yaw_speed = ys;
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void CGenericMonster::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -114,17 +96,12 @@ void CGenericMonster::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// ISoundMask - generic monster can't hear.
-//=========================================================
 int CGenericMonster::ISoundMask()
 {
+	// generic monster can't hear.
 	return bits_SOUND_NONE;
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void CGenericMonster::Spawn()
 {
 	Precache();
@@ -155,9 +132,6 @@ void CGenericMonster::Spawn()
 	m_flIdealYaw = 0;
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void CGenericMonster::Precache()
 {
 	PrecacheModel(STRING(pev->model));
@@ -192,11 +166,11 @@ void CGenericMonster::MonsterThink()
 		{
 			if (m_flCurrentYaw <= m_flIdealYaw)
 			{
-				m_flCurrentYaw += V_min(20.0, m_flIdealYaw - m_flCurrentYaw);
+				m_flCurrentYaw += std::min(20.0f, m_flIdealYaw - m_flCurrentYaw);
 			}
 			else
 			{
-				m_flCurrentYaw -= V_min(20.0, m_flCurrentYaw - m_flIdealYaw);
+				m_flCurrentYaw -= std::min(20.0f, m_flCurrentYaw - m_flIdealYaw);
 			}
 
 			SetBoneController(0, m_flCurrentYaw);
@@ -206,7 +180,6 @@ void CGenericMonster::MonsterThink()
 	CBaseMonster::MonsterThink();
 }
 
-// turn head towards supplied origin
 void CGenericMonster::IdleHeadTurn(Vector& vecFriend)
 {
 	// turn head in desired direction only if ent has a turnable head
@@ -223,7 +196,3 @@ void CGenericMonster::IdleHeadTurn(Vector& vecFriend)
 		m_flIdealYaw = yaw;
 	}
 }
-
-//=========================================================
-// AI Schedules Specific to this monster
-//=========================================================

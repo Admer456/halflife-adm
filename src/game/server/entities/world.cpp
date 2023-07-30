@@ -12,32 +12,24 @@
  *   without written permission from Valve LLC.
  *
  ****/
-/*
-
-===== world.cpp ========================================================
-
-  precaches and defs for entities and other data that must always be available.
-
-*/
+/**
+ *	@file
+ *	precaches and defs for entities and other data that must always be available.
+ */
 
 #include "cbase.h"
 #include "CCorpse.h"
 #include "nodes.h"
 #include "client.h"
-#include "teamplay_gamerules.h"
-#include "ctfplay_gamerules.h"
+#include "CHalfLifeCTFplay.h"
 #include "spawnpoints.h"
 #include "world.h"
 #include "ServerLibrary.h"
-#include "ctf/CItemCTF.h"
+#include "ctf/ctf_items.h"
 
-CGlobalState gGlobalState;
-
-void W_Precache();
-
-//
-// This must match the list in util.h
-//
+/**
+ *	@details This must match the list in util.h
+ */
 DLL_DECALLIST gDecals[] = {
 	{"{shot1", 0},		 // DECAL_GUNSHOT1
 	{"{shot2", 0},		 // DECAL_GUNSHOT2
@@ -92,33 +84,33 @@ DLL_DECALLIST gDecals[] = {
 	{"{ofsmscorch3", 0}, // DECAL_OFSMSCORCH3
 };
 
-/*
-==============================================================================
-
-BODY QUE
-
-==============================================================================
-*/
-
 #define SF_DECAL_NOTINDEATHMATCH 2048
 
 class CDecal : public CBaseEntity
 {
+	DECLARE_CLASS(CDecal, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
 	bool KeyValue(KeyValueData* pkvd) override;
-	void EXPORT StaticDecal();
-	void EXPORT TriggerDecal(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void StaticDecal();
+	void TriggerDecal(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 };
+
+BEGIN_DATAMAP(CDecal)
+DEFINE_FUNCTION(StaticDecal),
+	DEFINE_FUNCTION(TriggerDecal),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(infodecal, CDecal);
 
 // UNDONE:  These won't get sent to joining players in multi-player
 void CDecal::Spawn()
 {
-	if (pev->skin < 0 || (0 != gpGlobals->deathmatch && FBitSet(pev->spawnflags, SF_DECAL_NOTINDEATHMATCH)))
+	if (pev->skin < 0 || (g_pGameRules->IsMultiplayer() && FBitSet(pev->spawnflags, SF_DECAL_NOTINDEATHMATCH)))
 	{
-		REMOVE_ENTITY(ENT(pev));
+		REMOVE_ENTITY(edict());
 		return;
 	}
 
@@ -131,7 +123,7 @@ void CDecal::Spawn()
 	else
 	{
 		// if there IS a targetname, the decal sprays itself on when it is triggered.
-		SetThink(&CDecal::SUB_DoNothing);
+		SetThink(nullptr);
 		SetUse(&CDecal::TriggerDecal);
 	}
 }
@@ -141,9 +133,12 @@ void CDecal::TriggerDecal(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYP
 	// this is set up as a USE function for infodecals that have targetnames, so that the
 	// decal doesn't get applied until it is fired. (usually by a scripted sequence)
 	TraceResult trace;
-	int entityIndex;
 
-	UTIL_TraceLine(pev->origin - Vector(5, 5, 5), pev->origin + Vector(5, 5, 5), ignore_monsters, ENT(pev), &trace);
+	UTIL_TraceLine(pev->origin - Vector(5, 5, 5), pev->origin + Vector(5, 5, 5), ignore_monsters, edict(), &trace);
+
+	auto hit = CBaseEntity::Instance(trace.pHit);
+
+	const int entityIndex = (short)hit->entindex();
 
 	MESSAGE_BEGIN(MSG_BROADCAST, SVC_TEMPENTITY);
 	WRITE_BYTE(TE_BSPDECAL);
@@ -151,35 +146,30 @@ void CDecal::TriggerDecal(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYP
 	WRITE_COORD(pev->origin.y);
 	WRITE_COORD(pev->origin.z);
 	WRITE_SHORT(pev->skin);
-	entityIndex = (short)ENTINDEX(trace.pHit);
 	WRITE_SHORT(entityIndex);
 	if (0 != entityIndex)
-		WRITE_SHORT(VARS(trace.pHit)->modelindex);
+		WRITE_SHORT(hit->pev->modelindex);
 	MESSAGE_END();
 
 	SetThink(&CDecal::SUB_Remove);
 	pev->nextthink = gpGlobals->time + 0.1;
 }
 
-
 void CDecal::StaticDecal()
 {
 	TraceResult trace;
-	int entityIndex, modelIndex;
 
-	UTIL_TraceLine(pev->origin - Vector(5, 5, 5), pev->origin + Vector(5, 5, 5), ignore_monsters, ENT(pev), &trace);
+	UTIL_TraceLine(pev->origin - Vector(5, 5, 5), pev->origin + Vector(5, 5, 5), ignore_monsters, edict(), &trace);
 
-	entityIndex = (short)ENTINDEX(trace.pHit);
-	if (0 != entityIndex)
-		modelIndex = VARS(trace.pHit)->modelindex;
-	else
-		modelIndex = 0;
+	auto hit = CBaseEntity::Instance(trace.pHit);
+
+	const int entityIndex = (short)hit->entindex();
+	const int modelIndex = 0 != entityIndex ? hit->pev->modelindex : 0;
 
 	g_engfuncs.pfnStaticDecal(pev->origin, pev->skin, entityIndex, modelIndex);
 
 	SUB_Remove();
 }
-
 
 bool CDecal::KeyValue(KeyValueData* pkvd)
 {
@@ -197,215 +187,6 @@ bool CDecal::KeyValue(KeyValueData* pkvd)
 
 	return CBaseEntity::KeyValue(pkvd);
 }
-
-CGlobalState::CGlobalState()
-{
-	Reset();
-}
-
-void CGlobalState::Reset()
-{
-	m_pList = nullptr;
-	m_listCount = 0;
-}
-
-globalentity_t* CGlobalState::Find(string_t globalname)
-{
-	if (FStringNull(globalname))
-		return nullptr;
-
-	globalentity_t* pTest;
-	const char* pEntityName = STRING(globalname);
-
-
-	pTest = m_pList;
-	while (pTest)
-	{
-		if (FStrEq(pEntityName, pTest->name))
-			break;
-
-		pTest = pTest->pNext;
-	}
-
-	return pTest;
-}
-
-
-// This is available all the time now on impulse 104, remove later
-// #ifdef _DEBUG
-void CGlobalState::DumpGlobals()
-{
-	static const char* estates[] = {"Off", "On", "Dead"};
-	globalentity_t* pTest;
-
-	CBaseEntity::Logger->debug("-- Globals --");
-	pTest = m_pList;
-	while (pTest)
-	{
-		CBaseEntity::Logger->debug("{}: {} ({})", pTest->name, pTest->levelName, estates[pTest->state]);
-		pTest = pTest->pNext;
-	}
-}
-// #endif
-
-
-void CGlobalState::EntityAdd(string_t globalname, string_t mapName, GLOBALESTATE state)
-{
-	ASSERT(!Find(globalname));
-
-	globalentity_t* pNewEntity = (globalentity_t*)calloc(sizeof(globalentity_t), 1);
-	ASSERT(pNewEntity != nullptr);
-	pNewEntity->pNext = m_pList;
-	m_pList = pNewEntity;
-	strcpy(pNewEntity->name, STRING(globalname));
-	strcpy(pNewEntity->levelName, STRING(mapName));
-	pNewEntity->state = state;
-	m_listCount++;
-}
-
-
-void CGlobalState::EntitySetState(string_t globalname, GLOBALESTATE state)
-{
-	globalentity_t* pEnt = Find(globalname);
-
-	if (pEnt)
-		pEnt->state = state;
-}
-
-
-const globalentity_t* CGlobalState::EntityFromTable(string_t globalname)
-{
-	globalentity_t* pEnt = Find(globalname);
-
-	return pEnt;
-}
-
-
-GLOBALESTATE CGlobalState::EntityGetState(string_t globalname)
-{
-	globalentity_t* pEnt = Find(globalname);
-	if (pEnt)
-		return pEnt->state;
-
-	return GLOBAL_OFF;
-}
-
-
-// Global Savedata for Delay
-TYPEDESCRIPTION CGlobalState::m_SaveData[] =
-	{
-		DEFINE_FIELD(CGlobalState, m_listCount, FIELD_INTEGER),
-};
-
-// Global Savedata for Delay
-TYPEDESCRIPTION gGlobalEntitySaveData[] =
-	{
-		DEFINE_ARRAY(globalentity_t, name, FIELD_CHARACTER, 64),
-		DEFINE_ARRAY(globalentity_t, levelName, FIELD_CHARACTER, 32),
-		DEFINE_FIELD(globalentity_t, state, FIELD_INTEGER),
-};
-
-
-bool CGlobalState::Save(CSave& save)
-{
-	int i;
-	globalentity_t* pEntity;
-
-	if (!save.WriteFields("GLOBAL", this, m_SaveData, std::size(m_SaveData)))
-		return false;
-
-	pEntity = m_pList;
-	for (i = 0; i < m_listCount && pEntity; i++)
-	{
-		if (!save.WriteFields("GENT", pEntity, gGlobalEntitySaveData, std::size(gGlobalEntitySaveData)))
-			return false;
-
-		pEntity = pEntity->pNext;
-	}
-
-	return true;
-}
-
-bool CGlobalState::Restore(CRestore& restore)
-{
-	int i, listCount;
-	globalentity_t tmpEntity;
-
-
-	ClearStates();
-	if (!restore.ReadFields("GLOBAL", this, m_SaveData, std::size(m_SaveData)))
-		return false;
-
-	listCount = m_listCount; // Get new list count
-	m_listCount = 0;		 // Clear loaded data
-
-	for (i = 0; i < listCount; i++)
-	{
-		if (!restore.ReadFields("GENT", &tmpEntity, gGlobalEntitySaveData, std::size(gGlobalEntitySaveData)))
-			return false;
-		EntityAdd(MAKE_STRING(tmpEntity.name), MAKE_STRING(tmpEntity.levelName), tmpEntity.state);
-	}
-	return true;
-}
-
-void CGlobalState::EntityUpdate(string_t globalname, string_t mapname)
-{
-	globalentity_t* pEnt = Find(globalname);
-
-	if (pEnt)
-		strcpy(pEnt->levelName, STRING(mapname));
-}
-
-
-void CGlobalState::ClearStates()
-{
-	globalentity_t* pFree = m_pList;
-	while (pFree)
-	{
-		globalentity_t* pNext = pFree->pNext;
-		free(pFree);
-		pFree = pNext;
-	}
-	Reset();
-}
-
-
-void SaveGlobalState(SAVERESTOREDATA* pSaveData)
-{
-	if (!CSaveRestoreBuffer::IsValidSaveRestoreData(pSaveData))
-	{
-		return;
-	}
-
-	CSave saveHelper(*pSaveData);
-	gGlobalState.Save(saveHelper);
-}
-
-
-void RestoreGlobalState(SAVERESTOREDATA* pSaveData)
-{
-	if (!CSaveRestoreBuffer::IsValidSaveRestoreData(pSaveData))
-	{
-		return;
-	}
-
-	CRestore restoreHelper(*pSaveData);
-	gGlobalState.Restore(restoreHelper);
-}
-
-
-void ResetGlobalState()
-{
-	gGlobalState.ClearStates();
-	gInitHUD = true; // Init the HUD on a new game / load game
-}
-
-// moved CWorld class definition to cbase.h
-//=======================
-// CWorld
-//
-// This spawns first when each level begins.
-//=======================
 
 LINK_ENTITY_TO_CLASS(worldspawn, CWorld);
 
@@ -474,19 +255,21 @@ void CWorld::Precache()
 
 	CVAR_SET_STRING("room_type", "0"); // clear DSP
 
-	// Set up game rules
-	delete g_pGameRules;
-
-	g_pGameRules = InstallGameRules(this);
-
 	//!!!UNDONE why is there so much Spawn code in the Precache function? I'll just keep it here
 
-	///!!!LATER - do we want a sound ent in deathmatch? (sjb)
-	// pSoundEnt = CBaseEntity::Create( "soundent", g_vecZero, g_vecZero, edict() );
-	pSoundEnt = g_EntityDictionary->Create<CSoundEnt>("soundent");
-	pSoundEnt->Spawn();
+	// Set gamemode now that we have the world edict.
+	auto serverBuffer = g_engfuncs.pfnGetInfoKeyBuffer(this->edict());
 
-	if (!pSoundEnt)
+	g_engfuncs.pfnSetKeyValue(serverBuffer, "gm", g_pGameRules->GetGameModeName());
+
+	///!!!LATER - do we want a sound ent in deathmatch? (sjb)
+	pSoundEnt = g_EntityDictionary->Create<CSoundEnt>("soundent");
+
+	if (pSoundEnt)
+	{
+		pSoundEnt->Spawn();
+	}
+	else
 	{
 		Logger->debug("**COULD NOT CREATE SOUNDENT**");
 	}
@@ -636,27 +419,16 @@ void CWorld::Precache()
 		CVAR_SET_FLOAT("mp_defaultteam", 0);
 	}
 
-	if ((pev->spawnflags & SF_WORLD_COOP) != 0)
-	{
-		CVAR_SET_FLOAT("mp_defaultcoop", 1);
-	}
-	else
-	{
-		CVAR_SET_FLOAT("mp_defaultcoop", 0);
-	}
-
 	CVAR_SET_FLOAT("sv_wateramp", pev->scale);
 }
 
-
-//
-// Just to ignore the "wad" field.
-//
 bool CWorld::KeyValue(KeyValueData* pkvd)
 {
+	// ignore the "wad" field.
 	if (FStrEq(pkvd->szKeyName, "skyname"))
 	{
 		// Sent over net now.
+		// Reset to default in ServerLibrary::NewMapStarted.
 		CVAR_SET_STRING("sv_skyname", pkvd->szValue);
 		return true;
 	}
@@ -708,14 +480,6 @@ bool CWorld::KeyValue(KeyValueData* pkvd)
 		if (0 != atoi(pkvd->szValue))
 		{
 			pev->spawnflags |= SF_WORLD_FORCETEAM;
-		}
-		return true;
-	}
-	else if (FStrEq(pkvd->szKeyName, "defaultctf"))
-	{
-		if (0 != atoi(pkvd->szValue))
-		{
-			pev->spawnflags |= SF_WORLD_CTF;
 		}
 		return true;
 	}

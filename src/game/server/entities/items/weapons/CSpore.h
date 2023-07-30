@@ -22,6 +22,9 @@ enum SporeAnim
 
 class CSpore : public CGrenade
 {
+	DECLARE_CLASS(CSpore, CGrenade);
+	DECLARE_DATAMAP();
+
 public:
 	enum class SporeType
 	{
@@ -30,30 +33,21 @@ public:
 	};
 
 public:
-	using BaseClass = CGrenade;
-
-#ifndef CLIENT_DLL
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-#endif
-
 	void Precache() override;
 
 	void Spawn() override;
 
 	void BounceSound() override;
 
-	void EXPORT IgniteThink();
+	void IgniteThink();
 
-	void EXPORT FlyThink();
+	void FlyThink();
 
-	void EXPORT GibThink();
+	void GibThink();
 
-	void EXPORT RocketTouch(CBaseEntity* pOther);
+	void RocketTouch(CBaseEntity* pOther);
 
-	void EXPORT MyBounceTouch(CBaseEntity* pOther);
+	void MyBounceTouch(CBaseEntity* pOther);
 
 	static CSpore* CreateSpore(
 		const Vector& vecOrigin, const Vector& vecAngles, CBaseEntity* pOwner,

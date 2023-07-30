@@ -18,18 +18,164 @@
 #include <fmt/format.h>
 
 #include "cbase.h"
+#include "MapState.h"
 #include "SentencesSystem.h"
 #include "ServerLibrary.h"
 #include "networking/NetworkDataSystem.h"
 #include "sound/sentence_utils.h"
 #include "sound/ServerSoundSystem.h"
+#include "utils/heterogeneous_lookup.h"
 #include "utils/JSONSystem.h"
 
 namespace sentences
 {
+constexpr std::string_view SentencesSchemaName{"Sentences"sv};
+
+static std::string GetSentencesSchema()
+{
+	return fmt::format(R"(
+{{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Sentences and Sentence Groups Definition",
+	"type": "object",
+	"properties": {{
+		"Sentences": {{
+			"description": "List of sentences to add or replace",
+			"type": "array",
+			"items": {{
+				"title": "Sentence",
+				"type": "string",
+				"pattern": "^\\w\\S+\\s+.+$"
+			}}
+		}},
+		"Groups": {{
+			"description": "Sentence Groups to add or replace",
+			"type": "object",
+			"patternProperties": {{
+				"^\\w\\S+$": {{
+					"type": "array",
+					"items": {{
+						"title": "Sentence Name",
+						"type": "string",
+						"pattern": "^\\w\\S+$"
+					}}
+				}}
+			}}
+		}}
+	}}
+}}
+)");
+}
+
+
+class SentencesParser final
+{
+public:
+	explicit SentencesParser(std::shared_ptr<spdlog::logger> logger)
+		: m_Logger(logger)
+	{
+	}
+
+	bool ParseSentences(const json& input);
+
+	std::vector<Sentence> m_Sentences;
+
+	std::unordered_map<std::string, SentenceGroup, TransparentStringHash, TransparentEqual> m_Groups;
+
+private:
+	std::shared_ptr<spdlog::logger> m_Logger;
+
+	std::unordered_map<std::string, std::size_t, TransparentStringHash, TransparentEqual> m_SentenceToIndexMap;
+};
+
+bool SentencesParser::ParseSentences(const json& input)
+{
+	if (auto sentences = input.find("Sentences"); sentences != input.end())
+	{
+		std::unordered_set<std::string> duplicateNameCheck;
+
+		for (const auto& sentence : *sentences)
+		{
+			const std::string sentenceData = sentence.get<std::string>();
+
+			const auto parsedSentence = ParseSentence(sentenceData);
+
+			const std::string_view name = std::get<0>(parsedSentence);
+
+			if (name.empty())
+			{
+				continue;
+			}
+
+			if (0 == std::isalpha(name.front()))
+			{
+				m_Logger->warn("Sentence {} must start with an alphabetic character", name);
+				continue;
+			}
+
+			if (m_Sentences.size() >= MaxSentencesCount)
+			{
+				m_Logger->error("Too many sentences in file! (maximum {})", MaxSentencesCount);
+				break;
+			}
+
+			if (!duplicateNameCheck.insert(std::string{name}).second)
+			{
+				// Need to ignore duplicates in the same file to match original behavior.
+				m_Logger->warn("Encountered duplicate sentence name \"{}\", ignoring", name);
+				continue;
+			}
+
+			if (auto it = m_SentenceToIndexMap.find(name); it != m_SentenceToIndexMap.end())
+			{
+				auto& originalSentence = m_Sentences[it->second];
+				originalSentence.Value = std::get<1>(parsedSentence);
+			}
+			else
+			{
+				m_Sentences.emplace_back(SentenceName{name.data(), name.size()}, std::string{std::get<1>(parsedSentence)});
+				m_SentenceToIndexMap.insert_or_assign(std::string{name}, m_Sentences.size() - 1);
+			}
+		}
+	}
+
+	if (auto groups = input.find("Groups"); groups != input.end())
+	{
+		for (const auto& [groupName, groupContents] : groups->items())
+		{
+			auto it = m_Groups.find(groupName);
+
+			if (it != m_Groups.end())
+			{
+				it->second.Sentences.clear();
+			}
+			else
+			{
+				it = m_Groups.insert_or_assign(groupName, SentenceGroup{SentenceName{groupName.data(), groupName.size()}}).first;
+			}
+
+			for (const auto& sentenceName : groupContents)
+			{
+				if (auto sentenceIndex = m_SentenceToIndexMap.find(sentenceName.get<std::string>());
+					sentenceIndex != m_SentenceToIndexMap.end())
+				{
+					it->second.Sentences.push_back(static_cast<int>(sentenceIndex->second));
+				}
+				else
+				{
+					m_Logger->warn("Group \"{}\": Sentence \"{}\" not found", groupName, sentenceName);
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
 bool SentencesSystem::Initialize()
 {
 	m_Logger = g_Logging.CreateLogger("sentences");
+	g_JSON.RegisterSchema(SentencesSchemaName, &GetSentencesSchema);
 	g_NetworkData.RegisterHandler("Sentences", this);
 	return true;
 }
@@ -47,9 +193,19 @@ void SentencesSystem::LoadSentences(std::span<const std::string> fileNames)
 
 	m_Sentences.reserve(InitialSentencesReserveCount);
 
-	for (const auto& fileName : fileNames)
 	{
-		LoadSentences(fileName);
+		SentencesParser parser{m_Logger};
+
+		for (const auto& fileName : fileNames)
+		{
+			g_JSON.ParseJSONFile(fileName.c_str(), {.SchemaName = SentencesSchemaName}, [&](const auto& input)
+				{ return parser.ParseSentences(input); });
+		}
+
+		m_Sentences = std::move(parser.m_Sentences);
+
+		std::transform(parser.m_Groups.begin(), parser.m_Groups.end(), std::back_inserter(m_SentenceGroups), [](auto&& group)
+			{ return std::move(group.second); });
 	}
 
 	m_Logger->debug("Loaded {} out of max {} sentences with {} sentence groups", m_Sentences.size(), MaxSentencesCount, m_SentenceGroups.size());
@@ -57,7 +213,8 @@ void SentencesSystem::LoadSentences(std::span<const std::string> fileNames)
 	// init lru lists
 	for (auto& group : m_SentenceGroups)
 	{
-		InitLRU(group.rgblru, group.count);
+		group.LeastRecentlyUsed.resize(group.Sentences.size());
+		InitLRU(group.LeastRecentlyUsed);
 	}
 }
 
@@ -129,7 +286,7 @@ int SentencesSystem::GetGroupIndex(CBaseEntity* entity, const char* szgroupname)
 
 	for (const auto& group : m_SentenceGroups)
 	{
-		if (szgroupname == m_SentenceGroups[i].GroupName)
+		if (szgroupname == group.GroupName)
 			return i;
 		++i;
 	}
@@ -162,16 +319,6 @@ int SentencesSystem::LookupSentence(CBaseEntity* entity, const char* sample, Sen
 
 	// sentence name not found!
 	return -1;
-}
-
-int SentencesSystem::PlayRndI(CBaseEntity* entity, int isentenceg, float volume, float attenuation, int flags, int pitch)
-{
-	SentenceIndexName name;
-
-	const int ipick = Pick(isentenceg, name);
-	if (ipick > 0 && !name.empty())
-		sound::g_ServerSound.EmitSound(entity, CHAN_VOICE, name.c_str(), volume, attenuation, flags, pitch);
-	return ipick;
 }
 
 int SentencesSystem::PlayRndSz(CBaseEntity* entity, const char* szgroupname,
@@ -213,113 +360,27 @@ void SentencesSystem::Stop(CBaseEntity* entity, int isentenceg, int ipick)
 	if (isentenceg < 0 || ipick < 0)
 		return;
 
+	const int sentenceIndex = m_SentenceGroups[isentenceg].Sentences[ipick];
+
 	SentenceIndexName name;
-	fmt::format_to(std::back_inserter(name), "!{}{}", m_SentenceGroups[isentenceg].GroupName.c_str(), ipick);
+	fmt::format_to(std::back_inserter(name), "!{}", m_Sentences[sentenceIndex].Name.c_str());
 
 	entity->StopSound(CHAN_VOICE, name.c_str());
 }
 
-void SentencesSystem::LoadSentences(const std::string& fileName)
+void SentencesSystem::InitLRU(eastl::fixed_vector<unsigned char, CSENTENCE_LRU_MAX>& lru)
 {
-	m_Logger->trace("Loading {}", fileName);
+	for (std::size_t i = 0; i < lru.size(); ++i)
+		lru[i] = (unsigned char)i;
 
-	const auto fileContents = FileSystem_LoadFileIntoBuffer(fileName.c_str(), FileContentFormat::Text);
-
-	if (fileContents.empty())
-	{
-		m_Logger->debug("No sentences to load, file does not exist or is empty");
-		return;
-	}
-
-	// for each line in the file...
-	SentencesListParser parser{{reinterpret_cast<const char*>(fileContents.data())}, *m_Logger};
-
-	std::unordered_set<std::string_view> duplicateNameCheck;
-	std::unordered_set<std::string_view> groupsWithBadSentenceIndices;
-
-	for (auto sentence = parser.Next(); sentence; sentence = parser.Next())
-	{
-		const std::string_view name = std::get<0>(*sentence);
-
-		if (m_Sentences.size() >= MaxSentencesCount)
-		{
-			m_Logger->error("Too many sentences in {}! (maximum {})", fileName, MaxSentencesCount);
-			break;
-		}
-
-		if (!duplicateNameCheck.insert(name).second)
-		{
-			m_Logger->warn("Encountered duplicate sentence name \"{}\"", name);
-		}
-
-		m_Sentences.emplace_back(SentenceName{name.data(), name.size()}, std::string{std::get<1>(*sentence)});
-
-		const auto groupData = ParseGroupData(name);
-
-		if (!groupData)
-		{
-			continue;
-		}
-
-		const std::string_view groupName = std::get<0>(*groupData);
-
-		// TODO: needs to handle redefining sentences and groups in other files.
-		// if new name doesn't match previous group name,
-		// make a new group.
-
-		if (!m_SentenceGroups.empty() && m_SentenceGroups.back().GroupName.c_str() == groupName)
-		{
-			// name matches with previous, increment group count
-			++m_SentenceGroups.back().count;
-		}
-		else
-		{
-			// name doesn't match with prev name,
-			// copy name into group, init count to 1
-
-			SENTENCEG group;
-
-			group.GroupName.assign(groupName.data(), groupName.size());
-
-			m_SentenceGroups.push_back(group);
-		}
-
-		const auto& group = m_SentenceGroups.back();
-
-		// Don't report bad indices more than once per group.
-		if (!groupsWithBadSentenceIndices.contains(groupName))
-		{
-			const int expected = group.count - 1;
-
-
-			if (expected != std::get<1>(*groupData))
-			{
-				// Don't report bad indices if the first sentence is bad since those aren't intended to be groups.
-				if (expected != 0)
-				{
-					m_Logger->warn("Sentence group \"{}\" has sentence \"{}\" with index that does not match order in group (should be {})",
-						group.GroupName.c_str(), name, expected);
-				}
-
-				groupsWithBadSentenceIndices.insert(groupName);
-			}
-		}
-	}
-}
-
-void SentencesSystem::InitLRU(unsigned char* plru, int count) const
-{
-	count = std::min(count, sentences::CSENTENCE_LRU_MAX);
-
-	for (int i = 0; i < count; ++i)
-		plru[i] = (unsigned char)i;
+	const int count = static_cast<int>(lru.size());
 
 	// randomize array
 	for (int i = 0; i < (count * 4); i++)
 	{
 		const int j = RANDOM_LONG(0, count - 1);
 		const int k = RANDOM_LONG(0, count - 1);
-		std::swap(plru[j], plru[k]);
+		std::swap(lru[j], lru[k]);
 	}
 }
 
@@ -333,20 +394,22 @@ int SentencesSystem::Pick(int isentenceg, SentenceIndexName& found)
 	// Make 2 attempts to find a sentence: if we don't find it the first time, reset the LRU array and try again.
 	for (int iteration = 0; iteration < 2; ++iteration)
 	{
-		for (unsigned char i = 0; i < group.count; ++i)
+		for (unsigned char& index : group.LeastRecentlyUsed)
 		{
-			if (group.rgblru[i] != 0xFF)
+			if (index != 0xFF)
 			{
-				const int ipick = group.rgblru[i];
-				group.rgblru[i] = 0xFF;
+				const int ipick = index;
+				index = 0xFF;
+
+				const int sentenceIndex = group.Sentences[ipick];
 
 				found.clear();
-				fmt::format_to(std::back_inserter(found), "!{}{}", group.GroupName.c_str(), ipick);
+				fmt::format_to(std::back_inserter(found), "!{}", m_Sentences[sentenceIndex].Name.c_str());
 				return ipick;
 			}
 		}
 
-		InitLRU(group.rgblru, group.count);
+		InitLRU(group.LeastRecentlyUsed);
 	}
 
 	return -1;
@@ -359,22 +422,24 @@ int SentencesSystem::PickSequential(int isentenceg, SentenceIndexName& found, in
 
 	const auto& group = m_SentenceGroups[isentenceg];
 
-	if (group.count == 0)
+	if (group.Sentences.empty())
 		return -1;
 
-	if (ipick >= group.count)
-		ipick = group.count - 1;
+	ipick = std::min(ipick, static_cast<int>(group.Sentences.size() - 1));
+
+	const int sentenceIndex = group.Sentences[ipick];
 
 	found.clear();
-	fmt::format_to(std::back_inserter(found), "!{}{}", group.GroupName.c_str(), ipick);
+	fmt::format_to(std::back_inserter(found), "!{}", m_Sentences[sentenceIndex].Name.c_str());
 
-	if (ipick >= group.count)
+	// Note: this check is never true because ipick is clamped above.
+	if (ipick >= static_cast<int>(group.Sentences.size()))
 	{
 		if (freset)
 			// reset at end of list
 			return 0;
 		else
-			return group.count;
+			return static_cast<int>(group.Sentences.size());
 	}
 
 	return ipick + 1;

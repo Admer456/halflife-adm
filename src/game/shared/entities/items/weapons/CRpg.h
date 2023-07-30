@@ -35,15 +35,11 @@ enum rpg_e
 
 class CRpg : public CBasePlayerWeapon
 {
-public:
-#ifndef CLIENT_DLL
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-#endif
+	DECLARE_CLASS(CRpg, CBasePlayerWeapon);
+	DECLARE_DATAMAP();
 
+public:
 	void OnCreate() override;
-	void Spawn() override;
 	void Precache() override;
 	void Reload() override;
 	bool GetWeaponInfo(WeaponInfo& info) override;
@@ -79,25 +75,4 @@ public:
 
 private:
 	unsigned short m_usRpg;
-};
-
-class CRpgRocket : public CGrenade
-{
-public:
-	~CRpgRocket() override;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-
-	void Spawn() override;
-	void Precache() override;
-	void EXPORT FollowThink();
-	void EXPORT IgniteThink();
-	void EXPORT RocketTouch(CBaseEntity* pOther);
-	static CRpgRocket* CreateRpgRocket(Vector vecOrigin, Vector vecAngles, CBaseEntity* pOwner, CRpg* pLauncher);
-
-	int m_iTrail;
-	float m_flIgniteTime;
-	EHANDLE m_pLauncher; // handle back to the launcher that fired me.
 };

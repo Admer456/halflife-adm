@@ -35,15 +35,11 @@ enum gauss_e
 
 class CGauss : public CBasePlayerWeapon
 {
-public:
-#ifndef CLIENT_DLL
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
-#endif
+	DECLARE_CLASS(CGauss, CBasePlayerWeapon);
+	DECLARE_DATAMAP();
 
+public:
 	void OnCreate() override;
-	void Spawn() override;
 	void Precache() override;
 	bool GetWeaponInfo(WeaponInfo& info) override;
 	void IncrementAmmo(CBasePlayer* pPlayer) override;
@@ -55,6 +51,11 @@ public:
 	void SecondaryAttack() override;
 	void WeaponIdle() override;
 
+	/**
+	 *	@brief since all of this code has to run and then call Fire(),
+	 *	it was easier at this point to rip it out of weaponidle() and make its own function
+	 *	than to try to merge this into Fire(), which has some identical variable names
+	 */
 	void StartFire();
 	void Fire(Vector vecOrigSrc, Vector vecDirShooting, float flDamage);
 	float GetFullChargeTime();
@@ -76,10 +77,16 @@ public:
 #endif
 	}
 
+	void GetWeaponData(weapon_data_t& data) override;
+
+	void SetWeaponData(const weapon_data_t& data) override;
+
 private:
 	void SendStopEvent(bool sendToHost);
 
 private:
 	unsigned short m_usGaussFire;
 	unsigned short m_usGaussSpin;
+
+	int m_fInAttack;
 };

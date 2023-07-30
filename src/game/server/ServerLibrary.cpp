@@ -13,6 +13,7 @@
  *
  ****/
 
+#include <chrono>
 #include <regex>
 #include <stdexcept>
 #include <string_view>
@@ -21,24 +22,40 @@
 #include <fmt/format.h>
 
 #include "cbase.h"
+#include "CClientFog.h"
 #include "client.h"
-#include "gamerules.h"
+#include "EntityTemplateSystem.h"
+#include "MapState.h"
 #include "nodes.h"
 #include "ProjectInfoSystem.h"
 #include "scripted.h"
+#include "ServerConfigContext.h"
 #include "ServerLibrary.h"
 #include "skill.h"
 #include "UserMessages.h"
 #include "voice_gamemgr.h"
 
+#include "bot/BotSystem.h"
+
+#include "config/CommandWhitelist.h"
 #include "config/ConditionEvaluator.h"
 #include "config/GameConfig.h"
 #include "config/sections/CommandsSection.h"
 #include "config/sections/EchoSection.h"
+#include "config/sections/EntityClassificationsSection.h"
+#include "config/sections/EntityTemplatesSection.h"
 #include "config/sections/GameDataFilesSections.h"
 #include "config/sections/GlobalReplacementFilesSections.h"
 #include "config/sections/HudColorSection.h"
+#include "config/sections/HudReplacementSection.h"
+#include "config/sections/SpawnInventorySection.h"
 #include "config/sections/SuitLightTypeSection.h"
+
+#include "entities/EntityClassificationSystem.h"
+
+#include "gamerules/MapCycleSystem.h"
+#include "gamerules/PersistentInventorySystem.h"
+#include "gamerules/SpawnInventorySystem.h"
 
 #include "models/BspLoader.h"
 
@@ -48,41 +65,21 @@
 #include "sound/SentencesSystem.h"
 #include "sound/ServerSoundSystem.h"
 
-constexpr const char* const MapConfigCommandWhitelistFileName = "cfg/MapConfigCommandWhitelist.json";
-const std::regex MapConfigCommandWhitelistRegex{"^[\\w]+$"};
-constexpr std::string_view MapConfigCommandWhitelistSchemaName{"MapConfigCommandWhitelist"sv};
+#include "ui/hud/HudReplacementSystem.h"
+
+constexpr char DefaultMapConfigFileName[] = "cfg/DefaultMapConfig.json";
 
 cvar_t servercfgfile = {"sv_servercfgfile", "cfg/server/server.json", FCVAR_NOEXTRAWHITEPACE | FCVAR_ISPATH};
-cvar_t mapchangecfgfile = {"sv_mapchangecfgfile", "", FCVAR_NOEXTRAWHITEPACE | FCVAR_ISPATH};
-
-static std::string GetMapConfigCommandWhitelistSchema()
-{
-	return fmt::format(R"(
-{{
-	"$schema": "http://json-schema.org/draft-07/schema#",
-	"title": "Map Configuration Command Whitelist",
-	"type": "array",
-	"items": {{
-		"title": "Command Name",
-		"type": "string",
-		"pattern": "^[\\w]+$"
-	}}
-}}
-)");
-}
-
-template <typename DataContext>
-static void AddCommonConfigSections(std::vector<std::unique_ptr<const GameConfigSection<DataContext>>>& sections)
-{
-	// Always add this
-	sections.push_back(std::make_unique<EchoSection<DataContext>>());
-}
+cvar_t mp_gamemode = {"mp_gamemode", "", FCVAR_SERVER};
+cvar_t mp_createserver_gamemode = {"mp_createserver_gamemode", "", FCVAR_SERVER};
 
 ServerLibrary::ServerLibrary() = default;
 ServerLibrary::~ServerLibrary() = default;
 
 bool ServerLibrary::Initialize()
 {
+	m_MapState = std::make_unique<MapState>();
+
 	// Make sure both use the same info on the server.
 	g_ProjectInfo.SetServerInfo(*g_ProjectInfo.GetLocalInfo());
 
@@ -109,11 +106,23 @@ bool ServerLibrary::Initialize()
 	SV_CreateClientCommands();
 
 	g_engfuncs.pfnCVarRegister(&servercfgfile);
-	g_engfuncs.pfnCVarRegister(&mapchangecfgfile);
+	g_engfuncs.pfnCVarRegister(&mp_gamemode);
+	g_engfuncs.pfnCVarRegister(&mp_createserver_gamemode);
 
-	g_JSON.RegisterSchema(MapConfigCommandWhitelistSchemaName, &GetMapConfigCommandWhitelistSchema);
+	g_ConCommands.CreateCommand(
+		"mp_list_gamemodes", [](const auto&)
+		{ PrintMultiplayerGameModes(); },
+		CommandLibraryPrefix::No);
+
+	g_ConCommands.CreateCommand("load_all_maps", [this](const auto&)
+		{ LoadAllMaps(); });
+
+	RegisterCommandWhitelistSchema();
+
+	LoadCommandWhitelist();
 
 	CreateConfigDefinitions();
+	DefineSkillVariables();
 
 	return true;
 }
@@ -121,7 +130,6 @@ bool ServerLibrary::Initialize()
 void ServerLibrary::Shutdown()
 {
 	m_MapConfigDefinition.reset();
-	m_MapChangeConfigDefinition.reset();
 	m_ServerConfigDefinition.reset();
 
 	CVoiceGameMgr::Logger.reset();
@@ -153,6 +161,17 @@ void ServerLibrary::RunFrame()
 	ForceCvarToValue(m_AllowDownload, 1);
 	ForceCvarToValue(m_SendResources, 1);
 	ForceCvarToValue(m_AllowDLFile, 1);
+
+	g_Bots.RunFrame();
+
+	// If we're loading all maps then change maps after 4 seconds to give the game time to generate files.
+	if (!m_MapsToLoad.empty() && gpGlobals->time > 5)
+	{
+		const std::string mapName = std::move(m_MapsToLoad.back());
+		m_MapsToLoad.pop_back();
+
+		CHANGE_LEVEL(mapName.c_str(), nullptr);
+	}
 }
 
 // Note: don't return after calling this to ensure that server state is still mostly correct.
@@ -170,6 +189,53 @@ void ServerLibrary::ShutdownServer(spdlog::format_string_t<Args...> fmt, Args&&.
 
 void ServerLibrary::NewMapStarted(bool loadGame)
 {
+	m_IsCurrentMapLoadedFromSaveGame = loadGame;
+
+	++m_SpawnCount;
+
+	m_HasFinishedLoading = false;
+
+	// Need to check if we're getting multiple map start commands in the same frame.
+	m_IsStartingNewMap = true;
+	++m_InNewMapStartedCount;
+
+	// Execute any commands still queued up so cvars have the correct value.
+	SERVER_EXECUTE();
+	// These extra executions are needed to overcome the engine's inserting of wait commands that
+	// delay server settings configured in the Create Server dialog from being set.
+	// We need those settings to configure our gamerules so we're brute forcing the additional executions.
+	SERVER_EXECUTE();
+	SERVER_EXECUTE();
+
+	m_IsStartingNewMap = false;
+	--m_InNewMapStartedCount;
+
+	// If multiple map change commands are executed in the same frame then this will break the server's internal state.
+
+	// Note that this will not happen the first time you load multiple maps after launching the client.
+	// Console commands are processed differently when the server dll is loaded so
+	// it will load the maps in reverse order.
+
+	// This is because when the server dll is about to load it first executes remaining console commands.
+	// If there are more map commands those will also try to load the server dll,
+	// executing remaining commands in the process,
+	// followed by the remaining map commands executing in reverse order.
+	// Thus the second command is executed first, then control returns to the first map load command
+	// which then continues loading.
+	if (m_InNewMapStartedCount > 0)
+	{
+		// Reset so we clear to a good state.
+		m_IsStartingNewMap = true;
+		m_InNewMapStartedCount = 0;
+
+		// This engine function triggers a Host_Error when the first character has
+		// a value <= to the whitespace character ' '.
+		// It prints the entire string, so we can use this as a poor man's Host_Error.
+		g_engfuncs.pfnForceUnmodified(force_exactfile, nullptr, nullptr,
+			" \nERROR: Cannot execute multiple map load commands at the same time\n");
+		return;
+	}
+
 	g_GameLogger->trace("Starting new map");
 
 	// Log some useful game info.
@@ -185,7 +251,7 @@ void ServerLibrary::NewMapStarted(bool loadGame)
 	ClearStringPool();
 
 	// Initialize map state to its default state
-	m_MapState = MapState{};
+	*m_MapState = MapState{};
 
 	g_ReplacementMaps.Clear();
 
@@ -210,7 +276,13 @@ void ServerLibrary::NewMapStarted(bool loadGame)
 	// Load the config files, which will initialize the map state as needed
 	LoadServerConfigFiles();
 
+	g_PersistentInventory.NewMapStarted();
+
 	sentences::g_Sentences.NewMapStarted();
+
+	// Reset sky name to its default value. If the map specifies its own sky
+	// it will be set in CWorld::KeyValue or restored by the engine on save game load.
+	CVAR_SET_STRING("sv_skyname", DefaultSkyName);
 }
 
 void ServerLibrary::PreMapActivate()
@@ -219,8 +291,6 @@ void ServerLibrary::PreMapActivate()
 
 void ServerLibrary::PostMapActivate()
 {
-	LoadMapChangeConfigFile();
-
 	if (!g_NetworkData.GenerateNetworkDataFile())
 	{
 		ShutdownServer("Shutting down server due to fatal error writing network data file");
@@ -236,27 +306,50 @@ void ServerLibrary::PostMapActivate()
 	}
 }
 
+void ServerLibrary::OnUpdateClientData()
+{
+	// The first update occurs after the engine has unpaused itself.
+	if (!m_HasFinishedLoading)
+	{
+		m_HasFinishedLoading = true;
+	}
+}
+
 void ServerLibrary::PlayerActivating(CBasePlayer* player)
 {
-	// Override the hud color.
-	if (m_MapState.m_HudColor)
+	// In singleplayer ClientPutInServer is only called when starting a new map with the map command,
+	// so we need to initialize this here so entities can send their own updates at the right time.
+	if (g_LastPlayerJoinTime == 0)
 	{
-		player->SetHudColor(*m_MapState.m_HudColor);
+		g_LastPlayerJoinTime = gpGlobals->time;
+	}
+
+	// Override the hud color.
+	if (m_MapState->m_HudColor)
+	{
+		player->SetHudColor(*m_MapState->m_HudColor);
 	}
 
 	// Override the light type.
-	if (m_MapState.m_LightType)
+	if (m_MapState->m_LightType)
 	{
-		player->SetSuitLightType(*m_MapState.m_LightType);
+		player->SetSuitLightType(*m_MapState->m_LightType);
 	}
+
+	SendFogMessage(player);
 }
 
 void ServerLibrary::AddGameSystems()
 {
 	GameLibrary::AddGameSystems();
-	g_GameSystems.Add(&g_Skill);
+	// Depends on Angelscript
+	g_GameSystems.Add(&g_ConditionEvaluator);
+	g_GameSystems.Add(&g_GameConfigSystem);
 	g_GameSystems.Add(&sound::g_ServerSound);
 	g_GameSystems.Add(&sentences::g_Sentences);
+	g_GameSystems.Add(&g_MapCycleSystem);
+	g_GameSystems.Add(&g_EntityTemplates);
+	g_GameSystems.Add(&g_Bots);
 }
 
 void ServerLibrary::SetEntLogLevels(spdlog::level::level_enum level)
@@ -281,121 +374,272 @@ void ServerLibrary::SetEntLogLevels(spdlog::level::level_enum level)
 
 void ServerLibrary::CreateConfigDefinitions()
 {
-	const auto addMapAndServerSections = [](std::vector<std::unique_ptr<const GameConfigSection<ServerConfigContext>>>& sections)
-	{
-		sections.push_back(std::make_unique<SentencesSection>());
-		sections.push_back(std::make_unique<MaterialsSection>());
-		sections.push_back(std::make_unique<SkillSection>());
-		sections.push_back(std::make_unique<GlobalModelReplacementSection>());
-		sections.push_back(std::make_unique<GlobalSentenceReplacementSection>());
-		sections.push_back(std::make_unique<GlobalSoundReplacementSection>());
-		sections.push_back(std::make_unique<HudColorSection>());
-		sections.push_back(std::make_unique<SuitLightTypeSection>());
-	};
-
-	m_ServerConfigDefinition = g_GameConfigSystem.CreateDefinition("ServerGameConfig", [&]()
+	m_ServerConfigDefinition = g_GameConfigSystem.CreateDefinition("ServerGameConfig", false, [&]()
 		{
 			std::vector<std::unique_ptr<const GameConfigSection<ServerConfigContext>>> sections;
 
-			AddCommonConfigSections(sections);
+			// Server configs only get common and command sections. All other configuration is handled elsewhere.
+			sections.push_back(std::make_unique<EchoSection<ServerConfigContext>>());
 			sections.push_back(std::make_unique<CommandsSection<ServerConfigContext>>());
-			addMapAndServerSections(sections);
 
 			return sections; }());
 
-	m_MapConfigDefinition = g_GameConfigSystem.CreateDefinition("MapGameConfig", [&, this]()
+	m_MapConfigDefinition = g_GameConfigSystem.CreateDefinition("MapGameConfig", true, [&, this]()
 		{
 			std::vector<std::unique_ptr<const GameConfigSection<ServerConfigContext>>> sections;
 
-			AddCommonConfigSections(sections);
-			sections.push_back(std::make_unique<CommandsSection<ServerConfigContext>>(GetMapConfigCommandWhitelist()));
-			addMapAndServerSections(sections);
-
-			return sections; }());
-
-	m_MapChangeConfigDefinition = g_GameConfigSystem.CreateDefinition("MapChangeGameConfig", []()
-		{
-			std::vector<std::unique_ptr<const GameConfigSection<ServerConfigContext>>> sections;
-
-			//Limit the map change config to commands only, configuration should be handled by other cfg files
-			AddCommonConfigSections(sections);
-			sections.push_back(std::make_unique<CommandsSection<ServerConfigContext>>());
+			sections.push_back(std::make_unique<EchoSection<ServerConfigContext>>());
+			sections.push_back(std::make_unique<CommandsSection<ServerConfigContext>>(&g_CommandWhitelist));
+			sections.push_back(std::make_unique<SentencesSection>());
+			sections.push_back(std::make_unique<MaterialsSection>());
+			sections.push_back(std::make_unique<SkillSection>());
+			sections.push_back(std::make_unique<GlobalModelReplacementSection>());
+			sections.push_back(std::make_unique<GlobalSentenceReplacementSection>());
+			sections.push_back(std::make_unique<GlobalSoundReplacementSection>());
+			sections.push_back(std::make_unique<HudColorSection>());
+			sections.push_back(std::make_unique<SuitLightTypeSection>());
+			sections.push_back(std::make_unique<SpawnInventorySection>());
+			sections.push_back(std::make_unique<EntityTemplatesSection>());
+			sections.push_back(std::make_unique<EntityClassificationsSection>());
+			sections.push_back(std::make_unique<HudReplacementSection>());
 
 			return sections; }());
 }
 
+void ServerLibrary::DefineSkillVariables()
+{
+	// Gamemode variables
+	g_Skill.DefineVariable("coop_persistent_inventory_grace_period", 60, {.Minimum = -1});
+	g_Skill.DefineVariable("allow_monsters", 1, {.Minimum = 0, .Maximum = 1, .Type = SkillVarType::Integer});
+	g_Skill.DefineVariable("falldamagemode", 0,
+		{.Minimum = int(FallDamageMode::Fixed),
+			.Maximum = int(FallDamageMode::Progressive),
+			.Type = SkillVarType::Integer});
+
+	// Item variables
+	g_Skill.DefineVariable("healthcharger_recharge_time", -1,
+		{.Minimum = ChargerRechargeDelayNever, .Type = SkillVarType::Integer});
+	g_Skill.DefineVariable("hevcharger_recharge_time", -1,
+		{.Minimum = ChargerRechargeDelayNever, .Type = SkillVarType::Integer});
+
+	g_Skill.DefineVariable("weapon_respawn_time", ITEM_NEVER_RESPAWN_DELAY,
+		{.Minimum = -1, .Type = SkillVarType::Integer});
+	g_Skill.DefineVariable("ammo_respawn_time", ITEM_NEVER_RESPAWN_DELAY,
+		{.Minimum = -1, .Type = SkillVarType::Integer});
+	g_Skill.DefineVariable("pickupitem_respawn_time", ITEM_NEVER_RESPAWN_DELAY,
+		{.Minimum = -1, .Type = SkillVarType::Integer});
+
+	g_Skill.DefineVariable("weapon_instant_respawn", 0, {.Minimum = 0, .Maximum = 1, .Type = SkillVarType::Integer});
+	g_Skill.DefineVariable("allow_npc_item_dropping", 1, {.Minimum = 0, .Maximum = 1, .Type = SkillVarType::Integer});
+	g_Skill.DefineVariable("allow_player_weapon_dropping", 0, {.Minimum = 0, .Maximum = 1, .Type = SkillVarType::Integer});
+
+	// Weapon variables
+	g_Skill.DefineVariable("infinite_ammo", 0, {.Minimum = 0, .Maximum = 1, .Networked = true, .Type = SkillVarType::Integer});
+	g_Skill.DefineVariable("bottomless_magazines", 0, {.Minimum = 0, .Maximum = 1, .Networked = true, .Type = SkillVarType::Integer});
+
+	g_Skill.DefineVariable("chainsaw_melee", 0, {.Minimum = 0, .Maximum = 1, .Networked = true, .Type = SkillVarType::Integer});
+	g_Skill.DefineVariable("revolver_laser_sight", 0, {.Networked = true});
+	g_Skill.DefineVariable("smg_wide_spread", 0, {.Networked = true});
+	g_Skill.DefineVariable("shotgun_single_tight_spread", 0, {.Networked = true});
+	g_Skill.DefineVariable("shotgun_double_wide_spread", 0, {.Networked = true});
+	g_Skill.DefineVariable("crossbow_sniper_bolt", 0, {.Networked = true});
+	g_Skill.DefineVariable("gauss_charge_time", 4, {.Minimum = 0.1f, .Maximum = 10.f, .Networked = true});
+	g_Skill.DefineVariable("gauss_fast_ammo_use", 0, {.Networked = true});
+	g_Skill.DefineVariable("gauss_damage_radius", 2.5f, {.Minimum = 0});
+	g_Skill.DefineVariable("egon_narrow_ammo_per_second", 6, {.Minimum = 0});
+	g_Skill.DefineVariable("egon_wide_ammo_per_second", 10, {.Minimum = 0});
+	g_Skill.DefineVariable("grapple_fast", 0, {.Networked = true});
+	g_Skill.DefineVariable("m249_wide_spread", 0, {.Networked = true});
+	g_Skill.DefineVariable("shockrifle_fast", 0, {.Networked = true});
+}
+
 void ServerLibrary::LoadServerConfigFiles()
 {
-	ServerConfigContext context{.State = m_MapState};
+	const auto start = std::chrono::high_resolution_clock::now();
+
+	std::string mapConfigFileName;
+
+	// Use the map-specific cfg if it exists.
+	if (auto mapCfgFileName = fmt::format("cfg/maps/{}.json", STRING(gpGlobals->mapname));
+		g_pFileSystem->FileExists(mapCfgFileName.c_str()))
+	{
+		mapConfigFileName = std::move(mapCfgFileName);
+	}
+	else
+	{
+		g_GameLogger->debug("Using default map config file \"{}\"", DefaultMapConfigFileName);
+		mapConfigFileName = DefaultMapConfigFileName;
+	}
+
+	g_GameLogger->trace("Loading map config file");
+	const std::optional<GameConfig<ServerConfigContext>> mapConfig = m_MapConfigDefinition->TryLoad(mapConfigFileName.c_str());
+
+	GameModeConfiguration gameModeConfig;
+
+	if (mapConfig)
+	{
+		gameModeConfig = mapConfig->GetGameModeConfiguration();
+	}
+
+	// The Create Server dialog only accepts lists with numeric values so we need to remap it to the game mode name.
+	if (mp_createserver_gamemode.string[0] != '\0')
+	{
+		g_engfuncs.pfnCvar_DirectSet(&mp_gamemode, GameModeIndexToString(int(mp_createserver_gamemode.value)));
+		g_engfuncs.pfnCvar_DirectSet(&mp_createserver_gamemode, "");
+	}
+
+	if (!gameModeConfig.IsLocked && mp_gamemode.string[0] != '\0')
+	{
+		if (gameModeConfig.GameMode.empty())
+		{
+			CGameRules::Logger->trace("Setting server configured game mode {}", mp_gamemode.string);
+		}
+		else
+		{
+			CGameRules::Logger->trace("Overriding map configured game mode {} with server configured game mode {}",
+				gameModeConfig.GameMode, mp_gamemode.string);
+		}
+
+		gameModeConfig.GameMode = mp_gamemode.string;
+	}
+	else if (!gameModeConfig.GameMode.empty())
+	{
+		CGameRules::Logger->trace("Using map configured game mode {}", gameModeConfig.GameMode);
+	}
+	else
+	{
+		CGameRules::Logger->trace("Using autodetected game mode");
+	}
+
+	delete g_pGameRules;
+	g_pGameRules = InstallGameRules(gameModeConfig.GameMode);
+
+	assert(g_pGameRules);
+
+	ServerConfigContext context{.State = *m_MapState};
+
+	// Initialize file lists to their defaults.
+	context.SentencesFiles.push_back("sound/sentences.json");
+	context.MaterialsFiles.push_back("sound/materials.json");
+	context.SkillFiles.push_back("cfg/skill.json");
+
+	if (g_pGameRules->IsMultiplayer())
+	{
+		context.SkillFiles.push_back("cfg/skill_multiplayer.json");
+	}
+
+	if (g_pGameRules->IsCoOp())
+	{
+		context.SkillFiles.push_back("cfg/skill_coop.json");
+	}
+
+	context.EntityClassificationsFileName = "cfg/default_entity_classes.json";
 
 	if (const auto cfgFile = servercfgfile.string; cfgFile && '\0' != cfgFile[0])
 	{
 		g_GameLogger->trace("Loading server config file");
-		m_ServerConfigDefinition->TryLoad(cfgFile, {.Data = context, .PathID = "GAMECONFIG"});
+
+		if (auto config = m_ServerConfigDefinition->TryLoad(cfgFile, "GAMECONFIG"); config)
+		{
+			config->Parse(context);
+		}
 	}
 
-	// Check if the file exists so we don't get errors about it during loading
-	if (const auto mapCfgFileName = fmt::format("cfg/maps/{}.json", STRING(gpGlobals->mapname));
-		g_pFileSystem->FileExists(mapCfgFileName.c_str()))
+	if (mapConfig)
 	{
-		g_GameLogger->trace("Loading map config file");
-		m_MapConfigDefinition->TryLoad(mapCfgFileName.c_str(), {.Data = context});
+		mapConfig->Parse(context);
 	}
 
 	sentences::g_Sentences.LoadSentences(context.SentencesFiles);
 	g_MaterialSystem.LoadMaterials(context.MaterialsFiles);
 	g_Skill.LoadSkillConfigFiles(context.SkillFiles);
 
-	m_MapState.m_GlobalModelReplacement = g_ReplacementMaps.LoadMultiple(context.GlobalModelReplacementFiles, {.CaseSensitive = false});
-	m_MapState.m_GlobalSentenceReplacement = g_ReplacementMaps.LoadMultiple(context.GlobalSentenceReplacementFiles, {.CaseSensitive = true});
-	m_MapState.m_GlobalSoundReplacement = g_ReplacementMaps.LoadMultiple(context.GlobalSoundReplacementFiles, {.CaseSensitive = false});
+	m_MapState->m_GlobalModelReplacement = g_ReplacementMaps.LoadMultiple(
+		context.GlobalModelReplacementFiles, {.CaseSensitive = false});
+	m_MapState->m_GlobalSentenceReplacement = g_ReplacementMaps.LoadMultiple(
+		context.GlobalSentenceReplacementFiles, {.CaseSensitive = true});
+	m_MapState->m_GlobalSoundReplacement = g_ReplacementMaps.LoadMultiple(
+		context.GlobalSoundReplacementFiles, {.CaseSensitive = false});
+
+	g_SpawnInventory.SetInventory(std::move(context.SpawnInventory));
+
+	g_EntityClassifications.Load(context.EntityClassificationsFileName);
+
+	g_EntityTemplates.LoadTemplates(context.EntityTemplates);
+
+	// Register the weapons so we can then set the replacement filenames.
+	Weapon_RegisterWeaponData();
+
+	g_HudReplacements.HudReplacementFileName = std::move(context.HudReplacementFile);
+	g_HudReplacements.SetWeaponHudReplacementFiles(std::move(context.WeaponHudReplacementFiles));
+
+	const auto timeElapsed = std::chrono::high_resolution_clock::now() - start;
+
+	g_GameLogger->trace("Server configurations loaded in {}ms",
+		std::chrono::duration_cast<std::chrono::milliseconds>(timeElapsed).count());
 }
 
-void ServerLibrary::LoadMapChangeConfigFile()
+void ServerLibrary::SendFogMessage(CBasePlayer* player)
 {
-	ServerConfigContext context{.State = m_MapState};
+	MESSAGE_BEGIN(MSG_ONE, gmsgFog, nullptr, player);
 
-	if (const auto cfgFile = mapchangecfgfile.string; cfgFile && '\0' != cfgFile[0])
+	auto fog = static_cast<CClientFog*>(UTIL_FindEntityByClassname(nullptr, "env_fog"));
+
+	if (fog)
 	{
-		g_GameLogger->trace("Loading map change config file");
-		m_MapChangeConfigDefinition->TryLoad(cfgFile, {.Data = context, .PathID = "GAMECONFIG"});
+		CBaseEntity::Logger->debug("Map has fog!");
+
+		// TODO: Can probably send color as bytes instead.
+		WRITE_SHORT(fog->pev->rendercolor.x);
+		WRITE_SHORT(fog->pev->rendercolor.y);
+		WRITE_SHORT(fog->pev->rendercolor.z);
+		WRITE_COORD(fog->m_Density);
+		WRITE_COORD(fog->m_StartDistance);
+		WRITE_COORD(fog->m_StopDistance);
+		WRITE_SHORT(fog->pev->spawnflags);
 	}
+	else
+	{
+		WRITE_SHORT(0);
+		WRITE_SHORT(0);
+		WRITE_SHORT(0);
+		WRITE_COORD(0);
+		WRITE_COORD(0);
+		WRITE_COORD(0);
+		WRITE_SHORT(0);
+	}
+
+	MESSAGE_END();
 }
 
-std::unordered_set<std::string> ServerLibrary::GetMapConfigCommandWhitelist()
+void ServerLibrary::LoadAllMaps()
 {
-	// Load the whitelist from a file
-	auto whitelist = g_JSON.ParseJSONFile(
-		MapConfigCommandWhitelistFileName,
-		{.SchemaName = MapConfigCommandWhitelistSchemaName, .PathID = "GAMECONFIG"},
-		[](const json& input)
+	if (!m_MapsToLoad.empty())
+	{
+		Con_Printf("Already loading all maps\n");
+		return;
+	}
+
+	FileFindHandle_t handle = FILESYSTEM_INVALID_FIND_HANDLE;
+
+	const char* fileName = g_pFileSystem->FindFirst("maps/*.bsp", &handle);
+
+	if (fileName != nullptr)
+	{
+		do
 		{
-			std::unordered_set<std::string> list;
+			std::string mapName = fileName;
+			mapName.resize(mapName.size() - 4);
 
-			if (input.is_array())
+			if (std::find_if(m_MapsToLoad.begin(), m_MapsToLoad.end(), [=](const auto& candidate)
+					{ return 0 == stricmp(candidate.c_str(), mapName.c_str()); }) == m_MapsToLoad.end())
 			{
-				list.reserve(input.size());
-
-				for (const auto& element : input)
-				{
-					auto command = element.get<std::string>();
-
-					if (std::regex_match(command, MapConfigCommandWhitelistRegex))
-					{
-						if (!list.insert(std::move(command)).second)
-						{
-							g_GameConfigSystem.GetLogger()->debug("Whitelist command \"{}\" encountered more than once", command);
-						}
-					}
-					else
-					{
-						g_GameConfigSystem.GetLogger()->warn("Whitelist command \"{}\" has invalid syntax, ignoring", command);
-					}
-				}
+				m_MapsToLoad.push_back(std::move(mapName));
 			}
+		} while ((fileName = g_pFileSystem->FindNext(handle)) != nullptr);
 
-			return list;
-		});
+		g_pFileSystem->FindClose(handle);
+	}
 
-	return whitelist.value_or(std::unordered_set<std::string>{});
+	Con_Printf("Loading %u maps one at a time to generate files\n", m_MapsToLoad.size());
 }

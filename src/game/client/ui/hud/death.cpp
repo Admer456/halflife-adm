@@ -68,8 +68,6 @@ Vector* GetClientColor(int clientIndex)
 	default:
 		return &g_ColorGrey;
 	}
-
-	return nullptr;
 }
 
 bool CHudDeathNotice::Init()
@@ -114,7 +112,7 @@ bool CHudDeathNotice::Draw(float flTime)
 			continue;
 		}
 
-		rgDeathNoticeList[i].flDisplayTime = V_min(rgDeathNoticeList[i].flDisplayTime, gHUD.m_flTime + DEATHNOTICE_DISPLAY_TIME);
+		rgDeathNoticeList[i].flDisplayTime = std::min(rgDeathNoticeList[i].flDisplayTime, gHUD.m_flTime + DEATHNOTICE_DISPLAY_TIME);
 
 		// Only draw if the viewport will let me
 		if (gViewPort && gViewPort->AllowedToPrintText())
@@ -158,18 +156,15 @@ bool CHudDeathNotice::Draw(float flTime)
 }
 
 // This message handler may be better off elsewhere
-void CHudDeathNotice::MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbuf)
+void CHudDeathNotice::MsgFunc_DeathMsg(const char* pszName, BufferReader& reader)
 {
 	m_iFlags |= HUD_ACTIVE;
 
-	BEGIN_READ(pbuf, iSize);
+	int killer = reader.ReadByte();
+	int victim = reader.ReadByte();
 
-	int killer = READ_BYTE();
-	int victim = READ_BYTE();
-
-	char killedwith[32];
-	strcpy(killedwith, "d_");
-	strncat(killedwith, READ_STRING(), 32);
+	eastl::fixed_string<char, 32> killedwith{"d_"};
+	killedwith += reader.ReadString();
 
 	if (gViewPort)
 		gViewPort->DeathMsg(killer, victim);
@@ -227,19 +222,20 @@ void CHudDeathNotice::MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbu
 		rgDeathNoticeList[i].iNonPlayerKill = true;
 
 		// Store the object's name in the Victim slot (skip the d_ bit)
-		strcpy(rgDeathNoticeList[i].szVictim, killedwith + 2);
+		strncpy(rgDeathNoticeList[i].szVictim, killedwith.c_str() + 2, sizeof(rgDeathNoticeList[i].szVictim) - 1);
+		rgDeathNoticeList[i].szVictim[sizeof(rgDeathNoticeList[i].szVictim) - 1] = '\0';
 	}
 	else
 	{
 		if (killer == victim || killer == 0)
 			rgDeathNoticeList[i].iSuicide = true;
 
-		if (0 == strcmp(killedwith, "d_teammate"))
+		if (killedwith == "d_teammate")
 			rgDeathNoticeList[i].iTeamKill = true;
 	}
 
 	// Find the sprite in the list
-	int spr = gHUD.GetSpriteIndex(killedwith);
+	int spr = gHUD.GetSpriteIndex(killedwith.c_str());
 
 	rgDeathNoticeList[i].iId = spr;
 
@@ -260,7 +256,7 @@ void CHudDeathNotice::MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbu
 		{
 			ConsolePrint(rgDeathNoticeList[i].szVictim);
 
-			if (0 == strcmp(killedwith, "d_world"))
+			if (killedwith == "d_world")
 			{
 				ConsolePrint(" died");
 			}
@@ -282,17 +278,17 @@ void CHudDeathNotice::MsgFunc_DeathMsg(const char* pszName, int iSize, void* pbu
 			ConsolePrint(rgDeathNoticeList[i].szVictim);
 		}
 
-		if (killedwith && '\0' != *killedwith && (*killedwith > 13) && 0 != strcmp(killedwith, "d_world") && !rgDeathNoticeList[i].iTeamKill)
+		if (!killedwith.empty() && (killedwith.front() > 13) && killedwith != "d_world" && !rgDeathNoticeList[i].iTeamKill)
 		{
 			ConsolePrint(" with ");
 
 			// replace the code names with the 'real' names
-			if (0 == strcmp(killedwith + 2, "egon"))
-				strcpy(killedwith, "d_gluon gun");
-			if (0 == strcmp(killedwith + 2, "gauss"))
-				strcpy(killedwith, "d_tau cannon");
+			if (0 == strcmp(killedwith.c_str() + 2, "egon"))
+				killedwith = "d_gluon gun";
+			if (0 == strcmp(killedwith.c_str() + 2, "gauss"))
+				killedwith = "d_tau cannon";
 
-			ConsolePrint(killedwith + 2); // skip over the "d_" part
+			ConsolePrint(killedwith.c_str() + 2); // skip over the "d_" part
 		}
 
 		ConsolePrint("\n");

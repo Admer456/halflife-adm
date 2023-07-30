@@ -16,14 +16,17 @@
 
 #include "CSpore.h"
 
-TYPEDESCRIPTION CSpore::m_SaveData[] =
-	{
-		DEFINE_FIELD(CSpore, m_SporeType, FIELD_INTEGER),
-		DEFINE_FIELD(CSpore, m_flIgniteTime, FIELD_TIME),
-		DEFINE_FIELD(CSpore, m_bIsAI, FIELD_BOOLEAN),
-		DEFINE_FIELD(CSpore, m_hSprite, FIELD_EHANDLE)};
-
-IMPLEMENT_SAVERESTORE(CSpore, CSpore::BaseClass);
+BEGIN_DATAMAP(CSpore)
+DEFINE_FIELD(m_SporeType, FIELD_INTEGER),
+	DEFINE_FIELD(m_flIgniteTime, FIELD_TIME),
+	DEFINE_FIELD(m_bIsAI, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_hSprite, FIELD_EHANDLE),
+	DEFINE_FUNCTION(IgniteThink),
+	DEFINE_FUNCTION(FlyThink),
+	DEFINE_FUNCTION(GibThink),
+	DEFINE_FUNCTION(RocketTouch),
+	DEFINE_FUNCTION(MyBounceTouch),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(spore, CSpore);
 
@@ -55,7 +58,7 @@ void CSpore::Spawn()
 
 	SetSize(g_vecZero, g_vecZero);
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetThink(&CSpore::FlyThink);
 
@@ -178,7 +181,7 @@ void CSpore::IgniteThink()
 	WRITE_BYTE(80);
 	MESSAGE_END();
 
-	::RadiusDamage(pev->origin, this, GetOwner(), pev->dmg, 200, CLASS_NONE, DMG_ALWAYSGIB | DMG_BLAST);
+	::RadiusDamage(pev->origin, this, GetOwner(), pev->dmg, 200, DMG_ALWAYSGIB | DMG_BLAST);
 
 	SetThink(&CSpore::SUB_Remove);
 
@@ -261,7 +264,7 @@ CSpore* CSpore::CreateSpore(
 {
 	auto pSpore = g_EntityDictionary->Create<CSpore>("spore");
 
-	UTIL_SetOrigin(pSpore->pev, vecOrigin);
+	pSpore->SetOrigin(vecOrigin);
 
 	pSpore->m_SporeType = sporeType;
 

@@ -12,17 +12,18 @@
  *   without written permission from Valve LLC.
  *
  ****/
-/*
 
-===== explode.cpp ========================================================
+/**
+ *	@file
+ *	Explosion-related code
+ */
 
-  Explosion-related code
-
-*/
 #include "cbase.h"
 #include "explode.h"
 
-// Spark Shower
+/**
+ *	@brief Spark Shower
+ */
 class CShower : public CBaseEntity
 {
 public:
@@ -72,7 +73,6 @@ void CShower::Spawn()
 	pev->angles = g_vecZero;
 }
 
-
 void CShower::Think()
 {
 	UTIL_Sparks(pev->origin);
@@ -98,27 +98,25 @@ void CShower::Touch(CBaseEntity* pOther)
 
 class CEnvExplosion : public CBaseMonster
 {
+	DECLARE_CLASS(CEnvExplosion, CBaseMonster);
+	DECLARE_DATAMAP();
+
 public:
 	void Spawn() override;
-	void EXPORT Smoke();
+	void Smoke();
 	bool KeyValue(KeyValueData* pkvd) override;
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
 
 	int m_iMagnitude;  // how large is the fireball? how much damage?
 	int m_spriteScale; // what's the exact fireball sprite scale?
 };
 
-TYPEDESCRIPTION CEnvExplosion::m_SaveData[] =
-	{
-		DEFINE_FIELD(CEnvExplosion, m_iMagnitude, FIELD_INTEGER),
-		DEFINE_FIELD(CEnvExplosion, m_spriteScale, FIELD_INTEGER),
-};
+BEGIN_DATAMAP(CEnvExplosion)
+DEFINE_FIELD(m_iMagnitude, FIELD_INTEGER),
+	DEFINE_FIELD(m_spriteScale, FIELD_INTEGER),
+	DEFINE_FUNCTION(Smoke),
+	END_DATAMAP();
 
-IMPLEMENT_SAVERESTORE(CEnvExplosion, CBaseMonster);
 LINK_ENTITY_TO_CLASS(env_explosion, CEnvExplosion);
 
 bool CEnvExplosion::KeyValue(KeyValueData* pkvd)
@@ -173,7 +171,7 @@ void CEnvExplosion::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE 
 
 	vecSpot = pev->origin + Vector(0, 0, 8);
 
-	UTIL_TraceLine(vecSpot, vecSpot + Vector(0, 0, -40), ignore_monsters, ENT(pev), &tr);
+	UTIL_TraceLine(vecSpot, vecSpot + Vector(0, 0, -40), ignore_monsters, edict(), &tr);
 
 	// Pull out of the wall a bit
 	if (tr.flFraction != 1.0)
@@ -207,7 +205,7 @@ void CEnvExplosion::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE 
 	// do damage
 	if ((pev->spawnflags & SF_ENVEXPLOSION_NODAMAGE) == 0)
 	{
-		RadiusDamage(this, this, m_iMagnitude, CLASS_NONE, DMG_BLAST);
+		RadiusDamage(this, this, m_iMagnitude, DMG_BLAST);
 	}
 
 	SetThink(&CEnvExplosion::Smoke);
@@ -246,14 +244,13 @@ void CEnvExplosion::Smoke()
 	}
 }
 
-
 // HACKHACK -- create one of these and fake a keyvalue to get the right explosion setup
-void ExplosionCreate(const Vector& center, const Vector& angles, edict_t* pOwner, int magnitude, bool doDamage)
+void ExplosionCreate(const Vector& center, const Vector& angles, CBaseEntity* owner, int magnitude, bool doDamage)
 {
 	KeyValueData kvd;
 	char buf[128];
 
-	CBaseEntity* pExplosion = CBaseEntity::Create("env_explosion", center, angles, pOwner);
+	CBaseEntity* pExplosion = CBaseEntity::Create("env_explosion", center, angles, owner);
 	sprintf(buf, "%3d", magnitude);
 	kvd.szKeyName = "iMagnitude";
 	kvd.szValue = buf;

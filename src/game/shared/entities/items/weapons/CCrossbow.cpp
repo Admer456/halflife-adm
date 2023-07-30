@@ -21,25 +21,30 @@
 #define BOLT_AIR_VELOCITY 2000
 #define BOLT_WATER_VELOCITY 1000
 
-// UNDONE: Save/restore this?  Don't forget to set classname and LINK_ENTITY_TO_CLASS()
-//
-// OVERLOADS SOME ENTVARS:
-//
-// speed - the ideal magnitude of my velocity
 class CCrossbowBolt : public CBaseEntity
 {
-	void Spawn() override;
-	void Precache() override;
-	int Classify() override;
-	void EXPORT BubbleThink();
-	void EXPORT BoltTouch(CBaseEntity* pOther);
-	void EXPORT ExplodeThink();
-
-	int m_iTrail;
+	DECLARE_CLASS(CCrossbowBolt, CBaseEntity);
+	DECLARE_DATAMAP();
 
 public:
+	void Spawn() override;
+	void Precache() override;
+	void BubbleThink();
+	void BoltTouch(CBaseEntity* pOther);
+	void ExplodeThink();
+
 	static CCrossbowBolt* BoltCreate();
+
+private:
+	int m_iTrail;
 };
+
+BEGIN_DATAMAP(CCrossbowBolt)
+DEFINE_FUNCTION(BubbleThink),
+	DEFINE_FUNCTION(BoltTouch),
+	DEFINE_FUNCTION(ExplodeThink),
+	END_DATAMAP();
+
 LINK_ENTITY_TO_CLASS(crossbow_bolt, CCrossbowBolt);
 
 CCrossbowBolt* CCrossbowBolt::BoltCreate()
@@ -61,14 +66,13 @@ void CCrossbowBolt::Spawn()
 
 	SetModel("models/crossbow_bolt.mdl");
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 	SetSize(Vector(0, 0, 0), Vector(0, 0, 0));
 
 	SetTouch(&CCrossbowBolt::BoltTouch);
 	SetThink(&CCrossbowBolt::BubbleThink);
 	pev->nextthink = gpGlobals->time + 0.2;
 }
-
 
 void CCrossbowBolt::Precache()
 {
@@ -79,12 +83,6 @@ void CCrossbowBolt::Precache()
 	PrecacheSound("weapons/xbow_hit1.wav");
 	PrecacheSound("fvox/beep.wav");
 	m_iTrail = PrecacheModel("sprites/streak.spr");
-}
-
-
-int CCrossbowBolt::Classify()
-{
-	return CLASS_NONE;
 }
 
 void CCrossbowBolt::BoltTouch(CBaseEntity* pOther)
@@ -139,7 +137,7 @@ void CCrossbowBolt::BoltTouch(CBaseEntity* pOther)
 		{
 			// if what we hit is static architecture, can stay around for a while.
 			Vector vecDir = pev->velocity.Normalize();
-			UTIL_SetOrigin(pev, pev->origin - vecDir * 12);
+			SetOrigin(pev->origin - vecDir * 12);
 			pev->angles = UTIL_VecToAngles(vecDir);
 			pev->solid = SOLID_NOT;
 			pev->movetype = MOVETYPE_FLY;
@@ -155,7 +153,7 @@ void CCrossbowBolt::BoltTouch(CBaseEntity* pOther)
 		}
 	}
 
-	if (g_pGameRules->IsMultiplayer())
+	if (g_Skill.GetValue("crossbow_explosive_bolt") != 0)
 	{
 		SetThink(&CCrossbowBolt::ExplodeThink);
 		pev->nextthink = gpGlobals->time + 0.1;
@@ -188,7 +186,7 @@ void CCrossbowBolt::ExplodeThink()
 
 	pev->owner = nullptr; // can't traceline attack owner if this is set
 
-	::RadiusDamage(pev->origin, this, owner, pev->dmg, 128, CLASS_NONE, DMG_BLAST | DMG_ALWAYSGIB);
+	::RadiusDamage(pev->origin, this, owner, pev->dmg, 128, DMG_BLAST | DMG_ALWAYSGIB);
 
 	UTIL_Remove(this);
 }
@@ -199,23 +197,14 @@ LINK_ENTITY_TO_CLASS(weapon_crossbow, CCrossbow);
 void CCrossbow::OnCreate()
 {
 	CBasePlayerWeapon::OnCreate();
-
-	m_WorldModel = pev->model = MAKE_STRING("models/w_crossbow.mdl");
-}
-
-void CCrossbow::Spawn()
-{
-	Precache();
 	m_iId = WEAPON_CROSSBOW;
-	SetModel(STRING(pev->model));
-
 	m_iDefaultAmmo = CROSSBOW_DEFAULT_GIVE;
-
-	FallInit(); // get ready to fall down.
+	m_WorldModel = pev->model = MAKE_STRING("models/w_crossbow.mdl");
 }
 
 void CCrossbow::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/v_crossbow.mdl");
 	PrecacheModel("models/p_crossbow.mdl");
@@ -229,12 +218,11 @@ void CCrossbow::Precache()
 	m_usCrossbow2 = PRECACHE_EVENT(1, "events/crossbow2.sc");
 }
 
-
 bool CCrossbow::GetWeaponInfo(WeaponInfo& info)
 {
 	info.Name = STRING(pev->classname);
-	info.AmmoType1 = "bolts";
-	info.MagazineSize1 = CROSSBOW_MAX_CLIP;
+	info.AttackModeInfo[0].AmmoType = "bolts";
+	info.AttackModeInfo[0].MagazineSize = CROSSBOW_MAX_CLIP;
 	info.Slot = 2;
 	info.Position = 2;
 	info.Id = WEAPON_CROSSBOW;
@@ -252,7 +240,7 @@ void CCrossbow::IncrementAmmo(CBasePlayer* pPlayer)
 
 bool CCrossbow::Deploy()
 {
-	if (0 != m_iClip)
+	if (0 != GetMagazine1())
 		return DefaultDeploy("models/v_crossbow.mdl", "models/p_crossbow.mdl", CROSSBOW_DRAW1, "bow");
 	return DefaultDeploy("models/v_crossbow.mdl", "models/p_crossbow.mdl", CROSSBOW_DRAW2, "bow");
 }
@@ -267,7 +255,7 @@ void CCrossbow::Holster()
 	}
 
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
-	if (0 != m_iClip)
+	if (0 != GetMagazine1())
 		SendWeaponAnim(CROSSBOW_HOLSTER1);
 	else
 		SendWeaponAnim(CROSSBOW_HOLSTER2);
@@ -275,7 +263,7 @@ void CCrossbow::Holster()
 
 void CCrossbow::PrimaryAttack()
 {
-	if (m_pPlayer->m_iFOV != 0 && UTIL_IsMultiplayer())
+	if (m_pPlayer->m_iFOV != 0 && g_Skill.GetValue("crossbow_sniper_bolt") != 0)
 	{
 		FireSniperBolt();
 		return;
@@ -289,7 +277,7 @@ void CCrossbow::FireSniperBolt()
 {
 	m_flNextPrimaryAttack = GetNextAttackDelay(0.75);
 
-	if (m_iClip == 0)
+	if (GetMagazine1() == 0)
 	{
 		PlayEmptySound();
 		return;
@@ -298,7 +286,7 @@ void CCrossbow::FireSniperBolt()
 	TraceResult tr;
 
 	m_pPlayer->m_iWeaponVolume = QUIET_GUN_VOLUME;
-	m_iClip--;
+	AdjustMagazine1(-1);
 
 	int flags;
 #if defined(CLIENT_WEAPONS)
@@ -307,7 +295,7 @@ void CCrossbow::FireSniperBolt()
 	flags = 0;
 #endif
 
-	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usCrossbow2, 0.0, g_vecZero, g_vecZero, 0, 0, m_iClip, 0, 0, 0);
+	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usCrossbow2, 0.0, g_vecZero, g_vecZero, 0, 0, GetMagazine1(), 0, 0, 0);
 
 	// player "shoot" animation
 	m_pPlayer->SetAnimation(PLAYER_ATTACK1);
@@ -331,7 +319,7 @@ void CCrossbow::FireSniperBolt()
 
 void CCrossbow::FireBolt()
 {
-	if (m_iClip == 0)
+	if (GetMagazine1() == 0)
 	{
 		PlayEmptySound();
 		return;
@@ -339,7 +327,7 @@ void CCrossbow::FireBolt()
 
 	m_pPlayer->m_iWeaponVolume = QUIET_GUN_VOLUME;
 
-	m_iClip--;
+	AdjustMagazine1(-1);
 
 	int flags;
 #if defined(CLIENT_WEAPONS)
@@ -348,7 +336,7 @@ void CCrossbow::FireBolt()
 	flags = 0;
 #endif
 
-	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usCrossbow, 0.0, g_vecZero, g_vecZero, 0, 0, m_iClip, 0, 0, 0);
+	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usCrossbow, 0.0, g_vecZero, g_vecZero, 0, 0, GetMagazine1(), 0, 0, 0);
 
 	// player "shoot" animation
 	m_pPlayer->SetAnimation(PLAYER_ATTACK1);
@@ -380,20 +368,19 @@ void CCrossbow::FireBolt()
 	pBolt->pev->avelocity.z = 10;
 #endif
 
-	if (0 == m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
+	if (0 == GetMagazine1() && m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
 		// HEV suit - indicate out of ammo condition
-		m_pPlayer->SetSuitUpdate("!HEV_AMO0", false, 0);
+		m_pPlayer->SetSuitUpdate("!HEV_AMO0", 0);
 
 	m_flNextPrimaryAttack = GetNextAttackDelay(0.75);
 
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.75;
 
-	if (m_iClip != 0)
+	if (GetMagazine1() != 0)
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 5.0;
 	else
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.75;
 }
-
 
 void CCrossbow::SecondaryAttack()
 {
@@ -410,10 +397,9 @@ void CCrossbow::SecondaryAttack()
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 1.0;
 }
 
-
 void CCrossbow::Reload()
 {
-	if (m_pPlayer->ammo_bolts <= 0)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
 		return;
 
 	if (m_pPlayer->m_iFOV != 0)
@@ -427,7 +413,6 @@ void CCrossbow::Reload()
 	}
 }
 
-
 void CCrossbow::WeaponIdle()
 {
 	m_pPlayer->GetAutoaimVector(AUTOAIM_2DEGREES); // get the autoaim vector but ignore it;  used for autoaim crosshair in DM
@@ -439,7 +424,7 @@ void CCrossbow::WeaponIdle()
 		float flRand = UTIL_SharedRandomFloat(m_pPlayer->random_seed, 0, 1);
 		if (flRand <= 0.75)
 		{
-			if (0 != m_iClip)
+			if (0 != GetMagazine1())
 			{
 				SendWeaponAnim(CROSSBOW_IDLE1);
 			}
@@ -451,7 +436,7 @@ void CCrossbow::WeaponIdle()
 		}
 		else
 		{
-			if (0 != m_iClip)
+			if (0 != GetMagazine1())
 			{
 				SendWeaponAnim(CROSSBOW_FIDGET1);
 				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 90.0 / 30.0;
@@ -465,31 +450,16 @@ void CCrossbow::WeaponIdle()
 	}
 }
 
-
-
 class CCrossbowAmmo : public CBasePlayerAmmo
 {
 public:
 	void OnCreate() override
 	{
 		CBasePlayerAmmo::OnCreate();
-
+		m_AmmoAmount = AMMO_CROSSBOWCLIP_GIVE;
+		m_AmmoName = MAKE_STRING("bolts");
 		pev->model = MAKE_STRING("models/w_crossbow_clip.mdl");
 	}
-
-	void Precache() override
-	{
-		CBasePlayerAmmo::Precache();
-		PrecacheSound("items/9mmclip1.wav");
-	}
-	bool AddAmmo(CBasePlayer* pOther) override
-	{
-		if (pOther->GiveAmmo(AMMO_CROSSBOWCLIP_GIVE, "bolts") != -1)
-		{
-			EmitSound(CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM);
-			return true;
-		}
-		return false;
-	}
 };
+
 LINK_ENTITY_TO_CLASS(ammo_crossbow, CCrossbowAmmo);

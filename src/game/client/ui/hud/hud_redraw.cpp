@@ -78,7 +78,7 @@ void CHud::Think()
 	// think about default fov
 	if (m_iFOV == 0)
 	{ // only let players adjust up in fov,  and only if they are not overriden by something else
-		m_iFOV = V_max(default_fov->value, 90);
+		m_iFOV = std::max(default_fov->value, 90.f);
 	}
 
 	if (0 != gEngfuncs.IsSpectateOnly())
@@ -168,7 +168,7 @@ bool CHud::Redraw(float flTime, bool intermission)
 		int x, y, i;
 
 		if (m_hsprLogo == 0)
-			m_hsprLogo = LoadSprite("sprites/%d_logo.spr");
+			m_hsprLogo = SPR_Load("sprites/640_logo.spr");
 
 		SPR_Set(m_hsprLogo, {250, 250, 250});
 
@@ -385,7 +385,7 @@ int CHud::GetHudNumberWidth(int number, int width, int flags)
 		totalDigits = 1;
 	}
 
-	totalDigits = V_max(totalDigits, width);
+	totalDigits = std::max(totalDigits, width);
 
 	return totalDigits * digitWidth;
 }

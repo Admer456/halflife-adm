@@ -16,9 +16,12 @@
 // $NoKeywords: $
 //=============================================================================
 
+#include <string_view>
+
 #include <VGUI_TextImage.h>
 
 #include "hud.h"
+#include "ClientLibrary.h"
 #include "vgui_StatsMenuPanel.h"
 
 struct team_stat_info_t
@@ -73,9 +76,42 @@ struct team_stat_info_t
 #define STATSMENU_WINDOW_NAME_X XRES(150)
 #define STATSMENU_WINDOW_NAME_Y YRES(8)
 
-static char szStatsBuf[StatsTeamsCount][1024];
 static int g_iWinningTeam = 0;
 static team_stat_info_t g_TeamStatInfo[3];
+
+constexpr std::string_view DefaultTeamStatInfoFormatString = R"(MVP: {} with {} points
+Most Kills: {} with {} kills
+Highest CTF Score: {} with {} points
+Most Offense: {} with {} points
+Most Defense: {} with {} points
+Most Sniper Kills: {} with {} kills
+Most Barnacle Kills: {} with {} kills
+Most Deaths: {} died {} times
+Suicide King: {} killed themself {} times
+Most Damage: {} with {} damage
+Accelerator Whore: {} carried for {}:{:02}
+Most Backpack time: {} carried for {}:{:02}
+Most Health time: {} carried for {}:{:02}
+Most Shield time: {} carried for {}:{:02}
+Most Jump Pack time: {} carried for {}:{:02}
+)";
+
+constexpr std::string_view DefaultPlayerStatInfoFormatString = R"(Total Score: {} points
+Kills: {} kills
+CTF Score: {} points
+Offense: {} points
+Defense: {} points
+Sniper Kills: {} kills
+Barnacle Kills: {} kills
+Deaths: {} times
+Suicides: {} times
+Damage: {} damage
+Accelerator time: {}:{:02}
+Backpack time: {}:{:02}
+Health time: {}:{:02}
+Shield time: {}:{:02}
+Jump Pack time: {}:{:02}
+)";
 
 CStatsMenuPanel::CStatsMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int wide, int tall)
 	: CMenuPanel(iTrans, iRemoveMe, x, y, wide, tall)
@@ -87,7 +123,7 @@ CStatsMenuPanel::CStatsMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int w
 
 	// schemes
 	SchemeHandle_t hTitleScheme = pSchemes->getSchemeHandle("Title Font");
-	SchemeHandle_t hClassWindowText = pSchemes->getSchemeHandle("Briefing Text");
+	// SchemeHandle_t hClassWindowText = pSchemes->getSchemeHandle("Briefing Text");
 	SchemeHandle_t hStatsWindowText = pSchemes->getSchemeHandle("CommandMenu Text");
 
 	// color schemes
@@ -158,15 +194,17 @@ CStatsMenuPanel::CStatsMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int w
 		// pNameLabel->setBorder(new LineBorder());
 		pNameLabel->setText("%s", localName);
 
-		if (ScreenWidth > 639)
+		if (ScreenWidth >= BASE_XRES)
 		{
 			int xOut, yOut;
 			pNameLabel->getTextSize(xOut, yOut);
 
 			if (i == 3)
-				sprintf(sz, sCTFStatsSelection[1]);
+				strncpy(sz, sCTFStatsSelection[1], sizeof(sz));
 			else
-				sprintf(sz, sCTFStatsSelection[i]);
+				strncpy(sz, sCTFStatsSelection[i], sizeof(sz));
+
+			sz[sizeof(sz) - 1] = '\0';
 
 			m_pClassImages[i] = new CImageLabel(sz, textOffs, 2 * yOut, XRES(250), YRES(80));
 			m_pClassImages[i]->setParent(m_pClassInfoPanel[i]);
@@ -289,13 +327,23 @@ void CStatsMenuPanel::SetPlayerImage(const char* szImage)
 	}
 }
 
-void CStatsMenuPanel::MsgFunc_StatsInfo(const char* pszName, int iSize, void* pbuf)
+void CStatsMenuPanel::MsgFunc_StatsInfo(const char* pszName, BufferReader& reader)
 {
-	BEGIN_READ(pbuf, iSize);
-	const int teamNum = READ_BYTE();
-	g_iWinningTeam = READ_BYTE();
-	const int iNumPlayers = READ_BYTE();
-	const int chunkId = READ_BYTE();
+	const int teamNum = reader.ReadByte();
+	g_iWinningTeam = reader.ReadByte();
+	const int iNumPlayers = reader.ReadByte();
+	const int chunkId = reader.ReadByte();
+
+	// TODO: define constants for team counts and such
+	if (teamNum < 0 || teamNum > 2)
+	{
+		return;
+	}
+
+	if (g_iWinningTeam < 0 || g_iWinningTeam > 2)
+	{
+		return;
+	}
 
 	if (0 == teamNum)
 	{
@@ -308,146 +356,162 @@ void CStatsMenuPanel::MsgFunc_StatsInfo(const char* pszName, int iSize, void* pb
 	switch (chunkId)
 	{
 	case 0:
-		strcpy(g_TeamStatInfo[teamNum].szMVP, READ_STRING());
-		g_TeamStatInfo[teamNum].iMVPVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostKills, READ_STRING());
-		g_TeamStatInfo[teamNum].iKillsVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostCTF, READ_STRING());
-		g_TeamStatInfo[teamNum].iCTFVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostOff, READ_STRING());
-		g_TeamStatInfo[teamNum].iOffVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostDef, READ_STRING());
-		g_TeamStatInfo[teamNum].iDefVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostSnipe, READ_STRING());
-		g_TeamStatInfo[teamNum].iSnipeVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostBarnacle, READ_STRING());
-		g_TeamStatInfo[teamNum].iBarnacleVal = READ_SHORT();
+		strcpy(g_TeamStatInfo[teamNum].szMVP, reader.ReadString());
+		g_TeamStatInfo[teamNum].iMVPVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostKills, reader.ReadString());
+		g_TeamStatInfo[teamNum].iKillsVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostCTF, reader.ReadString());
+		g_TeamStatInfo[teamNum].iCTFVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostOff, reader.ReadString());
+		g_TeamStatInfo[teamNum].iOffVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostDef, reader.ReadString());
+		g_TeamStatInfo[teamNum].iDefVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostSnipe, reader.ReadString());
+		g_TeamStatInfo[teamNum].iSnipeVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostBarnacle, reader.ReadString());
+		g_TeamStatInfo[teamNum].iBarnacleVal = reader.ReadShort();
 		break;
 
 	case 1:
-		strcpy(g_TeamStatInfo[teamNum].szMostDeaths, READ_STRING());
-		g_TeamStatInfo[teamNum].iDeathsVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostSuicides, READ_STRING());
-		g_TeamStatInfo[teamNum].iSuicidesVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostDamage, READ_STRING());
-		g_TeamStatInfo[teamNum].iDamageVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostAccel, READ_STRING());
-		g_TeamStatInfo[teamNum].iAccelVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostBackpack, READ_STRING());
-		g_TeamStatInfo[teamNum].iBackpackVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostHealth, READ_STRING());
-		g_TeamStatInfo[teamNum].iHealthVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostShield, READ_STRING());
-		g_TeamStatInfo[teamNum].iShieldVal = READ_SHORT();
-		strcpy(g_TeamStatInfo[teamNum].szMostJump, READ_STRING());
-		g_TeamStatInfo[teamNum].iJumpVal = READ_SHORT();
+		strcpy(g_TeamStatInfo[teamNum].szMostDeaths, reader.ReadString());
+		g_TeamStatInfo[teamNum].iDeathsVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostSuicides, reader.ReadString());
+		g_TeamStatInfo[teamNum].iSuicidesVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostDamage, reader.ReadString());
+		g_TeamStatInfo[teamNum].iDamageVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostAccel, reader.ReadString());
+		g_TeamStatInfo[teamNum].iAccelVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostBackpack, reader.ReadString());
+		g_TeamStatInfo[teamNum].iBackpackVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostHealth, reader.ReadString());
+		g_TeamStatInfo[teamNum].iHealthVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostShield, reader.ReadString());
+		g_TeamStatInfo[teamNum].iShieldVal = reader.ReadShort();
+		strcpy(g_TeamStatInfo[teamNum].szMostJump, reader.ReadString());
+		g_TeamStatInfo[teamNum].iJumpVal = reader.ReadShort();
 		break;
 	}
 
 	g_TeamStatInfo[teamNum].bChunksRead |= (1 << chunkId);
 
-	if ((g_TeamStatInfo[teamNum].bChunksRead & 3) != 0)
+	if ((g_TeamStatInfo[teamNum].bChunksRead & 3) == 0)
 	{
-		char sz[64];
-		sprintf(sz, "stats/stats_%s.ost", sCTFStatsSelection[teamNum]);
+		return;
+	}
 
-		const auto fileContents = FileSystem_LoadFileIntoBuffer(sz, FileContentFormat::Text);
+	std::string text;
+
+	if (iNumPlayers <= 0)
+	{
+		text = "No players on this team\n";
+	}
+	else
+	{
+		gViewPort->GetAllPlayersInfo();
+
+		const auto fileName = fmt::format("stats/stats_{}.ost", sCTFStatsSelection[teamNum]);
+
+		const auto fileContents = FileSystem_LoadFileIntoBuffer(fileName.c_str(), FileContentFormat::Text);
+
+		const auto formatter = [&](std::string_view formatString) -> std::string
+		{
+			try
+			{
+				const auto& info = g_TeamStatInfo[teamNum];
+
+				return fmt::format(fmt::runtime({formatString.data(), formatString.size()}),
+					info.szMVP,
+					info.iMVPVal,
+					info.szMostKills,
+					info.iKillsVal,
+					info.szMostCTF,
+					info.iCTFVal,
+					info.szMostOff,
+					info.iOffVal,
+					info.szMostDef,
+					info.iDefVal,
+					info.szMostSnipe,
+					info.iSnipeVal,
+					info.szMostBarnacle,
+					info.iBarnacleVal,
+					info.szMostDeaths,
+					info.iDeathsVal,
+					info.szMostSuicides,
+					info.iSuicidesVal,
+					info.szMostDamage,
+					info.iDamageVal,
+					info.szMostAccel,
+					info.iAccelVal / 60, info.iAccelVal % 60,
+					info.szMostBackpack,
+					info.iBackpackVal / 60, info.iBackpackVal % 60,
+					info.szMostHealth,
+					info.iHealthVal / 60, info.iHealthVal % 60,
+					info.szMostShield, info.iShieldVal / 60,
+					info.iShieldVal % 60, info.szMostJump,
+					info.iJumpVal / 60, info.iJumpVal % 60);
+			}
+			catch (const fmt::format_error& e)
+			{
+				g_UILogger->error("CTF stat format string file \"{}\" has invalid contents: {}",
+					fileName, e.what());
+				return {};
+			}
+		};
 
 		if (!fileContents.empty())
 		{
-			if (iNumPlayers <= 0)
-			{
-				strncpy(szStatsBuf[teamNum], "No players on this team\n", sizeof(szStatsBuf[teamNum]) - 1);
-			}
-			else
-			{
-				gViewPort->GetAllPlayersInfo();
+			text = formatter(reinterpret_cast<const char*>(fileContents.data()));
+		}
 
-				// TODO: this passes an arbitrary string as the format string which is incredibly dangerous (also in vanilla)
-				// Overcomplicated time calculations, can just use modulo instead for seconds
-				sprintf(
-					szStatsBuf[teamNum],
-					reinterpret_cast<const char*>(fileContents.data()),
-					g_TeamStatInfo[teamNum].szMVP,
-					g_TeamStatInfo[teamNum].iMVPVal,
-					g_TeamStatInfo[teamNum].szMostKills,
-					g_TeamStatInfo[teamNum].iKillsVal,
-					g_TeamStatInfo[teamNum].szMostCTF,
-					g_TeamStatInfo[teamNum].iCTFVal,
-					g_TeamStatInfo[teamNum].szMostOff,
-					g_TeamStatInfo[teamNum].iOffVal,
-					g_TeamStatInfo[teamNum].szMostDef,
-					g_TeamStatInfo[teamNum].iDefVal,
-					g_TeamStatInfo[teamNum].szMostSnipe,
-					g_TeamStatInfo[teamNum].iSnipeVal,
-					g_TeamStatInfo[teamNum].szMostBarnacle,
-					g_TeamStatInfo[teamNum].iBarnacleVal,
-					g_TeamStatInfo[teamNum].szMostDeaths,
-					g_TeamStatInfo[teamNum].iDeathsVal,
-					g_TeamStatInfo[teamNum].szMostSuicides,
-					g_TeamStatInfo[teamNum].iSuicidesVal,
-					g_TeamStatInfo[teamNum].szMostDamage,
-					g_TeamStatInfo[teamNum].iDamageVal,
-					g_TeamStatInfo[teamNum].szMostAccel,
-					g_TeamStatInfo[teamNum].iAccelVal / 60,
-					g_TeamStatInfo[teamNum].iAccelVal + 4 * (g_TeamStatInfo[teamNum].iAccelVal / 60) - (g_TeamStatInfo[teamNum].iAccelVal / 60 << 6),
-					g_TeamStatInfo[teamNum].szMostBackpack,
-					g_TeamStatInfo[teamNum].iBackpackVal / 60,
-					g_TeamStatInfo[teamNum].iBackpackVal + 4 * (g_TeamStatInfo[teamNum].iBackpackVal / 60) - (g_TeamStatInfo[teamNum].iBackpackVal / 60 << 6),
-					g_TeamStatInfo[teamNum].szMostHealth,
-					g_TeamStatInfo[teamNum].iHealthVal / 60,
-					g_TeamStatInfo[teamNum].iHealthVal + 4 * (g_TeamStatInfo[teamNum].iHealthVal / 60) - (g_TeamStatInfo[teamNum].iHealthVal / 60 << 6),
-					g_TeamStatInfo[teamNum].szMostShield,
-					g_TeamStatInfo[teamNum].iShieldVal / 60,
-					g_TeamStatInfo[teamNum].iShieldVal + 4 * (g_TeamStatInfo[teamNum].iShieldVal / 60) - (g_TeamStatInfo[teamNum].iShieldVal / 60 << 6),
-					g_TeamStatInfo[teamNum].szMostJump,
-					g_TeamStatInfo[teamNum].iJumpVal / 60,
-					g_TeamStatInfo[teamNum].iJumpVal + 4 * (g_TeamStatInfo[teamNum].iJumpVal / 60) - (g_TeamStatInfo[teamNum].iJumpVal / 60 << 6));
-			}
-
-			m_pStatsWindow[teamNum]->setText(szStatsBuf[teamNum]);
-
-			int wide, tall;
-			m_pStatsWindow[teamNum]->getTextImage()->getSize(wide, tall);
-			m_pStatsWindow[teamNum]->setSize(wide, tall);
+		// If no file exists or the format string is invalid, fall back to the default format string.
+		if (text.empty())
+		{
+			text = formatter(DefaultTeamStatInfoFormatString);
 		}
 	}
+
+	m_pStatsWindow[teamNum]->setText(text.c_str());
+
+	int wide, tall;
+	m_pStatsWindow[teamNum]->getTextImage()->getSize(wide, tall);
+	m_pStatsWindow[teamNum]->setSize(wide, tall);
 }
 
-void CStatsMenuPanel::MsgFunc_StatsPlayer(const char* pszName, int iSize, void* pbuf)
+void CStatsMenuPanel::MsgFunc_StatsPlayer(const char* pszName, BufferReader& reader)
 {
-	BEGIN_READ(pbuf, iSize);
-	const int playerIndex = READ_BYTE();
-	const int iMVPVal = READ_SHORT();
-	const int iKillsVal = READ_SHORT();
-	const int iCTFVal = READ_SHORT();
-	const int iOffVal = READ_SHORT();
-	const int iDefVal = READ_SHORT();
-	const int iSnipeVal = READ_SHORT();
-	const int iBarnacleVal = READ_SHORT();
-	const int iDeathsVal = READ_SHORT();
-	const int iSuicidesVal = READ_SHORT();
-	const int iDamageVal = READ_SHORT();
-	const int iAccelVal = READ_SHORT();
-	const int iBackpackVal = READ_SHORT();
-	const int iHealthVal = READ_SHORT();
-	const int iShieldTime = READ_SHORT();
-	const int iJumpVal = READ_SHORT();
+	const int playerIndex = reader.ReadByte();
+	const int iMVPVal = reader.ReadShort();
+	const int iKillsVal = reader.ReadShort();
+	const int iCTFVal = reader.ReadShort();
+	const int iOffVal = reader.ReadShort();
+	const int iDefVal = reader.ReadShort();
+	const int iSnipeVal = reader.ReadShort();
+	const int iBarnacleVal = reader.ReadShort();
+	const int iDeathsVal = reader.ReadShort();
+	const int iSuicidesVal = reader.ReadShort();
+	const int iDamageVal = reader.ReadShort();
+	const int iAccelVal = reader.ReadShort();
+	const int iBackpackVal = reader.ReadShort();
+	const int iHealthVal = reader.ReadShort();
+	const int iShieldTime = reader.ReadShort();
+	const int iJumpVal = reader.ReadShort();
 
-	if (playerIndex > 0 && playerIndex < MAX_PLAYERS_HUD)
+	if (playerIndex <= 0 || playerIndex > +MAX_PLAYERS_HUD)
 	{
-		char sz[64];
-		sprintf(sz, "stats/stats_%s.ost", sCTFStatsSelection[3]);
+		return;
+	}
 
-		const auto fileContents = FileSystem_LoadFileIntoBuffer(sz, FileContentFormat::Text);
+	const auto fileName = fmt::format("stats/stats_{}.ost", sCTFStatsSelection[3]);
 
-		if (!fileContents.empty())
+	const auto fileContents = FileSystem_LoadFileIntoBuffer(fileName.c_str(), FileContentFormat::Text);
+
+	std::string text;
+
+	const auto formatter = [&](std::string_view formatString) -> std::string
+	{
+		try
 		{
-			// TODO: this passes an arbitrary string as the format string which is incredibly dangerous (also in vanilla)
-			// Overcomplicated time calculations, can just use modulo instead for seconds
-			sprintf(
-				szStatsBuf[3],
-				reinterpret_cast<const char*>(fileContents.data()),
+			return fmt::format(fmt::runtime({formatString.data(), formatString.size()}),
 				iMVPVal,
 				iKillsVal,
 				iCTFVal,
@@ -458,22 +522,34 @@ void CStatsMenuPanel::MsgFunc_StatsPlayer(const char* pszName, int iSize, void* 
 				iDeathsVal,
 				iSuicidesVal,
 				iDamageVal,
-				iAccelVal / 60,
-				iAccelVal + 4 * (iAccelVal / 60) - (iAccelVal / 60 * 64),
-				iBackpackVal / 60,
-				iBackpackVal + 4 * (iBackpackVal / 60) - (iBackpackVal / 60 << 6),
-				iHealthVal / 60,
-				iHealthVal + 4 * (iHealthVal / 60) - (iHealthVal / 60 << 6),
-				iShieldTime / 60,
-				iShieldTime + 4 * (iShieldTime / 60) - (iShieldTime / 60 << 6),
-				iJumpVal / 60,
-				iJumpVal + 4 * (iJumpVal / 60) - (iJumpVal / 60 << 6));
-
-			m_pStatsWindow[3]->setText(szStatsBuf[3]);
-
-			int wide, tall;
-			m_pStatsWindow[3]->getTextImage()->getSize(wide, tall);
-			m_pStatsWindow[3]->setSize(wide, tall);
+				iAccelVal / 60, iAccelVal % 60,
+				iBackpackVal / 60, iBackpackVal % 60,
+				iHealthVal / 60, iHealthVal % 60,
+				iShieldTime / 60, iShieldTime % 60,
+				iJumpVal / 60, iJumpVal % 60);
 		}
+		catch (const fmt::format_error& e)
+		{
+			g_UILogger->error("CTF stat format string file \"{}\" has invalid contents: {}",
+				fileName, e.what());
+			return {};
+		}
+	};
+
+	if (!fileContents.empty())
+	{
+		text = formatter(reinterpret_cast<const char*>(fileContents.data()));
 	}
+
+	// If no file exists or the format string is invalid, fall back to the default format string.
+	if (text.empty())
+	{
+		text = formatter(DefaultPlayerStatInfoFormatString);
+	}
+
+	m_pStatsWindow[3]->setText(text.c_str());
+
+	int wide, tall;
+	m_pStatsWindow[3]->getTextImage()->getSize(wide, tall);
+	m_pStatsWindow[3]->setSize(wide, tall);
 }

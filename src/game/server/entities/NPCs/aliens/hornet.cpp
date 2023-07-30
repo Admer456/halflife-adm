@@ -12,36 +12,30 @@
  *   without written permission from Valve LLC.
  *
  ****/
-//=========================================================
-// Hornets
-//=========================================================
 
 #include "cbase.h"
 #include "hornet.h"
-
 
 int iHornetTrail;
 int iHornetPuff;
 
 LINK_ENTITY_TO_CLASS(hornet, CHornet);
 
-//=========================================================
-// Save/Restore
-//=========================================================
-TYPEDESCRIPTION CHornet::m_SaveData[] =
-	{
-		DEFINE_FIELD(CHornet, m_flStopAttack, FIELD_TIME),
-		DEFINE_FIELD(CHornet, m_iHornetType, FIELD_INTEGER),
-		DEFINE_FIELD(CHornet, m_flFlySpeed, FIELD_FLOAT),
-};
+BEGIN_DATAMAP(CHornet)
+DEFINE_FIELD(m_flStopAttack, FIELD_TIME),
+	DEFINE_FIELD(m_iHornetType, FIELD_INTEGER),
+	DEFINE_FIELD(m_flFlySpeed, FIELD_FLOAT),
+	DEFINE_FUNCTION(StartTrack),
+	DEFINE_FUNCTION(StartDart),
+	DEFINE_FUNCTION(TrackTarget),
+	DEFINE_FUNCTION(TrackTouch),
+	DEFINE_FUNCTION(DartTouch),
+	DEFINE_FUNCTION(DieTouch),
+	END_DATAMAP();
 
-IMPLEMENT_SAVERESTORE(CHornet, CBaseMonster);
-
-//=========================================================
-// don't let hornets gib, ever.
-//=========================================================
 bool CHornet::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float flDamage, int bitsDamageType)
 {
+	// don't let hornets gib, ever.
 	// filter these bits a little.
 	bitsDamageType &= ~(DMG_ALWAYSGIB);
 	bitsDamageType |= DMG_NEVERGIB;
@@ -49,8 +43,13 @@ bool CHornet::TakeDamage(CBaseEntity* inflictor, CBaseEntity* attacker, float fl
 	return CBaseMonster::TakeDamage(inflictor, attacker, flDamage, bitsDamageType);
 }
 
-//=========================================================
-//=========================================================
+void CHornet::OnCreate()
+{
+	BaseClass::OnCreate();
+
+	SetClassification("alien_bioweapon");
+}
+
 void CHornet::Spawn()
 {
 	Precache();
@@ -90,10 +89,6 @@ void CHornet::Spawn()
 	SetTouch(&CHornet::DieTouch);
 	SetThink(&CHornet::StartTrack);
 
-	edict_t* pSoundEnt = pev->owner;
-	if (!pSoundEnt)
-		pSoundEnt = edict();
-
 	if (!FNullEnt(pev->owner) && (pev->owner->v.flags & FL_CLIENT) != 0)
 	{
 		pev->dmg = GetSkillFloat("plr_hornet_dmg"sv);
@@ -107,7 +102,6 @@ void CHornet::Spawn()
 	pev->nextthink = gpGlobals->time + 0.1;
 	ResetSequenceInfo();
 }
-
 
 void CHornet::Precache()
 {
@@ -129,36 +123,16 @@ void CHornet::Precache()
 	iHornetTrail = PrecacheModel("sprites/laserbeam.spr");
 }
 
-//=========================================================
-// hornets will never get mad at each other, no matter who the owner is.
-//=========================================================
-int CHornet::IRelationship(CBaseEntity* pTarget)
+Relationship CHornet::IRelationship(CBaseEntity* pTarget)
 {
 	if (pTarget->pev->modelindex == pev->modelindex)
 	{
-		return R_NO;
+		return Relationship::None;
 	}
 
 	return CBaseMonster::IRelationship(pTarget);
 }
 
-//=========================================================
-// ID's Hornet as their owner
-//=========================================================
-int CHornet::Classify()
-{
-
-	if (pev->owner && (pev->owner->v.flags & FL_CLIENT) != 0)
-	{
-		return CLASS_PLAYER_BIOWEAPON;
-	}
-
-	return CLASS_ALIEN_BIOWEAPON;
-}
-
-//=========================================================
-// StartTrack - starts a hornet out tracking its target
-//=========================================================
 void CHornet::StartTrack()
 {
 	IgniteTrail();
@@ -169,9 +143,6 @@ void CHornet::StartTrack()
 	pev->nextthink = gpGlobals->time + 0.1;
 }
 
-//=========================================================
-// StartDart - starts a hornet out just flying straight.
-//=========================================================
 void CHornet::StartDart()
 {
 	IgniteTrail();
@@ -237,9 +208,6 @@ void CHornet::IgniteTrail()
 	MESSAGE_END();
 }
 
-//=========================================================
-// Hornet is flying, gently tracking target
-//=========================================================
 void CHornet::TrackTarget()
 {
 	Vector vecFlightDir;
@@ -367,9 +335,6 @@ void CHornet::TrackTarget()
 	}
 }
 
-//=========================================================
-// Tracking Hornet hit something
-//=========================================================
 void CHornet::TrackTouch(CBaseEntity* pOther)
 {
 	if (pOther->edict() == pev->owner || pOther->pev->modelindex == pev->modelindex)
@@ -378,7 +343,7 @@ void CHornet::TrackTouch(CBaseEntity* pOther)
 		return;
 	}
 
-	if (IRelationship(pOther) <= R_NO)
+	if (IRelationship(pOther) <= Relationship::None)
 	{
 		// hit something we don't want to hurt, so turn around.
 

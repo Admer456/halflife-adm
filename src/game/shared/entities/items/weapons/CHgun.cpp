@@ -24,16 +24,11 @@ enum firemode_e
 	FIREMODE_FAST
 };
 
-
 LINK_ENTITY_TO_CLASS(weapon_hornetgun, CHgun);
 
-#ifndef CLIENT_DLL
-TYPEDESCRIPTION CHgun::m_SaveData[] =
-	{
-		DEFINE_FIELD(CHgun, m_flRechargeTime, FIELD_TIME),
-};
-IMPLEMENT_SAVERESTORE(CHgun, CBasePlayerWeapon);
-#endif
+BEGIN_DATAMAP(CHgun)
+DEFINE_FIELD(m_flRechargeTime, FIELD_TIME),
+	END_DATAMAP();
 
 bool CHgun::IsUseable()
 {
@@ -43,25 +38,14 @@ bool CHgun::IsUseable()
 void CHgun::OnCreate()
 {
 	CBasePlayerWeapon::OnCreate();
-
+	m_iId = WEAPON_HORNETGUN;
+	m_iDefaultAmmo = HIVEHAND_DEFAULT_GIVE;
 	m_WorldModel = pev->model = MAKE_STRING("models/w_hgun.mdl");
 }
 
-void CHgun::Spawn()
-{
-	Precache();
-	m_iId = WEAPON_HORNETGUN;
-	SetModel(STRING(pev->model));
-
-	m_iDefaultAmmo = HIVEHAND_DEFAULT_GIVE;
-	m_iFirePhase = 0;
-
-	FallInit(); // get ready to fall down.
-}
-
-
 void CHgun::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel("models/v_hgun.mdl");
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/p_hgun.mdl");
@@ -87,17 +71,16 @@ void CHgun::AddToPlayer(CBasePlayer* pPlayer)
 bool CHgun::GetWeaponInfo(WeaponInfo& info)
 {
 	info.Name = STRING(pev->classname);
-	info.AmmoType1 = "Hornets";
-	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.AttackModeInfo[0].AmmoType = "Hornets";
+	info.AttackModeInfo[0].MagazineSize = WEAPON_NOCLIP;
 	info.Slot = 3;
 	info.Position = 3;
-	info.Id = m_iId = WEAPON_HORNETGUN;
+	info.Id = WEAPON_HORNETGUN;
 	info.Flags = ITEM_FLAG_NOAUTOSWITCHEMPTY | ITEM_FLAG_NOAUTORELOAD;
 	info.Weight = HORNETGUN_WEIGHT;
 
 	return true;
 }
-
 
 bool CHgun::Deploy()
 {
@@ -110,18 +93,17 @@ void CHgun::Holster()
 	SendWeaponAnim(HGUN_DOWN);
 
 	//!!!HACKHACK - can't select hornetgun if it's empty! no way to get ammo for it, either.
-	if (0 == m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()])
+	if (0 == m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType))
 	{
-		m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] = 1;
+		m_pPlayer->SetAmmoCountByIndex(m_iPrimaryAmmoType, 1);
 	}
 }
-
 
 void CHgun::PrimaryAttack()
 {
 	Reload();
 
-	if (m_pPlayer->ammo_hornets <= 0)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
 	{
 		return;
 	}
@@ -129,14 +111,17 @@ void CHgun::PrimaryAttack()
 #ifndef CLIENT_DLL
 	UTIL_MakeVectors(m_pPlayer->pev->v_angle);
 
-	CBaseEntity* pHornet = CBaseEntity::Create("hornet", m_pPlayer->GetGunPosition() + gpGlobals->v_forward * 16 + gpGlobals->v_right * 8 + gpGlobals->v_up * -12, m_pPlayer->pev->v_angle, m_pPlayer->edict());
+	CBaseEntity* pHornet = CBaseEntity::Create("hornet",
+		m_pPlayer->GetGunPosition() + gpGlobals->v_forward * 16 + gpGlobals->v_right * 8 + gpGlobals->v_up * -12,
+		m_pPlayer->pev->v_angle,
+		m_pPlayer);
+
 	pHornet->pev->velocity = gpGlobals->v_forward * 300;
 
 	m_flRechargeTime = gpGlobals->time + 0.5;
 #endif
 
-	m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]--;
-
+	m_pPlayer->AdjustAmmoByIndex(m_iPrimaryAmmoType, -1);
 
 	m_pPlayer->m_iWeaponVolume = QUIET_GUN_VOLUME;
 	m_pPlayer->m_iWeaponFlash = DIM_GUN_FLASH;
@@ -165,13 +150,11 @@ void CHgun::PrimaryAttack()
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat(m_pPlayer->random_seed, 10, 15);
 }
 
-
-
 void CHgun::SecondaryAttack()
 {
 	Reload();
 
-	if (m_pPlayer->ammo_hornets <= 0)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
 	{
 		return;
 	}
@@ -219,9 +202,11 @@ void CHgun::SecondaryAttack()
 		break;
 	}
 
-	pHornet = CBaseEntity::Create("hornet", vecSrc, m_pPlayer->pev->v_angle, m_pPlayer->edict());
+	pHornet = CBaseEntity::Create("hornet", vecSrc, m_pPlayer->pev->v_angle, m_pPlayer);
 	pHornet->pev->velocity = gpGlobals->v_forward * 1200;
 	pHornet->pev->angles = UTIL_VecToAngles(pHornet->pev->velocity);
+
+	pHornet->SetClassification("player_bioweapon");
 
 	pHornet->SetThink(&CHornet::StartDart);
 
@@ -237,8 +222,7 @@ void CHgun::SecondaryAttack()
 
 	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usHornetFire, 0.0, g_vecZero, g_vecZero, 0.0, 0.0, 0, 0, 0, 0);
 
-
-	m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]--;
+	m_pPlayer->AdjustAmmoByIndex(m_iPrimaryAmmoType, -1);
 	m_pPlayer->m_iWeaponVolume = NORMAL_GUN_VOLUME;
 	m_pPlayer->m_iWeaponFlash = DIM_GUN_FLASH;
 
@@ -249,23 +233,23 @@ void CHgun::SecondaryAttack()
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat(m_pPlayer->random_seed, 10, 15);
 }
 
-
 void CHgun::Reload()
 {
 #ifndef CLIENT_DLL
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] >= HORNET_MAX_CARRY)
+	int ammoCount = m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType);
+
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) >= HORNET_MAX_CARRY)
 		return;
 
-	while (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] < HORNET_MAX_CARRY && m_flRechargeTime < gpGlobals->time)
+	while (ammoCount < HORNET_MAX_CARRY && m_flRechargeTime < gpGlobals->time)
 	{
-		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]++;
+		++ammoCount;
 		m_flRechargeTime += 0.5;
 	}
 
-	m_pPlayer->TabulateAmmo();
+	m_pPlayer->SetAmmoCountByIndex(m_iPrimaryAmmoType, ammoCount);
 #endif
 }
-
 
 void CHgun::WeaponIdle()
 {

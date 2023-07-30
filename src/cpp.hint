@@ -5,10 +5,150 @@
 #define EXPOSE_SINGLE_INTERFACE
 
 //Server side macros
-#define LINK_ENTITY_TO_CLASS(mapClassName, DLLClassName) extern "C" DLLEXPORT void mapClassName(entvars_t*) {}
-#define IMPLEMENT_SAVERESTORE(derivedClass, baseClass) bool derivedClass::Save(CSave&) {} bool derivedClass::Restore(CRestore&) {}
-#define IMPLEMENT_CUSTOM_SCHEDULES(derivedClass, baseClass) Schedule_t* derivedClass::ScheduleFromName(const char* pName) {}
+#define DECLARE_CLASS_NOBASE(thisClass) \
+	using ThisClass = thisClass
 
-//Client side macros
-#define DECLARE_MESSAGE(y, x) int __MsgFunc_##x(const char* pszName, int iSize, void* pbuf) {}
-#define DECLARE_COMMAND(y, x) void __CmdFunc_##x() {}
+#define DECLARE_CLASS(thisClass, baseClass) \
+	DECLARE_CLASS_NOBASE(thisClass);        \
+	using BaseClass = baseClass
+
+// Datamap macros
+#define DECLARE_DATAMAP_COMMON()             \
+private:                                     \
+	static const DataMap m_LocalDataMap;     \
+                                             \
+	static DataMap InternalCreateDataMap();  \
+                                             \
+public:                                      \
+	static const DataMap* GetLocalDataMap(); \
+	static const DataMap* GetBaseMap()
+
+#define _DECLARE_VIRTUAL_DATAMAP_COMMON() \
+	DECLARE_DATAMAP_COMMON()
+
+#define DECLARE_SIMPLE_DATAMAP() \
+	DECLARE_DATAMAP_COMMON();    \
+	const DataMap* GetDataMap() const
+
+#define DECLARE_DATAMAP_NOBASE()       \
+	_DECLARE_VIRTUAL_DATAMAP_COMMON(); \
+	virtual const DataMap* GetDataMap() const
+
+#define DECLARE_DATAMAP()              \
+	_DECLARE_VIRTUAL_DATAMAP_COMMON(); \
+	const DataMap* GetDataMap() const override
+
+#define _BEGIN_DATAMAP_COMMON(thisClass)                               \
+	const DataMap thisClass::m_LocalDataMap = InternalCreateDataMap(); \
+                                                                       \
+	const DataMap* thisClass::GetLocalDataMap()                        \
+	{                                                                  \
+		return &m_LocalDataMap;                                        \
+	}                                                                  \
+                                                                       \
+	const DataMap* thisClass::GetDataMap() const                       \
+	{                                                                  \
+		return &m_LocalDataMap;                                        \
+	}                                                                  \
+                                                                       \
+	DataMap thisClass::InternalCreateDataMap()                         \
+	{                                                                  \
+		const char* const className = #thisClass;                      \
+		using ThisClass = thisClass;                                   \
+                                                                       \
+		static const DataMember members[] =                            \
+		{
+
+#define BEGIN_DATAMAP_NOBASE(thisClass)    \
+	const DataMap* thisClass::GetBaseMap() \
+	{                                      \
+		return nullptr;                    \
+	}                                      \
+                                           \
+	_BEGIN_DATAMAP_COMMON(thisClass)
+
+#define BEGIN_DATAMAP(thisClass)                        \
+	const DataMap* thisClass::GetBaseMap()              \
+	{                                                   \
+		return thisClass::BaseClass::GetLocalDataMap(); \
+	}                                                   \
+                                                        \
+	_BEGIN_DATAMAP_COMMON(thisClass)
+
+#define END_DATAMAP()                                          \
+	{                                                          \
+	}                                                          \
+	}                                                          \
+	;                                                          \
+                                                               \
+	return {                                                   \
+		.ClassName{className},                                 \
+		.BaseMap{ThisClass::GetBaseMap()},                     \
+		.Members{std::begin(members), std::end(members) - 1}}; \
+	}
+
+#define DEFINE_DUMMY_DATAMAP(thisClass) \
+	BEGIN_DATAMAP(thisClass)            \
+	END_DATAMAP()
+
+#define RAW_DEFINE_FIELD(fieldName, fieldType, serializer, count, flags)                \
+	DataFieldDescription                                                                \
+	{                                                                                   \
+		fieldType, serializer, #fieldName, offsetof(ThisClass, fieldName), count, flags \
+	}
+
+#define DEFINE_FIELD(fieldName, fieldType) \
+	RAW_DEFINE_FIELD(fieldName, fieldType, &FieldTypeToSerializerMapper<fieldType>::Serializer, 1, 0)
+
+#define DEFINE_ARRAY(fieldName, fieldType, count) \
+	RAW_DEFINE_FIELD(fieldName, fieldType, &FieldTypeToSerializerMapper<fieldType>::Serializer, count, 0)
+
+#define DEFINE_GLOBAL_FIELD(fieldName, fieldType) \
+	RAW_DEFINE_FIELD(fieldName, fieldType, &FieldTypeToSerializerMapper<fieldType>::Serializer, 1, FTYPEDESC_GLOBAL)
+
+// Schedule macros
+#define DECLARE_CUSTOM_SCHEDULES_COMMON()        \
+private:                                         \
+	static ScheduleList m_ScheduleList;          \
+                                                 \
+public:                                          \
+	static ScheduleList* GetLocalScheduleList(); \
+	static ScheduleList* GetBaseScheduleList()
+
+#define DECLARE_CUSTOM_SCHEDULES_NOBASE() \
+	DECLARE_CUSTOM_SCHEDULES_COMMON();    \
+	virtual ScheduleList* GetScheduleList() const
+
+#define DECLARE_CUSTOM_SCHEDULES()     \
+	DECLARE_CUSTOM_SCHEDULES_COMMON(); \
+	ScheduleList* GetScheduleList() const override
+	
+#define BEGIN_CUSTOM_SCHEDULES_COMMON(thisClass)     \
+	ScheduleList* thisClass::GetLocalScheduleList()  \
+	{                                                \
+		return &m_ScheduleList;                      \
+	}                                                \
+	ScheduleList* thisClass::GetScheduleList() const \
+	{                                                \
+		return &m_ScheduleList;                      \
+	}                                                \
+ScheduleList thisClass::m_ScheduleList = CreateScheduleList<thisClass>(
+
+#define BEGIN_CUSTOM_SCHEDULES_NOBASE(thisClass)   \
+	ScheduleList* thisClass::GetBaseScheduleList() \
+	{                                              \
+		return nullptr;                            \
+	}                                              \
+	BEGIN_CUSTOM_SCHEDULES_COMMON(thisClass)
+
+#define BEGIN_CUSTOM_SCHEDULES(thisClass)                    \
+	ScheduleList* thisClass::GetBaseScheduleList()           \
+	{                                                        \
+		return thisClass::BaseClass::GetLocalScheduleList(); \
+	}                                                        \
+	BEGIN_CUSTOM_SCHEDULES_COMMON(thisClass)
+
+#define END_CUSTOM_SCHEDULES() \
+	)
+
+#define LINK_ENTITY_TO_CLASS(mapClassName, DLLClassName) extern "C" DLLEXPORT void mapClassName(entvars_t*) {}

@@ -19,15 +19,13 @@
 
 LINK_ENTITY_TO_CLASS(weaponbox, CWeaponBox);
 
-TYPEDESCRIPTION CWeaponBox::m_SaveData[] =
-	{
-		DEFINE_ARRAY(CWeaponBox, m_rgAmmo, FIELD_INTEGER, MAX_AMMO_TYPES),
-		DEFINE_ARRAY(CWeaponBox, m_rgiszAmmo, FIELD_STRING, MAX_AMMO_TYPES),
-		DEFINE_ARRAY(CWeaponBox, m_rgpPlayerWeapons, FIELD_CLASSPTR, MAX_WEAPON_SLOTS),
-		DEFINE_FIELD(CWeaponBox, m_cAmmoTypes, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(CWeaponBox, CBaseEntity);
+BEGIN_DATAMAP(CWeaponBox)
+DEFINE_ARRAY(m_rgAmmo, FIELD_INTEGER, MAX_AMMO_TYPES),
+	DEFINE_ARRAY(m_rgiszAmmo, FIELD_STRING, MAX_AMMO_TYPES),
+	DEFINE_ARRAY(m_rgpPlayerWeapons, FIELD_CLASSPTR, MAX_WEAPON_SLOTS),
+	DEFINE_FIELD(m_cAmmoTypes, FIELD_INTEGER),
+	DEFINE_FUNCTION(Kill),
+	END_DATAMAP();
 
 void CWeaponBox::OnCreate()
 {
@@ -70,13 +68,18 @@ void CWeaponBox::Spawn()
 	SetModel(STRING(pev->model));
 }
 
-void CWeaponBox::Kill()
+void CWeaponBox::UpdateOnRemove()
+{
+	RemoveWeapons();
+	CBaseEntity::UpdateOnRemove();
+}
+
+void CWeaponBox::RemoveWeapons()
 {
 	CBasePlayerWeapon* weapon;
-	int i;
 
 	// destroy the weapons
-	for (i = 0; i < MAX_WEAPON_SLOTS; i++)
+	for (int i = 0; i < MAX_WEAPON_SLOTS; ++i)
 	{
 		weapon = m_rgpPlayerWeapons[i];
 
@@ -87,6 +90,11 @@ void CWeaponBox::Kill()
 			weapon = weapon->m_pNext;
 		}
 	}
+}
+
+void CWeaponBox::Kill()
+{
+	RemoveWeapons();
 
 	// remove the box
 	UTIL_Remove(this);
@@ -99,19 +107,20 @@ void CWeaponBox::Touch(CBaseEntity* pOther)
 		return;
 	}
 
-	if (!pOther->IsPlayer())
+	auto player = ToBasePlayer(pOther);
+
+	if (!player)
 	{
 		// only players may touch a weaponbox.
 		return;
 	}
 
-	if (!pOther->IsAlive())
+	if (!player->IsAlive())
 	{
 		// no dead guys.
 		return;
 	}
 
-	CBasePlayer* pPlayer = (CBasePlayer*)pOther;
 	int i;
 
 	// dole out ammo
@@ -120,7 +129,7 @@ void CWeaponBox::Touch(CBaseEntity* pOther)
 		if (!FStringNull(m_rgiszAmmo[i]))
 		{
 			// there's some ammo of this type.
-			pPlayer->GiveAmmo(m_rgAmmo[i], STRING(m_rgiszAmmo[i]));
+			player->GiveAmmo(m_rgAmmo[i], STRING(m_rgiszAmmo[i]));
 
 			// Logger->trace("Gave {} rounds of {}", m_rgAmmo[i], STRING(m_rgiszAmmo[i]));
 
@@ -147,9 +156,9 @@ void CWeaponBox::Touch(CBaseEntity* pOther)
 				weapon = m_rgpPlayerWeapons[i];
 				m_rgpPlayerWeapons[i] = m_rgpPlayerWeapons[i]->m_pNext; // unlink this weapon from the box
 
-				if (pPlayer->AddPlayerWeapon(weapon))
+				if (player->AddPlayerWeapon(weapon) == ItemAddResult::Added)
 				{
-					weapon->AttachToPlayer(pPlayer);
+					weapon->AttachToPlayer(player);
 				}
 			}
 		}
@@ -192,7 +201,7 @@ bool CWeaponBox::PackWeapon(CBasePlayerWeapon* weapon)
 		weapon->m_pNext = nullptr;
 	}
 
-	weapon->pev->spawnflags |= SF_NORESPAWN; // never respawn
+	weapon->m_RespawnDelay = ITEM_NEVER_RESPAWN_DELAY;
 	weapon->pev->movetype = MOVETYPE_NONE;
 	weapon->pev->solid = SOLID_NOT;
 	weapon->pev->effects = EF_NODRAW;
@@ -219,11 +228,19 @@ bool CWeaponBox::PackAmmo(string_t iszName, int iCount)
 
 	const auto type = g_AmmoTypes.GetByName(STRING(iszName));
 
-	if (type && iCount > 0)
+	if (type)
 	{
-		// Logger->debug("Packed {} rounds of {}", iCount, STRING(iszName));
-		GiveAmmo(iCount, type);
-		return true;
+		if (iCount == RefillAllAmmoAmount)
+		{
+			iCount = type->MaximumCapacity;
+		}
+
+		if (iCount > 0)
+		{
+			// Logger->debug("Packed {} rounds of {}", iCount, STRING(iszName));
+			GiveAmmo(iCount, type);
+			return true;
+		}
 	}
 
 	return false;
@@ -258,7 +275,7 @@ int CWeaponBox::GiveAmmo(int iCount, const AmmoType* type, int* pIndex)
 			if (pIndex)
 				*pIndex = i;
 
-			int iAdd = V_min(iCount, type->MaximumCapacity - m_rgAmmo[i]);
+			int iAdd = std::min(iCount, type->MaximumCapacity - m_rgAmmo[i]);
 			if (iCount == 0 || iAdd > 0)
 			{
 				m_rgAmmo[i] += iAdd;

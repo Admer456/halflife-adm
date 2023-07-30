@@ -12,18 +12,10 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// Zombie
-//=========================================================
-
-// UNDONE: Don't flinch every time you get hit
 
 #include "cbase.h"
 #include "zombie.h"
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define ZOMBIE_AE_ATTACK_GUTS_GRAB 0x03
 #define ZOMBIE_AE_ATTACK_GUTS_THROW 4
 #define GONOME_AE_ATTACK_BITE_FIRST 19
@@ -33,35 +25,29 @@
 
 class COFGonomeGuts : public CBaseEntity
 {
+	DECLARE_CLASS(COFGonomeGuts, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
-	using BaseClass = CBaseEntity;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-
 	void Spawn() override;
 
 	void Touch(CBaseEntity* pOther) override;
 
-	void EXPORT Animate();
+	void Animate();
 
-	static void Shoot(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity);
+	static void Shoot(CBaseEntity* owner, Vector vecStart, Vector vecVelocity);
 
 	static COFGonomeGuts* GonomeGutsCreate(const Vector& origin);
 
-	void Launch(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity);
+	void Launch(CBaseEntity* owner, Vector vecStart, Vector vecVelocity);
 
 	int m_maxFrame;
 };
 
-TYPEDESCRIPTION COFGonomeGuts::m_SaveData[] =
-	{
-		DEFINE_FIELD(COFGonomeGuts, m_maxFrame, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(COFGonomeGuts, COFGonomeGuts::BaseClass);
+BEGIN_DATAMAP(COFGonomeGuts)
+DEFINE_FIELD(m_maxFrame, FIELD_INTEGER),
+	DEFINE_FUNCTION(Animate),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(gonomeguts, COFGonomeGuts);
 
@@ -118,7 +104,7 @@ void COFGonomeGuts::Touch(CBaseEntity* pOther)
 	{
 		TraceResult tr;
 		// make a splat on the wall
-		UTIL_TraceLine(pev->origin, pev->origin + pev->velocity * 10, dont_ignore_monsters, ENT(pev), &tr);
+		UTIL_TraceLine(pev->origin, pev->origin + pev->velocity * 10, dont_ignore_monsters, edict(), &tr);
 		UTIL_BloodDecalTrace(&tr, BLOOD_COLOR_RED);
 		UTIL_BloodDrips(tr.vecEndPos, tr.vecPlaneNormal, BLOOD_COLOR_RED, 35);
 	}
@@ -144,14 +130,14 @@ void COFGonomeGuts::Animate()
 	}
 }
 
-void COFGonomeGuts::Shoot(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity)
+void COFGonomeGuts::Shoot(CBaseEntity* owner, Vector vecStart, Vector vecVelocity)
 {
 	auto pGuts = g_EntityDictionary->Create<COFGonomeGuts>("gonomeguts");
 	pGuts->Spawn();
 
-	UTIL_SetOrigin(pGuts->pev, vecStart);
+	pGuts->SetOrigin(vecStart);
 	pGuts->pev->velocity = vecVelocity;
-	pGuts->pev->owner = ENT(pevOwner);
+	pGuts->pev->owner = owner->edict();
 
 	if (pGuts->m_maxFrame > 0)
 	{
@@ -170,11 +156,11 @@ COFGonomeGuts* COFGonomeGuts::GonomeGutsCreate(const Vector& origin)
 	return pGuts;
 }
 
-void COFGonomeGuts::Launch(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity)
+void COFGonomeGuts::Launch(CBaseEntity* owner, Vector vecStart, Vector vecVelocity)
 {
-	UTIL_SetOrigin(pev, vecStart);
+	SetOrigin(vecStart);
 	pev->velocity = vecVelocity;
-	pev->owner = ENT(pevOwner);
+	pev->owner = owner->edict();
 
 	SetThink(&COFGonomeGuts::Animate);
 	pev->nextthink = gpGlobals->time + 0.1;
@@ -185,17 +171,13 @@ enum
 	TASK_GONOME_GET_PATH_TO_ENEMY_CORPSE = LAST_COMMON_TASK + 1,
 };
 
-
 class COFGonome : public CZombie
 {
+	DECLARE_CLASS(COFGonome, CZombie);
+	DECLARE_DATAMAP();
+	DECLARE_CUSTOM_SCHEDULES();
+
 public:
-	using BaseClass = CZombie;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
@@ -224,21 +206,19 @@ public:
 
 	bool CheckMeleeAttack1(float flDot, float flDist) override;
 
-	Schedule_t* GetScheduleOfType(int Type) override;
+	const Schedule_t* GetScheduleOfType(int Type) override;
 
 	void Killed(CBaseEntity* attacker, int iGib) override;
 
-	void StartTask(Task_t* pTask) override;
+	void StartTask(const Task_t* pTask) override;
 
 	void SetActivity(Activity NewActivity) override;
-
-	CUSTOM_SCHEDULES;
 
 	float m_flNextThrowTime = 0;
 
 	// TODO: needs to be EHANDLE, save/restored or a save during a windup will cause problems
 	COFGonomeGuts* m_pGonomeGuts = nullptr;
-	EHANDLE m_PlayerLocked;
+	EntityHandle<CBasePlayer> m_PlayerLocked;
 
 protected:
 	float GetOneSlashDamage() override { return GetSkillFloat("gonome_dmg_one_slash"sv); }
@@ -248,13 +228,10 @@ protected:
 	virtual float GetBulletDamageFraction() const override { return 0.15f; }
 };
 
-TYPEDESCRIPTION COFGonome::m_SaveData[] =
-	{
-		DEFINE_FIELD(COFGonome, m_flNextThrowTime, FIELD_TIME),
-		DEFINE_FIELD(COFGonome, m_PlayerLocked, FIELD_EHANDLE),
-};
-
-IMPLEMENT_SAVERESTORE(COFGonome, COFGonome::BaseClass);
+BEGIN_DATAMAP(COFGonome)
+DEFINE_FIELD(m_flNextThrowTime, FIELD_TIME),
+	DEFINE_FIELD(m_PlayerLocked, FIELD_EHANDLE),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(monster_gonome, COFGonome);
 
@@ -289,12 +266,9 @@ Schedule_t slGonomeVictoryDance[] =
 		},
 };
 
-DEFINE_CUSTOM_SCHEDULES(COFGonome){
-	slGonomeVictoryDance,
-};
-
-// TODO: need to use CZombie instead of CBaseMonster
-IMPLEMENT_CUSTOM_SCHEDULES(COFGonome, CBaseMonster);
+BEGIN_CUSTOM_SCHEDULES(COFGonome)
+slGonomeVictoryDance
+END_CUSTOM_SCHEDULES();
 
 void COFGonome::OnCreate()
 {
@@ -320,10 +294,6 @@ void COFGonome::IdleSound()
 	EmitSoundDyn(CHAN_VOICE, RANDOM_SOUND_ARRAY(pIdleSounds), 1.0, ATTN_NORM, 0, pitch);
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -397,7 +367,7 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 			m_pGonomeGuts->pev->aiment = nullptr;
 			m_pGonomeGuts->pev->movetype = MOVETYPE_FLY;
 
-			m_pGonomeGuts->Launch(pev, vecGutsPos, direction * 900);
+			m_pGonomeGuts->Launch(this, vecGutsPos, direction * 900);
 		}
 		else
 		{
@@ -415,7 +385,7 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 		if ((pev->origin - m_hEnemy->pev->origin).Length() < 48)
 		{
 			// Unfreeze previous player if they were locked.
-			auto prevPlayer = m_PlayerLocked.Entity<CBasePlayer>();
+			CBasePlayer* prevPlayer = m_PlayerLocked;
 			m_PlayerLocked = nullptr;
 
 			if (prevPlayer && prevPlayer->IsAlive())
@@ -423,11 +393,11 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 				prevPlayer->EnableControl(true);
 			}
 
-			auto enemy = m_hEnemy.Entity<CBaseEntity>();
+			CBasePlayer* enemy = ToBasePlayer(m_hEnemy);
 
-			if (enemy && enemy->IsPlayer() && enemy->IsAlive())
+			if (enemy && enemy->IsAlive())
 			{
-				static_cast<CBasePlayer*>(enemy)->EnableControl(false);
+				enemy->EnableControl(false);
 				m_PlayerLocked = enemy;
 			}
 		}
@@ -451,7 +421,7 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 
 	case GONOME_AE_ATTACK_BITE_FINISH:
 	{
-		auto player = m_PlayerLocked.Entity<CBasePlayer>();
+		CBasePlayer* player = m_PlayerLocked;
 
 		if (player && player->IsAlive())
 		{
@@ -483,9 +453,6 @@ void COFGonome::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void COFGonome::Spawn()
 {
 	m_flNextThrowTime = gpGlobals->time;
@@ -495,9 +462,6 @@ void COFGonome::Spawn()
 	CZombie::Spawn();
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void COFGonome::Precache()
 {
 	// Don't call CZombie::Spawn here!
@@ -526,12 +490,6 @@ void COFGonome::Precache()
 	PrecacheSound("bullchicken/bc_spithit1.wav");
 	PrecacheSound("bullchicken/bc_spithit2.wav");
 }
-
-//=========================================================
-// AI Schedules Specific to this monster
-//=========================================================
-
-
 
 int COFGonome::IgnoreConditions()
 {
@@ -601,7 +559,7 @@ bool COFGonome::CheckRangeAttack1(float flDot, float flDist)
 	return false;
 }
 
-Schedule_t* COFGonome::GetScheduleOfType(int Type)
+const Schedule_t* COFGonome::GetScheduleOfType(int Type)
 {
 	if (Type == SCHED_VICTORY_DANCE)
 		return slGonomeVictoryDance;
@@ -617,7 +575,7 @@ void COFGonome::Killed(CBaseEntity* attacker, int iGib)
 		m_pGonomeGuts = nullptr;
 	}
 
-	auto player = m_PlayerLocked.Entity<CBasePlayer>();
+	CBasePlayer* player = m_PlayerLocked;
 
 	if (player)
 	{
@@ -630,7 +588,7 @@ void COFGonome::Killed(CBaseEntity* attacker, int iGib)
 	CBaseMonster::Killed(attacker, iGib);
 }
 
-void COFGonome::StartTask(Task_t* pTask)
+void COFGonome::StartTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -672,7 +630,7 @@ void COFGonome::SetActivity(Activity NewActivity)
 		m_pGonomeGuts = nullptr;
 	}
 
-	auto player = m_PlayerLocked.Entity<CBasePlayer>();
+	CBasePlayer* player = m_PlayerLocked;
 
 	if (player)
 	{
@@ -749,15 +707,13 @@ void COFGonome::SetActivity(Activity NewActivity)
 	m_IdealActivity = NewActivity;
 }
 
-//=========================================================
-// DEAD GONOME PROP
-//=========================================================
 class CDeadGonome : public CBaseMonster
 {
 public:
 	void OnCreate() override;
 	void Spawn() override;
-	int Classify() override { return CLASS_ALIEN_PASSIVE; }
+
+	bool HasAlienGibs() override { return true; }
 
 	bool KeyValue(KeyValueData* pkvd) override;
 
@@ -774,6 +730,8 @@ void CDeadGonome::OnCreate()
 	// Corpses have less health
 	pev->health = 8;
 	pev->model = MAKE_STRING("models/gonome.mdl");
+
+	SetClassification("alien_passive");
 }
 
 bool CDeadGonome::KeyValue(KeyValueData* pkvd)
@@ -789,9 +747,6 @@ bool CDeadGonome::KeyValue(KeyValueData* pkvd)
 
 LINK_ENTITY_TO_CLASS(monster_gonome_dead, CDeadGonome);
 
-//=========================================================
-// ********** DeadGonome SPAWN **********
-//=========================================================
 void CDeadGonome::Spawn()
 {
 	PrecacheModel(STRING(pev->model));

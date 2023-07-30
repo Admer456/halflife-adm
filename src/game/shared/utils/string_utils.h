@@ -20,6 +20,8 @@
 
 #include <spdlog/common.h>
 
+#include <EASTL/string.h>
+
 /**
  *	@brief String type that can store an integer value up to @c (u)int64_t without dynamic memory allocations.
  */
@@ -28,6 +30,12 @@ using IntegerString = eastl::fixed_string<char, 20 + 1>;
 constexpr [[nodiscard]] std::string_view ToStringView(spdlog::string_view_t view)
 {
 	return {view.data(), view.size()};
+}
+
+template <typename T, typename Allocator>
+constexpr [[nodiscard]] std::basic_string_view<T> ToStringView(const eastl::basic_string<T, Allocator>& str)
+{
+	return {str.data(), str.size()};
 }
 
 /**
@@ -51,12 +59,13 @@ void ToUpper(std::string& text);
 [[nodiscard]] std::string ToLower(std::string_view text);
 [[nodiscard]] std::string ToUpper(std::string_view text);
 
+[[nodiscard]] int UTIL_CompareI(std::string_view lhs, std::string_view rhs);
+
 void UTIL_StringToVector(Vector& destination, std::string_view pString);
 int UTIL_StringToInteger(std::string_view str);
 
 // for handy use with ClientPrint params
 IntegerString UTIL_ToString(int iValue);
-
 
 /**
  *	@brief Parses a string that ends with an array index.

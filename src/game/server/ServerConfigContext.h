@@ -18,7 +18,10 @@
 #include <string>
 #include <vector>
 
+#include "EntityTemplateSystem.h"
 #include "MapState.h"
+#include "gamerules/PlayerInventory.h"
+#include "ui/hud/HudReplacementSystem.h"
 
 /**
  *	@brief Context used by config section parsers.
@@ -34,4 +37,14 @@ struct ServerConfigContext
 	std::vector<std::string> GlobalModelReplacementFiles;
 	std::vector<std::string> GlobalSentenceReplacementFiles;
 	std::vector<std::string> GlobalSoundReplacementFiles;
+
+	PlayerInventory SpawnInventory;
+
+	EntityTemplateMap EntityTemplates;
+
+	std::string EntityClassificationsFileName;
+
+	std::string HudReplacementFile;
+
+	WeaponHudReplacements WeaponHudReplacementFiles;
 };

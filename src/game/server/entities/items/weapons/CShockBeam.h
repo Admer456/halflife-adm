@@ -18,29 +18,18 @@
 
 class CShockBeam : public CGrenade
 {
+	DECLARE_CLASS(CShockBeam, CGrenade);
+	DECLARE_DATAMAP();
+
 public:
-	using BaseClass = CGrenade;
-
-#ifndef CLIENT_DLL
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-#endif
-
 	void Precache() override;
-
 	void Spawn() override;
 
-	int Classify() override { return CLASS_NONE; }
+	void FlyThink();
+	void ExplodeThink();
+	void WaterExplodeThink();
 
-	void EXPORT FlyThink();
-
-	void EXPORT ExplodeThink();
-
-	void EXPORT WaterExplodeThink();
-
-	void EXPORT BallTouch(CBaseEntity* pOther);
+	void BallTouch(CBaseEntity* pOther);
 
 	static CShockBeam* CreateShockBeam(const Vector& vecOrigin, const Vector& vecAngles, CBaseEntity* pOwner);
 

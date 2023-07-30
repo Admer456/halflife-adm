@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "DataMap.h"
+
 struct globalvars_t
 {
 	float time;
@@ -22,9 +24,9 @@ struct globalvars_t
 	float force_retouch;
 	string_t mapname;
 	string_t startspot;
-	float deathmatch;
-	float coop;
-	float teamplay;
+	[[deprecated("Use g_pGameRules->IsDeathmatch() instead")]] float deathmatch;
+	[[deprecated("Use g_pGameRules->IsCoOp() instead")]] float coop;
+	[[deprecated("Use g_pGameRules->IsTeamPlay() instead")]] float teamplay;
 	float serverflags;
 	float found_secrets;
 	Vector v_forward;
@@ -42,7 +44,7 @@ struct globalvars_t
 	int trace_hitgroup;
 	int trace_flags;
 	int msg_entity;
-	int cdAudioTrack;
+	[[deprecated("Use the music client command instead")]] int cdAudioTrack;
 	int maxClients;
 	int maxEntities;
 	const char* pStringBase;
@@ -56,6 +58,9 @@ constexpr int NUM_ENT_BLENDERS = 2;
 
 struct entvars_t
 {
+	DECLARE_CLASS_NOBASE(entvars_t);
+	DECLARE_SIMPLE_DATAMAP();
+
 	string_t classname;
 	string_t globalname;
 
@@ -139,7 +144,7 @@ struct entvars_t
 
 	edict_t* chain; // Entity pointer when linked into a linked list
 	edict_t* dmg_inflictor;
-	edict_t* enemy;
+	edict_t* enemy; //!< Used by some NPC movement code in the engine to determine movement destination
 	edict_t* aiment; // entity pointer when MOVETYPE_FOLLOW
 	edict_t* owner;
 	edict_t* groundentity;

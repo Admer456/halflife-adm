@@ -10,7 +10,6 @@
 #include <VGUI_InputSignal.h>
 #include <VGUI_Scheme.h>
 #include <VGUI_Image.h>
-#include <VGUI_FileInputStream.h>
 #include <VGUI_BitmapTGA.h>
 #include <VGUI_DesktopIcon.h>
 #include <VGUI_App.h>
@@ -34,6 +33,7 @@ struct cvar_t;
 #define PC_MAX_TEAMS 2
 using namespace vgui;
 
+class CCampaignSelectPanel;
 class Cursor;
 class ScorePanel;
 class SpectatorPanel;
@@ -49,9 +49,6 @@ class CClassMenuPanel;
 class CTeamMenuPanel;
 class TeamFortressViewport;
 class CStatsMenuPanel;
-
-char* GetVGUITGAName(const char* pszName);
-BitmapTGA* LoadTGAForRes(const char* pImageName);
 
 const int StatsTeamsCount = 4;
 
@@ -141,7 +138,8 @@ private:
 	int m_iState;
 
 public:
-	CommandLabel(const char* text, int x, int y, int wide, int tall) : Label(text, x, y, wide, tall)
+	CommandLabel(const char* text, int x, int y, int wide, int tall)
+		: Label(text, x, y, wide, tall)
 	{
 		m_iState = false;
 	}
@@ -183,6 +181,11 @@ public:
 	bool m_bNoHighlight;
 
 public:
+	/**
+	 *	@brief special no bound to avoid leading spaces in name
+	 */
+	static constexpr char UnboundKey = static_cast<char>(255);
+
 	CommandButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight, bool bFlat);
 	// Constructors
 	CommandButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight = false);
@@ -231,7 +234,8 @@ private:
 	Color* UnArmedBorderColor;
 
 public:
-	ColorButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight, bool bFlat) : CommandButton(text, x, y, wide, tall, bNoHighlight, bFlat)
+	ColorButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight, bool bFlat)
+		: CommandButton(text, x, y, wide, tall, bNoHighlight, bFlat)
 	{
 		ArmedColor = nullptr;
 		UnArmedColor = nullptr;
@@ -322,7 +326,8 @@ class SpectButton : public CommandButton
 {
 private:
 public:
-	SpectButton(int iPlayerClass, const char* text, int x, int y, int wide, int tall) : CommandButton(text, x, y, wide, tall, false)
+	SpectButton(int iPlayerClass, const char* text, int x, int y, int wide, int tall)
+		: CommandButton(text, x, y, wide, tall, false)
 	{
 		Init();
 
@@ -370,7 +375,8 @@ private:
 	bool m_iDirection;
 
 public:
-	CCommandMenu(CCommandMenu* pParentMenu, int x, int y, int wide, int tall) : Panel(x, y, wide, tall)
+	CCommandMenu(CCommandMenu* pParentMenu, int x, int y, int wide, int tall)
+		: Panel(x, y, wide, tall)
 	{
 		m_pParentMenu = pParentMenu;
 		m_iXOffset = x;
@@ -380,7 +386,8 @@ public:
 	}
 
 
-	CCommandMenu(CCommandMenu* pParentMenu, bool direction, int x, int y, int wide, int tall) : Panel(x, y, wide, tall)
+	CCommandMenu(CCommandMenu* pParentMenu, bool direction, int x, int y, int wide, int tall)
+		: Panel(x, y, wide, tall)
 	{
 		m_pParentMenu = pParentMenu;
 		m_iXOffset = x;
@@ -422,7 +429,8 @@ private:
 	CImageLabel* m_pOpenButton;
 
 public:
-	DropDownButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight, bool bFlat) : ColorButton(text, x, y, wide, tall, bNoHighlight, bFlat)
+	DropDownButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight, bool bFlat)
+		: ColorButton(text, x, y, wide, tall, bNoHighlight, bFlat)
 	{
 		// Put a > to show it's a submenu
 		m_pOpenButton = new CImageLabel("arrowup", XRES(CMENU_SIZE_X - 2), YRES(BUTTON_SIZE_Y - 2));
@@ -452,7 +460,8 @@ private:
 	CImageLabel* m_pOpenButton;
 
 public:
-	CImageButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight, bool bFlat) : ColorButton(" ", x, y, wide, tall, bNoHighlight, bFlat)
+	CImageButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight, bool bFlat)
+		: ColorButton(" ", x, y, wide, tall, bNoHighlight, bFlat)
 	{
 		m_pOpenButton = new CImageLabel(text, 1, 1, wide - 2, tall - 2);
 		m_pOpenButton->setParent(this);
@@ -500,6 +509,9 @@ private:
 	CMenuPanel* ShowClassMenu();
 	void CreateSpectatorMenu();
 	void CreateStatsMenu();
+
+	void CreateCampaignSelectMenu();
+	void ShowCampaignSelectMenu();
 
 	// Scheme handler
 	CSchemeManager m_SchemeManager;
@@ -590,26 +602,27 @@ public:
 	bool GetAllowSpectators() { return m_iAllowSpectators; };
 
 	// Message Handlers
-	void MsgFunc_ValClass(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_TeamNames(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_Feign(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_Detpack(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_VGUIMenu(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_MOTD(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_BuildSt(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_RandomPC(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_ServerName(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_ScoreInfo(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_TeamScore(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_TeamInfo(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_Spectator(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_AllowSpec(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_SpecFade(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_ResetFade(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_TeamFull(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_SetMenuTeam(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_StatsInfo(const char* pszName, int iSize, void* pbuf);
-	void MsgFunc_StatsPlayer(const char* pszName, int iSize, void* pbuf);
+	void MsgFunc_ValClass(const char* pszName, BufferReader& reader);
+	void MsgFunc_TeamNames(const char* pszName, BufferReader& reader);
+	void MsgFunc_Feign(const char* pszName, BufferReader& reader);
+	void MsgFunc_Detpack(const char* pszName, BufferReader& reader);
+	void MsgFunc_VGUIMenu(const char* pszName, BufferReader& reader);
+	void MsgFunc_MOTD(const char* pszName, BufferReader& reader);
+	void MsgFunc_BuildSt(const char* pszName, BufferReader& reader);
+	void MsgFunc_RandomPC(const char* pszName, BufferReader& reader);
+	void MsgFunc_ServerName(const char* pszName, BufferReader& reader);
+	void MsgFunc_ScoreInfo(const char* pszName, BufferReader& reader);
+	void MsgFunc_TeamScore(const char* pszName, BufferReader& reader);
+	void MsgFunc_TeamInfo(const char* pszName, BufferReader& reader);
+	void MsgFunc_Spectator(const char* pszName, BufferReader& reader);
+	void MsgFunc_AllowSpec(const char* pszName, BufferReader& reader);
+	void MsgFunc_SpecFade(const char* pszName, BufferReader& reader);
+	void MsgFunc_ResetFade(const char* pszName, BufferReader& reader);
+	void MsgFunc_TeamFull(const char* pszName, BufferReader& reader);
+	void MsgFunc_SetMenuTeam(const char* pszName, BufferReader& reader);
+	void MsgFunc_StatsInfo(const char* pszName, BufferReader& reader);
+	void MsgFunc_StatsPlayer(const char* pszName, BufferReader& reader);
+	void MsgFunc_CmpgnSlct(BufferReader& reader);
 
 	// Input
 	bool SlotInput(int iSlot);
@@ -625,6 +638,7 @@ public:
 	// VGUI Menus
 	CMenuPanel* m_pCurrentMenu;
 	CTeamMenuPanel* m_pTeamMenu;
+	CCampaignSelectPanel* m_CampaignSelectMenu = nullptr;
 	int m_StandardMenu; // indexs in m_pCommandMenus
 	int m_SpectatorOptionsMenu;
 	int m_SpectatorCameraMenu;
@@ -679,11 +693,13 @@ class CMenuHandler_StringCommandWatch : public CMenuHandler_StringCommand
 {
 private:
 public:
-	CMenuHandler_StringCommandWatch(const char* pszCommand) : CMenuHandler_StringCommand(pszCommand)
+	CMenuHandler_StringCommandWatch(const char* pszCommand)
+		: CMenuHandler_StringCommand(pszCommand)
 	{
 	}
 
-	CMenuHandler_StringCommandWatch(const char* pszCommand, bool iClose) : CMenuHandler_StringCommand(pszCommand, iClose)
+	CMenuHandler_StringCommandWatch(const char* pszCommand, bool iClose)
+		: CMenuHandler_StringCommand(pszCommand, iClose)
 	{
 	}
 
@@ -709,11 +725,13 @@ class CMenuHandler_StringCommandClassSelect : public CMenuHandler_StringCommand
 {
 private:
 public:
-	CMenuHandler_StringCommandClassSelect(const char* pszCommand) : CMenuHandler_StringCommand(pszCommand)
+	CMenuHandler_StringCommandClassSelect(const char* pszCommand)
+		: CMenuHandler_StringCommand(pszCommand)
 	{
 	}
 
-	CMenuHandler_StringCommandClassSelect(const char* pszCommand, bool iClose) : CMenuHandler_StringCommand(pszCommand, iClose)
+	CMenuHandler_StringCommandClassSelect(const char* pszCommand, bool iClose)
+		: CMenuHandler_StringCommand(pszCommand, iClose)
 	{
 	}
 
@@ -958,7 +976,8 @@ private:
 	CommandButton* m_pCommandButton;
 
 public:
-	CHandler_CommandButtonHighlight(CommandButton* pButton) : CHandler_ButtonHighlight(pButton)
+	CHandler_CommandButtonHighlight(CommandButton* pButton)
+		: CHandler_ButtonHighlight(pButton)
 	{
 		m_pCommandButton = pButton;
 	}
@@ -983,7 +1002,8 @@ protected:
 	int m_iPlayerClass;
 
 public:
-	ClassButton(int iClass, const char* text, int x, int y, int wide, int tall, bool bNoHighlight) : CommandButton(text, x, y, wide, tall, bNoHighlight)
+	ClassButton(int iClass, const char* text, int x, int y, int wide, int tall, bool bNoHighlight)
+		: CommandButton(text, x, y, wide, tall, bNoHighlight)
 	{
 		m_iPlayerClass = iClass;
 	}
@@ -997,7 +1017,8 @@ private:
 	int m_iTeamNumber;
 
 public:
-	TeamButton(int iTeam, const char* text, int x, int y, int wide, int tall) : CommandButton(text, x, y, wide, tall)
+	TeamButton(int iTeam, const char* text, int x, int y, int wide, int tall)
+		: CommandButton(text, x, y, wide, tall)
 	{
 		m_iTeamNumber = iTeam;
 	}
@@ -1026,7 +1047,8 @@ private:
 	bool m_iFeignState;
 
 public:
-	FeignButton(bool iState, const char* text, int x, int y, int wide, int tall) : CommandButton(text, x, y, wide, tall)
+	FeignButton(bool iState, const char* text, int x, int y, int wide, int tall)
+		: CommandButton(text, x, y, wide, tall)
 	{
 		m_iFeignState = iState;
 	}
@@ -1044,7 +1066,8 @@ public:
 class SpectateButton : public CommandButton
 {
 public:
-	SpectateButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight) : CommandButton(text, x, y, wide, tall, bNoHighlight)
+	SpectateButton(const char* text, int x, int y, int wide, int tall, bool bNoHighlight)
+		: CommandButton(text, x, y, wide, tall, bNoHighlight)
 	{
 	}
 
@@ -1070,7 +1093,8 @@ private:
 	int m_iThisTeam;
 
 public:
-	DisguiseButton(int iValidTeamNumsBits, const char* text, int x, int y, int wide, int tall) : CommandButton(text, x, y, wide, tall, false)
+	DisguiseButton(int iValidTeamNumsBits, const char* text, int x, int y, int wide, int tall)
+		: CommandButton(text, x, y, wide, tall, false)
 	{
 		m_iValidTeamsBits = iValidTeamNumsBits;
 	}
@@ -1096,7 +1120,8 @@ private:
 	int m_iDetpackState;
 
 public:
-	DetpackButton(int iState, const char* text, int x, int y, int wide, int tall) : CommandButton(text, x, y, wide, tall)
+	DetpackButton(int iState, const char* text, int x, int y, int wide, int tall)
+		: CommandButton(text, x, y, wide, tall)
 	{
 		m_iDetpackState = iState;
 	}
@@ -1132,7 +1157,8 @@ public:
 		EXIT_TELEPORTER = 3
 	};
 
-	BuildButton(int iState, int iData, const char* text, int x, int y, int wide, int tall) : CommandButton(text, x, y, wide, tall)
+	BuildButton(int iState, int iData, const char* text, int x, int y, int wide, int tall)
+		: CommandButton(text, x, y, wide, tall)
 	{
 		m_iBuildState = iState;
 		m_iBuildData = iData;
@@ -1152,7 +1178,8 @@ private:
 	char m_szMapName[MAX_MAPNAME];
 
 public:
-	MapButton(const char* pMapName, const char* text, int x, int y, int wide, int tall) : CommandButton(text, x, y, wide, tall)
+	MapButton(const char* pMapName, const char* text, int x, int y, int wide, int tall)
+		: CommandButton(text, x, y, wide, tall)
 	{
 		sprintf(m_szMapName, "maps/%s.bsp", pMapName);
 	}
@@ -1180,7 +1207,11 @@ private:
 	int m_iTeamNum;
 
 public:
-	TeamOnlyCommandButton(int iTeamNum, const char* text, int x, int y, int wide, int tall, bool flat) : CommandButton(text, x, y, wide, tall, false, flat), m_iTeamNum(iTeamNum) {}
+	TeamOnlyCommandButton(int iTeamNum, const char* text, int x, int y, int wide, int tall, bool flat)
+		: CommandButton(text, x, y, wide, tall, false, flat),
+		  m_iTeamNum(iTeamNum)
+	{
+	}
 
 	virtual bool IsNotValid()
 	{
@@ -1203,7 +1234,8 @@ private:
 
 
 public:
-	ToggleCommandButton(const char* cvarname, const char* text, int x, int y, int wide, int tall, bool flat) : CommandButton(text, x, y, wide, tall, false, flat)
+	ToggleCommandButton(const char* cvarname, const char* text, int x, int y, int wide, int tall, bool flat)
+		: CommandButton(text, x, y, wide, tall, false, flat)
 	{
 		m_cvar = gEngfuncs.pfnGetCvarPointer(cvarname);
 
@@ -1282,7 +1314,8 @@ private:
 	CImageLabel* pLabelOn;
 
 public:
-	SpectToggleButton(const char* cvarname, const char* text, int x, int y, int wide, int tall, bool flat) : CommandButton(text, x, y, wide, tall, false, flat)
+	SpectToggleButton(const char* cvarname, const char* text, int x, int y, int wide, int tall, bool flat)
+		: CommandButton(text, x, y, wide, tall, false, flat)
 	{
 		m_cvar = gEngfuncs.pfnGetCvarPointer(cvarname);
 
@@ -1448,7 +1481,8 @@ private:
 	LineBorder* m_pBorder;
 
 public:
-	DragNDropPanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tall)
+	DragNDropPanel(int x, int y, int wide, int tall)
+		: Panel(x, y, wide, tall)
 	{
 		m_bBeingDragged = false;
 
@@ -1478,7 +1512,8 @@ private:
 	int m_iTransparency;
 
 public:
-	CTransparentPanel(int iTrans, int x, int y, int wide, int tall) : Panel(x, y, wide, tall)
+	CTransparentPanel(int iTrans, int x, int y, int wide, int tall)
+		: Panel(x, y, wide, tall)
 	{
 		m_iTransparency = iTrans;
 	}
@@ -1506,13 +1541,15 @@ private:
 	float m_flOpenTime;
 
 public:
-	CMenuPanel(bool iRemoveMe, int x, int y, int wide, int tall) : CTransparentPanel(100, x, y, wide, tall)
+	CMenuPanel(bool iRemoveMe, int x, int y, int wide, int tall)
+		: CTransparentPanel(100, x, y, wide, tall)
 	{
 		Reset();
 		m_iRemoveMe = iRemoveMe;
 	}
 
-	CMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int wide, int tall) : CTransparentPanel(iTrans, x, y, wide, tall)
+	CMenuPanel(int iTrans, bool iRemoveMe, int x, int y, int wide, int tall)
+		: CTransparentPanel(iTrans, x, y, wide, tall)
 	{
 		Reset();
 		m_iRemoveMe = iRemoveMe;
@@ -1591,7 +1628,8 @@ public:
 class CTFSlider : public Slider
 {
 public:
-	CTFSlider(int x, int y, int wide, int tall, bool vertical) : Slider(x, y, wide, tall, vertical){};
+	CTFSlider(int x, int y, int wide, int tall, bool vertical)
+		: Slider(x, y, wide, tall, vertical){};
 
 	virtual void paintBackground();
 };
@@ -1682,78 +1720,5 @@ public:
 		}
 	}
 
-	void MsgFunc_TeamFull(const char* pszName, int iSize, void* pbuf);
-};
-
-//=========================================================
-// Specific Menus to handle old HUD sections
-class CHealthPanel : public DragNDropPanel
-{
-private:
-	BitmapTGA* m_pHealthTGA;
-	Label* m_pHealthLabel;
-
-public:
-	CHealthPanel(int x, int y, int wide, int tall) : DragNDropPanel(x, y, wide, tall)
-	{
-		// Load the Health icon
-		FileInputStream* fis = new FileInputStream(GetVGUITGAName("%d_hud_health"), false);
-		m_pHealthTGA = new BitmapTGA(fis, true);
-		fis->close();
-
-		// Create the Health Label
-		int iXSize, iYSize;
-		m_pHealthTGA->getSize(iXSize, iYSize);
-		m_pHealthLabel = new Label("", 0, 0, iXSize, iYSize);
-		m_pHealthLabel->setImage(m_pHealthTGA);
-		m_pHealthLabel->setParent(this);
-
-		// Set panel dimension
-		// Shouldn't be needed once Billy's fized setImage not recalculating the size
-		// setSize( iXSize + 100, gHUD.m_iFontHeight + 10 );
-		// m_pHealthLabel->setPos( 10, (getTall() - iYSize) / 2 );
-	}
-
-	virtual void paintBackground()
-	{
-	}
-
-	void paint()
-	{
-		// Get the paint color
-		int a;
-		// Has health changed? Flash the health #
-		if (gHUD.m_Health.m_fFade)
-		{
-			gHUD.m_Health.m_fFade -= (gHUD.m_flTimeDelta * 20);
-			if (gHUD.m_Health.m_fFade <= 0)
-			{
-				a = MIN_ALPHA;
-				gHUD.m_Health.m_fFade = 0;
-			}
-
-			// Fade the health number back to dim
-			a = MIN_ALPHA + (gHUD.m_Health.m_fFade / FADE_TIME) * 128;
-		}
-		else
-			a = MIN_ALPHA;
-
-		const auto color = gHUD.m_Health.GetPainColor().Scale(a);
-
-		// If health is getting low, make it bright red
-		if (gHUD.m_Health.m_iHealth <= 15)
-			a = 255;
-
-		int iXSize, iYSize, iXPos, iYPos;
-		m_pHealthTGA->getSize(iXSize, iYSize);
-		m_pHealthTGA->getPos(iXPos, iYPos);
-
-		// Paint the player's health
-		int x = gHUD.DrawHudNumber(iXPos + iXSize + 5, iYPos + 5, DHN_3DIGITS | DHN_DRAWZERO, gHUD.m_Health.m_iHealth, color);
-
-		// Draw the vertical line
-		int HealthWidth = gHUD.GetSpriteRect(gHUD.m_HUD_number_0).right - gHUD.GetSpriteRect(gHUD.m_HUD_number_0).left;
-		x += HealthWidth / 2;
-		FillRGBA(x, iYPos + 5, HealthWidth / 10, gHUD.m_iFontHeight, {255, 160, 0}, a);
-	}
+	void MsgFunc_TeamFull(const char* pszName, BufferReader& reader);
 };

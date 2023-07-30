@@ -13,6 +13,7 @@
 #include "pm_defs.h"
 #include "pmtrace.h"
 #include "pm_shared.h"
+#include "r_studioint.h"
 #include "Exports.h"
 
 #include "particleman.h"
@@ -25,16 +26,19 @@
 
 #include "utils/ConCommandSystem.h"
 
+extern engine_studio_api_t IEngineStudio;
+
 void Game_AddObjects();
 
 bool g_iAlive = true;
 
-/*
-========================
-HUD_AddEntity
-	Return 0 to filter entity from visible list for rendering
-========================
-*/
+static TEMPENTITY gTempEnts[MAX_TEMPENTS];
+static TEMPENTITY* gpTempEntFree = nullptr;
+static TEMPENTITY* gpTempEntActive = nullptr;
+
+/**
+ *	@brief Return 0 to filter entity from visible list for rendering
+ */
 int DLLEXPORT HUD_AddEntity(int type, cl_entity_t* ent, const char* modelname)
 {
 	switch (type)
@@ -65,15 +69,12 @@ int DLLEXPORT HUD_AddEntity(int type, cl_entity_t* ent, const char* modelname)
 	return 1;
 }
 
-/*
-=========================
-HUD_TxferLocalOverrides
-
-The server sends us our origin with extra precision as part of the clientdata structure, not during the normal
-playerstate update in entity_state_t.  In order for these overrides to eventually get to the appropriate playerstate
-structure, we need to copy them into the state structure at this point.
-=========================
-*/
+/**
+ *	@brief The server sends us our origin with extra precision as part of the clientdata structure,
+ *	not during the normal playerstate update in entity_state_t.
+ *	In order for these overrides to eventually get to the appropriate playerstate structure,
+ *	we need to copy them into the state structure at this point.
+ */
 void DLLEXPORT HUD_TxferLocalOverrides(entity_state_t* state, const clientdata_t* client)
 {
 	state->origin = client->origin;
@@ -89,14 +90,10 @@ void DLLEXPORT HUD_TxferLocalOverrides(entity_state_t* state, const clientdata_t
 	state->iuser4 = client->iuser4;
 }
 
-/*
-=========================
-HUD_ProcessPlayerState
-
-We have received entity_state_t for this player over the network.  We need to copy appropriate fields to the
-playerstate structure
-=========================
-*/
+/**
+ *	@brief We have received entity_state_t for this player over the network.
+ *	We need to copy appropriate fields to the playerstate structure
+ */
 void DLLEXPORT HUD_ProcessPlayerState(entity_state_t* dst, const entity_state_t* src)
 {
 	// Copy in network data
@@ -154,16 +151,13 @@ void DLLEXPORT HUD_ProcessPlayerState(entity_state_t* dst, const entity_state_t*
 	}
 }
 
-/*
-=========================
-HUD_TxferPredictionData
-
-Because we can predict an arbitrary number of frames before the server responds with an update, we need to be able to copy client side prediction data in
- from the state that the server ack'd receiving, which can be anywhere along the predicted frame path ( i.e., we could predict 20 frames into the future and the server ack's
- up through 10 of those frames, so we need to copy persistent client-side only state from the 10th predicted frame to the slot the server
- update is occupying.
-=========================
-*/
+/**
+ *	@brief Because we can predict an arbitrary number of frames before the server responds with an update,
+ *	we need to be able to copy client side prediction data in from the state that the server ack'd receiving,
+ *	which can be anywhere along the predicted frame path ( i.e., we could predict 20 frames into the future
+ *	and the server ack's up through 10 of those frames ), so we need to copy persistent client-side only state
+ *	from the 10th predicted frame to the slot the server update is occupying.
+ */
 void DLLEXPORT HUD_TxferPredictionData(entity_state_t* ps, const entity_state_t* pps, clientdata_t* pcd, const clientdata_t* ppcd, weapon_data_t* wd, const weapon_data_t* pwd)
 {
 	ps->oldbuttons = pps->oldbuttons;
@@ -289,13 +283,9 @@ void Beams()
 }
 #endif
 
-/*
-=========================
-HUD_CreateEntities
-
-Gives us a chance to add additional entities to the render this frame
-=========================
-*/
+/**
+ *	@brief Gives us a chance to add additional entities to the render this frame
+ */
 void DLLEXPORT HUD_CreateEntities()
 {
 #if defined(BEAM_TEST)
@@ -308,15 +298,10 @@ void DLLEXPORT HUD_CreateEntities()
 	GetClientVoiceMgr()->CreateEntities();
 }
 
-
-/*
-=========================
-HUD_StudioEvent
-
-The entity's studio model description indicated an event was
-fired during this frame, handle the event by it's tag ( e.g., muzzleflash, sound )
-=========================
-*/
+/**
+ *	@brief The entity's studio model description indicated an event was fired during this frame,
+ *	handle the event by it's tag ( e.g., muzzleflash, sound )
+ */
 void DLLEXPORT HUD_StudioEvent(const mstudioevent_t* event, const cl_entity_t* entity)
 {
 	bool iMuzzleFlash = true;
@@ -357,17 +342,27 @@ void DLLEXPORT HUD_StudioEvent(const mstudioevent_t* event, const cl_entity_t* e
 
 /**
  *	@brief Simulation and cleanup of temporary entities
+ *	@param frametime Simulation time
+ *	@param client_time Absolute time on client
+ *	@param cl_gravity True gravity on client
+ *	@param ppTempEntFree List of freed temporary ents
+ *	@param ppTempEntActive List of active temporary ents
+ *	@param Callback_AddVisibleEntity Callback to add an entity to the list of visible entities to draw this frame
  *	@param Callback_TempEntPlaySound Obsolete. Use CL_TempEntPlaySound instead.
  */
 void DLLEXPORT HUD_TempEntUpdate(
-	double frametime,			  // Simulation time
-	double client_time,			  // Absolute time on client
-	double cl_gravity,			  // True gravity on client
-	TEMPENTITY** ppTempEntFree,	  // List of freed temporary ents
-	TEMPENTITY** ppTempEntActive, // List
+	double frametime,
+	double client_time,
+	double cl_gravity,
+	TEMPENTITY** ppTempEntFree,
+	TEMPENTITY** ppTempEntActive,
 	int (*Callback_AddVisibleEntity)(cl_entity_t* pEntity),
 	void (*Callback_TempEntPlaySound)(TEMPENTITY* pTemp, float damp))
 {
+	// Use our own temp ent list instead.
+	ppTempEntFree = &gpTempEntFree;
+	ppTempEntActive = &gpTempEntActive;
+
 	static int gTempEntFrame = 0;
 	int i;
 	TEMPENTITY *pTemp, *pnext, *pprev;
@@ -726,17 +721,12 @@ finish:
 	gEngfuncs.pEventAPI->EV_PopPMStates();
 }
 
-/*
-=================
-HUD_GetUserEntity
-
-If you specify negative numbers for beam start and end point entities, then
-  the engine will call back into this function requesting a pointer to a cl_entity_t
-  object that describes the entity to attach the beam onto.
-
-Indices must start at 1, not zero.
-=================
-*/
+/**
+ *	@brief If you specify negative numbers for beam start and end point entities,
+ *	then the engine will call back into this function requesting a pointer to a cl_entity_t object
+ *	that describes the entity to attach the beam onto.
+ *	Indices must start at 1, not zero.
+ */
 cl_entity_t DLLEXPORT* HUD_GetUserEntity(int index)
 {
 #if defined(BEAM_TEST)
@@ -755,37 +745,37 @@ cl_entity_t DLLEXPORT* HUD_GetUserEntity(int index)
 #endif
 }
 
-static void CL_ParseGunshot()
+static void CL_ParseGunshot(BufferReader& reader)
 {
-	const Vector pos = READ_COORDVECTOR();
+	const Vector pos = reader.ReadCoordVector();
 	gEngfuncs.pEfxAPI->R_RunParticleEffect(pos, vec3_origin, 0, 20);
 	R_RicochetSound(pos);
 }
 
-static void CL_ParseExplosion()
+static void CL_ParseExplosion(BufferReader& reader)
 {
-	const Vector pos = READ_COORDVECTOR();
-	const int spriteIndex = READ_SHORT();
+	const Vector pos = reader.ReadCoordVector();
+	const int spriteIndex = reader.ReadShort();
 
-	const float scale = READ_BYTE() * 0.1f;
-	const float framerate = READ_BYTE();
-	const int flags = READ_BYTE();
+	const float scale = reader.ReadByte() * 0.1f;
+	const float framerate = reader.ReadByte();
+	const int flags = reader.ReadByte();
 
 	R_Explosion(pos, spriteIndex, scale, framerate, flags);
 }
 
-static void CL_ParseTarExplosion()
+static void CL_ParseTarExplosion(BufferReader& reader)
 {
-	const Vector pos = READ_COORDVECTOR();
+	const Vector pos = reader.ReadCoordVector();
 	gEngfuncs.pEfxAPI->R_BlobExplosion(pos);
 	CL_StartSound(-1, CHAN_AUTO, "weapons/explode3.wav", pos, VOL_NORM, 1.0f, PITCH_NORM, 0);
 }
 
-static void CL_ParseExplosion2()
+static void CL_ParseExplosion2(BufferReader& reader)
 {
-	const Vector pos = READ_COORDVECTOR();
-	const int colorStart = READ_BYTE();
-	const int colorLength = READ_BYTE();
+	const Vector pos = reader.ReadCoordVector();
+	const int colorStart = reader.ReadByte();
+	const int colorLength = reader.ReadByte();
 
 	gEngfuncs.pEfxAPI->R_ParticleExplosion2(pos, colorStart, colorLength);
 
@@ -798,11 +788,11 @@ static void CL_ParseExplosion2()
 	CL_StartSound(-1, CHAN_AUTO, "weapons/explode3.wav", pos, VOL_NORM, 0.6f, PITCH_NORM, 0);
 }
 
-static void CL_ParseGunshotDecal()
+static void CL_ParseGunshotDecal(BufferReader& reader)
 {
-	const Vector pos = READ_COORDVECTOR();
-	const int entityIndex = READ_SHORT();
-	const int decalId = READ_BYTE();
+	const Vector pos = reader.ReadCoordVector();
+	const int entityIndex = reader.ReadShort();
+	const int decalId = reader.ReadByte();
 
 	gEngfuncs.pEfxAPI->R_BulletImpactParticles(pos);
 
@@ -818,17 +808,17 @@ static void CL_ParseGunshotDecal()
 		return;
 	}
 
-	if (r_decals->value)
+	if (r_decals->value != 0)
 	{
 		const int decalIndex = gEngfuncs.pEfxAPI->Draw_DecalIndex(decalId);
 		gEngfuncs.pEfxAPI->R_DecalShoot(decalIndex, entityIndex, 0, pos, 0);
 	}
 }
 
-static void CL_ParseArmorRicochet()
+static void CL_ParseArmorRicochet(BufferReader& reader)
 {
-	const Vector pos = READ_COORDVECTOR();
-	const float life = READ_BYTE() * 0.1f;
+	const Vector pos = reader.ReadCoordVector();
+	const float life = reader.ReadByte() * 0.1f;
 
 	const auto model = gEngfuncs.CL_LoadModel("sprites/richo1.spr", nullptr);
 
@@ -837,11 +827,9 @@ static void CL_ParseArmorRicochet()
 	R_RicochetSound(pos);
 }
 
-static void MsgFunc_TempEntity(const char* name, int size, void* buf)
+static void MsgFunc_TempEntity(const char* name, BufferReader& reader)
 {
-	BEGIN_READ(buf, size);
-
-	const int type = READ_BYTE();
+	const int type = reader.ReadByte();
 
 	switch (type)
 	{
@@ -850,32 +838,334 @@ static void MsgFunc_TempEntity(const char* name, int size, void* buf)
 		return;
 
 	case TE_GUNSHOT:
-		CL_ParseGunshot();
+		CL_ParseGunshot(reader);
 		break;
 
 	case TE_EXPLOSION:
-		CL_ParseExplosion();
+		CL_ParseExplosion(reader);
 		break;
 
 	case TE_TAREXPLOSION:
-		CL_ParseTarExplosion();
+		CL_ParseTarExplosion(reader);
 		break;
 
 	case TE_EXPLOSION2:
-		CL_ParseExplosion2();
+		CL_ParseExplosion2(reader);
 		break;
 
 	case TE_GUNSHOTDECAL:
-		CL_ParseGunshotDecal();
+		CL_ParseGunshotDecal(reader);
 		break;
 
 	case TE_ARMOR_RICOCHET:
-		CL_ParseArmorRicochet();
+		CL_ParseArmorRicochet(reader);
 		break;
 	}
 }
 
+static BEAM* g_TargetLaser = nullptr;
+
+static void MsgFunc_TargetLaser(const char* name, BufferReader& reader)
+{
+	if (g_TargetLaser)
+	{
+		// Die immediately
+		g_TargetLaser->die = 0;
+		g_TargetLaser->brightness = 0;
+		g_TargetLaser = nullptr;
+	}
+
+	const bool enable = reader.ReadByte() != 0;
+
+	if (enable)
+	{
+		const int entityIndex = reader.ReadShort();
+		const int modelIndex = reader.ReadShort();
+		const short width = reader.ReadByte();
+
+		Vector color;
+
+		color.x = reader.ReadByte();
+		color.y = reader.ReadByte();
+		color.z = reader.ReadByte();
+
+		g_TargetLaser = gEngfuncs.pEfxAPI->R_BeamEntPoint(entityIndex, vec3_origin, modelIndex,
+			1.f, width, 0, 255, 10, 0, 10, color.x, color.y, color.z);
+
+		// Never dies on its own.
+		g_TargetLaser->die = std::numeric_limits<float>::max();
+
+		// Initialize laser end point for first frame.
+		TempEntity_UpdateTargetLaser();
+	}
+}
+
+void TempEntity_ResetTargetLaser()
+{
+	g_TargetLaser = nullptr;
+}
+
+physent_t* TempEntity_FindPhysent(cl_entity_t* entity)
+{
+	for (int i = 0; i < pmove->numphysent; ++i)
+	{
+		auto pe = &pmove->physents[i];
+
+		if (pe->info == entity->index)
+		{
+			return pe;
+		}
+	}
+
+	return nullptr;
+}
+
+int Physent_IndexOf(physent_t* pe)
+{
+	return pe - pmove->physents;
+}
+
+void TempEntity_UpdateTargetLaser()
+{
+	if (!g_TargetLaser)
+	{
+		return;
+	}
+
+	g_TargetLaser->brightness = 0;
+
+	auto tankEntity = gEngfuncs.GetEntityByIndex(g_TargetLaser->startEntity);
+
+	if (!tankEntity)
+	{
+		return;
+	}
+
+	// Find the physent that represents this entity so we can ignore it during the trace.
+	// This can be nullptr if there are too many visible entities on the server side,
+	// in which case we won't be able to hit it anyway.
+	auto tankPhysent = TempEntity_FindPhysent(tankEntity);
+
+	Vector forward;
+
+	AngleVectors(tankEntity->curstate.angles, &forward, nullptr, nullptr);
+
+	gEngfuncs.pEventAPI->EV_SetUpPlayerPrediction(0, 1);
+
+	// Store off the old count
+	gEngfuncs.pEventAPI->EV_PushPMStates();
+
+	auto localPlayer = gEngfuncs.GetLocalPlayer();
+
+	// Now add in all of the players.
+	gEngfuncs.pEventAPI->EV_SetSolidPlayers(localPlayer->index - 1);
+
+	gEngfuncs.pEventAPI->EV_SetTraceHull(2);
+
+	pmtrace_t tr;
+
+	gEngfuncs.pEventAPI->EV_PlayerTrace(
+		tankEntity->curstate.origin,
+		tankEntity->curstate.origin + forward * 8192,
+		PM_STUDIO_BOX, tankPhysent ? Physent_IndexOf(tankPhysent) : -1, &tr);
+
+	gEngfuncs.pEventAPI->EV_PopPMStates();
+
+	// Even if we didn't hit anything this is still the best we've got.
+	g_TargetLaser->target = tr.endpos;
+
+	g_TargetLaser->brightness = 255;
+}
+
+void CL_TempEntInit()
+{
+	memset(gTempEnts, 0, sizeof(gTempEnts));
+
+	for (int i = 0; i < MAX_TEMPENTS - 1; ++i)
+	{
+		gTempEnts[i].next = &gTempEnts[i + 1];
+	}
+
+	gTempEnts[MAX_TEMPENTS - 1].next = nullptr;
+
+	gpTempEntFree = gTempEnts;
+	gpTempEntActive = nullptr;
+}
+
+void R_KillAttachedTents(int client)
+{
+	// TODO: off by one here?
+	if (client < 0 || client > gEngfuncs.GetMaxClients())
+	{
+		Con_Printf("Bad client in R_KillAttachedTents()!\n");
+		return;
+	}
+
+	const float time = gEngfuncs.GetClientTime();
+
+	for (TEMPENTITY* i = gpTempEntActive; i; i = i->next)
+	{
+		if ((i->flags & FTENT_PLYRATTACHMENT) != 0 && i->clientIndex == client)
+		{
+			i->die = time;
+		}
+	}
+}
+
+void CL_TempEntPrepare(TEMPENTITY* pTemp, model_t* model)
+{
+	memset(&pTemp->entity, 0, sizeof(pTemp->entity));
+
+	pTemp->flags = 0;
+	pTemp->entity.curstate.colormap = 0;
+	pTemp->die = gEngfuncs.GetClientTime() + 0.75f;
+	pTemp->entity.model = model;
+	pTemp->entity.curstate.rendermode = 0;
+	pTemp->entity.curstate.renderfx = 0;
+	pTemp->fadeSpeed = 0.5;
+	pTemp->hitSound = 0;
+	pTemp->clientIndex = -1;
+	pTemp->bounceFactor = 1;
+	pTemp->hitcallback = 0;
+	pTemp->callback = 0;
+}
+
+static void WarnAboutTempEntOverflow()
+{
+	// Only print this once per frame to avoid frame drops.
+	static float lastTempEntOverflowWarningTime = 0;
+
+	const float time = gEngfuncs.GetClientTime();
+
+	if (time != lastTempEntOverflowWarningTime)
+	{
+		lastTempEntOverflowWarningTime = time;
+		Con_DPrintf("Overflow %d temporary ents!\n", MAX_TEMPENTS);
+	}
+}
+
+TEMPENTITY* CL_TempEntAlloc(const float* org, model_t* model)
+{
+	if (!gpTempEntFree)
+	{
+		WarnAboutTempEntOverflow();
+		return nullptr;
+	}
+
+	if (!model)
+	{
+		Con_DPrintf("efx.CL_TempEntAlloc: No model\n");
+		return nullptr;
+	}
+
+	TEMPENTITY* ent = gpTempEntFree;
+	gpTempEntFree = ent->next;
+
+	CL_TempEntPrepare(ent, model);
+
+	ent->priority = 0;
+
+	ent->entity.origin.x = org[0];
+	ent->entity.origin.y = org[1];
+	ent->entity.origin.z = org[2];
+
+	ent->next = gpTempEntActive;
+	gpTempEntActive = ent;
+
+	return ent;
+}
+
+TEMPENTITY* CL_TempEntAllocNoModel(const float* org)
+{
+	if (!gpTempEntFree)
+	{
+		WarnAboutTempEntOverflow();
+		return nullptr;
+	}
+
+	TEMPENTITY* ent = gpTempEntFree;
+	gpTempEntFree = ent->next;
+
+	CL_TempEntPrepare(ent, nullptr);
+
+	ent->priority = 0;
+
+	ent->entity.origin.x = org[0];
+	ent->entity.origin.y = org[1];
+	ent->entity.origin.z = org[2];
+
+	ent->next = gpTempEntActive;
+	gpTempEntActive = ent;
+
+	return ent;
+}
+
+TEMPENTITY* CL_TempEntAllocHigh(const float* org, model_t* model)
+{
+	if (!model)
+	{
+		Con_DPrintf("temporary ent model invalid\n");
+		return nullptr;
+	}
+
+	TEMPENTITY* ent = gpTempEntFree;
+
+	if (gpTempEntFree)
+	{
+		gpTempEntFree = gpTempEntFree->next;
+		ent->next = gpTempEntActive;
+		gpTempEntActive = ent;
+	}
+	else
+	{
+		ent = gpTempEntActive;
+
+		while (ent && ent->priority != 0)
+		{
+			ent = ent->next;
+		}
+
+		if (!ent)
+		{
+			Con_DPrintf("Couldn't alloc a high priority TENT!\n");
+			return nullptr;
+		}
+	}
+
+	CL_TempEntPrepare(ent, model);
+
+	ent->priority = 1;
+
+	ent->entity.origin.x = org[0];
+	ent->entity.origin.y = org[1];
+	ent->entity.origin.z = org[2];
+
+	return ent;
+}
+
+static efx_api_t g_EngineEFXAPI{};
+
 void TempEntity_Initialize()
 {
+	// Override engine temp entity allocation to use our own list.
+	auto efx = gEngfuncs.pEfxAPI;
+
+	g_EngineEFXAPI = *efx;
+
+	efx->R_KillAttachedTents = &R_KillAttachedTents;
+	efx->CL_TempEntAlloc = &CL_TempEntAlloc;
+	efx->CL_TempEntAllocNoModel = &CL_TempEntAllocNoModel;
+	efx->CL_TempEntAllocHigh = &CL_TempEntAllocHigh;
+
 	g_ClientUserMessages.RegisterHandler("TempEntity", &MsgFunc_TempEntity);
+	g_ClientUserMessages.RegisterHandler("TgtLaser", &MsgFunc_TargetLaser);
+}
+
+void TempEntity_Shutdown()
+{
+	if (g_EngineEFXAPI.R_AllocParticle)
+	{
+		// Restore original API. Necessary in case somebody uses Change Game to load another mod.
+		*gEngfuncs.pEfxAPI = g_EngineEFXAPI;
+	}
 }

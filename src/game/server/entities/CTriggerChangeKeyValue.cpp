@@ -23,6 +23,9 @@ const int MAX_CHANGE_KEYVALUES = 16;
  */
 class CTriggerChangeKeyValue : public CBaseDelay
 {
+	DECLARE_CLASS(CTriggerChangeKeyValue, CBaseDelay);
+	DECLARE_DATAMAP();
+
 public:
 	int ObjectCaps() override { return CBaseDelay::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
 
@@ -30,10 +33,6 @@ public:
 	void Spawn() override;
 
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
 
 private:
 	string_t m_changeTargetName;
@@ -44,15 +43,12 @@ private:
 
 LINK_ENTITY_TO_CLASS(trigger_changekeyvalue, CTriggerChangeKeyValue);
 
-TYPEDESCRIPTION CTriggerChangeKeyValue::m_SaveData[] =
-	{
-		DEFINE_FIELD(CTriggerChangeKeyValue, m_changeTargetName, FIELD_STRING),
-		DEFINE_FIELD(CTriggerChangeKeyValue, m_cTargets, FIELD_INTEGER),
-		DEFINE_ARRAY(CTriggerChangeKeyValue, m_iKey, FIELD_STRING, MAX_CHANGE_KEYVALUES),
-		DEFINE_ARRAY(CTriggerChangeKeyValue, m_iValue, FIELD_STRING, MAX_CHANGE_KEYVALUES),
-};
-
-IMPLEMENT_SAVERESTORE(CTriggerChangeKeyValue, CBaseDelay);
+BEGIN_DATAMAP(CTriggerChangeKeyValue)
+DEFINE_FIELD(m_changeTargetName, FIELD_STRING),
+	DEFINE_FIELD(m_cTargets, FIELD_INTEGER),
+	DEFINE_ARRAY(m_iKey, FIELD_STRING, MAX_CHANGE_KEYVALUES),
+	DEFINE_ARRAY(m_iValue, FIELD_STRING, MAX_CHANGE_KEYVALUES),
+	END_DATAMAP();
 
 bool CTriggerChangeKeyValue::KeyValue(KeyValueData* pkvd)
 {
@@ -91,23 +87,9 @@ void CTriggerChangeKeyValue::Spawn()
 
 void CTriggerChangeKeyValue::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)
 {
-	char tmpkey[128];
-	char tmpvalue[128];
-
 	for (auto target : UTIL_FindEntitiesByTargetname(STRING(pev->target)))
 	{
-		for (int i = 0; i < m_cTargets; ++i)
-		{
-			strncpy(tmpkey, STRING(m_iKey[i]), sizeof(tmpkey) - 1);
-			tmpkey[sizeof(tmpkey) - 1] = '\0';
-
-			strncpy(tmpvalue, STRING(m_iValue[i]), sizeof(tmpvalue) - 1);
-			tmpvalue[sizeof(tmpvalue) - 1] = '\0';
-
-			KeyValueData kvd{.szClassName = STRING(target->pev->classname), .szKeyName = tmpkey, .szValue = tmpvalue, .fHandled = 0};
-
-			DispatchKeyValue(target->pev->pContainingEntity, &kvd);
-		}
+		UTIL_InitializeKeyValues(target, m_iKey, m_iValue, m_cTargets);
 
 		if (!FStringNull(m_changeTargetName))
 		{

@@ -21,23 +21,31 @@
 
 #include "weapons/CDisplacerBall.h"
 
-#include "ctf/CTFGoal.h"
-#include "ctf/CTFGoalFlag.h"
+#include "ctf/ctf_goals.h"
 #endif
 
 #include "CDisplacer.h"
+
+BEGIN_DATAMAP(CDisplacer)
+DEFINE_FUNCTION(SpinupThink),
+	DEFINE_FUNCTION(AltSpinupThink),
+	DEFINE_FUNCTION(FireThink),
+	DEFINE_FUNCTION(AltFireThink),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(weapon_displacer, CDisplacer);
 
 void CDisplacer::OnCreate()
 {
 	BaseClass::OnCreate();
-
+	m_iId = WEAPON_DISPLACER;
+	m_iDefaultAmmo = DISPLACER_DEFAULT_GIVE;
 	m_WorldModel = pev->model = MAKE_STRING("models/w_displacer.mdl");
 }
 
 void CDisplacer::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel("models/v_displacer.mdl");
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/p_displacer.mdl");
@@ -54,19 +62,6 @@ void CDisplacer::Precache()
 	UTIL_PrecacheOther("displacer_ball");
 
 	m_usFireDisplacer = PRECACHE_EVENT(1, "events/displacer.sc");
-}
-
-void CDisplacer::Spawn()
-{
-	Precache();
-
-	m_iId = WEAPON_DISPLACER;
-
-	SetModel(STRING(pev->model));
-
-	m_iDefaultAmmo = DISPLACER_DEFAULT_GIVE;
-
-	FallInit();
 }
 
 bool CDisplacer::Deploy()
@@ -88,12 +83,12 @@ void CDisplacer::Holster()
 
 	if (m_pfnThink == &CDisplacer::SpinupThink)
 	{
-		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= 20;
+		m_pPlayer->AdjustAmmoByIndex(m_iPrimaryAmmoType, -20);
 		SetThink(nullptr);
 	}
 	else if (m_pfnThink == &CDisplacer::AltSpinupThink)
 	{
-		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= 60;
+		m_pPlayer->AdjustAmmoByIndex(m_iPrimaryAmmoType, -60);
 		SetThink(nullptr);
 	}
 }
@@ -130,7 +125,7 @@ void CDisplacer::WeaponIdle()
 
 void CDisplacer::PrimaryAttack()
 {
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] >= 20)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) >= 20)
 	{
 		SetThink(&CDisplacer::SpinupThink);
 
@@ -152,7 +147,7 @@ void CDisplacer::PrimaryAttack()
 
 void CDisplacer::SecondaryAttack()
 {
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] >= 60)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) >= 60)
 	{
 		SetThink(&CDisplacer::AltSpinupThink);
 
@@ -269,7 +264,7 @@ void CDisplacer::AltSpinupThink()
 
 void CDisplacer::FireThink()
 {
-	m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= 20;
+	m_pPlayer->AdjustAmmoByIndex(m_iPrimaryAmmoType, -20);
 
 	m_pPlayer->m_iWeaponVolume = LOUD_GUN_VOLUME;
 	m_pPlayer->m_iWeaponFlash = BRIGHT_GUN_FLASH;
@@ -307,9 +302,9 @@ void CDisplacer::FireThink()
 
 	CDisplacerBall::CreateDisplacerBall(vecSrc, vecAnglesAim, m_pPlayer);
 
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] == 0)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) == 0)
 	{
-		m_pPlayer->SetSuitUpdate("!HEV_AMO0", SUIT_SENTENCE, SUIT_REPEAT_OK);
+		m_pPlayer->SetSuitUpdate("!HEV_AMO0", SUIT_REPEAT_OK);
 	}
 #endif
 
@@ -338,7 +333,7 @@ void CDisplacer::AltFireThink()
 #ifndef CLIENT_DLL
 	if (g_pGameRules->IsCTF() && m_pPlayer->m_pFlag)
 	{
-		auto pFlag = static_cast<CTFGoalFlag*>(static_cast<CBaseEntity*>(m_pPlayer->m_pFlag));
+		CTFGoalFlag* pFlag = m_pPlayer->m_pFlag;
 
 		pFlag->DropFlag(m_pPlayer);
 	}
@@ -366,7 +361,7 @@ void CDisplacer::AltFireThink()
 
 		UTIL_TraceLine(pDestination->pev->origin, vecEnd, ignore_monsters, edict(), &tr);
 
-		UTIL_SetOrigin(m_pPlayer->pev, tr.vecEndPos + Vector(0, 0, 37));
+		m_pPlayer->SetOrigin(tr.vecEndPos + Vector(0, 0, 37));
 	}
 
 	if (!FNullEnt(pDestination))
@@ -380,13 +375,13 @@ void CDisplacer::AltFireThink()
 			vecNewOrigin.z += 37;
 		}
 
-		UTIL_SetOrigin(m_pPlayer->pev, vecNewOrigin);
+		m_pPlayer->SetOrigin(vecNewOrigin);
 
 		m_pPlayer->pev->angles = pDestination->pev->angles;
 
 		m_pPlayer->pev->v_angle = pDestination->pev->angles;
 
-		m_pPlayer->pev->fixangle = 1;
+		m_pPlayer->pev->fixangle = FIXANGLE_ABSOLUTE;
 
 		m_pPlayer->pev->basevelocity = g_vecZero;
 		m_pPlayer->pev->velocity = g_vecZero;
@@ -400,25 +395,25 @@ void CDisplacer::AltFireThink()
 		m_pPlayer->m_iWeaponFlash = BRIGHT_GUN_FLASH;
 
 #ifndef CLIENT_DLL
-		// Must always be handled on the server side in order to play the right sounds and effects. - Solokiller
+		// Must always be handled on the server side in order to play the right sounds and effects.
 		int flags = 0;
 
 		PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usFireDisplacer, 0, g_vecZero, g_vecZero,
 			0, 0, static_cast<int>(DisplacerMode::FIRED), 0, 1, 0);
 
-		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= 60;
+		m_pPlayer->AdjustAmmoByIndex(m_iPrimaryAmmoType, -60);
 
 		CDisplacerBall::CreateDisplacerBall(m_pPlayer->m_DisplacerReturn, Vector(90, 0, 0), m_pPlayer);
 
-		if (0 == m_iClip)
+		if (0 == GetMagazine1())
 		{
-			if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
-				m_pPlayer->SetSuitUpdate("!HEV_AMO0", SUIT_SENTENCE, SUIT_REPEAT_OK);
+			if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
+				m_pPlayer->SetSuitUpdate("!HEV_AMO0", SUIT_REPEAT_OK);
 		}
 
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase();
 
-		if (!UTIL_IsMultiplayer())
+		if (!g_pGameRules->IsMultiplayer())
 			m_pPlayer->pev->gravity = 0.6;
 	}
 	else
@@ -430,12 +425,12 @@ void CDisplacer::AltFireThink()
 
 bool CDisplacer::GetWeaponInfo(WeaponInfo& info)
 {
-	info.AmmoType1 = "uranium";
+	info.AttackModeInfo[0].AmmoType = "uranium";
 	info.Name = STRING(pev->classname);
-	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.AttackModeInfo[0].MagazineSize = WEAPON_NOCLIP;
 	info.Slot = 5;
 	info.Position = 1;
-	info.Id = m_iId = WEAPON_DISPLACER;
+	info.Id = WEAPON_DISPLACER;
 	info.Weight = DISPLACER_WEIGHT;
 	return true;
 }

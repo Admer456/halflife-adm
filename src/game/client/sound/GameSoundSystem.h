@@ -26,8 +26,10 @@
 #include "IGameSoundSystem.h"
 #include "SentencesSystem.h"
 #include "SoundCache.h"
-#include "SoundInternalDefs.h"
+#include "SoundDefs.h"
 #include "OpenALUtils.h"
+
+struct cvar_t;
 
 namespace sound
 {
@@ -36,7 +38,7 @@ class GameSoundSystem final : public IGameSoundSystem
 public:
 	~GameSoundSystem() override;
 
-	bool Create(std::shared_ptr<spdlog::logger> logger, ALCdevice* device);
+	bool Create(std::shared_ptr<spdlog::logger> logger);
 
 	void OnBeginNetworkDataProcessing() override;
 
@@ -52,15 +54,21 @@ public:
 
 	void Resume();
 
-	void StartSound(
-		int entityIndex, int channelIndex, const char* soundOrSentence, const Vector& origin, float volume, float attenuation, int flags, int pitch) override;
+	void StartSound(int entityIndex, int channelIndex, const char* soundOrSentence,
+		const Vector& origin, float volume, float attenuation, int flags, int pitch) override;
+
+	void StartSound(int entityIndex, int channelIndex, SoundData&& sound,
+		const Vector& origin, float volume, float attenuation, int pitch, int flags) override;
 
 	void StopAllSounds() override;
 
-	void MsgFunc_EmitSound(const char* pszName, int iSize, void* pbuf) override;
+	void MsgFunc_EmitSound(const char* pszName, BufferReader& reader) override;
 
 private:
 	bool MakeCurrent();
+
+	void PrintHRTFImplementations();
+	void ConfigureHRTF(bool enabled);
 
 	void SetVolume();
 
@@ -105,6 +113,13 @@ private:
 	cvar_t* m_RoomType{};
 	cvar_t* m_WaterRoomType{};
 
+	cvar_t* m_HRTFEnabled{};
+	cvar_t* m_HRTFImplementation{};
+
+	bool m_SupportsHRTF{false};
+	bool m_CachedHRTFEnabled{false};
+
+	std::unique_ptr<ALCdevice, DeleterWrapper<alcCloseDevice>> m_Device;
 	std::unique_ptr<ALCcontext, DeleterWrapper<alcDestroyContext>> m_Context;
 
 	std::array<ALuint, RoomEffectCount> m_RoomEffects{};
@@ -112,6 +127,8 @@ private:
 	ALuint m_AuxiliaryEffectSlot{0};
 
 	ALuint m_Filter{0};
+
+	int m_CurrentGameFrame{0};
 
 	// Force a room type update on startup.
 	bool m_PreviousRoomOn{true};

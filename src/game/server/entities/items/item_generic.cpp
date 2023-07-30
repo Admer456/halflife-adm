@@ -17,22 +17,28 @@
 const auto SF_ITEMGENERIC_DROP_TO_FLOOR = 1 << 0;
 const auto SF_ITEMGENERIC_SOLID = 1 << 1;
 
-// TODO: needs save/restore
 class CGenericItem : public CBaseAnimating
 {
+	DECLARE_CLASS(CGenericItem, CBaseAnimating);
+	DECLARE_DATAMAP();
+
 public:
 	bool KeyValue(KeyValueData* pkvd) override;
 	void Precache() override;
 	void Spawn() override;
 
-	void EXPORT StartItem();
-	void EXPORT AnimateThink();
+	void StartItem();
+	void AnimateThink();
 
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
 
-	float m_lastTime;
 	string_t m_iSequence;
 };
+
+BEGIN_DATAMAP(CGenericItem)
+DEFINE_FUNCTION(StartItem),
+	DEFINE_FUNCTION(AnimateThink),
+	END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(item_generic, CGenericItem);
 
@@ -73,11 +79,26 @@ void CGenericItem::Spawn()
 
 	SetModel(STRING(pev->model));
 
+	int sequence = 0;
+
 	if (!FStringNull(m_iSequence))
 	{
 		SetThink(&CGenericItem::StartItem);
 		pev->nextthink = gpGlobals->time + 0.1;
+
+		sequence = LookupSequence(STRING(m_iSequence));
+
+		if (sequence == -1)
+		{
+			CBaseEntity::Logger->debug("ERROR! FIX ME: item generic: {}, model: {}, does not have animation: {}",
+				STRING(pev->targetname), STRING(pev->model), STRING(m_iSequence));
+
+			sequence = 0;
+		}
 	}
+
+	// Set sequence now. If none was specified then this will use the first sequence.
+	pev->sequence = sequence;
 
 	if ((pev->spawnflags & SF_ITEMGENERIC_DROP_TO_FLOOR) != 0)
 	{
@@ -93,20 +114,11 @@ void CGenericItem::Spawn()
 		Vector mins, maxs;
 
 		pev->solid = SOLID_SLIDEBOX;
-		int sequence = LookupSequence(STRING(m_iSequence));
-
-		if (sequence == -1)
-		{
-			CBaseEntity::Logger->debug("ERROR! FIX ME: item generic: {}, model: {}, does not have animation: {}",
-				STRING(pev->targetname), STRING(pev->model), STRING(m_iSequence));
-
-			sequence = 0;
-		}
 
 		ExtractBbox(sequence, mins, maxs);
 
 		SetSize(mins, maxs);
-		UTIL_SetOrigin(pev, pev->origin);
+		SetOrigin(pev->origin);
 	}
 }
 
@@ -114,7 +126,6 @@ void CGenericItem::StartItem()
 {
 	pev->effects = 0;
 
-	pev->sequence = LookupSequence(STRING(m_iSequence));
 	pev->frame = 0;
 	ResetSequenceInfo();
 
@@ -135,7 +146,6 @@ void CGenericItem::AnimateThink()
 	}
 
 	pev->nextthink = gpGlobals->time + 0.1;
-	m_lastTime = gpGlobals->time;
 }
 
 void CGenericItem::Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value)

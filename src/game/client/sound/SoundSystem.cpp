@@ -15,9 +15,6 @@
 
 #include <limits>
 
-#define AL_ALEXT_PROTOTYPES
-#include <AL/alext.h>
-
 #include "hud.h"
 #include "const.h"
 
@@ -44,17 +41,7 @@ bool SoundSystem::Create()
 {
 	m_Logger = g_Logging.CreateLogger("sound");
 
-	m_Device.reset(alcOpenDevice(nullptr));
-
-	if (!m_Device)
-	{
-		m_Logger->error("Couldn't open OpenAL device");
-		return false;
-	}
-
-	m_Logger->trace("OpenAL device opened");
-
-	if (auto system = std::make_unique<GameSoundSystem>(); system->Create(m_Logger, m_Device.get()))
+	if (auto system = std::make_unique<GameSoundSystem>(); system->Create(m_Logger))
 	{
 		m_GameSoundSystem = std::move(system);
 	}
@@ -63,7 +50,7 @@ bool SoundSystem::Create()
 		return false;
 	}
 
-	if (auto system = std::make_unique<MusicSystem>(); system->Create(m_Logger, m_Device.get()))
+	if (auto system = std::make_unique<MusicSystem>(); system->Create(m_Logger))
 	{
 		m_MusicSystem = std::move(system);
 	}
@@ -72,36 +59,11 @@ bool SoundSystem::Create()
 		return false;
 	}
 
-	m_HRTFEnabled = g_ConCommands.CreateCVar("snd_hrtf_enabled", "0", FCVAR_ARCHIVE);
-	m_HRTFImplementation = g_ConCommands.CreateCVar("snd_hrtf_implementation", "", FCVAR_ARCHIVE);
-	g_ConCommands.CreateCommand("snd_hrtf_list_implementations", [this](const auto&)
-		{ PrintHRTFImplementations(); });
-
-	m_SupportsHRTF = alcIsExtensionPresent(m_Device.get(), "ALC_SOFT_HRTF") != ALC_FALSE;
-
-	if (m_SupportsHRTF)
-	{
-		m_Logger->trace("HRTF is supported");
-	}
-	else
-	{
-		m_Logger->trace("HRTF is not supported");
-	}
-
 	return true;
 }
 
 void SoundSystem::Update()
 {
-	if (m_SupportsHRTF)
-	{
-		if (const bool hrtfEnabled = m_HRTFEnabled->value != 0; m_CachedHRTFEnabled != hrtfEnabled)
-		{
-			m_CachedHRTFEnabled = hrtfEnabled;
-			ConfigureHRTF(hrtfEnabled);
-		}
-	}
-
 	m_GameSoundSystem->Update();
 }
 
@@ -167,87 +129,6 @@ IMusicSystem* SoundSystem::GetMusicSystem()
 	return m_MusicSystem.get();
 }
 
-void SoundSystem::PrintHRTFImplementations()
-{
-	ALCint numHRTF;
-	alcGetIntegerv(m_Device.get(), ALC_NUM_HRTF_SPECIFIERS_SOFT, 1, &numHRTF);
-
-	if (numHRTF == 0)
-	{
-		Con_Printf("No HRTF implementations found\n");
-		return;
-	}
-
-	Con_Printf("%d HRTF implementations found\n", numHRTF);
-
-	for (ALCint j = 0; j < numHRTF; ++j)
-	{
-		const ALCchar* name = alcGetStringiSOFT(m_Device.get(), ALC_HRTF_SPECIFIER_SOFT, j);
-
-		Con_Printf("%d: %s\n", j, name);
-	}
-}
-
-void SoundSystem::ConfigureHRTF(bool enabled)
-{
-	ALCint numHRTF;
-	alcGetIntegerv(m_Device.get(), ALC_NUM_HRTF_SPECIFIERS_SOFT, 1, &numHRTF);
-
-	if (numHRTF == 0)
-	{
-		m_Logger->debug("No HRTF implementations found");
-		return;
-	}
-
-	ALCint attribs[5]{0};
-
-	int i = 0;
-	attribs[i++] = ALC_HRTF_SOFT;
-	attribs[i++] = enabled ? ALC_TRUE : ALC_FALSE;
-
-	if (enabled)
-	{
-		ALCint implementationIndex = -1;
-
-		if (m_HRTFImplementation->string[0] != '\0')
-		{
-			for (ALCint j = 0; j < numHRTF; ++j)
-			{
-				const ALCchar* name = alcGetStringiSOFT(m_Device.get(), ALC_HRTF_SPECIFIER_SOFT, j);
-
-				if (strcmp(m_HRTFImplementation->string, name) == 0)
-				{
-					implementationIndex = j;
-					break;
-				}
-			}
-
-			if (implementationIndex == -1)
-			{
-				m_Logger->error("HRTF implementation \"{}\" not found", m_HRTFImplementation->string);
-			}
-		}
-
-		if (implementationIndex != -1)
-		{
-			m_Logger->debug("Using HRTF implementation \"{}\" (index {})", m_HRTFImplementation->string, implementationIndex);
-			attribs[i++] = ALC_HRTF_ID_SOFT;
-			attribs[i++] = implementationIndex;
-		}
-		else
-		{
-			m_Logger->debug("Using default HRTF implementation");
-		}
-	}
-
-	attribs[i++] = 0;
-
-	if (ALC_FALSE == alcResetDeviceSOFT(m_Device.get(), attribs))
-	{
-		m_Logger->error("Failed to reset device: {}", alcGetString(m_Device.get(), alcGetError(m_Device.get())));
-	}
-}
-
 static void S_PlaySound(const CommandArgs& args, int channelIndex)
 {
 	if (args.Count() < 2)
@@ -294,7 +175,6 @@ static void S_PlayDynamicSound(const CommandArgs& args)
 
 void CreateSoundSystem()
 {
-	g_cl_snd_openal = g_ConCommands.CreateCVar("snd_openal", "1", FCVAR_ARCHIVE);
 	g_cl_snd_room_off = g_ConCommands.CreateCVar("snd_room_off", "0", FCVAR_ARCHIVE);
 
 	g_SoundSystem = []() -> std::unique_ptr<ISoundSystem>
@@ -339,13 +219,13 @@ void EV_StopSound(int ent, int channel, const char* sample)
 	// gEngfuncs.pEventAPI->EV_StopSound(ent, channel, sample);
 }
 
-void PlaySound(const char* szSound, float vol)
+void PlaySound(int channel, const char* szSound, float vol)
 {
 	vol = std::clamp(vol, 0.f, 1.f);
 
-	CL_StartSound(g_ViewEntity, CHAN_ITEM, szSound, v_origin, vol, 1.0, PITCH_NORM, 0);
+	CL_StartSound(g_ViewEntity, channel, szSound, v_origin, vol, 1.0, PITCH_NORM, 0);
 
-	//gEngfuncs.pfnPlaySoundByName(szSound, vol);
+	// gEngfuncs.pfnPlaySoundByName(szSound, vol);
 }
 
 void PlaySoundByNameAtLocation(const char* szSound, float volume, const Vector& origin)
@@ -456,7 +336,7 @@ void CL_TempEntPlaySound(TEMPENTITY* pTemp, float damp)
 
 	if (isShell && bounceSpeed < 200)
 	{
-		if (gEngfuncs.pfnRandomLong(0, 3))
+		if (gEngfuncs.pfnRandomLong(0, 3) != 0)
 			return;
 	}
 
@@ -476,14 +356,14 @@ void CL_TempEntPlaySound(TEMPENTITY* pTemp, float damp)
 
 	int pitch = PITCH_NORM;
 
-	if (!gEngfuncs.pfnRandomLong(0, 3) && !isShell)
+	if (gEngfuncs.pfnRandomLong(0, 3) == 0 && !isShell)
 	{
 		pitch = gEngfuncs.pfnRandomLong(90, 124);
 	}
 
 	CL_StartSound(-1, CHAN_AUTO, sounds[gEngfuncs.pfnRandomLong(0, count)], pTemp->entity.origin, fvol, 1.0, pitch, 0);
 
-	//S_StartDynamicSound(-1, CHAN_AUTO, sounds[gEngfuncs.pfnRandomLong(0, count)], pTemp->entity.origin, fvol, 1.0, 0, pitch);
+	// S_StartDynamicSound(-1, CHAN_AUTO, sounds[gEngfuncs.pfnRandomLong(0, count)], pTemp->entity.origin, fvol, 1.0, 0, pitch);
 }
 
 constexpr const char* RicochetSounds[] =
@@ -507,11 +387,10 @@ void R_RicochetSound(const Vector& pos)
 }
 
 constexpr const char* ExplosionSounds[] =
-{
-	"weapons/explode3.wav",
-	"weapons/explode4.wav",
-	"weapons/explode5.wav"
-};
+	{
+		"weapons/explode3.wav",
+		"weapons/explode4.wav",
+		"weapons/explode5.wav"};
 
 void R_Explosion(const Vector& pos, int model, float scale, float framerate, int flags)
 {

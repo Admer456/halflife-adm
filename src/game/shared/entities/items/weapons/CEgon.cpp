@@ -18,47 +18,38 @@
 #include "CEgon.h"
 #include "UserMessages.h"
 
+#ifdef CLIENT_DLL
+#include "hud.h"
+#include "com_weapons.h"
+#endif
+
 #define EGON_SWITCH_NARROW_TIME 0.75 // Time it takes to switch fire modes
 #define EGON_SWITCH_WIDE_TIME 1.5
 
 LINK_ENTITY_TO_CLASS(weapon_egon, CEgon);
 
-#ifndef CLIENT_DLL
-TYPEDESCRIPTION CEgon::m_SaveData[] =
-	{
-		//	DEFINE_FIELD( CEgon, m_pBeam, FIELD_CLASSPTR ),
-		//	DEFINE_FIELD( CEgon, m_pNoise, FIELD_CLASSPTR ),
-		//	DEFINE_FIELD( CEgon, m_pSprite, FIELD_CLASSPTR ),
-		DEFINE_FIELD(CEgon, m_shootTime, FIELD_TIME),
-		DEFINE_FIELD(CEgon, m_fireState, FIELD_INTEGER),
-		DEFINE_FIELD(CEgon, m_fireMode, FIELD_INTEGER),
-		DEFINE_FIELD(CEgon, m_shakeTime, FIELD_TIME),
-		DEFINE_FIELD(CEgon, m_flAmmoUseTime, FIELD_TIME),
-};
-IMPLEMENT_SAVERESTORE(CEgon, CBasePlayerWeapon);
-#endif
+BEGIN_DATAMAP(CEgon)
+//	DEFINE_FIELD(m_pBeam, FIELD_CLASSPTR),
+//	DEFINE_FIELD(m_pNoise, FIELD_CLASSPTR),
+//	DEFINE_FIELD(m_pSprite, FIELD_CLASSPTR),
+DEFINE_FIELD(m_shootTime, FIELD_TIME),
+	DEFINE_FIELD(m_fireState, FIELD_INTEGER),
+	DEFINE_FIELD(m_fireMode, FIELD_INTEGER),
+	DEFINE_FIELD(m_shakeTime, FIELD_TIME),
+	DEFINE_FIELD(m_flAmmoUseTime, FIELD_TIME),
+	END_DATAMAP();
 
 void CEgon::OnCreate()
 {
 	CBasePlayerWeapon::OnCreate();
-
+	m_iId = WEAPON_EGON;
+	m_iDefaultAmmo = EGON_DEFAULT_GIVE;
 	m_WorldModel = pev->model = MAKE_STRING("models/w_egon.mdl");
 }
 
-void CEgon::Spawn()
-{
-	Precache();
-	m_iId = WEAPON_EGON;
-	SetModel(STRING(pev->model));
-
-	m_iDefaultAmmo = EGON_DEFAULT_GIVE;
-
-	FallInit(); // get ready to fall down.
-}
-
-
 void CEgon::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/v_egon.mdl");
 	PrecacheModel("models/p_egon.mdl");
@@ -79,7 +70,6 @@ void CEgon::Precache()
 	m_usEgonStop = PRECACHE_EVENT(1, "events/egon_stop.sc");
 }
 
-
 bool CEgon::Deploy()
 {
 	m_deployed = false;
@@ -98,11 +88,11 @@ void CEgon::Holster()
 bool CEgon::GetWeaponInfo(WeaponInfo& info)
 {
 	info.Name = STRING(pev->classname);
-	info.AmmoType1 = "uranium";
-	info.MagazineSize1 = WEAPON_NOCLIP;
+	info.AttackModeInfo[0].AmmoType = "uranium";
+	info.AttackModeInfo[0].MagazineSize = WEAPON_NOCLIP;
 	info.Slot = 3;
 	info.Position = 2;
-	info.Id = m_iId = WEAPON_EGON;
+	info.Id = WEAPON_EGON;
 	info.Weight = EGON_WEIGHT;
 
 	return true;
@@ -131,7 +121,7 @@ float CEgon::GetDischargeInterval()
 
 bool CEgon::HasAmmo()
 {
-	if (m_pPlayer->ammo_uranium <= 0)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
 		return false;
 
 	return true;
@@ -139,10 +129,7 @@ bool CEgon::HasAmmo()
 
 void CEgon::UseAmmo(int count)
 {
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] >= count)
-		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= count;
-	else
-		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] = 0;
+	m_pPlayer->AdjustAmmoByIndex(m_iPrimaryAmmoType, -count);
 }
 
 void CEgon::Attack()
@@ -280,22 +267,19 @@ void CEgon::Fire(const Vector& vecOrigSrc, const Vector& vecDir)
 			}
 			ApplyMultiDamage(m_pPlayer, m_pPlayer);
 
-			if (g_pGameRules->IsMultiplayer())
+			if (gpGlobals->time >= m_flAmmoUseTime)
 			{
-				// multiplayer uses 1 ammo every 1/10th second
-				if (gpGlobals->time >= m_flAmmoUseTime)
+				const float ammoPerSecond = GetSkillFloat("egon_narrow_ammo_per_second");
+
+				if (ammoPerSecond > 0)
 				{
 					UseAmmo(1);
-					m_flAmmoUseTime = gpGlobals->time + 0.1;
+					m_flAmmoUseTime = gpGlobals->time + (1 / ammoPerSecond);
 				}
-			}
-			else
-			{
-				// single player, use 3 ammo/second
-				if (gpGlobals->time >= m_flAmmoUseTime)
+				else
 				{
-					UseAmmo(1);
-					m_flAmmoUseTime = gpGlobals->time + 0.166;
+					// Re-check in 5 seconds in case skill var changes.
+					m_flAmmoUseTime = gpGlobals->time + 5;
 				}
 			}
 
@@ -317,31 +301,28 @@ void CEgon::Fire(const Vector& vecOrigSrc, const Vector& vecDir)
 			}
 			ApplyMultiDamage(m_pPlayer, m_pPlayer);
 
-			if (g_pGameRules->IsMultiplayer())
+			if (GetSkillFloat("egon_wide_radius_damage") != 0)
 			{
 				// radius damage a little more potent in multiplayer.
-				::RadiusDamage(tr.vecEndPos, this, m_pPlayer, GetSkillFloat("plr_egon_wide"sv) / 4, 128, CLASS_NONE, DMG_ENERGYBEAM | DMG_BLAST | DMG_ALWAYSGIB);
+				::RadiusDamage(tr.vecEndPos, this, m_pPlayer, GetSkillFloat("plr_egon_wide"sv) / 4, 128, DMG_ENERGYBEAM | DMG_BLAST | DMG_ALWAYSGIB);
 			}
 
 			if (!m_pPlayer->IsAlive())
 				return;
 
-			if (g_pGameRules->IsMultiplayer())
+			if (gpGlobals->time >= m_flAmmoUseTime)
 			{
-				// multiplayer uses 5 ammo/second
-				if (gpGlobals->time >= m_flAmmoUseTime)
+				const float ammoPerSecond = GetSkillFloat("egon_wide_ammo_per_second");
+
+				if (ammoPerSecond > 0)
 				{
 					UseAmmo(1);
-					m_flAmmoUseTime = gpGlobals->time + 0.2;
+					m_flAmmoUseTime = gpGlobals->time + (1 / ammoPerSecond);
 				}
-			}
-			else
-			{
-				// Wide mode uses 10 charges per second in single player
-				if (gpGlobals->time >= m_flAmmoUseTime)
+				else
 				{
-					UseAmmo(1);
-					m_flAmmoUseTime = gpGlobals->time + 0.1;
+					// Re-check in 5 seconds in case skill var changes.
+					m_flAmmoUseTime = gpGlobals->time + 5;
 				}
 			}
 
@@ -366,7 +347,6 @@ void CEgon::Fire(const Vector& vecOrigSrc, const Vector& vecDir)
 	UpdateEffect(tmpSrc, tr.vecEndPos, timedist);
 }
 
-
 void CEgon::UpdateEffect(const Vector& startPoint, const Vector& endPoint, float timeBlend)
 {
 #ifndef CLIENT_DLL
@@ -385,7 +365,7 @@ void CEgon::UpdateEffect(const Vector& startPoint, const Vector& endPoint, float
 		m_pBeam->SetColor(60 + (25 * timeBlend), 120 + (30 * timeBlend), 64 + 80 * fabs(sin(gpGlobals->time * 10)));
 
 
-	UTIL_SetOrigin(m_pSprite->pev, endPoint);
+	m_pSprite->SetOrigin(endPoint);
 	m_pSprite->pev->frame += 8 * gpGlobals->frametime;
 	if (m_pSprite->pev->frame > m_pSprite->Frames())
 		m_pSprite->pev->frame = 0;
@@ -442,7 +422,6 @@ void CEgon::CreateEffect()
 #endif
 }
 
-
 void CEgon::DestroyEffect()
 {
 
@@ -467,8 +446,6 @@ void CEgon::DestroyEffect()
 	}
 #endif
 }
-
-
 
 void CEgon::WeaponIdle()
 {
@@ -504,8 +481,6 @@ void CEgon::WeaponIdle()
 	m_deployed = true;
 }
 
-
-
 void CEgon::EndAttack()
 {
 	bool bMakeNoise = false;
@@ -517,6 +492,7 @@ void CEgon::EndAttack()
 		static_cast<int>(bMakeNoise), 0, 0, 0);
 
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 2.0;
+
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.5;
 
 	m_fireState = FIRE_OFF;
@@ -524,7 +500,15 @@ void CEgon::EndAttack()
 	DestroyEffect();
 }
 
+void CEgon::GetWeaponData(weapon_data_t& data)
+{
+	data.iuser3 = m_fireState;
+}
 
+void CEgon::SetWeaponData(const weapon_data_t& data)
+{
+	m_fireState = data.iuser3;
+}
 
 class CEgonAmmo : public CBasePlayerAmmo
 {
@@ -532,23 +516,10 @@ public:
 	void OnCreate() override
 	{
 		CBasePlayerAmmo::OnCreate();
-
+		m_AmmoAmount = AMMO_URANIUMBOX_GIVE;
+		m_AmmoName = MAKE_STRING("uranium");
 		pev->model = MAKE_STRING("models/w_chainammo.mdl");
 	}
-
-	void Precache() override
-	{
-		CBasePlayerAmmo::Precache();
-		PrecacheSound("items/9mmclip1.wav");
-	}
-	bool AddAmmo(CBasePlayer* pOther) override
-	{
-		if (pOther->GiveAmmo(AMMO_URANIUMBOX_GIVE, "uranium") != -1)
-		{
-			EmitSound(CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM);
-			return true;
-		}
-		return false;
-	}
 };
+
 LINK_ENTITY_TO_CLASS(ammo_egonclip, CEgonAmmo);

@@ -12,26 +12,17 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// Agrunt - Dominant, warlike alien grunt monster
-//=========================================================
 
 #include "cbase.h"
 #include "squadmonster.h"
 #include "hornet.h"
 
-//=========================================================
-// monster-specific schedule types
-//=========================================================
 enum
 {
 	SCHED_AGRUNT_SUPPRESS = LAST_COMMON_SCHEDULE + 1,
 	SCHED_AGRUNT_THREAT_DISPLAY,
 };
 
-//=========================================================
-// monster-specific tasks
-//=========================================================
 enum
 {
 	TASK_AGRUNT_SETUP_HIDE_ATTACK = LAST_COMMON_TASK + 1,
@@ -40,9 +31,6 @@ enum
 
 int iAgruntMuzzleFlash;
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define AGRUNT_AE_HORNET1 (1)
 #define AGRUNT_AE_HORNET2 (2)
 #define AGRUNT_AE_HORNET3 (3)
@@ -58,18 +46,22 @@ int iAgruntMuzzleFlash;
 #define AGRUNT_AE_LEFT_PUNCH (12)
 #define AGRUNT_AE_RIGHT_PUNCH (13)
 
-
-
 #define AGRUNT_MELEE_DIST 100
 
+/**
+ *	@brief Dominant, warlike alien grunt monster
+ */
 class CAGrunt : public CSquadMonster
 {
+	DECLARE_CLASS(CAGrunt, CSquadMonster);
+	DECLARE_DATAMAP();
+	DECLARE_CUSTOM_SCHEDULES();
+
 public:
 	void OnCreate() override;
 	void Spawn() override;
 	void Precache() override;
 	void SetYawSpeed() override;
-	int Classify() override;
 	int ISoundMask() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
 	void SetObjectCollisionBox() override
@@ -78,26 +70,32 @@ public:
 		pev->absmax = pev->origin + Vector(32, 32, 85);
 	}
 
-	Schedule_t* GetSchedule() override;
-	Schedule_t* GetScheduleOfType(int Type) override;
+	bool HasAlienGibs() override { return true; }
+
+	const Schedule_t* GetSchedule() override;
+	const Schedule_t* GetScheduleOfType(int Type) override;
+
+	/**
+	 *	@brief this is overridden for alien grunts because they can use their smart weapons against unseen enemies.
+	 *	Base class doesn't attack anyone it can't see.
+	 */
 	bool FCanCheckAttacks() override;
+
+	/**
+	 *	@brief alien grunts zap the crap out of any enemy that gets too close.
+	 */
 	bool CheckMeleeAttack1(float flDot, float flDist) override;
 	bool CheckRangeAttack1(float flDot, float flDist) override;
-	void StartTask(Task_t* pTask) override;
+	void StartTask(const Task_t* pTask) override;
 	void AlertSound() override;
 	void DeathSound() override;
 	void PainSound() override;
 	void AttackSound();
 	void PrescheduleThink() override;
 	void TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType) override;
-	int IRelationship(CBaseEntity* pTarget) override;
+	Relationship IRelationship(CBaseEntity* pTarget) override;
 	void StopTalking();
 	bool ShouldSpeak();
-	CUSTOM_SCHEDULES;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
 
 	static const char* pAttackHitSounds[];
 	static const char* pAttackMissSounds[];
@@ -117,19 +115,17 @@ public:
 	float m_flNextWordTime;
 	int m_iLastWord;
 };
+
 LINK_ENTITY_TO_CLASS(monster_alien_grunt, CAGrunt);
 
-TYPEDESCRIPTION CAGrunt::m_SaveData[] =
-	{
-		DEFINE_FIELD(CAGrunt, m_fCanHornetAttack, FIELD_BOOLEAN),
-		DEFINE_FIELD(CAGrunt, m_flNextHornetAttackCheck, FIELD_TIME),
-		DEFINE_FIELD(CAGrunt, m_flNextPainTime, FIELD_TIME),
-		DEFINE_FIELD(CAGrunt, m_flNextSpeakTime, FIELD_TIME),
-		DEFINE_FIELD(CAGrunt, m_flNextWordTime, FIELD_TIME),
-		DEFINE_FIELD(CAGrunt, m_iLastWord, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(CAGrunt, CSquadMonster);
+BEGIN_DATAMAP(CAGrunt)
+DEFINE_FIELD(m_fCanHornetAttack, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flNextHornetAttackCheck, FIELD_TIME),
+	DEFINE_FIELD(m_flNextPainTime, FIELD_TIME),
+	DEFINE_FIELD(m_flNextSpeakTime, FIELD_TIME),
+	DEFINE_FIELD(m_flNextWordTime, FIELD_TIME),
+	DEFINE_FIELD(m_iLastWord, FIELD_INTEGER),
+	END_DATAMAP();
 
 const char* CAGrunt::pAttackHitSounds[] =
 	{
@@ -189,25 +185,20 @@ void CAGrunt::OnCreate()
 
 	pev->health = GetSkillFloat("agrunt_health"sv);
 	pev->model = MAKE_STRING("models/agrunt.mdl");
+
+	SetClassification("alien_military");
 }
 
-//=========================================================
-// IRelationship - overridden because Human Grunts are
-// Alien Grunt's nemesis.
-//=========================================================
-int CAGrunt::IRelationship(CBaseEntity* pTarget)
+Relationship CAGrunt::IRelationship(CBaseEntity* pTarget)
 {
 	if (pTarget->ClassnameIs("monster_human_grunt"))
 	{
-		return R_NM;
+		return Relationship::Nemesis;
 	}
 
 	return CSquadMonster::IRelationship(pTarget);
 }
 
-//=========================================================
-// ISoundMask
-//=========================================================
 int CAGrunt::ISoundMask()
 {
 	return bits_SOUND_WORLD |
@@ -216,9 +207,6 @@ int CAGrunt::ISoundMask()
 		   bits_SOUND_DANGER;
 }
 
-//=========================================================
-// TraceAttack
-//=========================================================
 void CAGrunt::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	if (ptr->iHitgroup == 10 && (bitsDamageType & (DMG_BULLET | DMG_SLASH | DMG_CLUB)) != 0)
@@ -265,17 +253,11 @@ void CAGrunt::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, 
 	AddMultiDamage(attacker, this, flDamage, bitsDamageType);
 }
 
-//=========================================================
-// StopTalking - won't speak again for 10-20 seconds.
-//=========================================================
 void CAGrunt::StopTalking()
 {
 	m_flNextWordTime = m_flNextSpeakTime = gpGlobals->time + 10 + RANDOM_LONG(0, 10);
 }
 
-//=========================================================
-// ShouldSpeak - Should this agrunt be talking?
-//=========================================================
 bool CAGrunt::ShouldSpeak()
 {
 	if (m_flNextSpeakTime > gpGlobals->time)
@@ -300,9 +282,6 @@ bool CAGrunt::ShouldSpeak()
 	return true;
 }
 
-//=========================================================
-// PrescheduleThink
-//=========================================================
 void CAGrunt::PrescheduleThink()
 {
 	if (ShouldSpeak())
@@ -335,9 +314,6 @@ void CAGrunt::PrescheduleThink()
 	}
 }
 
-//=========================================================
-// DieSound
-//=========================================================
 void CAGrunt::DeathSound()
 {
 	StopTalking();
@@ -345,9 +321,6 @@ void CAGrunt::DeathSound()
 	EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pDieSounds), 1.0, ATTN_NORM);
 }
 
-//=========================================================
-// AlertSound
-//=========================================================
 void CAGrunt::AlertSound()
 {
 	StopTalking();
@@ -355,9 +328,6 @@ void CAGrunt::AlertSound()
 	EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pAlertSounds), 1.0, ATTN_NORM);
 }
 
-//=========================================================
-// AttackSound
-//=========================================================
 void CAGrunt::AttackSound()
 {
 	StopTalking();
@@ -365,9 +335,6 @@ void CAGrunt::AttackSound()
 	EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pAttackSounds), 1.0, ATTN_NORM);
 }
 
-//=========================================================
-// PainSound
-//=========================================================
 void CAGrunt::PainSound()
 {
 	if (m_flNextPainTime > gpGlobals->time)
@@ -382,19 +349,6 @@ void CAGrunt::PainSound()
 	EmitSound(CHAN_VOICE, RANDOM_SOUND_ARRAY(pPainSounds), 1.0, ATTN_NORM);
 }
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int CAGrunt::Classify()
-{
-	return CLASS_ALIEN_MILITARY;
-}
-
-//=========================================================
-// SetYawSpeed - allows each sequence to have a different
-// turn rate associated with it.
-//=========================================================
 void CAGrunt::SetYawSpeed()
 {
 	int ys;
@@ -412,12 +366,6 @@ void CAGrunt::SetYawSpeed()
 	pev->yaw_speed = ys;
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//
-// Returns number of events handled, 0 if none.
-//=========================================================
 void CAGrunt::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -468,7 +416,7 @@ void CAGrunt::HandleAnimEvent(MonsterEvent_t* pEvent)
 		WRITE_BYTE(128);				 // brightness
 		MESSAGE_END();
 
-		CBaseEntity* pHornet = CBaseEntity::Create("hornet", vecArmPos, UTIL_VecToAngles(vecDirToEnemy), edict());
+		CBaseEntity* pHornet = CBaseEntity::Create("hornet", vecArmPos, UTIL_VecToAngles(vecDirToEnemy), this);
 		UTIL_MakeVectors(pHornet->pev->angles);
 		pHornet->pev->velocity = gpGlobals->v_forward * 300;
 
@@ -587,9 +535,6 @@ void CAGrunt::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void CAGrunt::Spawn()
 {
 	Precache();
@@ -614,9 +559,6 @@ void CAGrunt::Spawn()
 	MonsterInit();
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void CAGrunt::Precache()
 {
 	PrecacheModel(STRING(pev->model));
@@ -636,13 +578,6 @@ void CAGrunt::Precache()
 	UTIL_PrecacheOther("hornet");
 }
 
-//=========================================================
-// AI Schedules Specific to this monster
-//=========================================================
-
-//=========================================================
-// Fail Schedule
-//=========================================================
 Task_t tlAGruntFail[] =
 	{
 		{TASK_STOP_MOVING, 0},
@@ -661,9 +596,6 @@ Schedule_t slAGruntFail[] =
 			"AGrunt Fail"},
 };
 
-//=========================================================
-// Combat Fail Schedule
-//=========================================================
 Task_t tlAGruntCombatFail[] =
 	{
 		{TASK_STOP_MOVING, 0},
@@ -682,11 +614,6 @@ Schedule_t slAGruntCombatFail[] =
 			"AGrunt Combat Fail"},
 };
 
-//=========================================================
-// Standoff schedule. Used in combat when a monster is
-// hiding in cover or the enemy has moved out of sight.
-// Should we look around in this schedule?
-//=========================================================
 Task_t tlAGruntStandoff[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -694,6 +621,10 @@ Task_t tlAGruntStandoff[] =
 		{TASK_WAIT_FACE_ENEMY, (float)2},
 };
 
+/**
+ *	@brief Used in combat when a monster is hiding in cover or the enemy has moved out of sight.
+ *	Should we look around in this schedule?
+ */
 Schedule_t slAGruntStandoff[] =
 	{
 		{tlAGruntStandoff,
@@ -707,9 +638,6 @@ Schedule_t slAGruntStandoff[] =
 			bits_SOUND_DANGER,
 			"Agrunt Standoff"}};
 
-//=========================================================
-// Suppress
-//=========================================================
 Task_t tlAGruntSuppressHornet[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -727,9 +655,6 @@ Schedule_t slAGruntSuppress[] =
 		},
 };
 
-//=========================================================
-// primary range attacks
-//=========================================================
 Task_t tlAGruntRangeAttack1[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -771,10 +696,6 @@ Schedule_t slAGruntHiddenRangeAttack[] =
 			"AGrunt Hidden Range Attack1"},
 };
 
-//=========================================================
-// Take cover from enemy! Tries lateral cover before node
-// cover!
-//=========================================================
 Task_t tlAGruntTakeCoverFromEnemy[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -786,6 +707,9 @@ Task_t tlAGruntTakeCoverFromEnemy[] =
 		{TASK_FACE_ENEMY, (float)0},
 };
 
+/**
+ *	@brief Tries lateral cover before node cover!
+ */
 Schedule_t slAGruntTakeCoverFromEnemy[] =
 	{
 		{tlAGruntTakeCoverFromEnemy,
@@ -795,9 +719,6 @@ Schedule_t slAGruntTakeCoverFromEnemy[] =
 			"AGruntTakeCoverFromEnemy"},
 };
 
-//=========================================================
-// Victory dance!
-//=========================================================
 Task_t tlAGruntVictoryDance[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -832,8 +753,6 @@ Schedule_t slAGruntVictoryDance[] =
 			"AGruntVictoryDance"},
 };
 
-//=========================================================
-//=========================================================
 Task_t tlAGruntThreatDisplay[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -855,8 +774,8 @@ Schedule_t slAGruntThreatDisplay[] =
 			"AGruntThreatDisplay"},
 };
 
-DEFINE_CUSTOM_SCHEDULES(CAGrunt){
-	slAGruntFail,
+BEGIN_CUSTOM_SCHEDULES(CAGrunt)
+slAGruntFail,
 	slAGruntCombatFail,
 	slAGruntStandoff,
 	slAGruntSuppress,
@@ -864,16 +783,9 @@ DEFINE_CUSTOM_SCHEDULES(CAGrunt){
 	slAGruntHiddenRangeAttack,
 	slAGruntTakeCoverFromEnemy,
 	slAGruntVictoryDance,
-	slAGruntThreatDisplay,
-};
+	slAGruntThreatDisplay
+	END_CUSTOM_SCHEDULES();
 
-IMPLEMENT_CUSTOM_SCHEDULES(CAGrunt, CSquadMonster);
-
-//=========================================================
-// FCanCheckAttacks - this is overridden for alien grunts
-// because they can use their smart weapons against unseen
-// enemies. Base class doesn't attack anyone it can't see.
-//=========================================================
 bool CAGrunt::FCanCheckAttacks()
 {
 	if (!HasConditions(bits_COND_ENEMY_TOOFAR))
@@ -886,10 +798,6 @@ bool CAGrunt::FCanCheckAttacks()
 	}
 }
 
-//=========================================================
-// CheckMeleeAttack1 - alien grunts zap the crap out of
-// any enemy that gets too close.
-//=========================================================
 bool CAGrunt::CheckMeleeAttack1(float flDot, float flDist)
 {
 	if (HasConditions(bits_COND_SEE_ENEMY) && flDist <= AGRUNT_MELEE_DIST && flDot >= 0.6 && m_hEnemy != nullptr)
@@ -899,15 +807,11 @@ bool CAGrunt::CheckMeleeAttack1(float flDot, float flDist)
 	return false;
 }
 
-//=========================================================
-// CheckRangeAttack1
-//
-// !!!LATER - we may want to load balance this. Several
-// tracelines are done, so we may not want to do this every
-// server frame. Definitely not while firing.
-//=========================================================
 bool CAGrunt::CheckRangeAttack1(float flDot, float flDist)
 {
+	//!!!LATER - we may want to load balance this.Several
+	// tracelines are done, so we may not want to do this every
+	// server frame. Definitely not while firing.
 	if (gpGlobals->time < m_flNextHornetAttackCheck)
 	{
 		return m_fCanHornetAttack;
@@ -922,8 +826,8 @@ bool CAGrunt::CheckRangeAttack1(float flDot, float flDist)
 		// !!!LATER - we may wish to do something different for projectile weapons as opposed to instant-hit
 		UTIL_MakeVectors(pev->angles);
 		GetAttachment(0, vecArmPos, vecArmDir);
-		//		UTIL_TraceLine( vecArmPos, vecArmPos + gpGlobals->v_forward * 256, ignore_monsters, ENT(pev), &tr);
-		UTIL_TraceLine(vecArmPos, m_hEnemy->BodyTarget(vecArmPos), dont_ignore_monsters, ENT(pev), &tr);
+		//		UTIL_TraceLine( vecArmPos, vecArmPos + gpGlobals->v_forward * 256, ignore_monsters, edict(), &tr);
+		UTIL_TraceLine(vecArmPos, m_hEnemy->BodyTarget(vecArmPos), dont_ignore_monsters, edict(), &tr);
 
 		if (tr.flFraction == 1.0 || tr.pHit == m_hEnemy->edict())
 		{
@@ -938,10 +842,7 @@ bool CAGrunt::CheckRangeAttack1(float flDot, float flDist)
 	return m_fCanHornetAttack;
 }
 
-//=========================================================
-// StartTask
-//=========================================================
-void CAGrunt::StartTask(Task_t* pTask)
+void CAGrunt::StartTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -980,7 +881,7 @@ void CAGrunt::StartTask(Task_t* pTask)
 
 			UTIL_VecToAngles(m_vecEnemyLKP - pev->origin);
 
-			UTIL_TraceLine(Center() + gpGlobals->v_forward * 128, m_vecEnemyLKP, ignore_monsters, ENT(pev), &tr);
+			UTIL_TraceLine(Center() + gpGlobals->v_forward * 128, m_vecEnemyLKP, ignore_monsters, edict(), &tr);
 			if (tr.flFraction == 1.0)
 			{
 				MakeIdealYaw(pev->origin + gpGlobals->v_right * 128);
@@ -990,7 +891,7 @@ void CAGrunt::StartTask(Task_t* pTask)
 
 			if (!fSkip)
 			{
-				UTIL_TraceLine(Center() - gpGlobals->v_forward * 128, m_vecEnemyLKP, ignore_monsters, ENT(pev), &tr);
+				UTIL_TraceLine(Center() - gpGlobals->v_forward * 128, m_vecEnemyLKP, ignore_monsters, edict(), &tr);
 				if (tr.flFraction == 1.0)
 				{
 					MakeIdealYaw(pev->origin - gpGlobals->v_right * 128);
@@ -1001,7 +902,7 @@ void CAGrunt::StartTask(Task_t* pTask)
 
 			if (!fSkip)
 			{
-				UTIL_TraceLine(Center() + gpGlobals->v_forward * 256, m_vecEnemyLKP, ignore_monsters, ENT(pev), &tr);
+				UTIL_TraceLine(Center() + gpGlobals->v_forward * 256, m_vecEnemyLKP, ignore_monsters, edict(), &tr);
 				if (tr.flFraction == 1.0)
 				{
 					MakeIdealYaw(pev->origin + gpGlobals->v_right * 256);
@@ -1012,7 +913,7 @@ void CAGrunt::StartTask(Task_t* pTask)
 
 			if (!fSkip)
 			{
-				UTIL_TraceLine(Center() - gpGlobals->v_forward * 256, m_vecEnemyLKP, ignore_monsters, ENT(pev), &tr);
+				UTIL_TraceLine(Center() - gpGlobals->v_forward * 256, m_vecEnemyLKP, ignore_monsters, edict(), &tr);
 				if (tr.flFraction == 1.0)
 				{
 					MakeIdealYaw(pev->origin - gpGlobals->v_right * 256);
@@ -1039,13 +940,7 @@ void CAGrunt::StartTask(Task_t* pTask)
 	}
 }
 
-//=========================================================
-// GetSchedule - Decides which type of schedule best suits
-// the monster's current state and conditions. Then calls
-// monster's member function to get a pointer to a schedule
-// of the proper type.
-//=========================================================
-Schedule_t* CAGrunt::GetSchedule()
+const Schedule_t* CAGrunt::GetSchedule()
 {
 	if (HasConditions(bits_COND_HEAR_SOUND))
 	{
@@ -1106,9 +1001,7 @@ Schedule_t* CAGrunt::GetSchedule()
 	return CSquadMonster::GetSchedule();
 }
 
-//=========================================================
-//=========================================================
-Schedule_t* CAGrunt::GetScheduleOfType(int Type)
+const Schedule_t* CAGrunt::GetScheduleOfType(int Type)
 {
 	switch (Type)
 	{

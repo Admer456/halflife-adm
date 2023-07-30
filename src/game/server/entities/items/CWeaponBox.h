@@ -20,45 +20,49 @@
 struct AmmoType;
 
 /**
-*	@brief a single entity that can store weapons and ammo.
-*/
+ *	@brief a single entity that can store weapons and ammo.
+ */
 class CWeaponBox : public CBaseEntity
 {
+	DECLARE_CLASS(CWeaponBox, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
 	void OnCreate() override;
 	void Precache() override;
 	void Spawn() override;
 
 	/**
-	*	@brief try to add my contents to the toucher if the toucher is a player.
-	*/
+	 *	@brief try to add my contents to the toucher if the toucher is a player.
+	 */
 	void Touch(CBaseEntity* pOther) override;
 	bool KeyValue(KeyValueData* pkvd) override;
 
 	/**
-	*	@brief is there anything in this box?
-	*/
+	 *	@brief is there anything in this box?
+	 */
 	bool IsEmpty();
 	int GiveAmmo(int iCount, const char* szName, int* pIndex = nullptr);
 	int GiveAmmo(int iCount, const AmmoType* type, int* pIndex = nullptr);
 	void SetObjectCollisionBox() override;
 
-	/**
-	*	@brief the think function that removes the box from the world.
-	*/
-	void EXPORT Kill();
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+	void UpdateOnRemove() override;
+
+	void RemoveWeapons();
 
 	/**
-	*	@brief is a weapon of this type already packed in this box?
-	*/
+	 *	@brief the think function that removes the box from the world.
+	 */
+	void Kill();
+
+	/**
+	 *	@brief is a weapon of this type already packed in this box?
+	 */
 	bool HasWeapon(CBasePlayerWeapon* checkWeapon);
 
 	/**
-	*	@brief Add this weapon to the box
-	*/
+	 *	@brief Add this weapon to the box
+	 */
 	bool PackWeapon(CBasePlayerWeapon* weapon);
 	bool PackAmmo(string_t iszName, int iCount);
 

@@ -21,24 +21,14 @@ LINK_ENTITY_TO_CLASS(weapon_9mmhandgun, CGlock);
 void CGlock::OnCreate()
 {
 	CBasePlayerWeapon::OnCreate();
-
+	m_iId = WEAPON_GLOCK;
+	m_iDefaultAmmo = GLOCK_DEFAULT_GIVE;
 	m_WorldModel = pev->model = MAKE_STRING("models/w_9mmhandgun.mdl");
 }
 
-void CGlock::Spawn()
-{
-	Precache();
-	m_iId = WEAPON_GLOCK;
-	SetModel(STRING(pev->model));
-
-	m_iDefaultAmmo = GLOCK_DEFAULT_GIVE;
-
-	FallInit(); // get ready to fall down.
-}
-
-
 void CGlock::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel("models/v_9mmhandgun.mdl");
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/p_9mmhandgun.mdl");
@@ -59,11 +49,11 @@ void CGlock::Precache()
 bool CGlock::GetWeaponInfo(WeaponInfo& info)
 {
 	info.Name = STRING(pev->classname);
-	info.AmmoType1 = "9mm";
-	info.MagazineSize1 = GLOCK_MAX_CLIP;
+	info.AttackModeInfo[0].AmmoType = "9mm";
+	info.AttackModeInfo[0].MagazineSize = GLOCK_MAX_CLIP;
 	info.Slot = 1;
 	info.Position = 0;
-	info.Id = m_iId = WEAPON_GLOCK;
+	info.Id = WEAPON_GLOCK;
 	info.Weight = GLOCK_WEIGHT;
 
 	return true;
@@ -95,18 +85,18 @@ void CGlock::PrimaryAttack()
 
 void CGlock::GlockFire(float flSpread, float flCycleTime, bool fUseAutoAim)
 {
-	if (m_iClip <= 0)
+	if (GetMagazine1() <= 0)
 	{
-		if (m_fFireOnEmpty)
+		// if (m_fFireOnEmpty)
 		{
 			PlayEmptySound();
-			m_flNextPrimaryAttack = GetNextAttackDelay(0.2);
+			m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(0.2);
 		}
 
 		return;
 	}
 
-	m_iClip--;
+	AdjustMagazine1(-1);
 
 	m_pPlayer->pev->effects = m_pPlayer->pev->effects | EF_MUZZLEFLASH;
 
@@ -149,26 +139,26 @@ void CGlock::GlockFire(float flSpread, float flCycleTime, bool fUseAutoAim)
 	Vector vecDir;
 	vecDir = m_pPlayer->FireBulletsPlayer(1, vecSrc, vecAiming, Vector(flSpread, flSpread, flSpread), 8192, BULLET_PLAYER_9MM, 0, 0, m_pPlayer, m_pPlayer->random_seed);
 
-	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), fUseAutoAim ? m_usFireGlock1 : m_usFireGlock2, 0.0, g_vecZero, g_vecZero, vecDir.x, vecDir.y, 0, 0, (m_iClip == 0) ? 1 : 0, 0);
+	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), fUseAutoAim ? m_usFireGlock1 : m_usFireGlock2, 0.0,
+		g_vecZero, g_vecZero, vecDir.x, vecDir.y, 0, 0, (GetMagazine1() == 0) ? 1 : 0, 0);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = GetNextAttackDelay(flCycleTime);
 
-	if (0 == m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
+	if (0 == GetMagazine1() && m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
 		// HEV suit - indicate out of ammo condition
-		m_pPlayer->SetSuitUpdate("!HEV_AMO0", false, 0);
+		m_pPlayer->SetSuitUpdate("!HEV_AMO0", 0);
 
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat(m_pPlayer->random_seed, 10, 15);
 }
 
-
 void CGlock::Reload()
 {
-	if (m_pPlayer->ammo_9mm <= 0)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
 		return;
 
 	bool iResult;
 
-	if (m_iClip == 0)
+	if (GetMagazine1() == 0)
 		iResult = DefaultReload(17, GLOCK_RELOAD, 1.5);
 	else
 		iResult = DefaultReload(17, GLOCK_RELOAD_NOT_EMPTY, 1.5);
@@ -178,8 +168,6 @@ void CGlock::Reload()
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat(m_pPlayer->random_seed, 10, 15);
 	}
 }
-
-
 
 void CGlock::WeaponIdle()
 {
@@ -191,7 +179,7 @@ void CGlock::WeaponIdle()
 		return;
 
 	// only idle if the slid isn't back
-	if (m_iClip != 0)
+	if (GetMagazine1() != 0)
 	{
 		int iAnim;
 		float flRand = UTIL_SharedRandomFloat(m_pPlayer->random_seed, 0.0, 1.0);
@@ -215,36 +203,15 @@ void CGlock::WeaponIdle()
 	}
 }
 
-
-
-
-
-
-
-
 class CGlockAmmo : public CBasePlayerAmmo
 {
 public:
 	void OnCreate() override
 	{
 		CBasePlayerAmmo::OnCreate();
-
+		m_AmmoAmount = AMMO_GLOCKCLIP_GIVE;
+		m_AmmoName = MAKE_STRING("9mm");
 		pev->model = MAKE_STRING("models/w_9mmclip.mdl");
-	}
-
-	void Precache() override
-	{
-		CBasePlayerAmmo::Precache();
-		PrecacheSound("items/9mmclip1.wav");
-	}
-	bool AddAmmo(CBasePlayer* pOther) override
-	{
-		if (pOther->GiveAmmo(AMMO_GLOCKCLIP_GIVE, "9mm") != -1)
-		{
-			EmitSound(CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM);
-			return true;
-		}
-		return false;
 	}
 };
 

@@ -12,21 +12,6 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// hgrunt
-//=========================================================
-
-//=========================================================
-// Hit groups!
-//=========================================================
-/*
-
-  1 - Head
-  2 - Stomach
-  3 - Gun
-
-*/
-
 
 #include "cbase.h"
 #include "squadmonster.h"
@@ -36,11 +21,8 @@
 #include "hgrunt_ally_base.h"
 #include "blackmesa/scientist.h"
 
-//=========================================================
-// monster-specific DEFINE's
-//=========================================================
-#define MEDIC_DEAGLE_CLIP_SIZE 9 // how many bullets in a clip?
-#define MEDIC_GLOCK_CLIP_SIZE 9	 // how many bullets in a clip?
+#define MEDIC_DEAGLE_CLIP_SIZE 9 //!< how many bullets in a clip?
+#define MEDIC_GLOCK_CLIP_SIZE 9	 //!< how many bullets in a clip?
 
 namespace MedicAllyBodygroup
 {
@@ -86,17 +68,11 @@ static const MedicWeaponData MedicWeaponDatas[] =
 		{MedicAllyBodygroup::Deagle, "weapon_eagle"},
 		{MedicAllyBodygroup::Glock, "weapon_9mmhandgun"}};
 
-//=========================================================
-// Monster's Anim Events Go Here
-//=========================================================
 #define MEDIC_AE_HOLSTER_GUN 15
 #define MEDIC_AE_EQUIP_NEEDLE 16
 #define MEDIC_AE_HOLSTER_NEEDLE 17
 #define MEDIC_AE_EQUIP_GUN 18
 
-//=========================================================
-// monster-specific schedule types
-//=========================================================
 enum
 {
 	SCHED_MEDIC_ALLY_HEAL_ALLY = LAST_GRUNT_SCHEDULE + 1,
@@ -104,20 +80,21 @@ enum
 
 class COFMedicAlly : public CBaseHGruntAlly
 {
+	DECLARE_CLASS(COFMedicAlly, CBaseHGruntAlly);
+	DECLARE_DATAMAP();
+	DECLARE_CUSTOM_SCHEDULES();
+
 public:
 	void OnCreate() override;
 
 	void Spawn() override;
 	void Precache() override;
 	void HandleAnimEvent(MonsterEvent_t* pEvent) override;
-	void StartTask(Task_t* pTask) override;
-	void RunTask(Task_t* pTask) override;
+	void StartTask(const Task_t* pTask) override;
+	void RunTask(const Task_t* pTask) override;
 	void Shoot();
 
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	Schedule_t* GetScheduleOfType(int Type) override;
+	const Schedule_t* GetScheduleOfType(int Type) override;
 
 	int ObjectCaps() override;
 
@@ -129,12 +106,9 @@ public:
 
 	void HealOff();
 
-	void EXPORT HealerUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void HealerUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 
 	void HealerActivate(CBaseMonster* pTarget);
-
-	CUSTOM_SCHEDULES;
-	static TYPEDESCRIPTION m_SaveData[];
 
 	int m_iHealCharge;
 	bool m_fUseHealing;
@@ -145,7 +119,7 @@ public:
 	bool m_fHealAudioPlaying;
 
 	float m_flFollowCheckTime;
-	bool m_fFollowChecking;
+	EntityHandle<CBasePlayer> m_PlayerToFollow;
 	bool m_fFollowChecked;
 
 	float m_flLastRejectAudio;
@@ -163,27 +137,25 @@ protected:
 
 	std::tuple<int, Activity> GetSequenceForActivity(Activity NewActivity) override;
 
-	Schedule_t* GetHealSchedule() override;
+	const Schedule_t* GetHealSchedule() override;
 };
 
 LINK_ENTITY_TO_CLASS(monster_human_medic_ally, COFMedicAlly);
 
-TYPEDESCRIPTION COFMedicAlly::m_SaveData[] =
-	{
-		DEFINE_FIELD(COFMedicAlly, m_flFollowCheckTime, FIELD_FLOAT),
-		DEFINE_FIELD(COFMedicAlly, m_fFollowChecking, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFMedicAlly, m_fFollowChecked, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFMedicAlly, m_flLastRejectAudio, FIELD_FLOAT),
-		DEFINE_FIELD(COFMedicAlly, m_iHealCharge, FIELD_INTEGER),
-		DEFINE_FIELD(COFMedicAlly, m_fUseHealing, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFMedicAlly, m_fHealing, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFMedicAlly, m_flLastUseTime, FIELD_TIME),
-		DEFINE_FIELD(COFMedicAlly, m_fHealActive, FIELD_BOOLEAN),
-		DEFINE_FIELD(COFMedicAlly, m_flLastShot, FIELD_TIME),
-		DEFINE_FIELD(COFMedicAlly, m_WeaponGroup, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(COFMedicAlly, CBaseHGruntAlly);
+BEGIN_DATAMAP(COFMedicAlly)
+DEFINE_FIELD(m_flFollowCheckTime, FIELD_FLOAT),
+	DEFINE_FIELD(m_PlayerToFollow, FIELD_EHANDLE),
+	DEFINE_FIELD(m_fFollowChecked, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flLastRejectAudio, FIELD_FLOAT),
+	DEFINE_FIELD(m_iHealCharge, FIELD_INTEGER),
+	DEFINE_FIELD(m_fUseHealing, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_fHealing, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flLastUseTime, FIELD_TIME),
+	DEFINE_FIELD(m_fHealActive, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_flLastShot, FIELD_TIME),
+	DEFINE_FIELD(m_WeaponGroup, FIELD_INTEGER),
+	DEFINE_FUNCTION(HealerUse),
+	END_DATAMAP();
 
 void COFMedicAlly::OnCreate()
 {
@@ -219,9 +191,6 @@ void COFMedicAlly::DropWeapon(bool applyVelocity)
 	}
 }
 
-//=========================================================
-// Shoot
-//=========================================================
 void COFMedicAlly::Shoot()
 {
 	// Limit fire rate
@@ -267,10 +236,6 @@ void COFMedicAlly::Shoot()
 	m_flLastShot = gpGlobals->time;
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//=========================================================
 void COFMedicAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -324,9 +289,6 @@ void COFMedicAlly::HandleAnimEvent(MonsterEvent_t* pEvent)
 	}
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void COFMedicAlly::Spawn()
 {
 	SpawnCore();
@@ -337,7 +299,7 @@ void COFMedicAlly::Spawn()
 	m_fUseHealing = false;
 	m_fHealing = false;
 	m_fFollowChecked = false;
-	m_fFollowChecking = false;
+	m_PlayerToFollow = nullptr;
 
 	if (0 == pev->weapons)
 	{
@@ -388,9 +350,6 @@ void COFMedicAlly::Spawn()
 	SetUse(&COFMedicAlly::HealerUse);
 }
 
-//=========================================================
-// Precache - precaches all resources this monster needs
-//=========================================================
 void COFMedicAlly::Precache()
 {
 	PrecacheSound("weapons/desert_eagle_fire.wav");
@@ -404,10 +363,7 @@ void COFMedicAlly::Precache()
 	CBaseHGruntAlly::Precache();
 }
 
-//=========================================================
-// start task
-//=========================================================
-void COFMedicAlly::StartTask(Task_t* pTask)
+void COFMedicAlly::StartTask(const Task_t* pTask)
 {
 	m_iTaskStatus = TASKSTATUS_RUNNING;
 
@@ -432,7 +388,7 @@ void COFMedicAlly::StartTask(Task_t* pTask)
 
 		if (m_hTargetEnt)
 		{
-			auto pTarget = m_hTargetEnt.Entity<CBaseEntity>();
+			CBaseEntity* pTarget = m_hTargetEnt;
 			auto pTargetMonster = pTarget->MySquadTalkMonsterPointer();
 
 			if (pTargetMonster)
@@ -444,7 +400,7 @@ void COFMedicAlly::StartTask(Task_t* pTask)
 			StopSound(CHAN_WEAPON, "fgrunt/medic_give_shot.wav");
 
 			m_fFollowChecked = false;
-			m_fFollowChecking = false;
+			m_PlayerToFollow = nullptr;
 
 			if (m_movementGoal == MOVEGOAL_TARGETENT)
 				RouteClear();
@@ -462,7 +418,7 @@ void COFMedicAlly::StartTask(Task_t* pTask)
 		StopSound(CHAN_WEAPON, "fgrunt/medic_give_shot.wav");
 
 		m_fFollowChecked = false;
-		m_fFollowChecking = false;
+		m_PlayerToFollow = nullptr;
 
 		if (m_movementGoal == MOVEGOAL_TARGETENT)
 			RouteClear();
@@ -478,10 +434,7 @@ void COFMedicAlly::StartTask(Task_t* pTask)
 	}
 }
 
-//=========================================================
-// RunTask
-//=========================================================
-void COFMedicAlly::RunTask(Task_t* pTask)
+void COFMedicAlly::RunTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -500,11 +453,11 @@ void COFMedicAlly::RunTask(Task_t* pTask)
 
 				if (m_hTargetEnt)
 				{
-					auto pHealTarget = m_hTargetEnt.Entity<CBaseEntity>();
+					CBaseEntity* pHealTarget = m_hTargetEnt;
 
-					const auto toHeal = V_min(5, pHealTarget->pev->max_health - pHealTarget->pev->health);
+					const auto toHeal = std::min(5.f, pHealTarget->pev->max_health - pHealTarget->pev->health);
 
-					if (toHeal != 0 && pHealTarget->TakeHealth(toHeal, DMG_GENERIC))
+					if (toHeal != 0 && pHealTarget->GiveHealth(toHeal, DMG_GENERIC))
 					{
 						m_iHealCharge -= toHeal;
 					}
@@ -532,10 +485,6 @@ void COFMedicAlly::RunTask(Task_t* pTask)
 	}
 	}
 }
-
-//=========================================================
-// AI Schedules Specific to this monster
-//=========================================================
 
 Task_t tlMedicAllyNewHealTarget[] =
 	{
@@ -606,14 +555,12 @@ Schedule_t slMedicAllyHealTarget[] =
 			"Medic Ally Heal Target"},
 };
 
-DEFINE_CUSTOM_SCHEDULES(COFMedicAlly){
-	slMedicAllyNewHealTarget,
+BEGIN_CUSTOM_SCHEDULES(COFMedicAlly)
+slMedicAllyNewHealTarget,
 	slMedicAllyDrawNeedle,
 	slMedicAllyDrawGun,
-	slMedicAllyHealTarget,
-};
-
-IMPLEMENT_CUSTOM_SCHEDULES(COFMedicAlly, CBaseHGruntAlly);
+	slMedicAllyHealTarget
+	END_CUSTOM_SCHEDULES();
 
 std::tuple<int, Activity> COFMedicAlly::GetSequenceForActivity(Activity NewActivity)
 {
@@ -641,13 +588,13 @@ std::tuple<int, Activity> COFMedicAlly::GetSequenceForActivity(Activity NewActiv
 	return {iSequence, NewActivity};
 }
 
-Schedule_t* COFMedicAlly::GetHealSchedule()
+const Schedule_t* COFMedicAlly::GetHealSchedule()
 {
 	if (m_fHealing)
 	{
 		if (m_hTargetEnt)
 		{
-			auto pHealTarget = m_hTargetEnt.Entity<CBaseEntity>();
+			CBaseEntity* pHealTarget = m_hTargetEnt;
 
 			if ((pHealTarget->pev->origin - pev->origin).Make2D().Length() <= 50.0 && (!m_fUseHealing || gpGlobals->time - m_flLastUseTime <= 0.25) && 0 != m_iHealCharge && pHealTarget->IsAlive() && pHealTarget->pev->health != pHealTarget->pev->max_health)
 			{
@@ -661,9 +608,7 @@ Schedule_t* COFMedicAlly::GetHealSchedule()
 	return nullptr;
 }
 
-//=========================================================
-//=========================================================
-Schedule_t* COFMedicAlly::GetScheduleOfType(int Type)
+const Schedule_t* COFMedicAlly::GetScheduleOfType(int Type)
 {
 	switch (Type)
 	{
@@ -698,14 +643,12 @@ void COFMedicAlly::Killed(CBaseEntity* attacker, int iGib)
 void COFMedicAlly::MonsterThink()
 {
 	// Check if we need to start following the player again after healing them
-	if (m_fFollowChecking && !m_fFollowChecked && gpGlobals->time - m_flFollowCheckTime > 0.5)
+	if (m_PlayerToFollow && !m_fFollowChecked && gpGlobals->time - m_flFollowCheckTime > 0.5)
 	{
-		m_fFollowChecking = false;
+		auto player = m_PlayerToFollow.Get();
+		m_PlayerToFollow = nullptr;
 
-		// TODO: not suited for multiplayer
-		auto pPlayer = UTIL_GetLocalPlayer();
-
-		FollowerUse(pPlayer, pPlayer, USE_TOGGLE, 0);
+		FollowerUse(player, player, USE_TOGGLE, 0);
 	}
 
 	CBaseHGruntAlly::MonsterThink();
@@ -824,15 +767,15 @@ void COFMedicAlly::HealerUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_
 		return;
 	}
 
-	if (m_fFollowChecked || m_fFollowChecking)
+	if (m_fFollowChecked || m_PlayerToFollow)
 	{
-		if (!m_fFollowChecked && m_fFollowChecking)
+		if (!m_fFollowChecked && m_PlayerToFollow)
 		{
 			if (gpGlobals->time - m_flFollowCheckTime < 0.3)
 				return;
 
 			m_fFollowChecked = true;
-			m_fFollowChecking = false;
+			m_PlayerToFollow = nullptr;
 		}
 
 		const auto newTarget = !m_fUseHealing && nullptr != m_hTargetEnt && m_fHealing;
@@ -881,12 +824,12 @@ void COFMedicAlly::HealerUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_
 
 			if (m_fHealActive)
 			{
-				if (pActivator->TakeHealth(2, DMG_GENERIC))
+				if (pActivator->GiveHealth(2, DMG_GENERIC))
 				{
 					m_iHealCharge -= 2;
 				}
 			}
-			else if (pActivator->TakeHealth(1, DMG_GENERIC))
+			else if (pActivator->GiveHealth(1, DMG_GENERIC))
 			{
 				--m_iHealCharge;
 			}
@@ -894,7 +837,7 @@ void COFMedicAlly::HealerUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_
 		else
 		{
 			m_fFollowChecked = false;
-			m_fFollowChecking = false;
+			m_PlayerToFollow = nullptr;
 
 			if (gpGlobals->time - m_flLastRejectAudio > 4.0 && m_iHealCharge <= 0 && !m_fHealing)
 			{
@@ -907,8 +850,12 @@ void COFMedicAlly::HealerUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_
 		return;
 	}
 
-	m_fFollowChecking = true;
-	m_flFollowCheckTime = gpGlobals->time;
+	// Only try to follow players.
+	if (auto player = ToBasePlayer(pActivator); player)
+	{
+		m_PlayerToFollow = player;
+		m_flFollowCheckTime = gpGlobals->time;
+	}
 }
 
 /**

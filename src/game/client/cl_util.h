@@ -24,15 +24,20 @@
 
 #include "Platform.h"
 #include "palette.h"
+#include "utils/ConCommandSystem.h"
 #include "utils/shared_utils.h"
 
-// Macros to hook function calls into the HUD object
-#define HOOK_COMMAND(x, y) gEngfuncs.pfnAddCommand(x, __CmdFunc_##y);
-#define DECLARE_COMMAND(y, x) \
-	void __CmdFunc_##x()      \
-	{                         \
-		gHUD.y.UserCmd_##x(); \
-	}
+/**
+ *	@brief Helper function to register client side commands that were originally registered with @c HOOK_COMMAND.
+ */
+template <typename T>
+void RegisterClientCommand(std::string_view name, void (T::*handler)(), T* instance)
+{
+	g_ConCommands.CreateCommand(
+		name, [instance, handler](const auto&)
+		{ (instance->*handler)(); },
+		CommandLibraryPrefix::No);
+}
 
 inline cvar_t* CVAR_CREATE(const char* cv, const char* val, const int flags) { return gEngfuncs.pfnRegisterVariable(cv, val, flags); }
 
@@ -81,8 +86,8 @@ inline void FillRGBA(int x, int y, int width, int height, const RGB24& color, in
 #define XPROJECT(x) ((1.0f + (x)) * ScreenWidth * 0.5f)
 #define YPROJECT(y) ((1.0f - (y)) * ScreenHeight * 0.5f)
 
-#define XRES(x) (x * ((float)ScreenWidth / 640))
-#define YRES(y) (y * ((float)ScreenHeight / 480))
+#define XRES(x) ((x) * ((float)ScreenWidth / 640))
+#define YRES(y) ((y) * ((float)ScreenHeight / 480))
 
 #define GetScreenInfo (*gEngfuncs.pfnGetScreenInfo)
 #define ServerCmd (*gEngfuncs.pfnServerCmd)
@@ -159,8 +164,6 @@ inline int safe_sprintf(char* dst, int len_dst, const char* format, ...)
 
 	return 0;
 }
-
-HSPRITE LoadSprite(const char* pszName);
 
 inline bool UTIL_IsMapLoaded()
 {

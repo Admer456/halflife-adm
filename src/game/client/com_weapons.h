@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "cdll_dll.h"
 #include "Exports.h"
 
 struct edict_t;
@@ -31,7 +32,6 @@ void HUD_SetLastOrg();
 void HUD_SetupServerEngineInterface();
 
 unsigned short stub_PrecacheEvent(int type, const char* s);
-const char* stub_NameForFunction(uint32 function);
 void stub_SetModel(edict_t* e, const char* m);
 
 
@@ -48,3 +48,5 @@ extern float g_lastFOV;
 //  the final state passed into the postthink functionality.  We'll set this pointer and then
 //  reset it to nullptr as appropriate
 inline local_state_t* g_finalstate = nullptr;
+
+inline int g_CurrentWeaponId = WEAPON_NONE;

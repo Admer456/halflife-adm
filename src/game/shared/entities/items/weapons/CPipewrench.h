@@ -36,6 +36,9 @@ enum pipewrench_e
 
 class CPipewrench : public CBasePlayerWeapon
 {
+	DECLARE_CLASS(CPipewrench, CBasePlayerWeapon);
+	DECLARE_DATAMAP();
+
 private:
 	enum SwingMode
 	{
@@ -45,25 +48,15 @@ private:
 	};
 
 public:
-	using BaseClass = CBasePlayerWeapon;
-
-#ifndef CLIENT_DLL
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
-#endif
-
 	void OnCreate() override;
-	void Spawn() override;
 	void Precache() override;
-	void EXPORT SwingAgain();
-	void EXPORT Smack();
+	void SwingAgain();
+	void Smack();
 
 	void PrimaryAttack() override;
 	void SecondaryAttack() override;
 	bool Swing(const bool bFirst);
-	void EXPORT BigSwing();
+	void BigSwing();
 	bool Deploy() override;
 	void Holster() override;
 	void WeaponIdle() override;
@@ -84,7 +77,7 @@ public:
 	}
 
 	float m_flBigSwingStart;
-	int m_iSwingMode;
+	int m_iSwingMode = SWING_NONE;
 	int m_iSwing;
 	TraceResult m_trHit;
 

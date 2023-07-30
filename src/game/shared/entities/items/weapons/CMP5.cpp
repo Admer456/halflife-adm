@@ -17,33 +17,20 @@
 #include "CMP5.h"
 #include "UserMessages.h"
 
-LINK_ENTITY_TO_CLASS(weapon_9mmAR, CMP5);
+LINK_ENTITY_TO_CLASS(weapon_9mmar, CMP5);
 
 void CMP5::OnCreate()
 {
 	CBasePlayerWeapon::OnCreate();
-
-	m_WorldModel = pev->model = MAKE_STRING("models/w_9mmAR.mdl");
-}
-
-//=========================================================
-//=========================================================
-void CMP5::Spawn()
-{
-	Precache();
-	SetModel(STRING(pev->model));
 	m_iId = WEAPON_MP5;
-
 	m_iDefaultAmmo = MP5_DEFAULT_GIVE;
-
+	m_WorldModel = pev->model = MAKE_STRING("models/w_9mmAR.mdl");
 	m_flNextGrenadeLoad = gpGlobals->time;
-
-	FallInit(); // get ready to fall down.
 }
-
 
 void CMP5::Precache()
 {
+	CBasePlayerWeapon::Precache();
 	PrecacheModel("models/v_9mmAR.mdl");
 	PrecacheModel(STRING(m_WorldModel));
 	PrecacheModel("models/p_9mmAR.mdl");
@@ -74,12 +61,16 @@ void CMP5::Precache()
 bool CMP5::GetWeaponInfo(WeaponInfo& info)
 {
 	info.Name = STRING(pev->classname);
-	info.AmmoType1 = "9mm";
-	info.AmmoType2 = "ARgrenades";
-	info.MagazineSize1 = MP5_MAX_CLIP;
+
+	info.AttackModeInfo[0].AmmoType = "9mm";
+	info.AttackModeInfo[0].MagazineSize = MP5_MAX_CLIP;
+
+	info.AttackModeInfo[1].AmmoType = "ARgrenades";
+	info.AttackModeInfo[1].MagazineSize = WEAPON_NOCLIP; // AR grenades don't use magazines.
+
 	info.Slot = 2;
 	info.Position = 0;
-	info.Id = m_iId = WEAPON_MP5;
+	info.Id = WEAPON_MP5;
 	info.Weight = MP5_WEIGHT;
 
 	return true;
@@ -104,7 +95,6 @@ bool CMP5::Deploy()
 	return DefaultDeploy("models/v_9mmAR.mdl", "models/p_9mmAR.mdl", MP5_DEPLOY, "mp5");
 }
 
-
 void CMP5::PrimaryAttack()
 {
 	// don't fire underwater
@@ -115,7 +105,7 @@ void CMP5::PrimaryAttack()
 		return;
 	}
 
-	if (m_iClip <= 0)
+	if (GetMagazine1() <= 0)
 	{
 		PlayEmptySound();
 		m_flNextPrimaryAttack = 0.15;
@@ -125,7 +115,7 @@ void CMP5::PrimaryAttack()
 	m_pPlayer->m_iWeaponVolume = NORMAL_GUN_VOLUME;
 	m_pPlayer->m_iWeaponFlash = NORMAL_GUN_FLASH;
 
-	m_iClip--;
+	AdjustMagazine1(-1);
 
 	m_pPlayer->pev->effects = m_pPlayer->pev->effects | EF_MUZZLEFLASH;
 
@@ -136,7 +126,7 @@ void CMP5::PrimaryAttack()
 	Vector vecAiming = m_pPlayer->GetAutoaimVector(AUTOAIM_5DEGREES);
 	Vector vecDir;
 
-	if (UTIL_IsMultiplayer())
+	if (g_Skill.GetValue("smg_wide_spread") != 0)
 	{
 		// optimized multiplayer. Widened to make it easier to hit a moving player
 		vecDir = m_pPlayer->FireBulletsPlayer(1, vecSrc, vecAiming, VECTOR_CONE_6DEGREES, 8192, BULLET_PLAYER_MP5, 2, 0, m_pPlayer, m_pPlayer->random_seed);
@@ -156,9 +146,9 @@ void CMP5::PrimaryAttack()
 
 	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usMP5, 0.0, g_vecZero, g_vecZero, vecDir.x, vecDir.y, 0, 0, 0, 0);
 
-	if (0 == m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
+	if (0 == GetMagazine1() && m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
 		// HEV suit - indicate out of ammo condition
-		m_pPlayer->SetSuitUpdate("!HEV_AMO0", false, 0);
+		m_pPlayer->SetSuitUpdate("!HEV_AMO0", 0);
 
 	m_flNextPrimaryAttack = GetNextAttackDelay(0.1);
 
@@ -167,8 +157,6 @@ void CMP5::PrimaryAttack()
 
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat(m_pPlayer->random_seed, 10, 15);
 }
-
-
 
 void CMP5::SecondaryAttack()
 {
@@ -180,7 +168,7 @@ void CMP5::SecondaryAttack()
 		return;
 	}
 
-	if (m_pPlayer->m_rgAmmo[m_iSecondaryAmmoType] == 0)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iSecondaryAmmoType) == 0)
 	{
 		PlayEmptySound();
 		return;
@@ -192,7 +180,7 @@ void CMP5::SecondaryAttack()
 	m_pPlayer->m_iExtraSoundTypes = bits_SOUND_DANGER;
 	m_pPlayer->m_flStopExtraSoundTime = UTIL_WeaponTimeBase() + 0.2;
 
-	m_pPlayer->m_rgAmmo[m_iSecondaryAmmoType]--;
+	m_pPlayer->AdjustAmmoByIndex(m_iSecondaryAmmoType, -1);
 
 	// player "shoot" animation
 	m_pPlayer->SetAnimation(PLAYER_ATTACK1);
@@ -200,7 +188,7 @@ void CMP5::SecondaryAttack()
 	UTIL_MakeVectors(m_pPlayer->pev->v_angle + m_pPlayer->pev->punchangle);
 
 	// we don't add in player velocity anymore.
-	CGrenade::ShootContact(m_pPlayer->pev,
+	CGrenade::ShootContact(m_pPlayer,
 		m_pPlayer->pev->origin + m_pPlayer->pev->view_ofs + gpGlobals->v_forward * 16,
 		gpGlobals->v_forward * 800);
 
@@ -217,19 +205,18 @@ void CMP5::SecondaryAttack()
 	m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 1;
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 5; // idle pretty soon after shooting.
 
-	if (0 == m_pPlayer->m_rgAmmo[m_iSecondaryAmmoType])
+	if (0 == m_pPlayer->GetAmmoCountByIndex(m_iSecondaryAmmoType))
 		// HEV suit - indicate out of ammo condition
-		m_pPlayer->SetSuitUpdate("!HEV_AMO0", false, 0);
+		m_pPlayer->SetSuitUpdate("!HEV_AMO0", 0);
 }
 
 void CMP5::Reload()
 {
-	if (m_pPlayer->ammo_9mm <= 0)
+	if (m_pPlayer->GetAmmoCountByIndex(m_iPrimaryAmmoType) <= 0)
 		return;
 
 	DefaultReload(MP5_MAX_CLIP, MP5_RELOAD, 1.5);
 }
-
 
 void CMP5::WeaponIdle()
 {
@@ -258,37 +245,19 @@ void CMP5::WeaponIdle()
 	m_flTimeWeaponIdle = UTIL_SharedRandomFloat(m_pPlayer->random_seed, 10, 15); // how long till we do this again.
 }
 
-
-
 class CMP5AmmoClip : public CBasePlayerAmmo
 {
 public:
 	void OnCreate() override
 	{
 		CBasePlayerAmmo::OnCreate();
-
+		m_AmmoAmount = AMMO_MP5CLIP_GIVE;
+		m_AmmoName = MAKE_STRING("9mm");
 		pev->model = MAKE_STRING("models/w_9mmARclip.mdl");
-	}
-
-	void Precache() override
-	{
-		CBasePlayerAmmo::Precache();
-		PrecacheSound("items/9mmclip1.wav");
-	}
-	bool AddAmmo(CBasePlayer* pOther) override
-	{
-		bool bResult = (pOther->GiveAmmo(AMMO_MP5CLIP_GIVE, "9mm") != -1);
-		if (bResult)
-		{
-			EmitSound(CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM);
-		}
-		return bResult;
 	}
 };
 
-LINK_ENTITY_TO_CLASS(ammo_9mmAR, CMP5AmmoClip);
-
-
+LINK_ENTITY_TO_CLASS(ammo_9mmar, CMP5AmmoClip);
 
 class CMP5Chainammo : public CBasePlayerAmmo
 {
@@ -296,27 +265,13 @@ public:
 	void OnCreate() override
 	{
 		CBasePlayerAmmo::OnCreate();
-
+		m_AmmoAmount = AMMO_CHAINBOX_GIVE;
+		m_AmmoName = MAKE_STRING("9mm");
 		pev->model = MAKE_STRING("models/w_chainammo.mdl");
 	}
-
-	void Precache() override
-	{
-		CBasePlayerAmmo::Precache();
-		PrecacheSound("items/9mmclip1.wav");
-	}
-	bool AddAmmo(CBasePlayer* pOther) override
-	{
-		bool bResult = (pOther->GiveAmmo(AMMO_CHAINBOX_GIVE, "9mm") != -1);
-		if (bResult)
-		{
-			EmitSound(CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM);
-		}
-		return bResult;
-	}
 };
-LINK_ENTITY_TO_CLASS(ammo_9mmbox, CMP5Chainammo);
 
+LINK_ENTITY_TO_CLASS(ammo_9mmbox, CMP5Chainammo);
 
 class CMP5AmmoGrenade : public CBasePlayerAmmo
 {
@@ -324,25 +279,10 @@ public:
 	void OnCreate() override
 	{
 		CBasePlayerAmmo::OnCreate();
-
+		m_AmmoAmount = AMMO_M203BOX_GIVE;
+		m_AmmoName = MAKE_STRING("ARgrenades");
 		pev->model = MAKE_STRING("models/w_ARgrenade.mdl");
-	}
-
-	void Precache() override
-	{
-		CBasePlayerAmmo::Precache();
-		PrecacheSound("items/9mmclip1.wav");
-	}
-	bool AddAmmo(CBasePlayer* pOther) override
-	{
-		bool bResult = (pOther->GiveAmmo(AMMO_M203BOX_GIVE, "ARgrenades") != -1);
-
-		if (bResult)
-		{
-			EmitSound(CHAN_ITEM, "items/9mmclip1.wav", 1, ATTN_NORM);
-		}
-		return bResult;
 	}
 };
 
-LINK_ENTITY_TO_CLASS(ammo_ARgrenades, CMP5AmmoGrenade);
+LINK_ENTITY_TO_CLASS(ammo_argrenades, CMP5AmmoGrenade);

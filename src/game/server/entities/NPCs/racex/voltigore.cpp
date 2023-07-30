@@ -12,9 +12,6 @@
  *   use or distribution of this code by or to any unlicensed person is illegal.
  *
  ****/
-//=========================================================
-// Voltigore - Tank like alien
-//=========================================================
 
 #include "cbase.h"
 #include "squadmonster.h"
@@ -22,37 +19,37 @@
 
 class COFChargedBolt : public CBaseEntity
 {
+	DECLARE_CLASS(COFChargedBolt, CBaseEntity);
+	DECLARE_DATAMAP();
+
 public:
 	void Precache() override;
 	void Spawn() override;
 
-	int Classify() override { return CLASS_NONE; }
-
 	void InitBeams();
 	void ClearBeams();
 
-	void EXPORT ShutdownChargedBolt();
+	void ShutdownChargedBolt();
 
 	static COFChargedBolt* ChargedBoltCreate();
 
-	void LaunchChargedBolt(const Vector& vecAim, edict_t* pOwner, int nSpeed, int nAcceleration);
+	void LaunchChargedBolt(const Vector& vecAim, CBaseEntity* owner, int nSpeed, int nAcceleration);
 
 	void SetAttachment(CBaseAnimating* pAttachEnt, int iAttachIdx);
 
+	/**
+	 *	@brief small beam from arm to nearby geometry
+	 */
 	void ArmBeam(int side);
 
-	void EXPORT AttachThink();
+	void AttachThink();
 
-	void EXPORT FlyThink();
+	void FlyThink();
 
-	void EXPORT ChargedBoltTouch(CBaseEntity* pOther);
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-	static TYPEDESCRIPTION m_SaveData[];
+	void ChargedBoltTouch(CBaseEntity* pOther);
 
 	int m_iShowerSparks;
-	EHANDLE m_pBeam[VOLTIGORE_BEAM_COUNT];
+	EntityHandle<CBeam> m_pBeam[VOLTIGORE_BEAM_COUNT];
 	int m_iBeams;
 	CBaseAnimating* m_pAttachEnt;
 	int m_iAttachIdx;
@@ -60,16 +57,17 @@ public:
 
 LINK_ENTITY_TO_CLASS(charged_bolt, COFChargedBolt);
 
-TYPEDESCRIPTION COFChargedBolt::m_SaveData[] =
-	{
-		DEFINE_FIELD(COFChargedBolt, m_iShowerSparks, FIELD_INTEGER),
-		DEFINE_ARRAY(COFChargedBolt, m_pBeam, FIELD_EHANDLE, VOLTIGORE_BEAM_COUNT),
-		DEFINE_FIELD(COFChargedBolt, m_iBeams, FIELD_INTEGER),
-		DEFINE_FIELD(COFChargedBolt, m_pAttachEnt, FIELD_CLASSPTR),
-		DEFINE_FIELD(COFChargedBolt, m_iAttachIdx, FIELD_INTEGER),
-};
-
-IMPLEMENT_SAVERESTORE(COFChargedBolt, CBaseEntity);
+BEGIN_DATAMAP(COFChargedBolt)
+DEFINE_FIELD(m_iShowerSparks, FIELD_INTEGER),
+	DEFINE_ARRAY(m_pBeam, FIELD_EHANDLE, VOLTIGORE_BEAM_COUNT),
+	DEFINE_FIELD(m_iBeams, FIELD_INTEGER),
+	DEFINE_FIELD(m_pAttachEnt, FIELD_CLASSPTR),
+	DEFINE_FIELD(m_iAttachIdx, FIELD_INTEGER),
+	DEFINE_FUNCTION(ShutdownChargedBolt),
+	DEFINE_FUNCTION(AttachThink),
+	DEFINE_FUNCTION(FlyThink),
+	DEFINE_FUNCTION(ChargedBoltTouch),
+	END_DATAMAP();
 
 void COFChargedBolt::Precache()
 {
@@ -89,7 +87,7 @@ void COFChargedBolt::Spawn()
 
 	SetModel("sprites/blueflare2.spr");
 
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	SetSize(g_vecZero, g_vecZero);
 
@@ -139,10 +137,10 @@ COFChargedBolt* COFChargedBolt::ChargedBoltCreate()
 	return pBolt;
 }
 
-void COFChargedBolt::LaunchChargedBolt(const Vector& vecAim, edict_t* pOwner, int nSpeed, int nAcceleration)
+void COFChargedBolt::LaunchChargedBolt(const Vector& vecAim, CBaseEntity* owner, int nSpeed, int nAcceleration)
 {
 	pev->angles = vecAim;
-	pev->owner = pOwner;
+	SetOwner(owner);
 	pev->velocity = vecAim * nSpeed;
 
 	pev->speed = nSpeed;
@@ -163,16 +161,12 @@ void COFChargedBolt::SetAttachment(CBaseAnimating* pAttachEnt, int iAttachIdx)
 
 	pAttachEnt->GetAttachment(iAttachIdx, vecOrigin, vecAngles);
 
-	UTIL_SetOrigin(pev, vecOrigin);
+	SetOrigin(vecOrigin);
 
 	SetThink(&COFChargedBolt::AttachThink);
 
 	pev->nextthink = gpGlobals->time + 0.05;
 }
-
-//=========================================================
-// ArmBeam - small beam from arm to nearby geometry
-//=========================================================
 
 void COFChargedBolt::ArmBeam(int side)
 {
@@ -189,7 +183,7 @@ void COFChargedBolt::ArmBeam(int side)
 	{
 		Vector vecAim = gpGlobals->v_right * side * RANDOM_FLOAT(0, 1) + gpGlobals->v_up * RANDOM_FLOAT(-1, 1);
 		TraceResult tr1;
-		UTIL_TraceLine(vecSrc, vecSrc + vecAim * 512, dont_ignore_monsters, ENT(pev), &tr1);
+		UTIL_TraceLine(vecSrc, vecSrc + vecAim * 512, dont_ignore_monsters, edict(), &tr1);
 		if (flDist > tr1.flFraction)
 		{
 			tr = tr1;
@@ -201,7 +195,7 @@ void COFChargedBolt::ArmBeam(int side)
 	if (flDist == 1.0)
 		return;
 
-	auto pBeam = m_pBeam[m_iBeams].Entity<CBeam>();
+	CBeam* pBeam = m_pBeam[m_iBeams];
 
 	if (!pBeam)
 	{
@@ -237,7 +231,7 @@ void COFChargedBolt::AttachThink()
 	Vector vecAngles;
 
 	m_pAttachEnt->GetAttachment(m_iAttachIdx, vecOrigin, vecAngles);
-	UTIL_SetOrigin(pev, vecOrigin);
+	SetOrigin(vecOrigin);
 
 	pev->nextthink = gpGlobals->time + 0.05;
 }
@@ -278,7 +272,7 @@ void COFChargedBolt::ChargedBoltTouch(CBaseEntity* pOther)
 
 	ClearMultiDamage();
 
-	RadiusDamage(pev->origin, this, pevOwner, GetSkillFloat("voltigore_dmg_beam"sv), 128.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_SHOCK);
+	RadiusDamage(pev->origin, this, pevOwner, GetSkillFloat("voltigore_dmg_beam"sv), 128.0, DMG_ALWAYSGIB | DMG_SHOCK);
 
 	SetThink(&COFChargedBolt::ShutdownChargedBolt);
 	pev->nextthink = gpGlobals->time + 0.5;
@@ -286,19 +280,17 @@ void COFChargedBolt::ChargedBoltTouch(CBaseEntity* pOther)
 
 LINK_ENTITY_TO_CLASS(monster_alien_voltigore, COFVoltigore);
 
-TYPEDESCRIPTION COFVoltigore::m_SaveData[] =
-	{
-		DEFINE_ARRAY(COFVoltigore, m_pBeam, FIELD_EHANDLE, VOLTIGORE_BEAM_COUNT),
-		DEFINE_FIELD(COFVoltigore, m_iBeams, FIELD_INTEGER),
-		DEFINE_FIELD(COFVoltigore, m_flNextBeamAttackCheck, FIELD_TIME),
-		DEFINE_FIELD(COFVoltigore, m_flNextPainTime, FIELD_TIME),
-		DEFINE_FIELD(COFVoltigore, m_flNextSpeakTime, FIELD_TIME),
-		DEFINE_FIELD(COFVoltigore, m_flNextWordTime, FIELD_TIME),
-		DEFINE_FIELD(COFVoltigore, m_iLastWord, FIELD_INTEGER),
-		DEFINE_FIELD(COFVoltigore, m_pChargedBolt, FIELD_EHANDLE),
-};
-
-IMPLEMENT_SAVERESTORE(COFVoltigore, CSquadMonster);
+BEGIN_DATAMAP(COFVoltigore)
+DEFINE_ARRAY(m_pBeam, FIELD_EHANDLE, VOLTIGORE_BEAM_COUNT),
+	DEFINE_FIELD(m_iBeams, FIELD_INTEGER),
+	DEFINE_FIELD(m_flNextBeamAttackCheck, FIELD_TIME),
+	DEFINE_FIELD(m_flNextPainTime, FIELD_TIME),
+	DEFINE_FIELD(m_flNextSpeakTime, FIELD_TIME),
+	DEFINE_FIELD(m_flNextWordTime, FIELD_TIME),
+	DEFINE_FIELD(m_iLastWord, FIELD_INTEGER),
+	DEFINE_FIELD(m_pChargedBolt, FIELD_EHANDLE),
+	DEFINE_FUNCTION(CallDeathGibThink),
+	END_DATAMAP();
 
 void COFVoltigore::OnCreate()
 {
@@ -306,25 +298,20 @@ void COFVoltigore::OnCreate()
 
 	pev->health = GetSkillFloat("voltigore_health"sv);
 	pev->model = MAKE_STRING("models/voltigore.mdl");
+
+	SetClassification("alien_military");
 }
 
-//=========================================================
-// IRelationship - overridden because Human Grunts are
-// Alien Grunt's nemesis.
-//=========================================================
-int COFVoltigore::IRelationship(CBaseEntity* pTarget)
+Relationship COFVoltigore::IRelationship(CBaseEntity* pTarget)
 {
 	if (pTarget->ClassnameIs("monster_human_grunt"))
 	{
-		return R_NM;
+		return Relationship::Nemesis;
 	}
 
 	return CSquadMonster::IRelationship(pTarget);
 }
 
-//=========================================================
-// ISoundMask
-//=========================================================
 int COFVoltigore::ISoundMask()
 {
 	return bits_SOUND_WORLD |
@@ -333,9 +320,6 @@ int COFVoltigore::ISoundMask()
 		   bits_SOUND_DANGER;
 }
 
-//=========================================================
-// TraceAttack
-//=========================================================
 void COFVoltigore::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vecDir, TraceResult* ptr, int bitsDamageType)
 {
 	// Ignore shock damage since we have a shock based attack
@@ -348,17 +332,11 @@ void COFVoltigore::TraceAttack(CBaseEntity* attacker, float flDamage, Vector vec
 	}
 }
 
-//=========================================================
-// StopTalking - won't speak again for 10-20 seconds.
-//=========================================================
 void COFVoltigore::StopTalking()
 {
 	m_flNextWordTime = m_flNextSpeakTime = gpGlobals->time + 10 + RANDOM_LONG(0, 10);
 }
 
-//=========================================================
-// ShouldSpeak - Should this voltigore be talking?
-//=========================================================
 bool COFVoltigore::ShouldSpeak()
 {
 	if (m_flNextSpeakTime > gpGlobals->time)
@@ -383,9 +361,6 @@ bool COFVoltigore::ShouldSpeak()
 	return true;
 }
 
-//=========================================================
-// AlertSound
-//=========================================================
 void COFVoltigore::AlertSound()
 {
 	StopTalking();
@@ -393,9 +368,6 @@ void COFVoltigore::AlertSound()
 	EmitSound(CHAN_VOICE, pAlertSounds[RANDOM_LONG(0, std::size(pAlertSounds) - 1)], 1.0, ATTN_NORM);
 }
 
-//=========================================================
-// PainSound
-//=========================================================
 void COFVoltigore::PainSound()
 {
 	if (m_flNextPainTime > gpGlobals->time)
@@ -410,19 +382,6 @@ void COFVoltigore::PainSound()
 	EmitSound(CHAN_VOICE, pPainSounds[RANDOM_LONG(0, std::size(pPainSounds) - 1)], 1.0, ATTN_NORM);
 }
 
-//=========================================================
-// Classify - indicates this monster's place in the
-// relationship table.
-//=========================================================
-int COFVoltigore::Classify()
-{
-	return CLASS_ALIEN_MILITARY;
-}
-
-//=========================================================
-// SetYawSpeed - allows each sequence to have a different
-// turn rate associated with it.
-//=========================================================
 void COFVoltigore::SetYawSpeed()
 {
 	int ys;
@@ -440,12 +399,6 @@ void COFVoltigore::SetYawSpeed()
 	pev->yaw_speed = ys;
 }
 
-//=========================================================
-// HandleAnimEvent - catches the monster-specific messages
-// that occur when tagged animation frames are played.
-//
-// Returns number of events handled, 0 if none.
-//=========================================================
 void COFVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 {
 	switch (pEvent->event)
@@ -467,9 +420,9 @@ void COFVoltigore::HandleAnimEvent(MonsterEvent_t* pEvent)
 			TraceResult tr;
 			UTIL_TraceLine(shootPosition, shootPosition + direction * 1024, dont_ignore_monsters, edict(), &tr);
 
-			COFChargedBolt* bolt = m_pChargedBolt.Entity<COFChargedBolt>();
+			COFChargedBolt* bolt = m_pChargedBolt;
 
-			bolt->LaunchChargedBolt(direction, edict(), 1000, 10);
+			bolt->LaunchChargedBolt(direction, this, 1000, 10);
 
 			// We no longer have to manage the bolt now
 			m_pChargedBolt = nullptr;
@@ -572,9 +525,6 @@ void COFVoltigore::SpawnCore(const Vector& mins, const Vector& maxs)
 	MonsterInit();
 }
 
-//=========================================================
-// Spawn
-//=========================================================
 void COFVoltigore::Spawn()
 {
 	SpawnCore({-80, -80, 0}, {80, 80, 90});
@@ -618,13 +568,6 @@ void COFVoltigore::Precache()
 	m_iVoltigoreGibs = PrecacheModel("models/vgibs.mdl");
 }
 
-//=========================================================
-// AI Schedules Specific to this monster
-//=========================================================
-
-//=========================================================
-// Fail Schedule
-//=========================================================
 Task_t tlVoltigoreFail[] =
 	{
 		{TASK_STOP_MOVING, 0},
@@ -643,9 +586,6 @@ Schedule_t slVoltigoreFail[] =
 			"Voltigore Fail"},
 };
 
-//=========================================================
-// Combat Fail Schedule
-//=========================================================
 Task_t tlVoltigoreCombatFail[] =
 	{
 		{TASK_STOP_MOVING, 0},
@@ -664,11 +604,6 @@ Schedule_t slVoltigoreCombatFail[] =
 			"Voltigore Combat Fail"},
 };
 
-//=========================================================
-// Standoff schedule. Used in combat when a monster is
-// hiding in cover or the enemy has moved out of sight.
-// Should we look around in this schedule?
-//=========================================================
 Task_t tlVoltigoreStandoff[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -676,6 +611,10 @@ Task_t tlVoltigoreStandoff[] =
 		{TASK_WAIT_FACE_ENEMY, (float)2},
 };
 
+/**
+ *	@brief Used in combat when a monster is hiding in cover or the enemy has moved out of sight.
+ *	Should we look around in this schedule?
+ */
 Schedule_t slVoltigoreStandoff[] =
 	{
 		{tlVoltigoreStandoff,
@@ -689,9 +628,6 @@ Schedule_t slVoltigoreStandoff[] =
 			bits_SOUND_DANGER,
 			"Voltigore Standoff"}};
 
-//=========================================================
-// primary range attacks
-//=========================================================
 Task_t tlVoltigoreRangeAttack1[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -713,10 +649,6 @@ Schedule_t slVoltigoreRangeAttack1[] =
 			"Voltigore Range Attack1"},
 };
 
-//=========================================================
-// Take cover from enemy! Tries lateral cover before node
-// cover!
-//=========================================================
 Task_t tlVoltigoreTakeCoverFromEnemy[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -737,9 +669,6 @@ Schedule_t slVoltigoreTakeCoverFromEnemy[] =
 			"VoltigoreTakeCoverFromEnemy"},
 };
 
-//=========================================================
-// Victory dance!
-//=========================================================
 Task_t tlVoltigoreVictoryDance[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -774,8 +703,6 @@ Schedule_t slVoltigoreVictoryDance[] =
 			"VoltigoreVictoryDance"},
 };
 
-//=========================================================
-//=========================================================
 Task_t tlVoltigoreThreatDisplay[] =
 	{
 		{TASK_STOP_MOVING, (float)0},
@@ -797,23 +724,16 @@ Schedule_t slVoltigoreThreatDisplay[] =
 			"VoltigoreThreatDisplay"},
 };
 
-DEFINE_CUSTOM_SCHEDULES(COFVoltigore){
-	slVoltigoreFail,
+BEGIN_CUSTOM_SCHEDULES(COFVoltigore)
+slVoltigoreFail,
 	slVoltigoreCombatFail,
 	slVoltigoreStandoff,
 	slVoltigoreRangeAttack1,
 	slVoltigoreTakeCoverFromEnemy,
 	slVoltigoreVictoryDance,
-	slVoltigoreThreatDisplay,
-};
+	slVoltigoreThreatDisplay
+	END_CUSTOM_SCHEDULES();
 
-IMPLEMENT_CUSTOM_SCHEDULES(COFVoltigore, CSquadMonster);
-
-//=========================================================
-// FCanCheckAttacks - this is overridden for alien grunts
-// because they can use their smart weapons against unseen
-// enemies. Base class doesn't attack anyone it can't see.
-//=========================================================
 bool COFVoltigore::FCanCheckAttacks()
 {
 	if (!HasConditions(bits_COND_ENEMY_TOOFAR))
@@ -826,10 +746,6 @@ bool COFVoltigore::FCanCheckAttacks()
 	}
 }
 
-//=========================================================
-// CheckMeleeAttack1 - alien grunts zap the crap out of
-// any enemy that gets too close.
-//=========================================================
 bool COFVoltigore::CheckMeleeAttack1(float flDot, float flDist)
 {
 	if (HasConditions(bits_COND_SEE_ENEMY) && flDist <= GetMeleeDistance() && flDot >= 0.6 && m_hEnemy != nullptr)
@@ -839,15 +755,11 @@ bool COFVoltigore::CheckMeleeAttack1(float flDot, float flDist)
 	return false;
 }
 
-//=========================================================
-// CheckRangeAttack1
-//
-// !!!LATER - we may want to load balance this. Several
-// tracelines are done, so we may not want to do this every
-// server frame. Definitely not while firing.
-//=========================================================
 bool COFVoltigore::CheckRangeAttack1(float flDot, float flDist)
 {
+	//!!!LATER - we may want to load balance this.Several
+	// tracelines are done, so we may not want to do this every
+	// server frame. Definitely not while firing.
 	if (IsMoving() && flDist >= 512)
 	{
 		return false;
@@ -862,8 +774,8 @@ bool COFVoltigore::CheckRangeAttack1(float flDot, float flDist)
 		// !!!LATER - we may wish to do something different for projectile weapons as opposed to instant-hit
 		UTIL_MakeVectors(pev->angles);
 		GetAttachment(0, vecArmPos, vecArmDir);
-		//		UTIL_TraceLine( vecArmPos, vecArmPos + gpGlobals->v_forward * 256, ignore_monsters, ENT(pev), &tr);
-		UTIL_TraceLine(vecArmPos, m_hEnemy->BodyTarget(vecArmPos), dont_ignore_monsters, ENT(pev), &tr);
+		//		UTIL_TraceLine( vecArmPos, vecArmPos + gpGlobals->v_forward * 256, ignore_monsters, edict(), &tr);
+		UTIL_TraceLine(vecArmPos, m_hEnemy->BodyTarget(vecArmPos), dont_ignore_monsters, edict(), &tr);
 
 		if (tr.flFraction == 1.0 || tr.pHit == m_hEnemy->edict())
 		{
@@ -877,10 +789,7 @@ bool COFVoltigore::CheckRangeAttack1(float flDot, float flDist)
 	return false;
 }
 
-//=========================================================
-// StartTask
-//=========================================================
-void COFVoltigore::StartTask(Task_t* pTask)
+void COFVoltigore::StartTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -941,7 +850,7 @@ void COFVoltigore::StartTask(Task_t* pTask)
 		{
 			m_pChargedBolt = COFChargedBolt::ChargedBoltCreate();
 
-			UTIL_SetOrigin(m_pChargedBolt->pev, vecConverge);
+			m_pChargedBolt->SetOrigin(vecConverge);
 		}
 
 		EmitAmbientSound(pev->origin, "debris/beamstart2.wav", 0.5, ATTN_NORM, 0, RANDOM_LONG(140, 160));
@@ -957,7 +866,7 @@ void COFVoltigore::StartTask(Task_t* pTask)
 	}
 }
 
-void COFVoltigore::RunTask(Task_t* pTask)
+void COFVoltigore::RunTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
@@ -1001,13 +910,7 @@ void COFVoltigore::RunTask(Task_t* pTask)
 	}
 }
 
-//=========================================================
-// GetSchedule - Decides which type of schedule best suits
-// the monster's current state and conditions. Then calls
-// monster's member function to get a pointer to a schedule
-// of the proper type.
-//=========================================================
-Schedule_t* COFVoltigore::GetSchedule()
+const Schedule_t* COFVoltigore::GetSchedule()
 {
 	if (HasConditions(bits_COND_HEAR_SOUND))
 	{
@@ -1067,9 +970,7 @@ Schedule_t* COFVoltigore::GetSchedule()
 	return CSquadMonster::GetSchedule();
 }
 
-//=========================================================
-//=========================================================
-Schedule_t* COFVoltigore::GetScheduleOfType(int Type)
+const Schedule_t* COFVoltigore::GetScheduleOfType(int Type)
 {
 	switch (Type)
 	{
@@ -1167,7 +1068,7 @@ void COFVoltigore::DeathGibThink()
 	{
 		for (auto i = 0; i < 2; ++i)
 		{
-			const int side = static_cast<int>((i % 2) == 0);
+			const int side = i == 0 ? -1 : 1;
 
 			UTIL_MakeAimVectors(pev->angles);
 
@@ -1203,7 +1104,7 @@ void COFVoltigore::DeathGibThink()
 
 			auto pHit = Instance(tr.pHit);
 
-			if (pHit)
+			if (pHit && pHit->pev->takedamage != DAMAGE_NO)
 			{
 				pBeam->PointEntInit(pev->origin + Vector(0, 0, 32), pHit->entindex());
 
@@ -1226,29 +1127,12 @@ void COFVoltigore::DeathGibThink()
 
 		ClearMultiDamage();
 
-		::RadiusDamage(pev->origin, this, this, GetSkillFloat("voltigore_dmg_beam"sv), 160.0, CLASS_NONE, DMG_ALWAYSGIB | DMG_SHOCK);
+		::RadiusDamage(pev->origin, this, this, GetSkillFloat("voltigore_dmg_beam"sv), 160.0, DMG_ALWAYSGIB | DMG_SHOCK);
 	}
 }
 
-const GibLimit VoltigoreGibLimits[] =
-	{
-		{1},
-		{1},
-		{1},
-		{1},
-		{2},
-		{1},
-		{2},
-		{1},
-		{2},
-};
-
-const GibData VoltigoreGibs = {"models/vgibs.mdl", 0, 9, VoltigoreGibLimits};
-
 void COFVoltigore::GibMonster()
 {
-	EmitSound(CHAN_WEAPON, "common/bodysplat.wav", 1, ATTN_NORM);
-
 	pev->renderfx = kRenderFxExplode;
 
 	pev->rendercolor.x = 255;
@@ -1260,12 +1144,18 @@ void COFVoltigore::GibMonster()
 	SetThink(&CBaseMonster::SUB_Remove);
 	pev->nextthink = gpGlobals->time + 0.15;
 
+	/*
+	EmitSound(CHAN_WEAPON, "common/bodysplat.wav", 1, ATTN_NORM);
+
 	// Note: the original didn't have the violence check
 	if (CVAR_GET_FLOAT("violence_agibs") != 0) // Should never get here, but someone might call it directly
 	{
 		// Gib spawning has been rewritten so the logic for limiting gib submodels is generalized
-		CGib::SpawnRandomGibs(pev, 12, VoltigoreGibs); // Throw alien gibs
+		CGib::SpawnRandomGibs(this, 12, VoltigoreGibs); // Throw alien gibs
 	}
+	*/
+
+	CGib::SpawnClientGibs(this, GibType::Voltigore, 12, true, false);
 }
 
 void COFVoltigore::Killed(CBaseEntity* attacker, int iGib)
