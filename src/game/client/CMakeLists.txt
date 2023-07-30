@@ -148,6 +148,8 @@ target_sources(client PRIVATE
 
 	rendering/GameStudioModelRenderer.cpp
 	rendering/GameStudioModelRenderer.h
+	rendering/GLRenderer.cpp
+	rendering/GLRenderer.hpp
 	rendering/StudioModelRenderer.cpp
 	rendering/StudioModelRenderer.h
 	rendering/tri.cpp

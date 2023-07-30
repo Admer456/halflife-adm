@@ -26,6 +26,7 @@
 #include "demo_api.h"
 #include "vgui_ScorePanel.h"
 #include "HudSpriteConfigSystem.h"
+#include "rendering/GLRenderer.hpp"
 
 #include "ui/hud/HudReplacementSystem.h"
 
@@ -150,6 +151,7 @@ void CHud::Init()
 void CHud::Shutdown()
 {
 	GetClientVoiceMgr()->Shutdown();
+	GLRenderer::GetInstance()->Shutdown("Shutting down all subsystems");
 }
 
 int CHud::GetSpriteIndex(const char* SpriteName)
@@ -220,6 +222,8 @@ void CHud::VidInit()
 	{
 		hudElement->VidInit();
 	}
+
+	GLRenderer::GetInstance()->Init();
 }
 
 void CHud::MsgFunc_HudColor(const char* pszName, BufferReader& reader)

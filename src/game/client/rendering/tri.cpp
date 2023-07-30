@@ -20,6 +20,7 @@
 #include "particleman.h"
 #include "tri.h"
 #include "view.h"
+#include "GLRenderer.hpp"
 
 void RenderFog()
 {
@@ -35,6 +36,8 @@ void RenderFog()
  */
 void DLLEXPORT HUD_DrawNormalTriangles()
 {
+	GLRenderer::GetInstance()->RenderFrame();
+
 	gHUD.m_Spectator.DrawOverview();
 }
 
