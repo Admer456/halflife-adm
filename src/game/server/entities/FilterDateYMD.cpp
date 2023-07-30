@@ -5,14 +5,11 @@
 
 LINK_ENTITY_TO_CLASS(filter_date_ymd, FilterDateYMD);
 
-TYPEDESCRIPTION FilterDateYMD::m_SaveData[] =
-{
-	DEFINE_FIELD(FilterDateYMD, m_Year, FIELD_INTEGER),
-	DEFINE_FIELD(FilterDateYMD, m_Month, FIELD_INTEGER),
-	DEFINE_FIELD(FilterDateYMD, m_Day, FIELD_INTEGER)
-};
-
-IMPLEMENT_SAVERESTORE(FilterDateYMD, CPointEntity);
+BEGIN_DATAMAP(FilterDateYMD)
+	DEFINE_FIELD(m_Year, FIELD_INTEGER),
+	DEFINE_FIELD(m_Month, FIELD_INTEGER),
+	DEFINE_FIELD(m_Day, FIELD_INTEGER),
+END_DATAMAP();
 
 // ================================
 // FilterDateYMD::Spawn

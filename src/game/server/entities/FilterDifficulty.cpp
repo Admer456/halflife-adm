@@ -4,12 +4,9 @@
 
 LINK_ENTITY_TO_CLASS(filter_difficulty, FilterDifficulty);
 
-TYPEDESCRIPTION FilterDifficulty::m_SaveData[] =
-{
-	DEFINE_FIELD(FilterDifficulty, m_SkillFlags, FIELD_INTEGER)
-};
-
-IMPLEMENT_SAVERESTORE(FilterDifficulty, CPointEntity);
+BEGIN_DATAMAP(FilterDifficulty)
+	DEFINE_FIELD(m_SkillFlags, FIELD_INTEGER),
+END_DATAMAP();
 
 // ================================
 // FilterDifficulty::Spawn

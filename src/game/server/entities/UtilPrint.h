@@ -8,6 +8,8 @@
 // ================================
 class UtilPrint final : public CPointEntity
 {
+	DECLARE_CLASS(UtilPrint, CPointEntity);
+
 public:
 	void Spawn() override;
 

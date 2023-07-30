@@ -4,16 +4,13 @@
 
 LINK_ENTITY_TO_CLASS(trigger_timer, TriggerTimer);
 
-TYPEDESCRIPTION TriggerTimer::m_SaveData[] =
-{	
-	DEFINE_FIELD(TriggerTimer, m_Activator, FIELD_CLASSPTR),
-	DEFINE_FIELD(TriggerTimer, m_Enabled, FIELD_BOOLEAN),
-	DEFINE_FIELD(TriggerTimer, m_UseType, FIELD_INTEGER),
-	DEFINE_FIELD(TriggerTimer, m_BaseDelay, FIELD_FLOAT),
-	DEFINE_FIELD(TriggerTimer, m_RandomDelay, FIELD_FLOAT)
-};
-
-IMPLEMENT_SAVERESTORE(TriggerTimer, CPointEntity);
+BEGIN_DATAMAP(TriggerTimer)
+	DEFINE_FIELD(m_Activator, FIELD_CLASSPTR),
+	DEFINE_FIELD(m_Enabled, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_UseType, FIELD_INTEGER),
+	DEFINE_FIELD(m_BaseDelay, FIELD_FLOAT),
+	DEFINE_FIELD(m_RandomDelay, FIELD_FLOAT),
+END_DATAMAP();
 
 // ================================
 // TriggerTimer::Spawn

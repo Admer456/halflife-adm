@@ -8,9 +8,11 @@
 // Formula: baseDelay + randomDelay * random(-1.0, 1.0)
 // ================================
 class TriggerTimer final : public CPointEntity
-{ // would probably be more logical to inherit from trigger_relay, but alas
-public:
+{	// would probably be more logical to inherit from trigger_relay, but alas
+	DECLARE_CLASS(TriggerTimer, CPointEntity);
+	DECLARE_DATAMAP();
 
+public:
 	static constexpr uint32_t SF_StartOn = 1 << 0;
 
 	void			Spawn() override;
@@ -18,11 +20,6 @@ public:
 	
 	void			Use(CBaseEntity* activator, CBaseEntity* caller, USE_TYPE useType, float value) override;
 	void			Think() override;
-
-	bool			Save(CSave& save) override;
-	bool			Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 
 private:
 	void			Tick(bool useTargets = false);

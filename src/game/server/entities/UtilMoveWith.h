@@ -8,6 +8,9 @@
 // ================================
 class UtilMoveWith final : public CPointEntity
 {
+	DECLARE_CLASS(UtilMoveWith, CPointEntity);
+	DECLARE_DATAMAP();
+
 public:
 	static constexpr int SF_StartOn = 1 << 0;
 	static constexpr int SF_NoPosition = 1 << 1;
@@ -20,11 +23,6 @@ public:
 
 	void Use(CBaseEntity* activator, CBaseEntity* caller, USE_TYPE useType, float value) override;
 	void Think() override;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 
 private:
 	bool Validate() const;

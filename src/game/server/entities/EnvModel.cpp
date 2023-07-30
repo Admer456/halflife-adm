@@ -2,15 +2,12 @@
 #include "cbase.h"
 #include "EnvModel.h"
 
-TYPEDESCRIPTION EnvModel::m_SaveData[] =
-{
-	DEFINE_FIELD(EnvModel, m_iszSequence_On, FIELD_STRING),
-	DEFINE_FIELD(EnvModel, m_iszSequence_Off, FIELD_STRING),
-	DEFINE_FIELD(EnvModel, m_iAction_On, FIELD_BOOLEAN),
-	DEFINE_FIELD(EnvModel, m_iAction_Off, FIELD_BOOLEAN),
-};
-
-IMPLEMENT_SAVERESTORE(EnvModel, CBaseAnimating);
+BEGIN_DATAMAP(EnvModel)
+	DEFINE_FIELD(m_iszSequence_On, FIELD_STRING),
+	DEFINE_FIELD(m_iszSequence_Off, FIELD_STRING),
+	DEFINE_FIELD(m_iAction_On, FIELD_BOOLEAN),
+	DEFINE_FIELD(m_iAction_Off, FIELD_BOOLEAN),
+END_DATAMAP();
 
 LINK_ENTITY_TO_CLASS(env_model, EnvModel);
 
@@ -21,7 +18,7 @@ void EnvModel::Spawn()
 {
 	Precache();
 	SetModel(STRING(pev->model));
-	UTIL_SetOrigin(pev, pev->origin);
+	SetOrigin(pev->origin);
 
 	if (pev->spawnflags & SF_Solid)
 	{

@@ -4,16 +4,13 @@
 
 LINK_ENTITY_TO_CLASS(util_movewith, UtilMoveWith);
 
-TYPEDESCRIPTION UtilMoveWith::m_SaveData[] = 
-{
-	DEFINE_FIELD(UtilMoveWith, m_ParentTarget, FIELD_STRING),
-	DEFINE_FIELD(UtilMoveWith, m_ChildTarget, FIELD_STRING),
-	DEFINE_FIELD(UtilMoveWith, m_ParentEntity, FIELD_CLASSPTR),
-	DEFINE_FIELD(UtilMoveWith, m_ChildEntity, FIELD_CLASSPTR),
-	DEFINE_FIELD(UtilMoveWith, m_Enabled, FIELD_BOOLEAN)
-};
-
-IMPLEMENT_SAVERESTORE(UtilMoveWith, CPointEntity);
+BEGIN_DATAMAP(UtilMoveWith)
+	DEFINE_FIELD(m_ParentTarget, FIELD_STRING),
+	DEFINE_FIELD(m_ChildTarget, FIELD_STRING),
+	DEFINE_FIELD(m_ParentEntity, FIELD_CLASSPTR),
+	DEFINE_FIELD(m_ChildEntity, FIELD_CLASSPTR),
+	DEFINE_FIELD(m_Enabled, FIELD_BOOLEAN),
+END_DATAMAP();
 
 // ================================
 // UtilMoveWith::Spawn

@@ -8,6 +8,9 @@
 // ================================
 class EnvModel : public CBaseAnimating
 {
+	DECLARE_CLASS(EnvModel, CBaseAnimating);
+	DECLARE_DATAMAP();
+
 public:
 	// Hack: The SF_Off spawnflag is used as a regular flag
 	static constexpr int SF_Off = 1 << 0;
@@ -24,11 +27,6 @@ public:
 
 	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) override;
 	void Think() override;
-
-	bool Save(CSave& save) override;
-	bool Restore(CRestore& restore) override;
-
-	static TYPEDESCRIPTION m_SaveData[];
 
 private:
 	void SetSequence();

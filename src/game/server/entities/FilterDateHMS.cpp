@@ -5,14 +5,11 @@
 
 LINK_ENTITY_TO_CLASS(filter_date_hms, FilterDateHMS);
 
-TYPEDESCRIPTION FilterDateHMS::m_SaveData[] =
-{
-	DEFINE_FIELD(FilterDateHMS, m_Hour, FIELD_INTEGER),
-	DEFINE_FIELD(FilterDateHMS, m_Minute, FIELD_INTEGER),
-	DEFINE_FIELD(FilterDateHMS, m_Second, FIELD_INTEGER)
-};
-
-IMPLEMENT_SAVERESTORE(FilterDateHMS, CPointEntity);
+BEGIN_DATAMAP(FilterDateHMS)
+	DEFINE_FIELD(m_Hour, FIELD_INTEGER),
+	DEFINE_FIELD(m_Minute, FIELD_INTEGER),
+	DEFINE_FIELD(m_Second, FIELD_INTEGER),
+END_DATAMAP();
 
 // ================================
 // FilterDateHMS::Spawn

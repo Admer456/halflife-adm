@@ -4,12 +4,9 @@
 
 LINK_ENTITY_TO_CLASS(util_servercommand, UtilServerCommand);
 
-TYPEDESCRIPTION UtilServerCommand::m_SaveData[] =
-{
-	DEFINE_FIELD(UtilServerCommand, m_Command, FIELD_STRING)
-};
-
-IMPLEMENT_SAVERESTORE( UtilServerCommand, CBaseEntity );
+BEGIN_DATAMAP(UtilServerCommand)
+	DEFINE_FIELD(m_Command, FIELD_STRING),
+END_DATAMAP();
 
 // ================================
 // UtilServerCommand::Spawn
